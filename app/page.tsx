@@ -1,0 +1,659 @@
+'use client';
+
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import JSZip from 'jszip';
+import type { Font } from 'opentype.js';
+
+import { textToLetters, normalizeLetters, type Letra } from '@/lib/text/glyphs';
+import {
+  FONTES_WEB,
+  carregarFonteWeb,
+  carregarFonteArquivo,
+  listarFontesSistema,
+  carregarFonteSistema,
+  type ResultadoFontesSistema,
+} from '@/lib/text/fontes';
+import { MODOS, APOIOS, buildPart, alturaArte, type ModoId, type Params, type Part, type Role, type Apoio } from '@/lib/geom/modes';
+import {
+  regionArea,
+  regionPerimeter,
+  minThickness,
+  regionBounds,
+  scaleRegion,
+  translateRegion,
+  type Region,
+} from '@/lib/geom/region';
+import { colisoesPorBorda, avisoColisao } from '@/lib/geom/letreiro';
+import { partToGeometry } from '@/lib/geom/extrude';
+import { geometryToSTL } from '@/lib/export/stl';
+import { regionToSVG, regionToDXF, gabaritoSVG } from '@/lib/export/vectors';
+import { FILAMENTOS, PADRAO, orcar, brl, type CustoCfg, type FilamentoId } from '@/lib/cost/calc';
+import { Header } from '@/components/Header';
+import { Rail, type SecaoId } from '@/components/Rail';
+import { Paineis } from '@/components/Paineis';
+import { CAMADAS_TODAS, type Camadas } from '@/components/Viewer3D';
+import { importarArquivo, importarPdf, ErroImport } from '@/lib/import/pdf';
+import { desenhoParaPecas, type ModoSeparacao } from '@/lib/import/pecas';
+import type { DesenhoBruto, Aviso } from '@/lib/import/pdf-ops';
+
+// O canvas WebGL nao pode ser renderizado no servidor.
+const Viewer3D = dynamic(() => import('@/components/Viewer3D'), {
+  ssr: false,
+  loading: () => <div className="flex h-full items-center justify-center text-sm text-slate-500">carregando 3D...</div>,
+});
+
+type LetraComPeca = Letra & { part: Part };
+
+function baixar(nome: string, data: BlobPart, tipo?: string): void {
+  const blob = data instanceof Blob ? data : new Blob([data], tipo ? { type: tipo } : undefined);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+const seguro = (s: string): string => (s || 'letra').replace(/[^a-zA-Z0-9]/g, '_');
+
+export default function Page() {
+  const [texto, setTexto] = useState('LETRA');
+  const [font, setFont] = useState<Font | null>(null);
+  const [fonteNome, setFonteNome] = useState('Anton');
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const [sistema, setSistema] = useState<ResultadoFontesSistema>({ suportado: true, fontes: [] });
+  const arquivoRef = useRef<HTMLInputElement>(null);
+  const desenhoRef = useRef<HTMLInputElement>(null);
+
+  // Desenho importado de .ai/.pdf. Quando presente, substitui o texto como fonte das pecas.
+  const [imp, setImp] = useState<{
+    desenho: DesenhoBruto;
+    nomeArquivo: string;
+    paginas: number;
+    pagina: number;
+    avisos: Aviso[];
+    conteudoMm: { w: number; h: number };
+    buf: ArrayBuffer;
+  } | null>(null);
+  const [impModo, setImpModo] = useState<ModoSeparacao>('forma');
+  const [impAltura, setImpAltura] = useState(300);
+  const [impFundir, setImpFundir] = useState(0);
+  const [impTracos, setImpTracos] = useState(false);
+  const [impDesativadas, setImpDesativadas] = useState<Set<string>>(new Set());
+
+  const [altura, setAltura] = useState(150);
+  const [tracking, setTracking] = useState(0);
+  const [modo, setModo] = useState<ModoId>('moldura_acm');
+  const [profundidade, setProfundidade] = useState(40);
+  const [parede, setParede] = useState(2.4);
+  const [face, setFace] = useState(2);
+  const [traseira, setTraseira] = useState(2);
+  const [comTraseira, setComTraseira] = useState(true);
+  const [acmEsp, setAcmEsp] = useState(3);
+  const [acmFolga, setAcmFolga] = useState(0.3);
+  const [batente, setBatente] = useState(2.5);
+  const [apoio, setApoio] = useState<Apoio>('dentro');
+  const [borda, setBorda] = useState(3);
+  const [labio, setLabio] = useState(1);
+  const [bordaCompensa, setBordaCompensa] = useState(true);
+  const [standoff, setStandoff] = useState(15);
+  const [faceTransEsp, setFaceTransEsp] = useState(2);
+  const [furoFio, setFuroFio] = useState(6);
+  const [bico, setBico] = useState(0.4);
+  const [biselAtivo, setBiselAtivo] = useState(false);
+  const [biselTam, setBiselTam] = useState(1.5);
+  const [mesaX, setMesaX] = useState(256);
+  const [mesaY, setMesaY] = useState(256);
+  const [cfg, setCfg] = useState<CustoCfg>(PADRAO);
+
+  // Estado so da interface.
+  const [secao, setSecao] = useState<SecaoId>('arquivo');
+  const [explode, setExplode] = useState(0);
+  const [camadas, setCamadas] = useState<Camadas>(CAMADAS_TODAS);
+  const [nomeTrabalho, setNomeTrabalho] = useState('');
+
+  const setC = <K extends keyof CustoCfg>(k: K) => (v: CustoCfg[K]) => setCfg((c) => ({ ...c, [k]: v }));
+
+  useEffect(() => {
+    carregarFonteWeb('anton')
+      .then(setFont)
+      .catch((e: unknown) =>
+        setErro(
+          'Nao consegui baixar a fonte inicial (' +
+            (e instanceof Error ? e.message : String(e)) +
+            '). Carregue um .ttf do seu computador.'
+        )
+      )
+      .finally(() => setCarregando(false));
+  }, []);
+
+  const trocarFonteWeb = async (id: string) => {
+    if (!id) return;
+    setCarregando(true);
+    setErro(null);
+    try {
+      setFont(await carregarFonteWeb(id));
+      setFonteNome(FONTES_WEB.find((f) => f.id === id)?.nome ?? id);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const abrirDesenho = async (file: File, pagina = 1) => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      const r = await importarArquivo(file, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 1 }, pagina);
+      if (!r.pecas.length) {
+        setErro(r.avisos[0]?.msg ?? 'Nao encontrei contornos neste arquivo.');
+        setCarregando(false);
+        return;
+      }
+      setImp({
+        desenho: r.desenho,
+        nomeArquivo: file.name,
+        paginas: r.paginas,
+        pagina: r.pagina,
+        avisos: r.avisos,
+        conteudoMm: r.conteudoMm,
+        buf: await file.arrayBuffer(),
+      });
+      setImpDesativadas(new Set());
+      setImpAltura(Math.max(1, Math.round(r.conteudoMm.h)));
+      setImpModo('forma');
+    } catch (e) {
+      setErro(e instanceof ErroImport ? e.message : 'Nao consegui abrir este arquivo: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const trocarPagina = async (n: number) => {
+    if (!imp) return;
+    setCarregando(true);
+    try {
+      const r = await importarPdf(imp.buf, { modo: impModo, incluirTracos: impTracos, fundirProximos: impFundir, areaMinima: 1 }, n, 'pdf');
+      setImp({ ...imp, desenho: r.desenho, pagina: r.pagina, avisos: r.avisos, conteudoMm: r.conteudoMm });
+      setImpAltura(Math.max(1, Math.round(r.conteudoMm.h)));
+      setImpDesativadas(new Set());
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const abrirFontesSistema = async () => {
+    const r = await listarFontesSistema();
+    setSistema(r);
+    if (!r.suportado) setErro('Este navegador nao expoe as fontes do sistema. Use Chrome ou Edge, ou carregue o .ttf.');
+    else if (r.erro) setErro('Permissao de fontes negada: ' + r.erro);
+    else setErro(null);
+  };
+
+  const params = useMemo<Params>(
+    () => ({
+      modo,
+      profundidade,
+      parede,
+      face,
+      traseira,
+      comTraseira,
+      acmEsp,
+      acmFolga,
+      batente,
+      apoio,
+      borda,
+      labio,
+      standoff,
+      faceTransEsp,
+      furoFio,
+      bico,
+      bisel: { ativo: biselAtivo && MODOS[modo].permiteBisel, tamanho: biselTam, altura: biselTam, passos: 6 },
+    }),
+    [modo, profundidade, parede, face, traseira, comTraseira, acmEsp, acmFolga, batente, apoio, borda, labio, standoff, faceTransEsp, furoFio, bico, biselAtivo, biselTam]
+  );
+
+  // Pecas do arquivo importado, na escala nativa. Separado da escala para que
+  // arrastar a altura nao refaca a separacao nem remeça a espessura.
+  const pecasNativas = useMemo(() => {
+    if (!imp) return null;
+    return desenhoParaPecas(imp.desenho, {
+      modo: impModo,
+      incluirTracos: impTracos,
+      fundirProximos: impFundir,
+      areaMinima: 1,
+    }).map((p) => ({ ...p, bounds: regionBounds(p.region), espessuraNativa: minThickness(p.region) }));
+  }, [imp, impModo, impTracos, impFundir]);
+
+  // Etapa cara (contornos + medicao de espessura): so depende do texto e do tamanho.
+  // Fica fora do caminho dos sliders de fabricacao, que sao os que se arrastam.
+  const letrasBase = useMemo(() => {
+    if (pecasNativas) {
+      const ativas = pecasNativas.filter((p) => !impDesativadas.has(p.nome));
+      if (!ativas.length) return [] as (Letra & { espessuraMin: number })[];
+      const b = regionBounds(ativas.flatMap((p) => p.region));
+      const alvo = alturaArte(impAltura, apoio, borda, bordaCompensa);
+      const s = b.h > 0 ? alvo / b.h : 1;
+      return ativas.map((p) => {
+        const region = translateRegion(scaleRegion(p.region, s), -b.minX * s, -b.minY * s);
+        return {
+          nome: p.nome,
+          region,
+          bounds: regionBounds(region),
+          // minThickness escala linearmente: remedir a cada tique do slider de
+          // altura travaria a UI num letreiro com muitas pecas.
+          espessuraMin: p.espessuraNativa * s,
+        };
+      });
+    }
+    if (!font || !texto.trim()) return [] as (Letra & { espessuraMin: number })[];
+    // Com borda a peca fica maior que a arte, entao a arte encolhe para a peca
+    // bater a medida pedida. Ver `alturaArte`.
+    const alvo = alturaArte(altura, apoio, borda, bordaCompensa);
+    return normalizeLetters(textToLetters(font, texto, { altura: alvo, tracking })).map((l) => ({
+      ...l,
+      espessuraMin: minThickness(l.region),
+    }));
+  }, [pecasNativas, impDesativadas, impAltura, font, texto, altura, tracking, apoio, borda, bordaCompensa]);
+
+  // Enquanto o slider se move, o React mantem o quadro anterior em vez de travar a UI.
+  const paramsDiferidos = useDeferredValue(params);
+  const mesaXDiferida = useDeferredValue(mesaX);
+  const mesaYDiferida = useDeferredValue(mesaY);
+
+  // Etapa barata: aplica o modo de fabricacao aos contornos ja prontos.
+  const { letras, bounds, totais, avisos } = useMemo(() => {
+    const mX = mesaXDiferida;
+    const mY = mesaYDiferida;
+    if (!letrasBase.length) {
+      return { letras: [] as LetraComPeca[], bounds: null, totais: null, avisos: [] as string[] };
+    }
+    const modo = paramsDiferidos.modo;
+    const letras: LetraComPeca[] = letrasBase.map((l) => ({
+      ...l,
+      part: buildPart(l.region, paramsDiferidos, l.espessuraMin),
+    }));
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let volume = 0;
+    let areaChapa = 0;
+    let perimetroLed = 0;
+    let maiorLetra = { w: 0, h: 0, nome: '' };
+    const avisos = new Set<string>();
+
+    for (const l of letras) {
+      // O que importa para a mesa e para o letreiro montado e o footprint REAL da
+      // peca (`part.contorno`), que com borda e maior que a letra.
+      const bp = regionBounds(l.part.contorno);
+      minX = Math.min(minX, bp.minX);
+      minY = Math.min(minY, bp.minY);
+      maxX = Math.max(maxX, bp.maxX);
+      maxY = Math.max(maxY, bp.maxY);
+      volume += l.part.volume;
+      for (const e of l.part.extras) {
+        if (e.kind === 'cut') areaChapa += regionArea(e.region);
+        else volume += e.layers.reduce((a, x) => a + regionArea(x.region) * (x.z1 - x.z0), 0);
+      }
+      if (modo === 'frontlit' || modo === 'backlit') perimetroLed += regionPerimeter(l.region) / 2;
+      if (bp.w > maiorLetra.w) maiorLetra = { w: bp.w, h: bp.h, nome: l.nome };
+      for (const a of l.part.avisos) avisos.add(a);
+
+      // Cabe na mesa? Tenta a peca em pe e girada 90 graus antes de reclamar.
+      const cabe = (bp.w <= mX && bp.h <= mY) || (bp.h <= mX && bp.w <= mY);
+      if (!cabe) {
+        avisos.add(
+          `A peca "${l.nome}" (${bp.w.toFixed(0)}x${bp.h.toFixed(0)}mm) nao cabe na mesa de ${mX}x${mY}mm: vai precisar dividir em partes.`
+        );
+      }
+    }
+
+    // Com borda, letras vizinhas apertadas passam a se sobrepor e as chapas colidem
+    // na montagem. So da para ver isto olhando o letreiro inteiro.
+    const e = paramsDiferidos.apoio === 'dentro' ? 0 : paramsDiferidos.borda;
+    if (e > 0 && letras.length > 1) {
+      for (const c of colisoesPorBorda(letras, e)) avisos.add(avisoColisao(c, e));
+    }
+
+    const alturaZ = letras[0]?.part.alturaZ ?? paramsDiferidos.profundidade;
+    if (alturaZ > 300) avisos.add(`A peca tem ${alturaZ.toFixed(0)}mm de altura em Z: confira o limite da sua impressora.`);
+
+    return {
+      letras,
+      bounds: { w: maxX - minX, h: maxY - minY, maiorLetra },
+      totais: { volume, areaChapa, perimetroLed, qtd: letras.length },
+      avisos: [...avisos],
+    };
+  }, [letrasBase, paramsDiferidos, mesaXDiferida, mesaYDiferida]);
+
+  const orcamento = useMemo(
+    () =>
+      totais
+        ? orcar({
+            volumeMm3: totais.volume,
+            areaChapaMm2: totais.areaChapa,
+            perimetroLedMm: totais.perimetroLed,
+            qtdLetras: totais.qtd,
+            cfg,
+          })
+        : null,
+    [totais, cfg]
+  );
+
+  // Nomeia STL, zip e orcamento. Vem do arquivo importado, do nome dado a mao,
+  // ou do proprio texto -- nessa ordem.
+  const nomeProjeto = imp ? imp.nomeArquivo.replace(/\.[^.]+$/, '') : nomeTrabalho || texto;
+
+  const regioesDeCorte = useCallback(
+    (): Region => letras.flatMap((l) => l.part.extras.flatMap((e) => (e.kind === 'cut' ? e.region : []))),
+    [letras]
+  );
+
+  const baixarSTL = useCallback(
+    (letra: LetraComPeca) => {
+      const geo = partToGeometry(letra.part);
+      if (!geo) return;
+      baixar(`${seguro(nomeProjeto)}_${seguro(letra.nome)}_${modo}.stl`, geometryToSTL(geo, letra.nome), 'model/stl');
+      geo.dispose();
+    },
+    [nomeProjeto, modo]
+  );
+
+  const baixarTudo = useCallback(async () => {
+    if (!orcamento || !bounds) return;
+    const zip = new JSZip();
+    const pasta = zip.folder(seguro(nomeProjeto) + '_' + modo);
+    if (!pasta) return;
+
+    letras.forEach((l, i) => {
+      const n = String(i + 1).padStart(2, '0');
+      const geo = partToGeometry(l.part);
+      if (geo) {
+        pasta.file(`${n}_${seguro(l.nome)}.stl`, geometryToSTL(geo, l.nome));
+        geo.dispose();
+      }
+      for (const e of l.part.extras) {
+        if (e.kind !== 'stl') continue;
+        const g2 = partToGeometry({ layers: e.layers });
+        if (g2) {
+          pasta.file(`${n}_${seguro(l.nome)}_${e.name}.stl`, geometryToSTL(g2, e.name));
+          g2.dispose();
+        }
+      }
+    });
+
+    // Chapas de corte: um SVG e um DXF com todas as letras na posicao do letreiro,
+    // para o corte sair nesteado do jeito que ja esta montado.
+    const chapas = regioesDeCorte();
+    if (chapas.length) {
+      pasta.file('chapa_acm_todas.svg', regionToSVG(chapas, { titulo: nomeProjeto }));
+      pasta.file('chapa_acm_todas.dxf', regionToDXF(chapas));
+    }
+    pasta.file('gabarito_instalacao_1a1.svg', gabaritoSVG(letras));
+
+    const resumo = [
+      `Letreiro: ${nomeProjeto}`,
+      `Modo: ${MODOS[modo].nome}`,
+      `Orientacao de impressao: ${MODOS[modo].orientacao}`,
+      imp ? `Altura total: ${impAltura}mm | Profundidade: ${profundidade}mm` : `Altura das maiusculas: ${altura}mm | Profundidade: ${profundidade}mm`,
+      `Largura total montado: ${bounds.w.toFixed(0)}mm`,
+      `Parede: ${parede}mm | Bico: ${bico}mm`,
+      ...(modo === 'moldura_acm' ? [`Chapa ACM: ${acmEsp}mm, folga ${acmFolga}mm, batente ${batente}mm`] : []),
+      '',
+      `Filamento: ${cfg.filamento} - ${orcamento.gramas.toFixed(0)}g (${orcamento.rolos.toFixed(2)} rolo)`,
+      `Tempo estimado: ${orcamento.horas.toFixed(1)}h`,
+      '',
+      ...orcamento.itens.map((i) => `${i.rotulo.padEnd(18)} ${brl(i.valor).padStart(12)}  ${i.detalhe}`),
+      `${'CUSTO'.padEnd(18)} ${brl(orcamento.custo).padStart(12)}`,
+      `${'PRECO SUGERIDO'.padEnd(18)} ${brl(orcamento.preco).padStart(12)}  (margem ${cfg.margem}%)`,
+      ...(avisos.length ? ['', 'AVISOS:', ...avisos.map((a) => '- ' + a)] : []),
+    ].join('\r\n');
+    pasta.file('orcamento.txt', resumo);
+
+    baixar(`${seguro(nomeProjeto)}_${modo}.zip`, await zip.generateAsync({ type: 'blob' }));
+  }, [letras, nomeProjeto, modo, altura, impAltura, imp, profundidade, parede, bico, acmEsp, acmFolga, batente, cfg, orcamento, avisos, bounds, regioesDeCorte]);
+
+  const temChapa = letras.some((l) => l.part.extras.some((e) => e.kind === 'cut'));
+  const rolesUsados = new Set<Role>(letras.flatMap((l) => l.part.layers.map((x) => x.role)));
+  const fonteWebAtual = FONTES_WEB.find((f) => f.nome === fonteNome);
+
+
+  const gramasTotais = orcamento ? orcamento.gramas : null;
+  const bordaAtiva = apoio === 'dentro' ? 0 : borda;
+  const alturaArteAtual = alturaArte(imp ? impAltura : altura, apoio, borda, bordaCompensa);
+
+  return (
+    <div className="flex h-screen flex-col overflow-hidden bg-fundo">
+      <Header
+        nomeProjeto={nomeProjeto}
+        setNomeProjeto={setNomeTrabalho}
+        podeRenomear={!imp}
+        medidas={[
+          imp
+            ? { label: 'Altura', valor: impAltura, set: setImpAltura, min: 10, max: 3000 }
+            : { label: 'Altura', valor: altura, set: setAltura, min: 10, max: 600 },
+          { label: 'Profund.', valor: profundidade, set: setProfundidade, min: 2, max: 150 },
+          ...(bordaAtiva > 0 ? [{ label: 'Borda', valor: borda, set: setBorda, min: 0.4, max: 30 }] : []),
+        ]}
+        gramas={gramasTotais}
+        preco={orcamento ? brl(orcamento.preco) : null}
+        onAbrir={() => desenhoRef.current?.click()}
+        onNovo={() => {
+          setImp(null);
+          setErro(null);
+        }}
+        onExportar={baixarTudo}
+        exportarAtivo={letras.length > 0}
+      />
+
+      <div className="flex min-h-0 flex-1">
+        <Rail ativa={secao} setAtiva={setSecao} alertas={{ camadas: avisos.length }} />
+
+        <aside className="w-[310px] shrink-0 overflow-y-auto border-r border-linha bg-painel">
+          <Paineis
+            secao={secao}
+            imp={
+              imp && pecasNativas
+                ? {
+                    nomeArquivo: imp.nomeArquivo,
+                    paginaMm: imp.conteudoMm,
+                    paginas: imp.paginas,
+                    pagina: imp.pagina,
+                    avisos: imp.avisos,
+                    camadas: imp.desenho.camadas,
+                    temFill: imp.desenho.temFill,
+                    nomesPecas: pecasNativas.map((x) => x.nome),
+                  }
+                : null
+            }
+            texto={texto}
+            setTexto={setTexto}
+            fonteNome={fonteNome}
+            trocarFonteWeb={trocarFonteWeb}
+            carregando={carregando}
+            erro={erro}
+            arquivoRef={arquivoRef}
+            abrirFontesSistema={abrirFontesSistema}
+            sistema={sistema}
+            carregarSistema={async (f) => {
+              try {
+                setFont(await carregarFonteSistema(f));
+                setFonteNome(f.nome);
+                setErro(null);
+              } catch (err) {
+                setErro('Essa fonte do sistema nao pode ser lida: ' + (err instanceof Error ? err.message : String(err)));
+              }
+            }}
+            impModo={impModo}
+            setImpModo={setImpModo}
+            impAltura={impAltura}
+            setImpAltura={setImpAltura}
+            impFundir={impFundir}
+            setImpFundir={setImpFundir}
+            impTracos={impTracos}
+            setImpTracos={setImpTracos}
+            impDesativadas={impDesativadas}
+            alternarPeca={(nome) =>
+              setImpDesativadas((d) => {
+                const n = new Set(d);
+                if (n.has(nome)) n.delete(nome);
+                else n.add(nome);
+                return n;
+              })
+            }
+            setPagina={(n) => void trocarPagina(n)}
+            fecharImport={() => setImp(null)}
+            modo={modo}
+            setModo={setModo}
+            apoio={apoio}
+            setApoio={setApoio}
+            altura={altura}
+            setAltura={setAltura}
+            tracking={tracking}
+            setTracking={setTracking}
+            profundidade={profundidade}
+            setProfundidade={setProfundidade}
+            parede={parede}
+            setParede={setParede}
+            face={face}
+            setFace={setFace}
+            traseira={traseira}
+            setTraseira={setTraseira}
+            comTraseira={comTraseira}
+            setComTraseira={setComTraseira}
+            acmEsp={acmEsp}
+            setAcmEsp={setAcmEsp}
+            acmFolga={acmFolga}
+            setAcmFolga={setAcmFolga}
+            batente={batente}
+            setBatente={setBatente}
+            borda={borda}
+            setBorda={setBorda}
+            labio={labio}
+            setLabio={setLabio}
+            bordaCompensa={bordaCompensa}
+            setBordaCompensa={setBordaCompensa}
+            faceTransEsp={faceTransEsp}
+            setFaceTransEsp={setFaceTransEsp}
+            furoFio={furoFio}
+            setFuroFio={setFuroFio}
+            standoff={standoff}
+            setStandoff={setStandoff}
+            biselAtivo={biselAtivo}
+            setBiselAtivo={setBiselAtivo}
+            biselTam={biselTam}
+            setBiselTam={setBiselTam}
+            bico={bico}
+            setBico={setBico}
+            mesaX={mesaX}
+            setMesaX={setMesaX}
+            mesaY={mesaY}
+            setMesaY={setMesaY}
+            camadas={camadas}
+            setCamadas={setCamadas}
+            rolesUsados={rolesUsados}
+            temChapa={temChapa}
+            pecas={letras.map((l) => {
+              const b = regionBounds(l.part.contorno);
+              return {
+                nome: l.nome,
+                w: b.w,
+                h: b.h,
+                gramas: (l.part.volume / 1000) * FILAMENTOS[cfg.filamento].densidade,
+              };
+            })}
+            baixarSTL={(i) => {
+              const l = letras[i];
+              if (l) baixarSTL(l);
+            }}
+            avisos={avisos}
+            cfg={cfg}
+            setCfg={setC}
+            orcamento={orcamento}
+            temLed={modo === 'frontlit' || modo === 'backlit'}
+            baixarChapaSVG={() =>
+              baixar(seguro(nomeProjeto) + '_chapa_acm.svg', regionToSVG(regioesDeCorte(), { titulo: nomeProjeto }), 'image/svg+xml')
+            }
+            baixarChapaDXF={() => baixar(seguro(nomeProjeto) + '_chapa_acm.dxf', regionToDXF(regioesDeCorte()), 'image/vnd.dxf')}
+            baixarGabarito={() => baixar(seguro(nomeProjeto) + '_gabarito.svg', gabaritoSVG(letras), 'image/svg+xml')}
+          />
+        </aside>
+
+        <main className="relative min-w-0 flex-1">
+          {letras.length && bounds && totais ? (
+            <Viewer3D
+              letras={letras}
+              largura={bounds.w}
+              altura={bounds.h}
+              profundidade={profundidade}
+              centro={[bounds.w / 2, bounds.h / 2]}
+              explode={explode}
+              camadas={camadas}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-base text-tinta-fraca">
+              {carregando ? 'carregando...' : imp ? 'nenhuma peca ativa' : 'digite um texto ou abra um .ai'}
+            </div>
+          )}
+
+          {/* Montagem: afasta a chapa do corpo para dar para conferir o encaixe. */}
+          {letras.length > 0 && (
+            <div className="absolute left-4 top-4 flex items-center gap-3 rounded-lg border border-linha bg-painel/90 px-3 py-2 backdrop-blur">
+              <span className="text-micro uppercase tracking-wide text-tinta-fraca">Montagem</span>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(40, profundidade * 2)}
+                step={1}
+                value={explode}
+                onChange={(e) => setExplode(parseFloat(e.target.value))}
+                className="w-28"
+                title="Afasta a chapa do corpo para conferir o encaixe"
+              />
+              <span className="tabular w-11 font-mono text-micro text-tinta-fraca">{explode.toFixed(0)}mm</span>
+            </div>
+          )}
+
+          {/* Dimensoes da peca. As cores batem com os eixos do grid. */}
+          {bounds && totais && (
+            <div className="pointer-events-none absolute bottom-4 left-4 space-y-1 rounded-lg border border-linha bg-painel/90 px-3 py-2.5 backdrop-blur">
+              <div className="text-micro font-semibold uppercase tracking-wider text-tinta-fraca">Peca montada</div>
+              <div className="tabular flex gap-3 font-mono text-mini">
+                <span className="text-[#e06c6c]">X {bounds.w.toFixed(1)}</span>
+                <span className="text-[#6cc26c]">Y {bounds.h.toFixed(1)}</span>
+                <span className="text-[#6c9ce0]">Z {(letras[0]?.part.alturaZ ?? profundidade).toFixed(1)}</span>
+                <span className="text-tinta-fraca">mm</span>
+              </div>
+              {bordaAtiva > 0 && (
+                <div className="text-micro text-tinta-fraca">
+                  arte {alturaArteAtual.toFixed(0)}mm + borda {bordaAtiva}mm de cada lado
+                </div>
+              )}
+              <div className="text-micro text-tinta-fraca">
+                {totais.qtd} {totais.qtd === 1 ? 'peca' : 'pecas'} · maior {bounds.maiorLetra.w.toFixed(0)}x
+                {bounds.maiorLetra.h.toFixed(0)}mm
+              </div>
+            </div>
+          )}
+
+          {avisos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSecao('camadas')}
+              className="absolute right-4 top-4 rounded-lg border border-alerta/40 bg-alerta/15 px-3 py-2 text-mini text-alerta backdrop-blur transition hover:bg-alerta/25"
+            >
+              {avisos.length} {avisos.length === 1 ? 'aviso' : 'avisos'} antes de imprimir
+            </button>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}

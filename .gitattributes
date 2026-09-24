@@ -1,0 +1,11 @@
+# Normaliza quebra de linha no repositorio, mantendo o que cada sistema usa localmente.
+* text=auto eol=lf
+
+# Binarios: converter quebra de linha aqui corromperia o arquivo.
+*.pdf binary
+*.stl binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.png binary
+*.jpg binary
