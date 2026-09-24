@@ -1,0 +1,60 @@
+name: Publicar no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uma publicacao por vez; se chegar commit novo no meio, espera a atual terminar.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # As mesmas verificacoes que rodam na maquina: se a geometria quebrar,
+      # o site nao sobe.
+      - name: Conferir tipos
+        run: npx tsc --noEmit
+
+      - name: Testes de geometria e importacao
+        run: |
+          npx tsx scripts/verificar-ops.mts
+          npx tsx scripts/verificar-pdf.mts
+          npx tsx scripts/verificar-apoio.mts
+
+      - name: Gerar o site
+        run: npx next build
+        env:
+          GITHUB_PAGES: 'true'
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

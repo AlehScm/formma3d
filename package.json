@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "publicar": "node scripts/publicar.mjs",
+    "testar": "tsc --noEmit && tsx scripts/verificar-ops.mts && tsx scripts/verificar-pdf.mts && tsx scripts/verificar-apoio.mts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

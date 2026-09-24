@@ -1,6 +1,9 @@
-# letra3d
+# formma3d
 
 Letra caixa para impressão 3D: modela, gera o corte da chapa e calcula o preço na mesma tela.
+
+**Usar agora:** https://alehscm.github.io/formma3d/ — roda inteiro no navegador, nada é enviado
+para servidor nenhum.
 
 ```bash
 npm run dev     # http://localhost:3000

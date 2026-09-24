@@ -20,8 +20,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'letra3d',
-  description: 'Letra caixa para impressao 3D: modelo, chapa de corte e preco.',
+  title: 'formma3d',
+  description: 'Letra caixa e pecas para impressao 3D: modela, gera o corte da chapa e calcula o preco.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

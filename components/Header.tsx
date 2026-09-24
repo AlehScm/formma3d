@@ -61,7 +61,7 @@ export function Header({
   return (
     <header className="flex shrink-0 items-center gap-4 border-b border-linha bg-painel px-4 py-2.5">
       <span className="select-none text-medio font-semibold tracking-tight">
-        letra<span className="text-acento">3d</span>
+        formma<span className="text-acento">3d</span>
       </span>
 
       <div className="h-5 w-px bg-linha" />
