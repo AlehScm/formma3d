@@ -3,9 +3,19 @@
 import type { RefObject } from 'react';
 import { Grupo, Num, Check, Sel, Segmentado, Botao, Aviso } from './Campos';
 import { PainelImport, type EstadoImport } from './PainelImport';
+import { CorteApoio } from './CorteApoio';
 import { CORES, LEGENDA, type Camadas } from './Viewer3D';
 import type { SecaoId } from './Rail';
-import { MODOS, APOIOS, type ModoId, type Apoio, type Role } from '@/lib/geom/modes';
+import {
+  APOIOS,
+  FECHAMENTOS,
+  PRESETS,
+  type Apoio,
+  type Role,
+  type Fechamento,
+  type ChapaModo,
+  type PresetId,
+} from '@/lib/geom/modes';
 import { FILAMENTOS, type CustoCfg, type FilamentoId, type Orcamento, brl } from '@/lib/cost/calc';
 import { FONTES_WEB, type ResultadoFontesSistema, type FonteSistema } from '@/lib/text/fontes';
 import type { ModoSeparacao } from '@/lib/import/pecas';
@@ -38,11 +48,31 @@ export interface PainelProps {
   setPagina: (n: number) => void;
   fecharImport: () => void;
 
-  // --- estilo ---
-  modo: ModoId;
-  setModo: (v: ModoId) => void;
+  // --- estilo: as seis escolhas soltas ---
+  macica: boolean;
+  setMacica: (v: boolean) => void;
+  frente: Fechamento;
+  setFrente: (v: Fechamento) => void;
+  frenteEsp: number;
+  setFrenteEsp: (v: number) => void;
+  traseira: Fechamento;
+  setTraseira: (v: Fechamento) => void;
+  traseiraEsp: number;
+  setTraseiraEsp: (v: number) => void;
+  chapaModo: ChapaModo;
+  setChapaModo: (v: ChapaModo) => void;
   apoio: Apoio;
   setApoio: (v: Apoio) => void;
+  comLed: boolean;
+  setComLed: (v: boolean) => void;
+  espacadores: number;
+  setEspacadores: (v: number) => void;
+  virar: boolean;
+  setVirar: (v: boolean) => void;
+  orientacao: string;
+  podeVirar: boolean;
+  presetAtivo: PresetId | null;
+  aplicarPreset: (id: PresetId) => void;
 
   // --- parametros ---
   altura: number;
@@ -53,30 +83,18 @@ export interface PainelProps {
   setProfundidade: (v: number) => void;
   parede: number;
   setParede: (v: number) => void;
-  face: number;
-  setFace: (v: number) => void;
-  traseira: number;
-  setTraseira: (v: number) => void;
-  comTraseira: boolean;
-  setComTraseira: (v: boolean) => void;
-  acmEsp: number;
-  setAcmEsp: (v: number) => void;
-  acmFolga: number;
-  setAcmFolga: (v: number) => void;
   batente: number;
   setBatente: (v: number) => void;
   borda: number;
   setBorda: (v: number) => void;
+  folga: number;
+  setFolga: (v: number) => void;
   labio: number;
   setLabio: (v: number) => void;
   bordaCompensa: boolean;
   setBordaCompensa: (v: boolean) => void;
-  faceTransEsp: number;
-  setFaceTransEsp: (v: number) => void;
   furoFio: number;
   setFuroFio: (v: number) => void;
-  standoff: number;
-  setStandoff: (v: number) => void;
   biselAtivo: boolean;
   setBiselAtivo: (v: boolean) => void;
   biselTam: number;
@@ -91,6 +109,8 @@ export interface PainelProps {
   // --- camadas ---
   camadas: Camadas;
   setCamadas: (c: Camadas) => void;
+  /** Area total da chapa a cortar, em mm2. Muda conforme o apoio. */
+  areaChapa: number;
   rolesUsados: Set<Role>;
   temChapa: boolean;
   pecas: { nome: string; w: number; h: number; gramas: number }[];
@@ -195,51 +215,155 @@ function PainelArquivo(p: PainelProps) {
 }
 
 function PainelEstilo(p: PainelProps) {
-  const temApoio = p.modo === 'moldura_acm' || p.modo === 'frontlit';
+  const temChapa = p.frente === 'chapa' || p.traseira === 'chapa';
+
+  const opcoesFechamento = (Object.keys(FECHAMENTOS) as Fechamento[]).map((k) => ({
+    valor: k,
+    nome: FECHAMENTOS[k].nome,
+    dica: FECHAMENTOS[k].desc,
+  }));
+
   return (
     <>
-      <Grupo titulo="Tipo de letra">
-        <div className="space-y-1.5">
-          {(Object.keys(MODOS) as ModoId[]).map((k) => {
-            const on = k === p.modo;
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => p.setModo(k)}
-                className={`w-full rounded-lg border px-3 py-2.5 text-left transition ${
-                  on ? 'border-acento bg-acento/10' : 'border-linha bg-fundo hover:border-linha-forte'
-                }`}
-              >
-                <div className={`text-base font-medium ${on ? 'text-acento-forte' : 'text-tinta'}`}>{MODOS[k].nome}</div>
-                <div className="mt-0.5 text-mini leading-snug text-tinta-fraca">{MODOS[k].desc}</div>
-              </button>
-            );
-          })}
+      {/* Os atalhos so PREENCHEM os controles abaixo. Nada aqui trava nada. */}
+      <Grupo titulo="Comecar de" dica="Preenche os controles abaixo; depois mude o que quiser">
+        <div className="grid grid-cols-2 gap-1.5">
+          {(Object.keys(PRESETS) as PresetId[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => p.aplicarPreset(k)}
+              title={PRESETS[k].desc}
+              className={`rounded-lg border px-2.5 py-2 text-left transition ${
+                p.presetAtivo === k ? 'border-acento bg-acento/10 text-acento-forte' : 'border-linha bg-fundo text-tinta hover:border-linha-forte'
+              }`}
+            >
+              <div className="text-mini font-medium leading-snug">{PRESETS[k].nome}</div>
+            </button>
+          ))}
         </div>
-        <Aviso tom="info">Na mesa: {MODOS[p.modo].orientacao}</Aviso>
       </Grupo>
 
-      {temApoio && (
-        <Grupo titulo="Apoio da chapa" dica="Como a chapa de ACM/acrilico encosta na peca impressa">
-          <Segmentado<Apoio>
-            valor={p.apoio}
-            set={p.setApoio}
-            opcoes={(Object.keys(APOIOS) as Apoio[]).map((k) => ({
-              valor: k,
-              nome: k === 'dentro' ? 'Para dentro' : k === 'fora' ? 'Para fora' : 'Dois lados',
-              dica: APOIOS[k].desc,
-            }))}
-          />
-          <p className="text-mini leading-relaxed text-tinta-fraca">{APOIOS[p.apoio].desc}</p>
-        </Grupo>
+      <Grupo titulo="Miolo">
+        <Segmentado<'macica' | 'oca'>
+          valor={p.macica ? 'macica' : 'oca'}
+          set={(v) => p.setMacica(v === 'macica')}
+          opcoes={[
+            { valor: 'oca', nome: 'Oca', dica: 'Com parede e vao por dentro' },
+            { valor: 'macica', nome: 'Macica', dica: 'Bloco cheio, sem vao' },
+          ]}
+        />
+      </Grupo>
+
+      {!p.macica && (
+        <>
+          <Grupo titulo="Frente" dica="O lado que fica virado para quem olha">
+            <Segmentado<Fechamento> valor={p.frente} set={p.setFrente} opcoes={opcoesFechamento} />
+            {p.frente !== 'aberta' && (
+              <Num
+                label={p.frente === 'chapa' ? 'Espessura da chapa' : 'Espessura da face'}
+                valor={p.frenteEsp}
+                set={p.setFrenteEsp}
+                min={0.4}
+                max={12}
+                step={p.frente === 'chapa' ? 0.5 : 0.1}
+              />
+            )}
+          </Grupo>
+
+          <Grupo titulo="Fundo" dica="O lado que encosta na parede">
+            <Segmentado<Fechamento> valor={p.traseira} set={p.setTraseira} opcoes={opcoesFechamento} />
+            {p.traseira !== 'aberta' && (
+              <Num
+                label={p.traseira === 'chapa' ? 'Espessura da chapa' : 'Espessura do fundo'}
+                valor={p.traseiraEsp}
+                set={p.setTraseiraEsp}
+                min={0.4}
+                max={12}
+                step={p.traseira === 'chapa' ? 0.5 : 0.1}
+              />
+            )}
+          </Grupo>
+
+          {temChapa && (
+            <Grupo titulo="Apoio da chapa" dica="Como a chapa encosta na peca impressa">
+              <Segmentado<Apoio>
+                valor={p.apoio}
+                set={p.setApoio}
+                opcoes={(Object.keys(APOIOS) as Apoio[]).map((k) => ({
+                  valor: k,
+                  nome: APOIOS[k].curto,
+                  dica: APOIOS[k].desc,
+                }))}
+              />
+              <CorteApoio apoio={p.apoio} comLabio={p.labio > 0} />
+              <p className="text-mini leading-relaxed text-tinta-fraca">{APOIOS[p.apoio].desc}</p>
+              {p.areaChapa > 0 && (
+                <p className="text-mini text-tinta-fraca">
+                  Chapa a cortar:{' '}
+                  <span className="tabular font-mono text-tinta-media">{(p.areaChapa / 100).toFixed(0)} cm2</span>
+                </p>
+              )}
+              <Segmentado<'cortar' | 'imprimir'>
+                label="A chapa e"
+                valor={p.chapaModo}
+                set={p.setChapaModo}
+                opcoes={[
+                  { valor: 'cortar', nome: 'Cortada', dica: 'Sai como DXF/SVG para o plotter ou router' },
+                  { valor: 'imprimir', nome: 'Impressa', dica: 'Sai como STL separado, para imprimir em translucido' },
+                ]}
+              />
+            </Grupo>
+          )}
+        </>
       )}
+
+      <Grupo titulo="Extras">
+        <Check
+          label="Leva fita de LED"
+          valor={p.comLed}
+          set={p.setComLed}
+          dica="Entra no custo e libera o furo de passagem do fio"
+        />
+        {p.comLed && !p.macica && (p.frente === 'impressa' || p.traseira === 'impressa') && (
+          <Num label="Furo do fio" valor={p.furoFio} set={p.setFuroFio} min={0} max={20} step={0.5} dica="0 desliga o furo" />
+        )}
+        {!p.macica && p.traseira === 'aberta' && (
+          <Num
+            label="Espacadores (halo)"
+            valor={p.espacadores}
+            set={p.setEspacadores}
+            min={0}
+            max={60}
+            step={1}
+            dica="Afasta a peca da parede para a luz vazar atras. 0 desliga."
+          />
+        )}
+        {p.macica && (
+          <>
+            <Check label="Chanfro na face" valor={p.biselAtivo} set={p.setBiselAtivo} />
+            {p.biselAtivo && <Num label="Tamanho do chanfro" valor={p.biselTam} set={p.setBiselTam} min={0.2} max={10} step={0.1} />}
+          </>
+        )}
+      </Grupo>
+
+      <Grupo titulo="Na mesa de impressao">
+        <Aviso tom="info">{p.orientacao}</Aviso>
+        {p.podeVirar && (
+          <Check
+            label="Virar a peca na mesa"
+            valor={p.virar}
+            set={p.setVirar}
+            dica="O lado que encosta na mesa sai mais liso. Com as duas faces iguais, a escolha e sua."
+          />
+        )}
+      </Grupo>
     </>
   );
 }
 
 function PainelParametros(p: PainelProps) {
-  const temApoio = p.modo === 'moldura_acm' || p.modo === 'frontlit';
+  const temChapa = p.frente === 'chapa' || p.traseira === 'chapa';
   return (
     <>
       <Grupo titulo="Medidas">
@@ -253,7 +377,7 @@ function PainelParametros(p: PainelProps) {
         <Num label="Parede" valor={p.parede} set={p.setParede} min={0.4} max={12} step={0.1} />
       </Grupo>
 
-      {temApoio && (
+      {temChapa && (
         <Grupo titulo="Encaixe da chapa">
           {p.apoio !== 'dentro' && (
             <>
@@ -266,33 +390,22 @@ function PainelParametros(p: PainelProps) {
               />
             </>
           )}
-          {p.apoio === 'canaleta' && (
+          {p.apoio === 'dois' && (
             <Num label="Labio (trava a chapa)" valor={p.labio} set={p.setLabio} min={0} max={8} step={0.1} dica="Quanto a borda sobe acima da chapa" />
           )}
           <Num label="Largura do batente" valor={p.batente} set={p.setBatente} min={0.5} max={10} step={0.1} dica="O degrau interno onde a chapa apoia" />
-          {p.modo === 'moldura_acm' && (
-            <>
-              <Num label="Espessura da chapa ACM" valor={p.acmEsp} set={p.setAcmEsp} min={0.5} max={10} step={0.5} />
-              <Num label="Folga da chapa" valor={p.acmFolga} set={p.setAcmFolga} min={0} max={2} step={0.05} dica="Folga lateral para a chapa entrar sem forcar" />
-            </>
-          )}
-          {p.modo === 'frontlit' && <Num label="Espessura da face translucida" valor={p.faceTransEsp} set={p.setFaceTransEsp} min={0.5} max={8} step={0.1} />}
+          <Num label="Folga da chapa" valor={p.folga} set={p.setFolga} min={0} max={2} step={0.05} dica="Folga lateral para a chapa entrar sem forcar" />
         </Grupo>
       )}
 
-      <Grupo titulo="Corpo">
-        {(p.modo === 'oca' || p.modo === 'backlit') && <Num label="Espessura da face" valor={p.face} set={p.setFace} min={0.4} max={12} step={0.1} />}
-        {(p.modo === 'frontlit' || (p.modo === 'moldura_acm' && p.comTraseira)) && (
-          <Num label="Espessura da traseira" valor={p.traseira} set={p.setTraseira} min={0.4} max={12} step={0.1} />
-        )}
-        {p.modo === 'moldura_acm' && (
-          <Check label="Com traseira fechada" valor={p.comTraseira} set={p.setComTraseira} dica="Desmarque para moldura vazada dos dois lados" />
-        )}
-        {(p.modo === 'frontlit' || (p.modo === 'moldura_acm' && p.comTraseira)) && (
+      <Grupo titulo="Extras">
+        {p.comLed && !p.macica && (p.frente === 'impressa' || p.traseira === 'impressa') && (
           <Num label="Furo de passagem do fio" valor={p.furoFio} set={p.setFuroFio} min={0} max={20} step={0.5} dica="0 desliga o furo" />
         )}
-        {p.modo === 'backlit' && <Num label="Afastamento da parede (halo)" valor={p.standoff} set={p.setStandoff} min={2} max={60} step={1} />}
-        {MODOS[p.modo].permiteBisel && (
+        {!p.macica && p.traseira === 'aberta' && (
+          <Num label="Espacadores (halo)" valor={p.espacadores} set={p.setEspacadores} min={0} max={60} step={1} dica="Afasta a peca da parede. 0 desliga." />
+        )}
+        {p.macica && (
           <>
             <Check label="Chanfro na face" valor={p.biselAtivo} set={p.setBiselAtivo} />
             {p.biselAtivo && <Num label="Tamanho do chanfro" valor={p.biselTam} set={p.setBiselTam} min={0.2} max={10} step={0.1} />}

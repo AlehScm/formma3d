@@ -69,7 +69,9 @@ function Peca({
     () =>
       letras.map((l) => ({
         roles: partToGeometriesByRole(l.part),
-        chapa: l.part.extras.find((e) => e.kind === 'cut' || e.name === 'face-translucida'),
+        // Qualquer extra e uma chapa: cortada vira DXF, impressa vira STL separado.
+        // Casar por `kind` e nao por nome, senao renomear um extra some com ele do preview.
+        chapa: l.part.extras[0],
         alturaZ: l.part.alturaZ,
       })),
     [letras]

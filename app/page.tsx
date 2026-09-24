@@ -14,7 +14,21 @@ import {
   carregarFonteSistema,
   type ResultadoFontesSistema,
 } from '@/lib/text/fontes';
-import { MODOS, APOIOS, buildPart, alturaArte, type ModoId, type Params, type Part, type Role, type Apoio } from '@/lib/geom/modes';
+import {
+  APOIOS,
+  PRESETS,
+  buildPart,
+  alturaArte,
+  orientar,
+  descreverPeca,
+  type Params,
+  type Part,
+  type Role,
+  type Apoio,
+  type Fechamento,
+  type ChapaModo,
+  type PresetId,
+} from '@/lib/geom/modes';
 import {
   regionArea,
   regionPerimeter,
@@ -85,22 +99,28 @@ export default function Page() {
 
   const [altura, setAltura] = useState(150);
   const [tracking, setTracking] = useState(0);
-  const [modo, setModo] = useState<ModoId>('moldura_acm');
   const [profundidade, setProfundidade] = useState(40);
   const [parede, setParede] = useState(2.4);
-  const [face, setFace] = useState(2);
-  const [traseira, setTraseira] = useState(2);
-  const [comTraseira, setComTraseira] = useState(true);
-  const [acmEsp, setAcmEsp] = useState(3);
-  const [acmFolga, setAcmFolga] = useState(0.3);
-  const [batente, setBatente] = useState(2.5);
+
+  // As seis escolhas soltas. Nao ha mais "modo": os antigos viraram atalhos que
+  // preenchem estes controles, e qualquer combinacao continua alcancavel.
+  const [macica, setMacica] = useState(false);
+  const [frente, setFrente] = useState<Fechamento>('chapa');
+  const [frenteEsp, setFrenteEsp] = useState(3);
+  const [traseira, setTraseira] = useState<Fechamento>('impressa');
+  const [traseiraEsp, setTraseiraEsp] = useState(2);
+  const [chapaModo, setChapaModo] = useState<ChapaModo>('cortar');
+  const [folga, setFolga] = useState(0.3);
   const [apoio, setApoio] = useState<Apoio>('dentro');
   const [borda, setBorda] = useState(3);
+  const [batente, setBatente] = useState(2.5);
   const [labio, setLabio] = useState(1);
   const [bordaCompensa, setBordaCompensa] = useState(true);
-  const [standoff, setStandoff] = useState(15);
-  const [faceTransEsp, setFaceTransEsp] = useState(2);
+  const [comLed, setComLed] = useState(false);
   const [furoFio, setFuroFio] = useState(6);
+  const [espacadores, setEspacadores] = useState(0);
+  const [virar, setVirar] = useState(false);
+  const [presetAtivo, setPresetAtivo] = useState<PresetId | null>('moldura_acm');
   const [bico, setBico] = useState(0.4);
   const [biselAtivo, setBiselAtivo] = useState(false);
   const [biselTam, setBiselTam] = useState(1.5);
@@ -197,26 +217,48 @@ export default function Page() {
 
   const params = useMemo<Params>(
     () => ({
-      modo,
+      macica,
       profundidade,
       parede,
-      face,
+      frente,
+      frenteEsp,
       traseira,
-      comTraseira,
-      acmEsp,
-      acmFolga,
-      batente,
+      traseiraEsp,
+      chapaModo,
+      folga,
       apoio,
       borda,
+      batente,
       labio,
-      standoff,
-      faceTransEsp,
+      bordaCompensa,
+      comLed,
       furoFio,
+      espacadores,
+      virar,
       bico,
-      bisel: { ativo: biselAtivo && MODOS[modo].permiteBisel, tamanho: biselTam, altura: biselTam, passos: 6 },
+      chanfro: { ativo: biselAtivo && macica, tamanho: biselTam, altura: biselTam, passos: 6 },
     }),
-    [modo, profundidade, parede, face, traseira, comTraseira, acmEsp, acmFolga, batente, apoio, borda, labio, standoff, faceTransEsp, furoFio, bico, biselAtivo, biselTam]
+    [macica, profundidade, parede, frente, frenteEsp, traseira, traseiraEsp, chapaModo, folga, apoio, borda, batente, labio, bordaCompensa, comLed, furoFio, espacadores, virar, bico, biselAtivo, biselTam]
   );
+
+  /** Aplica um atalho: preenche os controles, sem travar nenhum. */
+  const aplicarPreset = (id: PresetId) => {
+    const q = PRESETS[id].params;
+    if (q.macica !== undefined) setMacica(q.macica);
+    if (q.frente) setFrente(q.frente);
+    if (q.frenteEsp !== undefined) setFrenteEsp(q.frenteEsp);
+    if (q.traseira) setTraseira(q.traseira);
+    if (q.traseiraEsp !== undefined) setTraseiraEsp(q.traseiraEsp);
+    if (q.chapaModo) setChapaModo(q.chapaModo);
+    if (q.apoio) setApoio(q.apoio);
+    if (q.batente !== undefined) setBatente(q.batente);
+    if (q.parede !== undefined) setParede(q.parede);
+    if (q.profundidade !== undefined) setProfundidade(q.profundidade);
+    setComLed(q.comLed ?? false);
+    setFuroFio(q.furoFio ?? 6);
+    setEspacadores(q.espacadores ?? 0);
+    setPresetAtivo(id);
+  };
 
   // Pecas do arquivo importado, na escala nativa. Separado da escala para que
   // arrastar a altura nao refaca a separacao nem remeça a espessura.
@@ -273,7 +315,6 @@ export default function Page() {
     if (!letrasBase.length) {
       return { letras: [] as LetraComPeca[], bounds: null, totais: null, avisos: [] as string[] };
     }
-    const modo = paramsDiferidos.modo;
     const letras: LetraComPeca[] = letrasBase.map((l) => ({
       ...l,
       part: buildPart(l.region, paramsDiferidos, l.espessuraMin),
@@ -302,7 +343,7 @@ export default function Page() {
         if (e.kind === 'cut') areaChapa += regionArea(e.region);
         else volume += e.layers.reduce((a, x) => a + regionArea(x.region) * (x.z1 - x.z0), 0);
       }
-      if (modo === 'frontlit' || modo === 'backlit') perimetroLed += regionPerimeter(l.region) / 2;
+      if (paramsDiferidos.comLed) perimetroLed += regionPerimeter(l.region) / 2;
       if (bp.w > maiorLetra.w) maiorLetra = { w: bp.w, h: bp.h, nome: l.nome };
       for (const a of l.part.avisos) avisos.add(a);
 
@@ -350,6 +391,9 @@ export default function Page() {
   // Nomeia STL, zip e orcamento. Vem do arquivo importado, do nome dado a mao,
   // ou do proprio texto -- nessa ordem.
   const nomeProjeto = imp ? imp.nomeArquivo.replace(/\.[^.]+$/, '') : nomeTrabalho || texto;
+  const temChapa = frente === 'chapa' || traseira === 'chapa';
+  const desc = presetAtivo ? presetAtivo : descreverPeca(params);
+  const orientacao = orientar(params);
 
   const regioesDeCorte = useCallback(
     (): Region => letras.flatMap((l) => l.part.extras.flatMap((e) => (e.kind === 'cut' ? e.region : []))),
@@ -360,16 +404,16 @@ export default function Page() {
     (letra: LetraComPeca) => {
       const geo = partToGeometry(letra.part);
       if (!geo) return;
-      baixar(`${seguro(nomeProjeto)}_${seguro(letra.nome)}_${modo}.stl`, geometryToSTL(geo, letra.nome), 'model/stl');
+      baixar(`${seguro(nomeProjeto)}_${seguro(letra.nome)}_${desc}.stl`, geometryToSTL(geo, letra.nome), 'model/stl');
       geo.dispose();
     },
-    [nomeProjeto, modo]
+    [nomeProjeto, desc]
   );
 
   const baixarTudo = useCallback(async () => {
     if (!orcamento || !bounds) return;
     const zip = new JSZip();
-    const pasta = zip.folder(seguro(nomeProjeto) + '_' + modo);
+    const pasta = zip.folder(seguro(nomeProjeto) + '_' + desc);
     if (!pasta) return;
 
     letras.forEach((l, i) => {
@@ -400,12 +444,12 @@ export default function Page() {
 
     const resumo = [
       `Letreiro: ${nomeProjeto}`,
-      `Modo: ${MODOS[modo].nome}`,
-      `Orientacao de impressao: ${MODOS[modo].orientacao}`,
+      `Peca: ${presetAtivo ? PRESETS[presetAtivo].nome : desc}`,
+      `Orientacao de impressao: ${orientacao.texto}`,
       imp ? `Altura total: ${impAltura}mm | Profundidade: ${profundidade}mm` : `Altura das maiusculas: ${altura}mm | Profundidade: ${profundidade}mm`,
       `Largura total montado: ${bounds.w.toFixed(0)}mm`,
       `Parede: ${parede}mm | Bico: ${bico}mm`,
-      ...(modo === 'moldura_acm' ? [`Chapa ACM: ${acmEsp}mm, folga ${acmFolga}mm, batente ${batente}mm`] : []),
+      ...(temChapa ? [`Chapa: ${frente === 'chapa' ? frenteEsp : traseiraEsp}mm, folga ${folga}mm, batente ${batente}mm, apoio ${APOIOS[apoio].curto}`] : []),
       '',
       `Filamento: ${cfg.filamento} - ${orcamento.gramas.toFixed(0)}g (${orcamento.rolos.toFixed(2)} rolo)`,
       `Tempo estimado: ${orcamento.horas.toFixed(1)}h`,
@@ -417,10 +461,10 @@ export default function Page() {
     ].join('\r\n');
     pasta.file('orcamento.txt', resumo);
 
-    baixar(`${seguro(nomeProjeto)}_${modo}.zip`, await zip.generateAsync({ type: 'blob' }));
-  }, [letras, nomeProjeto, modo, altura, impAltura, imp, profundidade, parede, bico, acmEsp, acmFolga, batente, cfg, orcamento, avisos, bounds, regioesDeCorte]);
+    baixar(`${seguro(nomeProjeto)}_${desc}.zip`, await zip.generateAsync({ type: 'blob' }));
+  }, [letras, nomeProjeto, desc, presetAtivo, orientacao, altura, impAltura, imp, profundidade, parede, bico, temChapa, frente, frenteEsp, traseiraEsp, folga, batente, apoio, cfg, orcamento, avisos, bounds, regioesDeCorte]);
 
-  const temChapa = letras.some((l) => l.part.extras.some((e) => e.kind === 'cut'));
+  const temCorte = letras.some((l) => l.part.extras.some((e) => e.kind === 'cut'));
   const rolesUsados = new Set<Role>(letras.flatMap((l) => l.part.layers.map((x) => x.role)));
   const fonteWebAtual = FONTES_WEB.find((f) => f.nome === fonteNome);
 
@@ -510,10 +554,30 @@ export default function Page() {
             }
             setPagina={(n) => void trocarPagina(n)}
             fecharImport={() => setImp(null)}
-            modo={modo}
-            setModo={setModo}
+            macica={macica}
+            setMacica={setMacica}
+            frente={frente}
+            setFrente={setFrente}
+            frenteEsp={frenteEsp}
+            setFrenteEsp={setFrenteEsp}
+            traseira={traseira}
+            setTraseira={setTraseira}
+            traseiraEsp={traseiraEsp}
+            setTraseiraEsp={setTraseiraEsp}
+            chapaModo={chapaModo}
+            setChapaModo={setChapaModo}
             apoio={apoio}
             setApoio={setApoio}
+            comLed={comLed}
+            setComLed={setComLed}
+            espacadores={espacadores}
+            setEspacadores={setEspacadores}
+            virar={virar}
+            setVirar={setVirar}
+            orientacao={orientacao.texto}
+            podeVirar={orientacao.podeVirar}
+            presetAtivo={presetAtivo}
+            aplicarPreset={aplicarPreset}
             altura={altura}
             setAltura={setAltura}
             tracking={tracking}
@@ -522,30 +586,18 @@ export default function Page() {
             setProfundidade={setProfundidade}
             parede={parede}
             setParede={setParede}
-            face={face}
-            setFace={setFace}
-            traseira={traseira}
-            setTraseira={setTraseira}
-            comTraseira={comTraseira}
-            setComTraseira={setComTraseira}
-            acmEsp={acmEsp}
-            setAcmEsp={setAcmEsp}
-            acmFolga={acmFolga}
-            setAcmFolga={setAcmFolga}
             batente={batente}
             setBatente={setBatente}
             borda={borda}
             setBorda={setBorda}
+            folga={folga}
+            setFolga={setFolga}
             labio={labio}
             setLabio={setLabio}
             bordaCompensa={bordaCompensa}
             setBordaCompensa={setBordaCompensa}
-            faceTransEsp={faceTransEsp}
-            setFaceTransEsp={setFaceTransEsp}
             furoFio={furoFio}
             setFuroFio={setFuroFio}
-            standoff={standoff}
-            setStandoff={setStandoff}
             biselAtivo={biselAtivo}
             setBiselAtivo={setBiselAtivo}
             biselTam={biselTam}
@@ -558,8 +610,9 @@ export default function Page() {
             setMesaY={setMesaY}
             camadas={camadas}
             setCamadas={setCamadas}
+            areaChapa={totais?.areaChapa ?? 0}
             rolesUsados={rolesUsados}
-            temChapa={temChapa}
+            temChapa={temCorte}
             pecas={letras.map((l) => {
               const b = regionBounds(l.part.contorno);
               return {
@@ -577,7 +630,7 @@ export default function Page() {
             cfg={cfg}
             setCfg={setC}
             orcamento={orcamento}
-            temLed={modo === 'frontlit' || modo === 'backlit'}
+            temLed={comLed}
             baixarChapaSVG={() =>
               baixar(seguro(nomeProjeto) + '_chapa_acm.svg', regionToSVG(regioesDeCorte(), { titulo: nomeProjeto }), 'image/svg+xml')
             }

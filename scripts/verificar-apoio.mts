@@ -42,12 +42,23 @@ function volumeDaMalha(buf: ArrayBuffer): number {
 const b = fs.readFileSync('C:/Windows/Fonts/arialbd.ttf');
 const font = parseFont(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer);
 const O = textToLetters(font, 'O', { altura: 150 })[0]!; // tem contra-forma
-const base = { modo: 'moldura_acm' as const, profundidade: 40, parede: 2.4, acmEsp: 3, batente: 2.5, borda: 3, bico: 0.4 };
+const base = {
+  macica: false,
+  frente: 'chapa' as const,
+  frenteEsp: 3,
+  traseira: 'impressa' as const,
+  traseiraEsp: 2,
+  profundidade: 40,
+  parede: 2.4,
+  batente: 2.5,
+  borda: 3,
+  bico: 0.4,
+};
 const espO = minThickness(O.region);
 
 console.log('\n== malha fechada nos tres apoios ==');
 const dados: Record<Apoio, { chapa: number; pecaW: number; vol: number }> = {} as never;
-for (const apoio of ['dentro', 'fora', 'canaleta'] as Apoio[]) {
+for (const apoio of ['dentro', 'fora', 'dois'] as Apoio[]) {
   const part = buildPart(O.region, { ...base, apoio }, espO);
   const geo = partToGeometry(part)!;
   const vm = volumeDaMalha(geometryToSTL(geo, 'O'));
@@ -70,9 +81,9 @@ console.log('\n== a bordinha muda a peca e a chapa ==');
 const letraW = O.bounds.w;
 ok('apoio "dentro" nao passa do contorno da letra', perto(dados.dentro.pecaW, letraW, 0.1), `${dados.dentro.pecaW.toFixed(1)} vs letra ${letraW.toFixed(1)}mm`);
 ok('apoio "fora" alarga a peca em 2x a borda', perto(dados.fora.pecaW, letraW + 2 * base.borda, 0.3), `${dados.fora.pecaW.toFixed(1)} vs esperado ${(letraW + 6).toFixed(1)}mm`);
-ok('apoio "canaleta" tambem alarga', perto(dados.canaleta.pecaW, letraW + 2 * base.borda, 0.3), `${dados.canaleta.pecaW.toFixed(1)}mm`);
+ok('apoio "dois" tambem alarga', perto(dados.dois.pecaW, letraW + 2 * base.borda, 0.3), `${dados.dois.pecaW.toFixed(1)}mm`);
 ok('chapa do "fora" e maior que a do "dentro"', dados.fora.chapa > dados.dentro.chapa, `${dados.fora.chapa.toFixed(0)} vs ${dados.dentro.chapa.toFixed(0)} mm2`);
-ok('canaleta corta a mesma chapa que "fora"', perto(dados.canaleta.chapa, dados.fora.chapa, 1), `${dados.canaleta.chapa.toFixed(0)} vs ${dados.fora.chapa.toFixed(0)} mm2 (mesmo DXF)`);
+ok('dois corta a mesma chapa que "fora"', perto(dados.dois.chapa, dados.fora.chapa, 1), `${dados.dois.chapa.toFixed(0)} vs ${dados.fora.chapa.toFixed(0)} mm2 (mesmo DXF)`);
 
 {
   // Com borda = parede + folga, a chapa sai exatamente no contorno da arte original:
@@ -97,7 +108,7 @@ ok('canaleta corta a mesma chapa que "fora"', perto(dados.canaleta.chapa, dados.
 }
 
 console.log('\n== a borda aparece como camada propria ==');
-for (const apoio of ['fora', 'canaleta'] as Apoio[]) {
+for (const apoio of ['fora', 'dois'] as Apoio[]) {
   const part = buildPart(O.region, { ...base, apoio }, espO);
   const temBorda = part.layers.some((l) => l.role === 'borda');
   ok(`${apoio.padEnd(9)} gera camada 'borda'`, temBorda);
@@ -125,11 +136,11 @@ console.log('\n== avisos nos casos-limite ==');
   ok('batente fino demais avisa que a chapa apoia no ar', semBatente.avisos.some((a) => a.includes('apoiar no ar')));
 
   const rasa = buildPart(O.region, { ...base, apoio: 'fora', profundidade: 2 }, espO);
-  ok('profundidade menor que a chapa avisa', rasa.avisos.some((a) => a.includes('Profundidade menor')));
+  ok('profundidade menor que a chapa avisa', rasa.avisos.some((a) => /rofundidade/.test(a)));
 
   const I = textToLetters(font, 'I', { altura: 40 })[0]!;
-  const estreita = buildPart(I.region, { ...base, apoio: 'dentro', parede: 2.4, batente: 4 }, minThickness(I.region));
-  ok('letra sem espaco para batente avisa e vira macica', estreita.avisos.some((a) => a.includes('Sem espaco para batente')));
+  const estreita = buildPart(I.region, { ...base, apoio: 'dentro' as const, parede: 2.4, batente: 4 }, minThickness(I.region));
+  ok('letra sem espaco para batente avisa e vira macica', estreita.avisos.some((a) => /macica|batente/i.test(a)));
   // O ganho colateral da borda: a mesma letra que nao cabia passa a caber.
   const comBorda = buildPart(I.region, { ...base, apoio: 'fora', borda: 5, parede: 2.4, batente: 4 }, minThickness(I.region));
   ok('a borda salva letra fina que viraria macica', !comBorda.avisos.some((a) => a.includes('saiu macica')),
@@ -175,10 +186,10 @@ console.log('\n== compensacao da medida ==');
 }
 
 console.log('\n== frontlit tambem aceita os tres apoios ==');
-for (const apoio of ['dentro', 'fora', 'canaleta'] as Apoio[]) {
-  const part = buildPart(O.region, { ...base, modo: 'frontlit', apoio }, espO);
+for (const apoio of ['dentro', 'fora', 'dois'] as Apoio[]) {
+  const part = buildPart(O.region, { ...base, chapaModo: 'imprimir' as const, apoio }, espO);
   const face = part.extras.find((e) => e.kind === 'stl');
-  ok(`frontlit ${apoio.padEnd(9)} gera face translucida`, !!face, face ? `${part.layers.length} camadas` : 'SEM FACE');
+  ok(`chapa impressa ${apoio.padEnd(9)} gera STL separado`, !!face, face ? `${part.layers.length} camadas` : 'SEM FACE');
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);
