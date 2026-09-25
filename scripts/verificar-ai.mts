@@ -88,6 +88,176 @@ async function main() {
     const d = aiPostScriptParaDesenho(['0 0 m', '72 0 L', '72 72 L', 'n'].join('\n'));
     ok('n descarta (caminho de recorte)', d.objetos.length === 0, `${d.objetos.length} objeto(s)`);
   }
+  {
+    // Recorte: o retangulo do tamanho da pagina em volta de tudo nao pode virar
+    // uma chapa retangular por cima das letras.
+    const d = aiPostScriptParaDesenho(['0 0 m', '600 0 L', '600 800 L', '0 800 L', 'h', 'W', 'n',
+                                       '0 0 m', '72 0 L', '72 72 L', 'f'].join('\n'));
+    const b = regionBounds(regiaoDe(d));
+    ok('h W n nao importa o recorte como peca', d.objetos.length === 1 && b.w < 30, `${d.objetos.length} obj, ${b.w.toFixed(0)}mm`);
+  }
+  {
+    // Prolog/Setup guardam azulejo de padrao, amostra de gradiente e a fonte
+    // embutida -- tudo com m/l/c/f de verdade. Colher ali importa azulejo.
+    const d = aiPostScriptParaDesenho([
+      '%%BeginSetup',
+      '%AI3_BeginPattern: (xadrez)',
+      '0 0 m', '999 0 L', '999 999 L', '0 999 L', 'f',
+      '%AI3_EndPattern',
+      '%%EndSetup',
+      '0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f',
+    ].join('\n'));
+    const b = regionBounds(regiaoDe(d));
+    ok('nao colhe desenho do %%BeginSetup', d.objetos.length === 1 && perto(b.w, 25.4, 0.01), `${d.objetos.length} obj, ${b.w.toFixed(1)}mm`);
+  }
+  {
+    const d = aiPostScriptParaDesenho(['(N) *', '0 0 m', '999 0 L', '999 999 L', 'f', '(N) *',
+                                       '0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f'].join('\n'));
+    ok('guia (N) * fica de fora', d.objetos.length === 1, `${d.objetos.length} objeto(s)`);
+  }
+
+  console.log('\n== varios operadores na mesma linha (o Illustrator empacota) ==');
+  {
+    // O CorelDRAW escreve um operador por linha; o Illustrator nao. Ler por linha
+    // funciona so por sorte com um dos dois.
+    const d = aiPostScriptParaDesenho('0 J 0 j 1 w 4 M []0 d 0 0 m 72 0 L 72 72 L 0 72 L f');
+    const b = regionBounds(regiaoDe(d));
+    ok('le tudo numa linha unica', d.objetos.length === 1 && perto(b.w, 25.4, 0.01), `${d.objetos.length} obj, ${b.w.toFixed(2)}mm`);
+  }
+  {
+    const d = aiPostScriptParaDesenho('0 0 m 0 40 40 40 40 0 C f');
+    ok('curva empacotada mantem os 6 numeros', (d.objetos[0]?.contours[0]?.pts.length ?? 0) > 5, `${d.objetos[0]?.contours[0]?.pts.length} pontos`);
+  }
+  {
+    // Operador desconhecido descarta os operandos dele, em vez de deixar numeros
+    // vazarem para o caminho seguinte.
+    const d = aiPostScriptParaDesenho('0 1 0 0 0 Xy 1 2 3 4 5 XW 0 0 m 72 0 L 72 72 L 0 72 L f');
+    const b = regionBounds(regiaoDe(d));
+    ok('operando de operador desconhecido nao vaza', perto(b.w, 25.4, 0.01), `${b.w.toFixed(2)}mm`);
+  }
+  {
+    // 'M' e setmiterlimit. Se fosse lido como um moveto em caixa alta, abriria um
+    // subpath fantasma a 22.9pt da origem.
+    const d = aiPostScriptParaDesenho(['22.9256 M', '0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f'].join('\n'));
+    ok('M e setmiterlimit, nao moveto', d.objetos.length === 1 && d.objetos[0]!.contours.length === 1,
+       `${d.objetos[0]?.contours.length} contorno(s)`);
+  }
+  {
+    const d = aiPostScriptParaDesenho(['(50% cinza nao e comentario) Ln', '0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f'].join('\n'));
+    ok('% dentro de string nao corta a linha', d.objetos.length === 1, `${d.objetos.length} objeto(s)`);
+  }
+
+  console.log('\n== XR escolhe a regra de preenchimento ==');
+  {
+    // Dois quadrados concentricos no MESMO sentido. Com even-odd o de dentro e
+    // buraco; com non-zero o miolo fecha -- a letra sairia macica em silencio.
+    const anel = (regra: string) => {
+      const d = aiPostScriptParaDesenho([
+        regra,
+        '*u',
+        '0 0 m', '100 0 L', '100 100 L', '0 100 L', 'f',
+        '25 25 m', '75 25 L', '75 75 L', '25 75 L', 'f',
+        '*U',
+      ].join('\n'));
+      return d;
+    };
+    const eo = anel('1 XR');
+    const nz = anel('0 XR');
+    ok('1 XR vira even-odd', eo.objetos[0]?.fillRule === 'evenodd', `${eo.objetos[0]?.fillRule}`);
+    ok('0 XR vira nonzero', nz.objetos[0]?.fillRule === 'nonzero', `${nz.objetos[0]?.fillRule}`);
+    const pEO = desenhoParaPecas(eo, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
+    const pNZ = desenhoParaPecas(nz, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
+    const furosEO = pEO[0]?.region.reduce((a, p) => a + p.holes.length, 0) ?? 0;
+    const furosNZ = pNZ[0]?.region.reduce((a, p) => a + p.holes.length, 0) ?? 0;
+    ok('even-odd abre o miolo', furosEO === 1, `${furosEO} furo(s)`);
+    ok('non-zero fecha o miolo (mesmo sentido)', furosNZ === 0, `${furosNZ} furo(s)`);
+  }
+  {
+    // Even-odd e regra DE UM objeto, nao do conjunto: duas formas even-odd que se
+    // sobrepoem nao podem se cancelar quando as pecas sao unidas.
+    const d = aiPostScriptParaDesenho([
+      '1 XR',
+      '0 0 m', '100 0 L', '100 100 L', '0 100 L', 'f',
+      '50 0 m', '150 0 L', '150 100 L', '50 100 L', 'f',
+    ].join('\n'));
+    const pecas = desenhoParaPecas(d, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
+    const esperado = 150 * 100 * MM * MM; // uniao, nao a parte sobreposta cancelada
+    const area = pecas.reduce((a, p) => a + regionArea(p.region), 0);
+    ok('even-odd nao cancela entre objetos distintos', perto(area, esperado, 1), `${area.toFixed(0)} vs ${esperado.toFixed(0)}mm2`);
+  }
+
+  console.log('\n== texto vivo: detectado por marcador, nao por acaso ==');
+  {
+    const d = aiPostScriptParaDesenho(['0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f'].join('\n'));
+    ok('desenho sem texto nao dispara o aviso', !d.temTextoVivo);
+  }
+  {
+    // A fonte embutida vem em ASCII85 dentro de %%BeginData, e linhas dela comecam
+    // com sequencias como %TXX por puro acaso. Isso nao e texto vivo.
+    const d = aiPostScriptParaDesenho([
+      '%%BeginData: 2 Hex Bytes',
+      '%TXXt%QGEV&N6;G+K[gM3JCP\\AH.=MNEn!2[CstlgA^XBo?dW">1$e',
+      '%%EndData',
+      '0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f',
+    ].join('\n'));
+    ok('lixo da fonte embutida nao e texto vivo', !d.temTextoVivo);
+  }
+  {
+    const d = aiPostScriptParaDesenho(['%AI11_BeginTextDocument', '%AI11_EndTextDocument',
+                                       '0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f'].join('\n'));
+    ok('%AI11_BeginTextDocument e texto vivo', d.temTextoVivo && d.avisos.some((a) => a.codigo === 'texto-vivo'));
+  }
+  {
+    const d = aiPostScriptParaDesenho(['0 To', '(BARBER) Tx', 'TO', '0 0 m', '72 0 L', '72 72 L', 'f'].join('\n'));
+    ok('To/Tx classicos tambem sao texto vivo', d.temTextoVivo);
+  }
+
+  console.log('\n== .ai nativo do Illustrator (fluxo unico comprimido) ==');
+  {
+    // Illustrator CS2+: sem filtro de PDF, blocos fatiados de um fluxo so, com
+    // marcador na frente. Tem que concatenar ANTES de descomprimir.
+    const ps = ['%!PS-Adobe-3.0', '0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f'].join('\n');
+    const cs = new CompressionStream('deflate');
+    const comprimido = new Uint8Array(
+      await new Response(new Blob([new TextEncoder().encode(ps)]).stream().pipeThrough(cs)).arrayBuffer()
+    );
+    const marcador = '%AI12_CompressedData';
+    const corpo = new Uint8Array(marcador.length + comprimido.length);
+    corpo.set(new TextEncoder().encode(marcador), 0);
+    corpo.set(comprimido, marcador.length);
+
+    // Fatia em dois blocos, como o Illustrator faz num arquivo grande.
+    const meio = Math.floor(corpo.length / 2);
+    const montar = (fatias: Uint8Array[]) => {
+      const cab = `%PDF-1.5\n1 0 obj\n<< /AIPrivateData1 2 0 R /AIPrivateData2 3 0 R /NumBlock 2 >>\nendobj\n`;
+      const pedacos: Uint8Array[] = [new TextEncoder().encode(cab)];
+      fatias.forEach((f, k) => {
+        pedacos.push(new TextEncoder().encode(`${k + 2} 0 obj\n<< /Length ${f.length} >>\nstream\n`));
+        pedacos.push(f);
+        pedacos.push(new TextEncoder().encode('\nendstream\nendobj\n'));
+      });
+      const total = pedacos.reduce((a, p) => a + p.length, 0);
+      const out = new Uint8Array(total);
+      let i = 0;
+      for (const p of pedacos) { out.set(p, i); i += p.length; }
+      return out.buffer as ArrayBuffer;
+    };
+
+    const lido = await extrairAIPrivateData(montar([corpo.subarray(0, meio), corpo.subarray(meio)]));
+    ok('descomprime o fluxo unico do Illustrator', !!lido && lido.includes('%!PS'), lido ? `${lido.length} bytes` : 'NULL');
+    if (lido) {
+      const b = regionBounds(regiaoDe(aiPostScriptParaDesenho(lido)));
+      ok('o desenho volta certo do .ai nativo', perto(b.w, 25.4, 0.01), `${b.w.toFixed(2)}mm`);
+    }
+  }
+  {
+    // Ordem dos blocos e pelo NUMERO: em texto, AIPrivateData10 vem antes de 2.
+    const nums = ['/AIPrivateData10 4 0 R', '/AIPrivateData2 3 0 R', '/AIPrivateData1 2 0 R'];
+    const ordem = [...nums.join(' ').matchAll(/\/AIPrivateData(\d*)\s+(\d+)\s+0\s+R/g)]
+      .map((m) => (m[1] ? parseInt(m[1], 10) : 0))
+      .sort((a, b) => a - b);
+    ok('blocos ordenados por numero, nao alfabeticamente', JSON.stringify(ordem) === '[1,2,10]', JSON.stringify(ordem));
+  }
 
   console.log('\n== ida e volta: glifo -> PostScript AI -> de volta ==');
   {

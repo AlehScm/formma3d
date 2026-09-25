@@ -1,4 +1,4 @@
-import { regionBounds, type Bounds, type Contorno, type Pt } from '../geom/region';
+import { regionBounds, type Bounds, type Contorno, type FillRule, type Pt } from '../geom/region';
 import { flattenCubic } from '../geom/flatten';
 import { PT_TO_MM } from './matrix';
 import type { Aviso, DesenhoBruto, ObjetoBruto } from './pdf-ops';
@@ -6,9 +6,8 @@ import type { Aviso, DesenhoBruto, ObjetoBruto } from './pdf-ops';
 /**
  * Le o PostScript do Illustrator (o formato guardado dentro do .ai).
  *
- * Mais simples que o content stream do PDF: uma instrucao por linha, coordenadas
- * ABSOLUTAS em pontos e nenhuma matriz de transformacao -- por isso aqui nao ha
- * pilha de CTM como em `pdf-ops.ts`.
+ * Coordenadas ABSOLUTAS em pontos, sem matriz de transformacao -- por isso aqui
+ * nao ha pilha de CTM como em `pdf-ops.ts`.
  *
  * Operadores de caminho (a caixa alta so marca "ponto de canto" para a edicao no
  * Illustrator; a geometria e a mesma):
@@ -17,25 +16,164 @@ import type { Aviso, DesenhoBruto, ObjetoBruto } from './pdf-ops';
  *   x1 y1 x2 y2 x3 y3 c | C     cubica completa
  *   x2 y2 x3 y3 v | V           cubica com o 1o controle = ponto atual
  *   x1 y1 x3 y3 y | Y           cubica com o 2o controle = ponto final
- * Pintura: f F (preenche) · s S (fecha e contorna) · b B (fecha, preenche e
- * contorna) · n N (descarta, usado para recorte) · h H (fecha o subpath)
- * Agrupamento: *u ... *U  junta subpaths num objeto so -- e assim que o miolo
- * do "O" e do "A" chega, como buraco e nao como peca separada.
+ * Pintura: f F (preenche) - s S (fecha e contorna) - b B (fecha, preenche e
+ * contorna) - n N (descarta, usado para recorte) - h H (fecha o subpath)
+ * Agrupamento: *u ... *U junta subpaths num objeto so -- e assim que o miolo do
+ * "O" e do "A" chega, como buraco e nao como peca separada.
+ *
+ * Cuidados que o formato exige, todos verificados em arquivo real:
+ *  - Varios operadores podem vir na MESMA linha ("0 J 0 j 1 w 4 M []0 d"). O
+ *    Illustrator empacota; o CorelDRAW escreve um por linha. Por isso a leitura e
+ *    por token, nao por linha.
+ *  - XR escolhe a regra de preenchimento (0 nonzero, 1 even-odd) e vale para as
+ *    pinturas seguintes. Ignorar isso enche o miolo da letra em silencio.
+ *  - %%BeginProlog e %%BeginSetup contem arte de verdade (azulejo de padrao,
+ *    amostra de gradiente, fonte embutida). Colher caminhos ali importa azulejo
+ *    como se fosse letra.
+ *  - M e setmiterlimit, nao um moveto em caixa alta. Idem A (trava) e D (sentido
+ *    do contorno): sao dicas de estado, nao geometria.
  */
 
 const PINTA_PREENCHE = new Set(['f', 'F', 'b', 'B']);
 const PINTA_CONTORNA = new Set(['s', 'S', 'b', 'B']);
-const FECHA = new Set(['s', 'S', 'b', 'B', 'h', 'H']);
+const PINTA = new Set(['f', 'F', 's', 'S', 'b', 'B', 'n', 'N']);
+/** Operadores de pintura que fecham o subpath antes de pintar. */
+const FECHA_AO_PINTAR = new Set(['f', 's', 'b', 'n']);
 
-interface Estado {
-  pos: Pt;
-  inicio: Pt;
-  atual: Pt[] | null;
-  /** Subpaths acumulados do objeto corrente. */
-  contornos: Contorno[];
-  /** Dentro de `*u ... *U`: tudo vira um objeto so. */
-  composto: boolean;
-  larguraTraco: number;
+/** Delimitadores de token do PostScript. */
+const DELIM = new Set([' ', '\t', '\r', '\n', '\f', '\0', '%', '(', ')', '<', '>', '[', ']', '{', '}', '/']);
+
+type Tok =
+  | { t: 'n'; v: number }
+  | { t: 'op'; v: string }
+  | { t: 'str'; v: string }
+  | { t: 'sec'; v: string };
+
+/**
+ * Quebra o PostScript em tokens.
+ *
+ * Trata string "( ... )" com parenteses balanceados: um % dentro de string NAO
+ * abre comentario, e cortar de % ate o fim da linha destruiria o conteudo.
+ */
+function tokenizar(s: string): Tok[] {
+  const toks: Tok[] = [];
+  let i = 0;
+  const n = s.length;
+
+  const restoDaLinha = (de: number): { txt: string; fim: number } => {
+    let j = de;
+    while (j < n && s[j] !== '\n' && s[j] !== '\r') j++;
+    return { txt: s.slice(de, j), fim: j };
+  };
+
+  while (i < n) {
+    const ch = s[i]!;
+
+    if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n' || ch === '\f' || ch === '\0') {
+      i++;
+      continue;
+    }
+
+    // Comentarios e marcadores de secao.
+    if (ch === '%') {
+      const { txt, fim } = restoDaLinha(i);
+      i = fim;
+
+      // O thumbnail e a fonte embutida vem em hex/ASCII85 aqui dentro, e seus
+      // bytes parecem numeros e operadores soltos para o parser.
+      if (txt.startsWith('%%BeginData')) {
+        while (i < n) {
+          const l = restoDaLinha(i);
+          const t = l.txt.trim();
+          i = l.fim;
+          if (t.startsWith('%%EndData') || t.startsWith('%_%%EndData')) break;
+          if (i < n) i++;
+        }
+        continue;
+      }
+      const marca = txt.trim();
+      if (/^%%(BeginProlog|EndProlog|BeginSetup|EndSetup)/.test(marca)) {
+        toks.push({ t: 'sec', v: marca.slice(2).split(/[\s:]/)[0]! });
+      } else if (/^%(AI\d+_(Begin|End)TextDocument|%IncludeFont)/.test(marca)) {
+        toks.push({ t: 'sec', v: 'Texto' });
+      } else if (/^%AI\d*_Begin(Raster|Palette)/.test(marca)) {
+        toks.push({ t: 'sec', v: 'Imagem' });
+      } else {
+        const nome = marca.match(/^%AI\d*_BeginLayer.*\((.+?)\)/);
+        if (nome?.[1]) toks.push({ t: 'sec', v: 'Camada:' + nome[1] });
+      }
+      continue;
+    }
+
+    if (ch === '(') {
+      let prof = 1;
+      let j = i + 1;
+      let txt = '';
+      while (j < n && prof > 0) {
+        const c = s[j]!;
+        if (c === '\\') {
+          txt += s[j + 1] ?? '';
+          j += 2;
+          continue;
+        }
+        if (c === '(') prof++;
+        else if (c === ')') {
+          prof--;
+          if (prof === 0) break;
+        }
+        txt += c;
+        j++;
+      }
+      i = j + 1;
+      toks.push({ t: 'str', v: txt });
+      continue;
+    }
+
+    // Dicionarios << >>, strings hex <...>, arrays [ ] e procedimentos { } nao
+    // carregam geometria: os delimitadores passam batido e o conteudo numerico
+    // interno e descartado junto com a pilha no proximo operador.
+    if (ch === '<' || ch === '>') {
+      if (s[i + 1] === ch) {
+        i += 2;
+        continue;
+      }
+      if (ch === '<') {
+        const f = s.indexOf('>', i);
+        i = f < 0 ? n : f + 1;
+        continue;
+      }
+      i++;
+      continue;
+    }
+    if (ch === '[' || ch === ']' || ch === '{' || ch === '}') {
+      i++;
+      continue;
+    }
+    if (ch === '/') {
+      let j = i + 1;
+      while (j < n && !DELIM.has(s[j]!)) j++;
+      i = j;
+      continue;
+    }
+
+    let j = i;
+    while (j < n && !DELIM.has(s[j]!)) j++;
+    const bruto = s.slice(i, j);
+    i = j === i ? i + 1 : j;
+    if (!bruto) continue;
+
+    // ".5", "-3", "1e3" sao numeros; o resto e operador.
+    if (/^[-+.\d]/.test(bruto)) {
+      const v = Number(bruto);
+      if (Number.isFinite(v)) {
+        toks.push({ t: 'n', v });
+        continue;
+      }
+    }
+    toks.push({ t: 'op', v: bruto });
+  }
+
+  return toks;
 }
 
 export interface OpcoesAiPs {
@@ -47,7 +185,6 @@ export function aiPostScriptParaDesenho(texto: string, _opts: OpcoesAiPs = {}): 
   const objetos: ObjetoBruto[] = [];
   const avisos: Aviso[] = [];
   const camadas = new Set<string>();
-  const desconhecidos = new Set<string>();
 
   let temFill = false;
   let temStroke = false;
@@ -55,103 +192,91 @@ export function aiPostScriptParaDesenho(texto: string, _opts: OpcoesAiPs = {}): 
   let temImagem = false;
   let camadaAtual: string | null = null;
 
-  const e: Estado = {
-    pos: { x: 0, y: 0 },
-    inicio: { x: 0, y: 0 },
-    atual: null,
-    contornos: [],
-    composto: false,
-    larguraTraco: 1,
-  };
+  /** Prolog e Setup guardam azulejo de padrao e fonte embutida, nao o desenho. */
+  let emPreambulo = false;
+  /** Guia ("(N) *"): nao imprime, nao e peca. */
+  let emGuia = false;
+  let composto = false;
+  let regra: FillRule = 'nonzero';
+  let larguraTraco = 1;
 
-  // Pontos -> mm ja na leitura, para o resto do pipeline receber mm como sempre.
+  let pos: Pt = { x: 0, y: 0 };
+  let atual: Pt[] | null = null;
+  let contornos: Contorno[] = [];
+  /** Pintura vista dentro do *u ... *U corrente. */
+  let compPreenche = false;
+  let compContorna = false;
+
   const P = (x: number, y: number): Pt => ({ x: x * PT_TO_MM, y: y * PT_TO_MM });
 
   const fecharSub = (fechado: boolean): void => {
-    if (e.atual && e.atual.length >= 2) e.contornos.push({ pts: e.atual, closed: fechado });
-    e.atual = null;
+    if (atual && atual.length >= 2) contornos.push({ pts: atual, closed: fechado });
+    atual = null;
   };
 
   const garantir = (): Pt[] => {
-    if (!e.atual) {
-      e.atual = [e.pos];
-      e.inicio = e.pos;
-    }
-    return e.atual;
+    if (!atual) atual = [pos];
+    return atual;
   };
 
   const emitir = (preenche: boolean, contorna: boolean): void => {
-    if (!e.contornos.length) return;
-    const fechados = e.contornos.filter((c) => c.pts.length >= 3);
-    const bounds = boundsDe(e.contornos);
+    if (!contornos.length) return;
+    if (emGuia || emPreambulo) {
+      contornos = [];
+      return;
+    }
     objetos.push({
       id: objetos.length,
-      contours: e.contornos,
+      contours: contornos,
       paint: preenche ? 'fill' : 'stroke',
-      // O AI usa preenchimento non-zero; num caminho composto os subpaths de
-      // sentido contrario viram buraco, que e o comportamento desejado.
-      fillRule: 'nonzero',
-      larguraMm: Math.max(e.larguraTraco * PT_TO_MM, 0.2),
+      // XR manda: 1 = even-odd. O arquivo do CorelDRAW usa even-odd, e assumir
+      // nonzero fecharia o miolo das letras em silencio.
+      fillRule: regra,
+      larguraMm: Math.max(larguraTraco * PT_TO_MM, 0.2),
       capRound: false,
       clip: null,
       camada: camadaAtual,
-      bounds,
+      bounds: boundsDe(contornos),
     });
     if (preenche) temFill = true;
     if (contorna && !preenche) temStroke = true;
-    void fechados;
-    e.contornos = [];
+    contornos = [];
   };
 
-  const linhas = texto.split(/\r\n|\r|\n/);
-  let pulandoDados = false;
+  const toks = tokenizar(texto);
+  const pilha: number[] = [];
+  let ultimaStr: string | null = null;
 
-  for (const bruta of linhas) {
-    const linha = bruta.trim();
-    if (!linha) continue;
-
-    // O thumbnail vem em hex dentro de %%BeginData/%%EndData e confundiria o
-    // parser: os bytes parecem numeros soltos.
-    if (pulandoDados) {
-      if (linha.startsWith('%%EndData')) pulandoDados = false;
+  for (const tk of toks) {
+    if (tk.t === 'n') {
+      pilha.push(tk.v);
       continue;
     }
-    if (linha.startsWith('%%BeginData')) {
-      pulandoDados = true;
+    if (tk.t === 'str') {
+      ultimaStr = tk.v;
       continue;
     }
-
-    if (linha.startsWith('%')) {
-      if (linha.startsWith('%AI5_BeginLayer')) camadaAtual = null;
-      else if (linha.startsWith('%AI5_EndLayer')) camadaAtual = null;
-      else if (/^%_?(Tx|TX)/.test(linha) || linha.startsWith('%AI5_BeginText')) temTextoVivo = true;
-      else if (linha.startsWith('%AI5_BeginRaster') || linha.startsWith('%AI5_BeginPalette')) temImagem = true;
-      else {
-        const nome = linha.match(/^%AI\d*_?BeginLayer.*\((.+?)\)/);
-        if (nome?.[1]) {
-          camadaAtual = nome[1];
-          camadas.add(nome[1]);
-        }
+    if (tk.t === 'sec') {
+      if (tk.v === 'BeginProlog' || tk.v === 'BeginSetup') emPreambulo = true;
+      else if (tk.v === 'EndProlog' || tk.v === 'EndSetup') emPreambulo = false;
+      else if (tk.v === 'Texto') temTextoVivo = true;
+      else if (tk.v === 'Imagem') temImagem = true;
+      else if (tk.v.startsWith('Camada:')) {
+        camadaAtual = tk.v.slice(7);
+        camadas.add(camadaAtual);
       }
       continue;
     }
 
-    // `numeros... operador` -- o operador e sempre o ultimo campo.
-    const campos = linha.split(/\s+/);
-    const op = campos[campos.length - 1]!;
-    const n: number[] = [];
-    for (let i = 0; i < campos.length - 1; i++) {
-      const v = parseFloat(campos[i]!);
-      if (Number.isFinite(v)) n.push(v);
-    }
+    const op = tk.v;
+    const n = pilha;
 
     switch (op) {
       case 'm': {
         fecharSub(false);
         if (n.length >= 2) {
-          e.pos = P(n[n.length - 2]!, n[n.length - 1]!);
-          e.inicio = e.pos;
-          e.atual = [e.pos];
+          pos = P(n[n.length - 2]!, n[n.length - 1]!);
+          atual = [pos];
         }
         break;
       }
@@ -160,7 +285,7 @@ export function aiPostScriptParaDesenho(texto: string, _opts: OpcoesAiPs = {}): 
         if (n.length >= 2) {
           const p = P(n[n.length - 2]!, n[n.length - 1]!);
           garantir().push(p);
-          e.pos = p;
+          pos = p;
         }
         break;
       }
@@ -169,8 +294,8 @@ export function aiPostScriptParaDesenho(texto: string, _opts: OpcoesAiPs = {}): 
         if (n.length >= 6) {
           const [x1, y1, x2, y2, x3, y3] = n.slice(-6) as [number, number, number, number, number, number];
           const p = P(x3, y3);
-          flattenCubic(e.pos, P(x1, y1), P(x2, y2), p, garantir());
-          e.pos = p;
+          flattenCubic(pos, P(x1, y1), P(x2, y2), p, garantir());
+          pos = p;
         }
         break;
       }
@@ -180,8 +305,8 @@ export function aiPostScriptParaDesenho(texto: string, _opts: OpcoesAiPs = {}): 
         if (n.length >= 4) {
           const [x2, y2, x3, y3] = n.slice(-4) as [number, number, number, number];
           const p = P(x3, y3);
-          flattenCubic(e.pos, e.pos, P(x2, y2), p, garantir());
-          e.pos = p;
+          flattenCubic(pos, pos, P(x2, y2), p, garantir());
+          pos = p;
         }
         break;
       }
@@ -191,58 +316,91 @@ export function aiPostScriptParaDesenho(texto: string, _opts: OpcoesAiPs = {}): 
         if (n.length >= 4) {
           const [x1, y1, x3, y3] = n.slice(-4) as [number, number, number, number];
           const p = P(x3, y3);
-          flattenCubic(e.pos, P(x1, y1), p, p, garantir());
-          e.pos = p;
+          flattenCubic(pos, P(x1, y1), p, p, garantir());
+          pos = p;
         }
         break;
       }
       case 'w': {
-        if (n.length) e.larguraTraco = n[n.length - 1]!;
+        if (n.length) larguraTraco = n[n.length - 1]!;
+        break;
+      }
+      case 'XR': {
+        if (n.length) regra = n[n.length - 1] === 1 ? 'evenodd' : 'nonzero';
         break;
       }
       case '*u': {
-        e.composto = true;
+        composto = true;
+        compPreenche = false;
+        compContorna = false;
         break;
       }
       case '*U': {
-        e.composto = false;
+        composto = false;
+        fecharSub(false);
+        if (contornos.length) emitir(compPreenche, compContorna);
+        break;
+      }
+      case '*': {
+        // "(N) *" abre e fecha um grupo de guias.
+        if (ultimaStr === 'N') emGuia = !emGuia;
+        break;
+      }
+      case 'h':
+      case 'H': {
+        fecharSub(true);
+        break;
+      }
+      // Marcadores de texto vivo: os caracteres nao existem como contorno.
+      case 'To':
+      case 'TO':
+      case 'Tx':
+      case 'Tj':
+      case 'TX':
+      case 'Tf': {
+        if (!emPreambulo) temTextoVivo = true;
+        break;
+      }
+      case 'XI': {
+        if (!emPreambulo) temImagem = true;
         break;
       }
       default: {
-        if (PINTA_PREENCHE.has(op) || PINTA_CONTORNA.has(op) || op === 'n' || op === 'N' || FECHA.has(op)) {
-          fecharSub(FECHA.has(op) || PINTA_PREENCHE.has(op));
-          if (op === 'h' || op === 'H') break; // so fecha, nao pinta
+        if (PINTA.has(op)) {
+          fecharSub(FECHA_AO_PINTAR.has(op) || PINTA_PREENCHE.has(op));
           if (op === 'n' || op === 'N') {
-            e.contornos = []; // caminho de recorte: descartado
-            break;
+            contornos = []; // caminho de recorte: descartado
+          } else if (composto) {
+            // Dentro de *u...*U os subpaths se acumulam ate o *U, para virarem um
+            // objeto so -- senao o miolo da letra sairia como peca separada.
+            if (PINTA_PREENCHE.has(op)) compPreenche = true;
+            if (PINTA_CONTORNA.has(op)) compContorna = true;
+          } else {
+            emitir(PINTA_PREENCHE.has(op), PINTA_CONTORNA.has(op));
           }
-          // Dentro de *u...*U os subpaths se acumulam ate o *U, para virarem um
-          // objeto so -- senao o miolo da letra sairia como peca separada.
-          if (!e.composto) emitir(PINTA_PREENCHE.has(op), PINTA_CONTORNA.has(op));
-          else if (PINTA_PREENCHE.has(op)) temFill = true;
-        } else if (/^[a-zA-Z*]{1,3}$/.test(op)) {
-          desconhecidos.add(op);
         }
         break;
       }
     }
 
-    // Ao fechar o composto, emite tudo que se acumulou como um objeto unico.
-    if (op === '*U' && e.contornos.length) emitir(temFill || true, false);
+    // Operandos valem so para o operador que acabou de vir. Limpar sempre -- e o
+    // que torna seguro encontrar um operador desconhecido (Xy, Xk, XW): os
+    // numeros dele nao vazam para o proximo caminho.
+    pilha.length = 0;
+    if (op !== '*') ultimaStr = null;
   }
 
   fecharSub(false);
-  if (e.contornos.length) emitir(true, false);
+  if (contornos.length) emitir(true, false);
 
   if (temTextoVivo) {
     avisos.push({
       codigo: 'texto-vivo',
-      msg: 'O arquivo tem texto que nao foi convertido em contornos e nao pode ser importado. No Illustrator ou Corel, converta o texto em curvas antes de salvar.',
+      msg:
+        'O arquivo tem texto que nao foi convertido em contornos: essa parte do desenho nao vira peca. ' +
+        'No CorelDRAW use Objeto > Converter em curvas (Ctrl+Q); no Illustrator, Texto > Criar contornos ' +
+        '(Ctrl+Shift+O). Depois salve de novo.',
     });
-  }
-  if (desconhecidos.size) {
-    // Informativo: a geometria nao depende de estado grafico (cor, traco, etc).
-    void desconhecidos;
   }
 
   const b = regionBounds(objetos.flatMap((o) => o.contours.map((c) => ({ outer: c.pts, holes: [] }))));

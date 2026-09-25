@@ -6,9 +6,19 @@
  * compativel com PDF" -- que e como o CorelDRAW exporta -- a pagina sai VAZIA e
  * todo o desenho fica so nesse bloco.
  *
- * A boa noticia: o bloco usa filtros padrao de PDF (`ASCIIHexDecode`,
- * `FlateDecode`), nada proprietario. Descomprimido, e PostScript do Illustrator,
- * que `ai-ps.ts` sabe ler.
+ * A boa noticia: nada e proprietario. Sao duas convencoes, e as duas usam
+ * compressao padrao:
+ *
+ *  - CorelDRAW: cada bloco e um stream de PDF normal, com
+ *    `/Filter [/ASCIIHexDecode /FlateDecode]`. Decodifica bloco a bloco e
+ *    concatena depois.
+ *  - Illustrator CS2 e mais novos: os blocos NAO tem filtro de PDF. Sao fatias de
+ *    um unico fluxo comprimido, e o primeiro comeca com o marcador
+ *    `%AI12_CompressedData`. Aqui e o contrario: concatena primeiro, descarta o
+ *    marcador e descomprime UMA vez. Tentar bloco a bloco falha, porque o corte
+ *    cai no meio do fluxo.
+ *
+ * Descomprimido, e PostScript do Illustrator, que `ai-ps.ts` sabe ler.
  */
 
 /** Um objeto de stream do PDF, ja localizado no arquivo. */
@@ -37,8 +47,20 @@ function lerStream(bytes: Uint8Array, texto: string, num: number): StreamPdf | n
   if (texto[ini] === '\r') ini++;
   if (texto[ini] === '\n') ini++;
 
-  const fim = texto.indexOf('endstream', ini);
+  // `/Length` e a fonte autoritativa do tamanho: os dados sao binarios e podem
+  // conter qualquer byte. Procurar `endstream` engole o fim de linha que o PDF poe
+  // antes dele, e um byte extra no meio de um fluxo deflate corrompe tudo.
+  const len = dic.match(/\/Length\s+(\d+)(?!\s+\d+\s+R)/);
+  if (len) {
+    const n = parseInt(len[1]!, 10);
+    if (ini + n <= bytes.length) return { filtros, dados: bytes.subarray(ini, ini + n) };
+  }
+
+  let fim = texto.indexOf('endstream', ini);
   if (fim < 0) return null;
+  // Sem /Length utilizavel: descarta o fim de linha que precede `endstream`.
+  if (texto[fim - 1] === '\n') fim--;
+  if (texto[fim - 1] === '\r') fim--;
 
   return { filtros, dados: bytes.subarray(ini, fim) };
 }
@@ -81,11 +103,26 @@ async function decodificar(s: StreamPdf): Promise<Uint8Array> {
   return dados;
 }
 
+function juntar(partes: Uint8Array[]): Uint8Array {
+  const total = partes.reduce((a, p) => a + p.length, 0);
+  const saida = new Uint8Array(total);
+  let i = 0;
+  for (const p of partes) {
+    saida.set(p, i);
+    i += p.length;
+  }
+  return saida;
+}
+
+const ePostScript = (s: string) => s.includes('%!PS') || /[-\d.]+\s+[-\d.]+\s+m[\r\n]/.test(s);
+
 /**
  * Devolve o PostScript do Illustrator embutido, ou null se o arquivo nao tiver.
  *
- * Os blocos sao numerados (`/AIPrivateData1`, `/AIPrivateData2`, ...) e podem ser
- * partes de um documento so, entao vao concatenados na ordem do numero.
+ * Os blocos sao numerados (`/AIPrivateData1`, `/AIPrivateData2`, ...) e sao fatias
+ * de um documento so. A ordem e pelo NUMERO, nao pela ordem no arquivo nem
+ * alfabetica: em texto `AIPrivateData10` vem antes de `AIPrivateData2`, e um
+ * arquivo grande passa de 9 blocos.
  */
 export async function extrairAIPrivateData(buf: ArrayBuffer): Promise<string | null> {
   const bytes = new Uint8Array(buf);
@@ -98,18 +135,37 @@ export async function extrairAIPrivateData(buf: ArrayBuffer): Promise<string | n
     .sort((a, b) => a.ordem - b.ordem);
   if (!refs.length) return null;
 
-  const partes: string[] = [];
+  const partes: Uint8Array[] = [];
   for (const { obj } of refs) {
     const s = lerStream(bytes, texto, obj);
     if (!s) continue;
     try {
-      partes.push(txtDe(await decodificar(s)));
+      partes.push(await decodificar(s));
     } catch {
-      // Um bloco ilegivel nao invalida os outros: o desenho costuma estar
-      // inteiro no maior deles.
+      // Um bloco ilegivel nao invalida os outros: no arquivo do CorelDRAW o
+      // desenho vem inteiro no maior deles.
+    }
+  }
+  if (!partes.length) return null;
+
+  const juntos = juntar(partes);
+  const cabeca = txtDe(juntos, 0, Math.min(64, juntos.length));
+
+  // Illustrator CS2+: fluxo unico comprimido, com marcador na frente.
+  const comp = cabeca.match(/^%AI\d+_(CompressedData|ZStandard_Data)/);
+  if (comp) {
+    // Zstandard (Illustrator mais recente) nao tem suporte em DecompressionStream.
+    // Devolver null cai no aviso que pede para salvar como PDF, que e o conserto
+    // certo para esse caso.
+    if (comp[1] === 'ZStandard_Data') return null;
+    try {
+      const ps = txtDe(await inflar(juntos.subarray(comp[0].length)));
+      return ePostScript(ps) ? ps : null;
+    } catch {
+      return null;
     }
   }
 
-  const ps = partes.join('\n');
-  return ps.includes('%!PS') || /[-\d.]+\s+[-\d.]+\s+m[\r\n]/.test(ps) ? ps : null;
+  const ps = txtDe(juntos);
+  return ePostScript(ps) ? ps : null;
 }

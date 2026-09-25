@@ -115,9 +115,14 @@ export function desenhoParaPecas(d: DesenhoBruto, o: OpcoesPecas = OPCOES_PADRAO
   } else {
     // Caminho rapido: sem recorte e com fillRule uniforme, uma unica passada do
     // Clipper resolve tudo, em vez de N unioes em cascata.
+    //
+    // Vale so para non-zero. Even-odd e regra DE UM objeto, nao do conjunto: numa
+    // passada unica o que se sobrepoe entre objetos distintos se cancela, e duas
+    // formas encostadas viram buraco ou desaparecem. Nesse caso cada objeto e
+    // resolvido com a sua regra e a uniao vem depois.
     const semClip = objs.every((x) => !x.clip);
     const soFill = objs.every((x) => x.paint === 'fill');
-    const regraUnica = objs.every((x) => x.fillRule === objs[0]!.fillRule);
+    const regraUnica = objs.every((x) => x.fillRule === 'nonzero');
 
     let total: Region;
     if (semClip && soFill && regraUnica) {
