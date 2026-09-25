@@ -234,6 +234,26 @@ export function scaleRegion(region: Region, sx: number, sy: number = sx): Region
   }));
 }
 
+/**
+ * Gira a regiao em torno de (cx, cy).
+ *
+ * O centro importa: girar na origem do letreiro jogaria a letra para longe, porque
+ * as Region carregam a posicao absoluta no letreiro, nao coordenada local.
+ * O sentido dos aneis nao muda numa rotacao, entao nao ha o que reorientar.
+ */
+export function rotateRegion(region: Region, graus: number, cx = 0, cy = 0): Region {
+  const rad = (graus * Math.PI) / 180;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  const map = (pts: Pt[]): Pt[] =>
+    pts.map((p) => {
+      const x = p.x - cx;
+      const y = p.y - cy;
+      return { x: cx + x * c - y * s, y: cy + x * s + y * c };
+    });
+  return region.map((poly) => ({ outer: map(poly.outer), holes: poly.holes.map(map) }));
+}
+
 export function intersectRegion(a: Region, b: Region): Region {
   if (!a.length || !b.length) return [];
   return executeToRegion(CT.ctIntersection, regionToClipper(a), regionToClipper(b), FT.pftNonZero);

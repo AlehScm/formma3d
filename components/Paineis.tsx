@@ -20,6 +20,7 @@ import { FILAMENTOS, type CustoCfg, type FilamentoId, type Orcamento, brl } from
 import { FONTES_WEB, type ResultadoFontesSistema, type FonteSistema } from '@/lib/text/fontes';
 import type { ModoSeparacao, ModoTraco } from '@/lib/import/pecas';
 import { IMPRESSORAS, MANUAL } from '@/lib/print/impressoras';
+import { edicaoVazia, type Edicao } from '@/lib/geom/pecaEditada';
 
 export interface PainelProps {
   secao: SecaoId;
@@ -110,6 +111,15 @@ export interface PainelProps {
   setMesaZ: (v: number) => void;
   impressoraId: string;
   escolherImpressora: (id: string) => void;
+  folgaPecas: number;
+  setFolgaPecas: (v: number) => void;
+  arrumarNaPlaca: () => void;
+  limparArranjo: () => void;
+  arranjoInfo: { dentro: number; fora: number; impossiveis: number; placas: number } | null;
+  /** Peca selecionada no 3D e a edicao dela. Muda o produto, nao so a tela. */
+  selecionada: { chave: string; nome: string; edicao: Edicao } | null;
+  editarPeca: (chave: string, m: Partial<Edicao>) => void;
+  resetarPeca: (chave: string) => void;
 
   // --- camadas ---
   camadas: Camadas;
@@ -425,6 +435,77 @@ function PainelParametros(p: PainelProps) {
         )}
       </Grupo>
 
+      {p.selecionada && (
+        <Grupo titulo={`Peca "${p.selecionada.nome}"`}>
+          <Aviso tom="info">
+            Mexer aqui muda o PRODUTO: a chapa de ACM desta letra, o gabarito e o preco acompanham. Para
+            acomodar na mesa sem mudar o letreiro, use a aba Placa.
+          </Aviso>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Num
+              label="Mover X"
+              valor={p.selecionada.edicao.dx}
+              set={(v) => p.editarPeca(p.selecionada!.chave, { dx: v })}
+              min={-2000}
+              max={2000}
+              step={0.5}
+            />
+            <Num
+              label="Mover Y"
+              valor={p.selecionada.edicao.dy}
+              set={(v) => p.editarPeca(p.selecionada!.chave, { dy: v })}
+              min={-2000}
+              max={2000}
+              step={0.5}
+            />
+          </div>
+          <Num
+            label="Giro"
+            valor={p.selecionada.edicao.giro}
+            set={(v) => p.editarPeca(p.selecionada!.chave, { giro: v })}
+            min={-180}
+            max={180}
+            step={1}
+            sufixo=" graus"
+            dica="Em torno do centro da propria peca"
+          />
+          <div className="grid grid-cols-2 gap-1.5">
+            <Num
+              label="Tamanho X"
+              valor={p.selecionada.edicao.ex}
+              set={(v) => p.editarPeca(p.selecionada!.chave, { ex: v })}
+              min={0.1}
+              max={5}
+              step={0.01}
+              dica="1 = tamanho original"
+            />
+            <Num
+              label="Tamanho Y"
+              valor={p.selecionada.edicao.ey}
+              set={(v) => p.editarPeca(p.selecionada!.chave, { ey: v })}
+              min={0.1}
+              max={5}
+              step={0.01}
+              dica="Diferente de X estica a letra"
+            />
+          </div>
+          <div className="flex gap-1.5">
+            <Botao
+              onClick={() => p.editarPeca(p.selecionada!.chave, { ey: p.selecionada!.edicao.ex })}
+              variante="fantasma"
+              title="Iguala Y a X, para nao esticar a letra"
+            >
+              manter proporcao
+            </Botao>
+            {!edicaoVazia(p.selecionada.edicao) && (
+              <Botao onClick={() => p.resetarPeca(p.selecionada!.chave)} variante="fantasma" title="Desfaz tudo nesta peca">
+                original
+              </Botao>
+            )}
+          </div>
+        </Grupo>
+      )}
+
       <Grupo titulo="Impressora">
         <Segmentado
           label="Maquina"
@@ -443,6 +524,37 @@ function PainelParametros(p: PainelProps) {
         <Num label="Mesa X" valor={p.mesaX} set={p.setMesaX} min={100} max={600} step={1} />
         <Num label="Mesa Y" valor={p.mesaY} set={p.setMesaY} min={100} max={600} step={1} />
         <Num label="Altura util (Z)" valor={p.mesaZ} set={p.setMesaZ} min={50} max={600} step={1} dica="Limite de altura da maquina" />
+        <Num
+          label="Folga entre pecas"
+          valor={p.folgaPecas}
+          set={p.setFolgaPecas}
+          min={0}
+          max={20}
+          step={0.5}
+          dica="Espaco livre para brim e skirt"
+        />
+        <div className="flex gap-1.5">
+          <Botao onClick={p.arrumarNaPlaca} title="Encaixa o maximo de pecas na mesa. Nao muda o letreiro.">
+            arrumar na placa
+          </Botao>
+          {p.arranjoInfo && (
+            <Botao onClick={p.limparArranjo} variante="fantasma" title="Volta as pecas para a posicao do letreiro">
+              desfazer
+            </Botao>
+          )}
+        </div>
+        {p.arranjoInfo && (
+          <div className="tabular rounded-md bg-fundo px-2 py-1.5 font-mono text-micro text-tinta-fraca">
+            {p.arranjoInfo.dentro} nesta placa
+            {p.arranjoInfo.placas > 1 && <> · {p.arranjoInfo.placas} placas no total</>}
+            {p.arranjoInfo.fora > 0 && (
+              <> · <span className="text-amber-400">{p.arranjoInfo.fora} na proxima placa</span></>
+            )}
+            {p.arranjoInfo.impossiveis > 0 && (
+              <> · <span className="text-red-400">{p.arranjoInfo.impossiveis} nao cabe(m) nesta maquina</span></>
+            )}
+          </div>
+        )}
         <Num
           label="Vazao efetiva"
           valor={p.cfg.vazao}

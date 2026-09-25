@@ -1,15 +1,18 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
+import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+import { OrbitControls, Grid, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { partToGeometriesByRole, layerToGeometry } from '@/lib/geom/extrude';
 import type { Part, Role } from '@/lib/geom/modes';
 import { regionBounds } from '@/lib/geom/region';
+import type { Colocada } from '@/lib/print/arranjo';
 
 /** Peca que nao cabe na mesa: cor unica, para nao se confundir com nenhum papel. */
 const COR_NAO_CABE = '#e03131';
+/** Peca selecionada. */
+const COR_SELECAO = '#ffd43b';
 
 // Cada papel da peca tem cor propria: e o que faz o corte da letra ficar obvio no preview.
 export const CORES: Record<Role, { cor: string; metal: number; rug: number }> = {
@@ -38,7 +41,18 @@ export const LEGENDA: [Role, string][] = [
 
 export interface LetraRender {
   nome: string;
+  /** Identificador unico: `nome` repete em texto ("BARBER" tem dois "B"). */
+  chave: string;
   part: Part;
+}
+
+/** O que o gizmo devolve quando o usuario solta o mouse. */
+export interface Transformacao {
+  dx: number;
+  dy: number;
+  giro: number;
+  ex: number;
+  ey: number;
 }
 
 /** Quais partes da peca estao visiveis. Serve ao painel "Camadas". */
@@ -56,13 +70,6 @@ function camadaDoRole(role: Role): keyof Camadas {
   return 'corpo';
 }
 
-/**
- * Mesa da impressora em escala real, no plano Z=0.
- *
- * Fica fora do grupo que desloca as pecas, entao cai no centro da cena -- serve
- * como regua: da para ver de um olho se o letreiro inteiro passa longe de uma
- * levada de impressao ou se esta na medida.
- */
 /**
  * Retangulo vazado como quatro segmentos.
  *
@@ -86,6 +93,13 @@ function retanguloVazado(minX: number, minY: number, maxX: number, maxY: number)
   return g;
 }
 
+/**
+ * Mesa da impressora em escala real, no plano Z=0.
+ *
+ * Fica fora do grupo que desloca as pecas, entao cai no centro da cena -- serve
+ * como regua: da para ver de um olho se o letreiro inteiro passa longe de uma
+ * levada de impressao ou se esta na medida.
+ */
 function Mesa({ x, y }: { x: number; y: number }) {
   const borda = useMemo(() => retanguloVazado(-x / 2, -y / 2, x / 2, y / 2), [x, y]);
   useEffect(() => () => borda.dispose(), [borda]);
@@ -123,12 +137,22 @@ function Peca({
   explode,
   camadas,
   naoCabem,
+  arranjo,
+  sobras,
+  selecionada,
+  onSelecionar,
+  registrar,
 }: {
   letras: LetraRender[];
   centro: [number, number];
   explode: number;
   camadas: Camadas;
   naoCabem: ReadonlySet<string>;
+  arranjo: ReadonlyMap<string, Colocada>;
+  sobras: ReadonlyMap<string, [number, number]>;
+  selecionada: string | null;
+  onSelecionar: (chave: string) => void;
+  registrar: (chave: string, o: THREE.Object3D | null) => void;
 }) {
   // As Regions ja carregam a posicao real de cada letra no letreiro (avanco + kerning
   // da fonte), entao o grupo inteiro so precisa ser deslocado para o centro da cena.
@@ -169,39 +193,160 @@ function Peca({
   return (
     <group position={[-centro[0], -centro[1], 0]}>
       {grupos.map((g, i) => {
+        const l = letras[i]!;
         // Peca que nao cabe na mesa fica vermelha e ganha o contorno do footprint:
         // sem isso o aviso em texto nao diz QUAL das letras e o problema.
-        const fora = naoCabem.has(letras[i]!.nome);
+        const fora = naoCabem.has(l.chave);
+        const sel = selecionada === l.chave;
         return (
-          <group key={i}>
+          <PecaPosicionada
+            key={l.chave}
+            part={l.part}
+            chave={l.chave}
+            colocada={arranjo.get(l.chave) ?? null}
+            deslocaSobra={sobras.get(l.chave) ?? null}
+            registrar={registrar}
+          >
             {[...g.roles.entries()].map(([role, geo]) => {
               if (!camadas[camadaDoRole(role)]) return null;
               const c = CORES[role];
               // A traseira tambem se afasta, para o explode mostrar as tres partes.
               const dz = role === 'traseira' ? -explode * 0.6 : 0;
               return (
-                <mesh key={role} geometry={geo} position={[0, 0, dz]} castShadow receiveShadow>
+                <mesh
+                  key={role}
+                  geometry={geo}
+                  position={[0, 0, dz]}
+                  castShadow
+                  receiveShadow
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelecionar(l.chave);
+                  }}
+                >
                   <meshStandardMaterial
                     color={fora ? COR_NAO_CABE : c.cor}
                     metalness={fora ? 0.1 : c.metal}
                     roughness={fora ? 0.6 : c.rug}
+                    emissive={sel ? COR_SELECAO : '#000000'}
+                    emissiveIntensity={sel ? 0.35 : 0}
                   />
                 </mesh>
               );
             })}
-            {fora && <CaixaFootprint part={letras[i]!.part} cor={COR_NAO_CABE} />}
-          </group>
+            {fora && <CaixaFootprint part={l.part} cor={COR_NAO_CABE} />}
+            {sel && <CaixaFootprint part={l.part} cor={COR_SELECAO} />}
+            {camadas.chapa && chapas[i] ? (
+              <mesh geometry={chapas[i]!} position={[0, 0, explode]}>
+                <meshPhysicalMaterial color="#cfe4ff" transparent opacity={0.45} roughness={0.15} metalness={0} transmission={0.6} />
+              </mesh>
+            ) : null}
+          </PecaPosicionada>
         );
       })}
-      {camadas.chapa &&
-        chapas.map((geo, i) =>
-          geo ? (
-            <mesh key={'c' + i} geometry={geo} position={[0, 0, explode]}>
-              <meshPhysicalMaterial color="#cfe4ff" transparent opacity={0.45} roughness={0.15} metalness={0} transmission={0.6} />
-            </mesh>
-          ) : null
-        )}
     </group>
+  );
+}
+
+/**
+ * Envolve uma peca com a transformacao de ARRANJO (posicao na mesa).
+ *
+ * Nao confundir com a edicao da peca, que ja esta embutida na geometria porque muda
+ * o produto. Aqui e so acomodacao para imprimir, entao vale como transformacao de
+ * cena -- barato, e nao reconstroi malha.
+ *
+ * O giro tem de acontecer no centro da propria peca: as geometrias carregam a
+ * posicao absoluta no letreiro, e girar na origem jogaria a letra para longe.
+ */
+function PecaPosicionada({
+  part,
+  chave,
+  colocada,
+  deslocaSobra,
+  registrar,
+  children,
+}: {
+  part: Part;
+  chave: string;
+  colocada: Colocada | null;
+  deslocaSobra: [number, number] | null;
+  registrar: (chave: string, o: THREE.Object3D | null) => void;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  useEffect(() => {
+    registrar(chave, ref.current);
+    return () => registrar(chave, null);
+  }, [chave, registrar]);
+
+  const centro = useMemo(() => {
+    const b = regionBounds(part.contorno);
+    return [b.minX + b.w / 2, b.minY + b.h / 2] as [number, number];
+  }, [part]);
+
+  const dx = colocada?.dx ?? deslocaSobra?.[0] ?? 0;
+  const dy = colocada?.dy ?? deslocaSobra?.[1] ?? 0;
+  const giro = ((colocada?.giro ?? 0) * Math.PI) / 180;
+
+  return (
+    <group ref={ref} position={[centro[0] + dx, centro[1] + dy, 0]} rotation={[0, 0, giro]}>
+      <group position={[-centro[0], -centro[1], 0]}>{children}</group>
+    </group>
+  );
+}
+
+/**
+ * Gizmo de mover / girar / escalar preso a peca selecionada.
+ *
+ * O delta e lido e devolvido SO quando o usuario solta o mouse. Em modo letreiro a
+ * transformacao muda o produto e reconstroi a malha da peca: fazer isso a cada
+ * quadro de arraste travaria a interface num letreiro com muitas pecas.
+ *
+ * Tudo e travado no plano da mesa -- mover em XY, girar em Z. Peca de letra caixa
+ * deita na mesa, e inclinar em X ou Y produziria uma peca que nao imprime.
+ */
+function Gizmo({
+  alvo,
+  ferramenta,
+  onSoltar,
+}: {
+  alvo: THREE.Object3D | null;
+  ferramenta: 'nenhuma' | 'mover' | 'girar' | 'escalar';
+  onSoltar: (t: Transformacao) => void;
+}) {
+  const inicio = useRef<{ p: THREE.Vector3; r: number; s: THREE.Vector3 } | null>(null);
+
+  if (!alvo || ferramenta === 'nenhuma') return null;
+  const modo = ferramenta === 'mover' ? 'translate' : ferramenta === 'girar' ? 'rotate' : 'scale';
+
+  return (
+    <TransformControls
+      object={alvo as THREE.Object3D}
+      mode={modo}
+      showX={ferramenta !== 'girar'}
+      showY={ferramenta !== 'girar'}
+      showZ={ferramenta === 'girar'}
+      onMouseDown={() => {
+        inicio.current = { p: alvo.position.clone(), r: alvo.rotation.z, s: alvo.scale.clone() };
+      }}
+      onMouseUp={() => {
+        const i = inicio.current;
+        if (!i) return;
+        inicio.current = null;
+        onSoltar({
+          dx: alvo.position.x - i.p.x,
+          dy: alvo.position.y - i.p.y,
+          giro: ((alvo.rotation.z - i.r) * 180) / Math.PI,
+          ex: i.s.x === 0 ? 1 : alvo.scale.x / i.s.x,
+          ey: i.s.y === 0 ? 1 : alvo.scale.y / i.s.y,
+        });
+        // A transformacao real vira da `Region` (letreiro) ou do arranjo (placa):
+        // devolver o grupo ao estado anterior evita a transformacao entrar duas vezes.
+        alvo.position.copy(i.p);
+        alvo.rotation.z = i.r;
+        alvo.scale.copy(i.s);
+      }}
+    />
   );
 }
 
@@ -262,8 +407,18 @@ export interface Viewer3DProps {
   camadas?: Camadas;
   /** Mesa da impressora, desenhada em escala real no centro da cena. */
   mesa?: { x: number; y: number } | null;
-  /** Nomes das pecas que nao cabem na mesa: saem em vermelho. */
+  /** Chaves das pecas que nao cabem na mesa: saem em vermelho. */
   naoCabem?: ReadonlySet<string>;
+  /** Onde cada peca foi acomodada na mesa. Vazio = posicao do letreiro. */
+  arranjo?: ReadonlyMap<string, Colocada>;
+  /** Chaves que sobraram do arranjo: ficam enfileiradas ao lado da placa. */
+  sobraram?: readonly string[];
+  selecionada?: string | null;
+  onSelecionar?: (chave: string | null) => void;
+  /** Ferramenta do gizmo. 'nenhuma' desliga. */
+  ferramenta?: 'nenhuma' | 'mover' | 'girar' | 'escalar';
+  /** Chamado quando o usuario solta o gizmo, com o delta acumulado. */
+  onTransformar?: (chave: string, t: Transformacao) => void;
 }
 
 export default function Viewer3D({
@@ -276,8 +431,39 @@ export default function Viewer3D({
   camadas = CAMADAS_TODAS,
   mesa = null,
   naoCabem = new Set<string>(),
+  arranjo = new Map<string, Colocada>(),
+  sobraram = [],
+  selecionada = null,
+  onSelecionar = () => {},
+  ferramenta = 'nenhuma',
+  onTransformar = () => {},
 }: Viewer3DProps) {
   const [perdido, setPerdido] = useState(false);
+
+  // Os grupos de cada peca, para o gizmo poder se prender ao selecionado.
+  const grupos = useRef(new Map<string, THREE.Object3D>());
+  const registrar = useCallback((chave: string, o: THREE.Object3D | null) => {
+    if (o) grupos.current.set(chave, o);
+    else grupos.current.delete(chave);
+  }, []);
+
+  /**
+   * Quem sobrou do arranjo fica enfileirado A DIREITA da placa, ainda visivel.
+   * Foi o pedido: "o que ficar de fora fica ali no 3d ainda mas fora da placa".
+   */
+  const sobras = useMemo(() => {
+    const m = new Map<string, [number, number]>();
+    if (!mesa || !sobraram.length) return m;
+    const alvoX = mesa.x / 2 + 60;
+    let y = -mesa.y / 2;
+    for (const chave of sobraram) {
+      const o = grupos.current.get(chave);
+      void o;
+      m.set(chave, [alvoX, y]);
+      y += 120;
+    }
+    return m;
+  }, [mesa, sobraram]);
 
   return (
     <>
@@ -304,6 +490,12 @@ export default function Viewer3D({
     >
       <color attach="background" args={['#0b0d10']} />
 
+      {/* Clique no vazio desmarca. Fica atras de tudo e nao recebe luz. */}
+      <mesh position={[0, 0, -400]} onClick={() => onSelecionar(null)}>
+        <planeGeometry args={[100000, 100000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+
       {/* Luzes locais em vez de um HDRI de CDN: o app precisa abrir sem internet,
           e um mapa de ambiente custaria alguns MB para ganho estetico pequeno. */}
       <hemisphereLight intensity={0.7} groundColor="#141821" color="#cfe0ff" />
@@ -311,7 +503,24 @@ export default function Viewer3D({
       <directionalLight position={[-350, 250, 300]} intensity={0.8} color="#bcd4ff" />
       <directionalLight position={[0, 500, -200]} intensity={0.35} />
 
-      <Peca letras={letras} centro={centro} explode={explode} camadas={camadas} naoCabem={naoCabem} />
+      <Peca
+        letras={letras}
+        centro={centro}
+        explode={explode}
+        camadas={camadas}
+        naoCabem={naoCabem}
+        arranjo={arranjo}
+        sobras={sobras}
+        selecionada={selecionada}
+        onSelecionar={onSelecionar}
+        registrar={registrar}
+      />
+
+      <Gizmo
+        alvo={selecionada ? (grupos.current.get(selecionada) ?? null) : null}
+        ferramenta={ferramenta}
+        onSoltar={(t) => selecionada && onTransformar(selecionada, t)}
+      />
 
       {mesa && <Mesa x={mesa.x} y={mesa.y} />}
 

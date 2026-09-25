@@ -50,6 +50,8 @@ import { CAMADAS_TODAS, type Camadas } from '@/components/Viewer3D';
 import { importarArquivo, importarPdf, ErroImport } from '@/lib/import/pdf';
 import { desenhoParaPecas, type ModoSeparacao, type ModoTraco } from '@/lib/import/pecas';
 import { IMPRESSORAS, MANUAL, acharImpressora, caberNaMesa, descreverVeredito, type Impressora, type Veredito } from '@/lib/print/impressoras';
+import { arrumar, type Colocada } from '@/lib/print/arranjo';
+import { aplicarEdicao, edicaoVazia, escalaUniforme, SEM_EDICAO, type Edicao } from '@/lib/geom/pecaEditada';
 import type { DesenhoBruto, Aviso } from '@/lib/import/pdf-ops';
 
 // O canvas WebGL nao pode ser renderizado no servidor.
@@ -58,7 +60,12 @@ const Viewer3D = dynamic(() => import('@/components/Viewer3D'), {
   loading: () => <div className="flex h-full items-center justify-center text-sm text-slate-500">carregando 3D...</div>,
 });
 
-type LetraComPeca = Letra & { part: Part };
+/**
+ * `chave` identifica a peca de forma unica; `nome` e o rotulo que o usuario le.
+ * Para texto os dois diferem: em "BARBER" ha dois "B", e uma edicao pelo nome
+ * mexeria nos dois de uma vez.
+ */
+type LetraComPeca = Letra & { part: Part; chave: string };
 
 function baixar(nome: string, data: BlobPart, tipo?: string): void {
   const blob = data instanceof Blob ? data : new Blob([data], tipo ? { type: tipo } : undefined);
@@ -128,6 +135,15 @@ export default function Page() {
   // A mesa ativa e sempre mesaX/Y/Z; escolher uma impressora so preenche esses
   // numeros. Assim ha uma fonte de verdade so, e o modo manual parte do que estava.
   const [impressoraId, setImpressoraId] = useState(IMPRESSORAS[0]!.id);
+  // Edicao muda o PRODUTO (chapa, gabarito, preco); arranjo so acomoda na mesa.
+  const [edicoes, setEdicoes] = useState<Map<string, Edicao>>(new Map());
+  const [arranjo, setArranjo] = useState<Map<string, Colocada>>(new Map());
+  const [arranjoInfo, setArranjoInfo] = useState<{ dentro: number; fora: number; impossiveis: number; placas: number } | null>(null);
+  const [folgaPecas, setFolgaPecas] = useState(3);
+  const [selecionada, setSelecionada] = useState<string | null>(null);
+  const [arranjoSobras, setArranjoSobras] = useState<string[]>([]);
+  const [ferramenta, setFerramenta] = useState<'nenhuma' | 'mover' | 'girar' | 'escalar'>('nenhuma');
+  const [vista, setVista] = useState<'letreiro' | 'placa'>('letreiro');
   const [mesaX, setMesaX] = useState(IMPRESSORAS[0]!.x);
   const [mesaY, setMesaY] = useState(IMPRESSORAS[0]!.y);
   const [mesaZ, setMesaZ] = useState(IMPRESSORAS[0]!.z);
@@ -282,33 +298,59 @@ export default function Page() {
   // Etapa cara (contornos + medicao de espessura): so depende do texto e do tamanho.
   // Fica fora do caminho dos sliders de fabricacao, que sao os que se arrastam.
   const letrasBase = useMemo(() => {
+    type Base = Letra & { espessuraMin: number; chave: string };
+
+    /**
+     * Aplica a edicao do usuario a uma peca, AQUI e nao na hora de desenhar: e o
+     * que faz a chapa de ACM, o gabarito, a colisao e o preco acompanharem.
+     *
+     * A espessura minima e reaproveitada da escala global para o slider de altura
+     * nao travar. Com escala nao uniforme essa conta deixa de valer (esticar em X
+     * nao afina a barra horizontal), e so a peca editada e remedida.
+     */
+    const editar = (b: Base): Base => {
+      const e = edicoes.get(b.chave);
+      if (!e || edicaoVazia(e)) return b;
+      const region = aplicarEdicao(b.region, e);
+      return {
+        ...b,
+        region,
+        bounds: regionBounds(region),
+        espessuraMin: escalaUniforme(e) ? b.espessuraMin * Math.abs(e.ex) : minThickness(region),
+      };
+    };
+
     if (pecasNativas) {
       const ativas = pecasNativas.filter((p) => !impDesativadas.has(p.nome));
-      if (!ativas.length) return [] as (Letra & { espessuraMin: number })[];
+      if (!ativas.length) return [] as Base[];
       const b = regionBounds(ativas.flatMap((p) => p.region));
       const alvo = alturaArte(impAltura, apoio, borda, bordaCompensa);
       const s = b.h > 0 ? alvo / b.h : 1;
       return ativas.map((p) => {
         const region = translateRegion(scaleRegion(p.region, s), -b.minX * s, -b.minY * s);
-        return {
+        return editar({
           nome: p.nome,
+          // Peca importada ja tem nome unico ('01', '02', ...).
+          chave: p.nome,
           region,
           bounds: regionBounds(region),
-          // minThickness escala linearmente: remedir a cada tique do slider de
-          // altura travaria a UI num letreiro com muitas pecas.
           espessuraMin: p.espessuraNativa * s,
-        };
+        });
       });
     }
-    if (!font || !texto.trim()) return [] as (Letra & { espessuraMin: number })[];
+    if (!font || !texto.trim()) return [] as Base[];
     // Com borda a peca fica maior que a arte, entao a arte encolhe para a peca
     // bater a medida pedida. Ver `alturaArte`.
     const alvo = alturaArte(altura, apoio, borda, bordaCompensa);
-    return normalizeLetters(textToLetters(font, texto, { altura: alvo, tracking })).map((l) => ({
-      ...l,
-      espessuraMin: minThickness(l.region),
-    }));
-  }, [pecasNativas, impDesativadas, impAltura, font, texto, altura, tracking, apoio, borda, bordaCompensa]);
+    return normalizeLetters(textToLetters(font, texto, { altura: alvo, tracking })).map((l, i) =>
+      editar({
+        ...l,
+        // `nome` e o caractere, e repete em "BARBER": a posicao desempata.
+        chave: `${l.nome}#${i}`,
+        espessuraMin: minThickness(l.region),
+      })
+    );
+  }, [pecasNativas, impDesativadas, impAltura, font, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes]);
 
   // Enquanto o slider se move, o React mantem o quadro anterior em vez de travar a UI.
   const paramsDiferidos = useDeferredValue(params);
@@ -367,7 +409,7 @@ export default function Page() {
       // Cabe na mesa? O teste considera girar: uma peca longa e fina cabe na
       // diagonal, e o Bambu Studio deixa girar na placa.
       const v = caberNaMesa(l.part.contorno, l.part.alturaZ, mesa);
-      vereditos.set(l.nome, v);
+      vereditos.set(l.chave, v);
       if (!v.cabe) {
         avisos.add(`A peca "${l.nome}" (${bp.w.toFixed(0)}x${bp.h.toFixed(0)}mm) ${descreverVeredito(v, mesa)} na ${mesa.nome}.`);
       }
@@ -398,9 +440,67 @@ export default function Page() {
   }, [letrasBase, paramsDiferidos, mesaXDiferida, mesaYDiferida, mesaZDiferida, impressoraDiferida]);
 
   const naoCabem = useMemo(
-    () => new Set([...vereditos].filter(([, v]) => !v.cabe).map(([nome]) => nome)),
+    () => new Set([...vereditos].filter(([, v]) => !v.cabe).map(([chave]) => chave)),
     [vereditos]
   );
+
+  /**
+   * Encaixa as pecas na mesa. So no clique do botao: refazer a cada tique de slider
+   * jogaria fora o ajuste manual que o usuario fez em cima do resultado.
+   *
+   * O footprint usado e `part.contorno`, que com borda de apoio e maior que a arte
+   * -- e o que de fato ocupa a mesa.
+   */
+  const arrumarNaPlaca = useCallback(() => {
+    if (!letras.length) return;
+    const r = arrumar(
+      letras.map((l) => ({
+        nome: l.chave,
+        region: l.part.contorno,
+        giroQueCabe: caberNaMesa(l.part.contorno, l.part.alturaZ, mesa).giro,
+      })),
+      mesa,
+      folgaPecas
+    );
+    setArranjo(new Map(r.colocadas.map((c) => [c.nome, c])));
+    setArranjoSobras(r.sobraram);
+    // Sobrar por falta de espaco nesta placa e nao caber na maquina sao problemas
+    // diferentes: o primeiro se resolve com outra levada, o segundo nao se resolve.
+    const impossiveis = r.sobraram.filter((chave) => {
+      const l = letras.find((x) => x.chave === chave);
+      return l ? !caberNaMesa(l.part.contorno, l.part.alturaZ, mesa).cabe : false;
+    }).length;
+    setArranjoInfo({
+      dentro: r.colocadas.length,
+      fora: r.sobraram.length - impossiveis,
+      impossiveis,
+      placas: r.placas,
+    });
+    setVista('placa');
+  }, [letras, mesa, folgaPecas]);
+
+  const limparArranjo = useCallback(() => {
+    setArranjo(new Map());
+    setArranjoSobras([]);
+    setArranjoInfo(null);
+    setVista('letreiro');
+  }, []);
+
+  const editarPeca = useCallback((chave: string, mudanca: Partial<Edicao>) => {
+    setEdicoes((m) => {
+      const n = new Map(m);
+      n.set(chave, { ...(n.get(chave) ?? SEM_EDICAO), ...mudanca });
+      return n;
+    });
+  }, []);
+
+  const resetarPeca = useCallback((chave: string) => {
+    setEdicoes((m) => {
+      const n = new Map(m);
+      n.delete(chave);
+      return n;
+    });
+  }, []);
 
   const orcamento = useMemo(
     () =>
@@ -675,6 +775,22 @@ export default function Page() {
             setMesaY={setMesaY}
             mesaZ={mesaZ}
             setMesaZ={setMesaZ}
+            folgaPecas={folgaPecas}
+            setFolgaPecas={setFolgaPecas}
+            arrumarNaPlaca={arrumarNaPlaca}
+            limparArranjo={limparArranjo}
+            arranjoInfo={arranjoInfo}
+            selecionada={
+              selecionada
+                ? {
+                    chave: selecionada,
+                    nome: letras.find((l) => l.chave === selecionada)?.nome ?? selecionada,
+                    edicao: edicoes.get(selecionada) ?? SEM_EDICAO,
+                  }
+                : null
+            }
+            editarPeca={editarPeca}
+            resetarPeca={resetarPeca}
             impressoraId={impressoraId}
             escolherImpressora={(id) => {
               setImpressoraId(id);
@@ -732,12 +848,105 @@ export default function Page() {
               centro={[bounds.w / 2, bounds.h / 2]}
               explode={explode}
               camadas={camadas}
-              mesa={{ x: mesa.x, y: mesa.y }}
+              mesa={vista === 'placa' ? { x: mesa.x, y: mesa.y } : null}
               naoCabem={naoCabem}
+              arranjo={vista === 'placa' ? arranjo : new Map()}
+              sobraram={vista === 'placa' ? arranjoSobras : []}
+              selecionada={selecionada}
+              onSelecionar={setSelecionada}
+              ferramenta={selecionada ? ferramenta : 'nenhuma'}
+              onTransformar={(chave, t) => {
+                if (vista === 'placa') {
+                  // Na placa a transformacao e so acomodacao: nao toca no produto.
+                  setArranjo((m) => {
+                    const n = new Map(m);
+                    const a = n.get(chave) ?? { nome: chave, dx: 0, dy: 0, giro: 0 };
+                    n.set(chave, { ...a, dx: a.dx + t.dx, dy: a.dy + t.dy, giro: a.giro + t.giro });
+                    return n;
+                  });
+                  return;
+                }
+                // No letreiro a transformacao entra na Region e muda chapa, gabarito e preco.
+                const atual = edicoes.get(chave) ?? SEM_EDICAO;
+                editarPeca(chave, {
+                  dx: atual.dx + t.dx,
+                  dy: atual.dy + t.dy,
+                  giro: atual.giro + t.giro,
+                  ex: atual.ex * t.ex,
+                  ey: atual.ey * t.ey,
+                });
+              }}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-base text-tinta-fraca">
               {carregando ? 'carregando...' : imp ? 'nenhuma peca ativa' : 'digite um texto ou abra um .ai'}
+            </div>
+          )}
+
+          {/* Vista e ferramenta. No letreiro a transformacao muda o produto; na placa,
+              so acomoda para imprimir -- por isso escalar nao existe la. */}
+          {letras.length > 0 && (
+            <div className="absolute right-4 top-4 space-y-2">
+              <div className="flex overflow-hidden rounded-lg border border-linha bg-painel/90 backdrop-blur">
+                {(['letreiro', 'placa'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => {
+                      setVista(v);
+                      if (v === 'placa' && ferramenta === 'escalar') setFerramenta('mover');
+                    }}
+                    title={v === 'letreiro' ? 'Como o letreiro fica montado na parede' : 'Como as pecas se acomodam na mesa da impressora'}
+                    className={`px-3 py-1.5 text-mini font-medium transition ${
+                      vista === v ? 'bg-acento text-white' : 'text-tinta-fraca hover:bg-elevado hover:text-tinta-media'
+                    }`}
+                  >
+                    {v === 'letreiro' ? 'Letreiro' : 'Placa'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex overflow-hidden rounded-lg border border-linha bg-painel/90 backdrop-blur">
+                {(
+                  [
+                    ['nenhuma', 'selecionar', 'So seleciona, sem mover'],
+                    ['mover', 'mover', 'Arrasta no plano da mesa'],
+                    ['girar', 'girar', 'Gira em torno do centro da peca'],
+                    ...(vista === 'letreiro'
+                      ? ([['escalar', 'tamanho', 'Muda o tamanho DESTA peca: chapa, gabarito e preco acompanham']] as const)
+                      : []),
+                  ] as const
+                ).map(([id, rotulo, dica]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFerramenta(id as typeof ferramenta)}
+                    title={dica}
+                    disabled={!selecionada && id !== 'nenhuma'}
+                    className={`px-2.5 py-1.5 text-mini font-medium transition disabled:opacity-40 ${
+                      ferramenta === id ? 'bg-acento text-white' : 'text-tinta-fraca hover:bg-elevado hover:text-tinta-media'
+                    }`}
+                  >
+                    {rotulo}
+                  </button>
+                ))}
+              </div>
+
+              {selecionada && (
+                <div className="rounded-lg border border-linha bg-painel/90 px-3 py-1.5 text-mini text-tinta-media backdrop-blur">
+                  peca <span className="font-mono text-tinta">{letras.find((l) => l.chave === selecionada)?.nome ?? '?'}</span>
+                  {vista === 'letreiro' && !edicaoVazia(edicoes.get(selecionada)) && (
+                    <button
+                      type="button"
+                      onClick={() => resetarPeca(selecionada)}
+                      className="ml-2 text-tinta-fraca underline hover:text-tinta"
+                      title="Desfaz mover, girar e tamanho desta peca"
+                    >
+                      voltar ao original
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
