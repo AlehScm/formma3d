@@ -18,7 +18,7 @@ import {
 } from '@/lib/geom/modes';
 import { FILAMENTOS, type CustoCfg, type FilamentoId, type Orcamento, brl } from '@/lib/cost/calc';
 import { FONTES_WEB, type ResultadoFontesSistema, type FonteSistema } from '@/lib/text/fontes';
-import type { ModoSeparacao } from '@/lib/import/pecas';
+import type { ModoSeparacao, ModoTraco } from '@/lib/import/pecas';
 
 export interface PainelProps {
   secao: SecaoId;
@@ -41,8 +41,8 @@ export interface PainelProps {
   setImpAltura: (v: number) => void;
   impFundir: number;
   setImpFundir: (v: number) => void;
-  impTracos: boolean;
-  setImpTracos: (v: boolean) => void;
+  impTracos: ModoTraco;
+  setImpTracos: (v: ModoTraco) => void;
   impDesativadas: Set<string>;
   alternarPeca: (nome: string) => void;
   setPagina: (n: number) => void;
@@ -150,8 +150,8 @@ function PainelArquivo(p: PainelProps) {
           setAltura={p.setImpAltura}
           fundir={p.impFundir}
           setFundir={p.setImpFundir}
-          incluirTracos={p.impTracos}
-          setIncluirTracos={p.setImpTracos}
+          tracos={p.impTracos}
+          setTracos={p.setImpTracos}
           desativadas={p.impDesativadas}
           alternarPeca={p.alternarPeca}
           setPagina={p.setPagina}

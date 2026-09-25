@@ -48,7 +48,7 @@ import { Rail, type SecaoId } from '@/components/Rail';
 import { Paineis } from '@/components/Paineis';
 import { CAMADAS_TODAS, type Camadas } from '@/components/Viewer3D';
 import { importarArquivo, importarPdf, ErroImport } from '@/lib/import/pdf';
-import { desenhoParaPecas, type ModoSeparacao } from '@/lib/import/pecas';
+import { desenhoParaPecas, type ModoSeparacao, type ModoTraco } from '@/lib/import/pecas';
 import type { DesenhoBruto, Aviso } from '@/lib/import/pdf-ops';
 
 // O canvas WebGL nao pode ser renderizado no servidor.
@@ -94,7 +94,7 @@ export default function Page() {
   const [impModo, setImpModo] = useState<ModoSeparacao>('forma');
   const [impAltura, setImpAltura] = useState(300);
   const [impFundir, setImpFundir] = useState(0);
-  const [impTracos, setImpTracos] = useState(false);
+  const [impTracos, setImpTracos] = useState<ModoTraco>('auto');
   const [impDesativadas, setImpDesativadas] = useState<Set<string>>(new Set());
 
   const [altura, setAltura] = useState(150);
@@ -167,7 +167,7 @@ export default function Page() {
     setCarregando(true);
     setErro(null);
     try {
-      const r = await importarArquivo(file, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 1 }, pagina);
+      const r = await importarArquivo(file, { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 1 }, pagina);
       if (!r.pecas.length) {
         setErro(r.avisos[0]?.msg ?? 'Nao encontrei contornos neste arquivo.');
         setCarregando(false);
@@ -185,6 +185,8 @@ export default function Page() {
       setImpDesativadas(new Set());
       setImpAltura(Math.max(1, Math.round(r.conteudoMm.h)));
       setImpModo('forma');
+      // Mostra no painel a escolha que o 'auto' fez, para o usuario poder discordar.
+      setImpTracos(r.tracos);
     } catch (e) {
       setErro(e instanceof ErroImport ? e.message : 'Nao consegui abrir este arquivo: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
@@ -196,7 +198,7 @@ export default function Page() {
     if (!imp) return;
     setCarregando(true);
     try {
-      const r = await importarPdf(imp.buf, { modo: impModo, incluirTracos: impTracos, fundirProximos: impFundir, areaMinima: 1 }, n, 'pdf');
+      const r = await importarPdf(imp.buf, { modo: impModo, tracos: impTracos, fundirProximos: impFundir, areaMinima: 1 }, n, 'pdf');
       setImp({ ...imp, desenho: r.desenho, pagina: r.pagina, avisos: r.avisos, conteudoMm: r.conteudoMm });
       setImpAltura(Math.max(1, Math.round(r.conteudoMm.h)));
       setImpDesativadas(new Set());
@@ -266,7 +268,7 @@ export default function Page() {
     if (!imp) return null;
     return desenhoParaPecas(imp.desenho, {
       modo: impModo,
-      incluirTracos: impTracos,
+      tracos: impTracos,
       fundirProximos: impFundir,
       areaMinima: 1,
     }).map((p) => ({ ...p, bounds: regionBounds(p.region), espessuraNativa: minThickness(p.region) }));
@@ -549,6 +551,7 @@ export default function Page() {
                     avisos: imp.avisos,
                     camadas: imp.desenho.camadas,
                     temFill: imp.desenho.temFill,
+                    temStroke: imp.desenho.temStroke,
                     nomesPecas: pecasNativas.map((x) => x.nome),
                   }
                 : null

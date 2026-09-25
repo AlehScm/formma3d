@@ -74,6 +74,7 @@ export type AvisoCodigo =
   | 'texto-vivo'
   | 'imagem'
   | 'so-tracos'
+  | 'traco-preenchido'
   | 'multipagina'
   | 'tamanho-suspeito'
   | 'ai-sem-pdf'

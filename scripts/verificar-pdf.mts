@@ -8,7 +8,7 @@
 import fs from 'fs';
 import { pdfMinimo, re } from './mkpdf.mjs';
 import { opListToDrawing, type OpsMap } from '../lib/import/pdf-ops';
-import { desenhoParaPecas } from '../lib/import/pecas';
+import { desenhoParaPecas, resolverTracos } from '../lib/import/pecas';
 import { regionArea, regionBounds, buildRegion, type Region } from '../lib/geom/region';
 import { parseFont, textToLetters } from '../lib/text/glyphs';
 
@@ -85,7 +85,7 @@ console.log('\n== recorte (W n) ==');
   const d = await extrair(pdfMinimo(`q ${re(0, 0, 72, 72)} W n ${re(0, 0, 288, 288)} f Q`));
   const obj = d.objetos[0];
   ok('objeto sai recortado', !!obj?.clip, obj?.clip ? 'com clip' : 'SEM CLIP');
-  const pecas = desenhoParaPecas(d, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
+  const pecas = desenhoParaPecas(d, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 0.1 });
   const area = pecas.reduce((s, p) => s + regionArea(p.region), 0);
   ok('area limitada ao recorte', perto(area, 25.4 * 25.4, 1), `${area.toFixed(1)}mm2 (esperado 645)`);
 }
@@ -114,19 +114,19 @@ console.log('\n== MediaBox deslocada e /Rotate ==');
 console.log('\n== separacao em pecas ==');
 {
   const d = await extrair(pdfMinimo(`${re(0, 0, 72, 72)} ${re(200, 0, 72, 72)} f`));
-  const forma = desenhoParaPecas(d, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 1 });
+  const forma = desenhoParaPecas(d, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 1 });
   ok('duas formas separadas = 2 pecas', forma.length === 2, `${forma.length} pecas`);
   ok('pecas numeradas da esquerda p/ direita', forma[0]?.nome === '01' && forma[1]?.nome === '02', forma.map((p) => p.nome).join(','));
 
-  const objeto = desenhoParaPecas(d, { modo: 'objeto', incluirTracos: false, fundirProximos: 0, areaMinima: 1 });
+  const objeto = desenhoParaPecas(d, { modo: 'objeto', tracos: 'ignorar', fundirProximos: 0, areaMinima: 1 });
   ok('modo objeto respeita o arquivo (1 operacao de fill)', objeto.length === 1, `${objeto.length} peca`);
 
   const encostadas = await extrair(pdfMinimo(`${re(0, 0, 72, 72)} ${re(72, 0, 72, 72)} f`));
-  const fundidas = desenhoParaPecas(encostadas, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 1 });
+  const fundidas = desenhoParaPecas(encostadas, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 1 });
   ok('formas que se encostam viram 1 peca', fundidas.length === 1, `${fundidas.length} peca`);
 
   const prox = desenhoParaPecas(await extrair(pdfMinimo(`${re(0, 0, 72, 72)} ${re(80, 0, 72, 72)} f`)), {
-    modo: 'forma', incluirTracos: false, fundirProximos: 5, areaMinima: 1,
+    modo: 'forma', tracos: 'ignorar', fundirProximos: 5, areaMinima: 1,
   });
   ok('fundirProximos une o que esta perto (acento)', prox.length === 1, `${prox.length} peca`);
 }
@@ -134,7 +134,7 @@ console.log('\n== separacao em pecas ==');
 console.log('\n== escala por altura ==');
 {
   const d = await extrair(pdfMinimo(`${re(0, 0, 72, 144)} f`));
-  const p = desenhoParaPecas(d, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 1, altura: 200 });
+  const p = desenhoParaPecas(d, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 1, altura: 200 });
   const b = regionBounds(p[0]!.region);
   ok('altura vira exatamente a pedida', perto(b.h, 200), `${b.h.toFixed(2)}mm`);
   ok('proporcao preservada', perto(b.w, 100), `${b.w.toFixed(2)}mm (esperado 100)`);
@@ -144,7 +144,10 @@ console.log('\n== traco sem preenchimento ==');
 {
   const d = await extrair(pdfMinimo(`4 w 0 0 m 288 0 l S`));
   ok('aviso de so-tracos', d.avisos.some((a) => a.codigo === 'so-tracos'));
-  const p = desenhoParaPecas(d, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
+  // Arquivo que e SO uma linha aberta: descartar o traco deixaria a tela vazia, e
+  // nao ha area cercada para preencher, entao o 'auto' engrossa.
+  ok('auto engrossa quando o arquivo e so linha aberta', resolverTracos(d, 'auto') === 'engrossar', resolverTracos(d, 'auto'));
+  const p = desenhoParaPecas(d, { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 0.1 });
   const esperado = 288 * MM * (4 * MM);
   ok('traco engrossado vira area', p.length === 1 && perto(regionArea(p[0]!.region), esperado, 1),
      `${p[0] ? regionArea(p[0].region).toFixed(1) : 0}mm2 (esperado ${esperado.toFixed(1)})`);

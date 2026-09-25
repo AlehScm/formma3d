@@ -1,7 +1,7 @@
 'use client';
 
-import { Num, Check, Sel, Botao } from './Campos';
-import type { ModoSeparacao } from '@/lib/import/pecas';
+import { Num, Sel, Segmentado, Botao } from './Campos';
+import type { ModoSeparacao, ModoTraco } from '@/lib/import/pecas';
 import type { Aviso } from '@/lib/import/pdf-ops';
 
 export interface EstadoImport {
@@ -12,6 +12,7 @@ export interface EstadoImport {
   avisos: Aviso[];
   camadas: string[];
   temFill: boolean;
+  temStroke: boolean;
   nomesPecas: string[];
 }
 
@@ -23,8 +24,8 @@ export function PainelImport({
   setAltura,
   fundir,
   setFundir,
-  incluirTracos,
-  setIncluirTracos,
+  tracos,
+  setTracos,
   desativadas,
   alternarPeca,
   setPagina,
@@ -37,13 +38,22 @@ export function PainelImport({
   setAltura: (v: number) => void;
   fundir: number;
   setFundir: (v: number) => void;
-  incluirTracos: boolean;
-  setIncluirTracos: (v: boolean) => void;
+  tracos: ModoTraco;
+  setTracos: (v: ModoTraco) => void;
   desativadas: Set<string>;
   alternarPeca: (nome: string) => void;
   setPagina: (n: number) => void;
   fechar: () => void;
 }) {
+  // Contorno fechado sem preenchimento e o limite de uma forma, nao uma linha: o
+  // que se aproveita dele e a area que ele cerca. Engrossar daria uma fita da
+  // largura da linha, que num arquivo de CorelDRAW e 0.2mm.
+  const opcoesTraco: { valor: ModoTraco; nome: string; dica?: string }[] = [
+    { valor: 'ignorar', nome: 'Ignorar', dica: 'Traco solto costuma ser linha de corte, guia ou marca de registro' },
+    { valor: 'preencher', nome: 'Preencher', dica: 'Contorno fechado e o limite da peca: vale a area que ele cerca' },
+    { valor: 'engrossar', nome: 'Engrossar', dica: 'Vira fita da largura da linha, como o Expandir do Illustrator' },
+  ];
+
   const opcoesModo: { valor: ModoSeparacao; nome: string }[] = [
     { valor: 'forma', nome: 'Cada forma solta' },
     { valor: 'objeto', nome: 'Objetos do arquivo' },
@@ -96,12 +106,12 @@ export function PainelImport({
         step={0.5}
         dica="Une acentos e o pingo do i a letra. 0 desliga."
       />
-      {est.temFill && (
-        <Check
-          label="Incluir tracos sem preenchimento"
-          valor={incluirTracos}
-          set={setIncluirTracos}
-          dica="Traco solto costuma ser linha de corte ou guia"
+      {est.temStroke && (
+        <Segmentado<ModoTraco>
+          label="Traco sem preenchimento"
+          valor={tracos}
+          set={setTracos}
+          opcoes={opcoesTraco}
         />
       )}
 

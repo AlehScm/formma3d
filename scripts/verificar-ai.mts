@@ -9,7 +9,7 @@
 import fs from 'fs';
 import { extrairAIPrivateData } from '../lib/import/ai-priv';
 import { aiPostScriptParaDesenho } from '../lib/import/ai-ps';
-import { desenhoParaPecas } from '../lib/import/pecas';
+import { desenhoParaPecas, resolverTracos } from '../lib/import/pecas';
 import { regionArea, regionBounds, buildRegion } from '../lib/geom/region';
 import { parseFont, textToLetters } from '../lib/text/glyphs';
 
@@ -62,7 +62,7 @@ async function main() {
     ].join('\n');
     const d = aiPostScriptParaDesenho(ps);
     ok('os dois subpaths viram UM objeto', d.objetos.length === 1, `${d.objetos.length} objeto(s)`);
-    const pecas = desenhoParaPecas(d, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
+    const pecas = desenhoParaPecas(d, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 0.1 });
     ok('sai uma peca so', pecas.length === 1, `${pecas.length} peca(s)`);
     const furos = pecas[0]?.region.reduce((a, p) => a + p.holes.length, 0) ?? 0;
     ok('com o miolo como buraco', furos === 1, `${furos} furo(s)`);
@@ -165,8 +165,8 @@ async function main() {
     const nz = anel('0 XR');
     ok('1 XR vira even-odd', eo.objetos[0]?.fillRule === 'evenodd', `${eo.objetos[0]?.fillRule}`);
     ok('0 XR vira nonzero', nz.objetos[0]?.fillRule === 'nonzero', `${nz.objetos[0]?.fillRule}`);
-    const pEO = desenhoParaPecas(eo, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
-    const pNZ = desenhoParaPecas(nz, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
+    const pEO = desenhoParaPecas(eo, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 0.1 });
+    const pNZ = desenhoParaPecas(nz, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 0.1 });
     const furosEO = pEO[0]?.region.reduce((a, p) => a + p.holes.length, 0) ?? 0;
     const furosNZ = pNZ[0]?.region.reduce((a, p) => a + p.holes.length, 0) ?? 0;
     ok('even-odd abre o miolo', furosEO === 1, `${furosEO} furo(s)`);
@@ -180,7 +180,7 @@ async function main() {
       '0 0 m', '100 0 L', '100 100 L', '0 100 L', 'f',
       '50 0 m', '150 0 L', '150 100 L', '50 100 L', 'f',
     ].join('\n'));
-    const pecas = desenhoParaPecas(d, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 0.1 });
+    const pecas = desenhoParaPecas(d, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 0.1 });
     const esperado = 150 * 100 * MM * MM; // uniao, nao a parte sobreposta cancelada
     const area = pecas.reduce((a, p) => a + regionArea(p.region), 0);
     ok('even-odd nao cancela entre objetos distintos', perto(area, esperado, 1), `${area.toFixed(0)} vs ${esperado.toFixed(0)}mm2`);
@@ -282,6 +282,92 @@ async function main() {
     ok('area preservada', perto(regionArea(volta), areaOrig, areaOrig * 0.002), `${regionArea(volta).toFixed(1)} vs ${areaOrig.toFixed(1)} mm2`);
   }
 
+  console.log('\n== contorno fechado sem preenchimento ==');
+  {
+    // Quadrado de 100pt desenhado SO com traco de 2pt. Engrossando da uma fita
+    // fina; preenchendo da a area inteira. E a diferenca entre um fio de cabelo e
+    // uma peca.
+    const d = aiPostScriptParaDesenho(['2 w', '0 0 m', '100 0 L', '100 100 L', '0 100 L', 's'].join('\n'));
+    ok('auto preenche quando nao ha preenchimento nenhum', resolverTracos(d, 'auto') === 'preencher', resolverTracos(d, 'auto'));
+
+    const cheio = desenhoParaPecas(d, { modo: 'forma', tracos: 'preencher', fundirProximos: 0, areaMinima: 0.1 });
+    const fita = desenhoParaPecas(d, { modo: 'forma', tracos: 'engrossar', fundirProximos: 0, areaMinima: 0.1 });
+    const nada = desenhoParaPecas(d, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 0.1 });
+    const esperado = 100 * 100 * MM * MM;
+    ok('preencher da a area cercada', perto(regionArea(cheio.flatMap((p) => p.region)), esperado, 1),
+       `${regionArea(cheio.flatMap((p) => p.region)).toFixed(0)} vs ${esperado.toFixed(0)}mm2`);
+    ok('engrossar da so a fita', regionArea(fita.flatMap((p) => p.region)) < esperado * 0.1,
+       `${regionArea(fita.flatMap((p) => p.region)).toFixed(0)}mm2`);
+    ok('ignorar nao da peca nenhuma', nada.length === 0, `${nada.length} peca(s)`);
+  }
+  {
+    // Contorno fechado com contra-forma, so em traco -- o "O" desenhado sem
+    // preenchimento. O miolo tem que continuar sendo buraco depois de preenchido.
+    // Com `1 XR` (even-odd, o que o CorelDRAW escreve) o sentido de giro nao importa.
+    const eo = aiPostScriptParaDesenho([
+      '1 XR', '*u',
+      '0 0 m', '100 0 L', '100 100 L', '0 100 L', 's',
+      '25 25 m', '75 25 L', '75 75 L', '25 75 L', 's',
+      '*U',
+    ].join('\n'));
+    const p = desenhoParaPecas(eo, { modo: 'forma', tracos: 'preencher', fundirProximos: 0, areaMinima: 0.1 });
+    const furos = p[0]?.region.reduce((a, x) => a + x.holes.length, 0) ?? 0;
+    ok('preencher preserva a contra-forma (even-odd)', p.length === 1 && furos === 1, `${p.length} peca(s), ${furos} furo(s)`);
+    const esperado = (100 * 100 - 50 * 50) * MM * MM;
+    ok('area do anel desconta o miolo', perto(regionArea(p.flatMap((x) => x.region)), esperado, 1),
+       `${regionArea(p.flatMap((x) => x.region)).toFixed(0)} vs ${esperado.toFixed(0)}mm2`);
+
+    // Sob non-zero o buraco depende do sentido: miolo ao contrario tambem abre.
+    const nz = aiPostScriptParaDesenho([
+      '0 XR', '*u',
+      '0 0 m', '100 0 L', '100 100 L', '0 100 L', 's',
+      '25 25 m', '25 75 L', '75 75 L', '75 25 L', 's',
+      '*U',
+    ].join('\n'));
+    const pn = desenhoParaPecas(nz, { modo: 'forma', tracos: 'preencher', fundirProximos: 0, areaMinima: 0.1 });
+    const fn = pn[0]?.region.reduce((a, x) => a + x.holes.length, 0) ?? 0;
+    ok('non-zero abre o miolo com sentido invertido', pn.length === 1 && fn === 1, `${pn.length} peca(s), ${fn} furo(s)`);
+  }
+  {
+    // Linha ABERTA nao cerca area: preencher nao tem o que preencher, entao ela
+    // continua sendo engrossada pela largura.
+    const d = aiPostScriptParaDesenho(['4 w', '0 0 m', '200 0 L', 'S'].join('\n'));
+    ok('linha aberta sozinha engrossa', resolverTracos(d, 'auto') === 'engrossar', resolverTracos(d, 'auto'));
+
+    // A mesma linha num arquivo que TEM desenho preenchido e cota ou guia: sai.
+    const comDesenho = aiPostScriptParaDesenho([
+      '0 0 m', '400 0 L', '400 400 L', '0 400 L', 'f',
+      '4 w', '500 0 m', '700 0 L', 'S',
+    ].join('\n'));
+    ok('linha aberta ao lado de desenho e descartada', resolverTracos(comDesenho, 'auto') === 'ignorar',
+       resolverTracos(comDesenho, 'auto'));
+    const p = desenhoParaPecas(d, { modo: 'forma', tracos: 'preencher', fundirProximos: 0, areaMinima: 0.1 });
+    const esperado = 200 * 4 * MM * MM;
+    ok('linha aberta ainda engrossa em "preencher"', p.length === 1 && perto(regionArea(p.flatMap((x) => x.region)), esperado, esperado * 0.2),
+       `${regionArea(p.flatMap((x) => x.region)).toFixed(0)} vs ~${esperado.toFixed(0)}mm2`);
+  }
+  {
+    // O caso oposto, que a regra NAO pode estragar: desenho preenchido de verdade
+    // com uma moldura de traco em volta (linha de corte). A moldura cerca area,
+    // mas o desenho preenchido cerca mais.
+    const d = aiPostScriptParaDesenho([
+      '0 0 m', '400 0 L', '400 400 L', '0 400 L', 'f',
+      '0.5 w', '-10 -10 m', '410 -10 L', '410 410 L', '-10 410 L', 's',
+    ].join('\n'));
+    ok('moldura de corte nao vira peca', resolverTracos(d, 'auto') === 'ignorar', resolverTracos(d, 'auto'));
+  }
+  {
+    // Sem traco nenhum a pergunta nao se aplica.
+    const d = aiPostScriptParaDesenho(['0 0 m', '72 0 L', '72 72 L', '0 72 L', 'f'].join('\n'));
+    ok('arquivo sem traco resolve para ignorar', resolverTracos(d, 'auto') === 'ignorar', resolverTracos(d, 'auto'));
+  }
+  {
+    // Escolha explicita manda mais que a regra.
+    const d = aiPostScriptParaDesenho(['2 w', '0 0 m', '100 0 L', '100 100 L', '0 100 L', 's'].join('\n'));
+    ok('pedido explicito ganha do auto',
+       resolverTracos(d, 'ignorar') === 'ignorar' && resolverTracos(d, 'engrossar') === 'engrossar');
+  }
+
   console.log('\n== o arquivo real do cliente ==');
   {
     const caminho = 'C:/Users/Administrador/Downloads/barber ai.ai';
@@ -294,7 +380,7 @@ async function main() {
       if (ps) {
         const d = aiPostScriptParaDesenho(ps);
         ok('encontra os objetos de desenho', d.objetos.length > 0, `${d.objetos.length} objetos`);
-        const pecas = desenhoParaPecas(d, { modo: 'forma', incluirTracos: false, fundirProximos: 0, areaMinima: 1 });
+        const pecas = desenhoParaPecas(d, { modo: 'forma', tracos: 'ignorar', fundirProximos: 0, areaMinima: 1 });
         ok('separa em pecas', pecas.length > 0, `${pecas.length} pecas`);
         const comFuro = pecas.filter((p) => p.region.some((x) => x.holes.length)).length;
         ok('pecas com contra-forma sao detectadas', comFuro > 0, `${comFuro} peca(s) com furo`);
@@ -311,10 +397,32 @@ async function main() {
              `${lido.w.toFixed(0)}mm vs ${larguraDeclarada.toFixed(0)}mm declarados`);
         }
 
-        const comTracos = desenhoParaPecas(d, { modo: 'forma', incluirTracos: true, fundirProximos: 0, areaMinima: 1 });
+        const comTracos = desenhoParaPecas(d, { modo: 'forma', tracos: 'engrossar', fundirProximos: 0, areaMinima: 1 });
         ok('tracos entram so quando pedidos', comTracos.length > pecas.length,
            `${comTracos.length} com tracos vs ${pecas.length} sem`);
         ok('avisa que ha texto nao convertido', d.temTextoVivo);
+
+        // Este arquivo e "so o contorno da peca": o desenho de verdade esta nos
+        // caminhos fechados SEM preenchimento. Descartar traco esconde as maiores
+        // formas do arquivo, e engrossar entrega uma fita de 0.2mm.
+        ok('auto escolhe preencher neste arquivo', resolverTracos(d, 'auto') === 'preencher', resolverTracos(d, 'auto'));
+
+        const cheias = desenhoParaPecas(d, { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 1 });
+        ok('preenchendo, aparecem mais pecas', cheias.length > pecas.length, `${cheias.length} vs ${pecas.length}`);
+
+        // O "D" e o "O" de 39cm: eram os dois compostos de traco, com uma
+        // contra-forma cada. Sao a maior parte do desenho e o app precisa entrega-los.
+        const grandes = cheias
+          .map((p) => ({ nome: p.nome, a: regionArea(p.region), furos: p.region.reduce((x, y) => x + y.holes.length, 0), b: regionBounds(p.region) }))
+          .filter((x) => x.b.h > 300 && x.furos === 1)
+          .sort((x, y) => y.a - x.a);
+        ok('o "D" e o "O" de 39cm voltam, com a contra-forma', grandes.length === 2,
+           grandes.map((g) => `${g.b.w.toFixed(0)}x${g.b.h.toFixed(0)}mm a=${g.a.toFixed(0)}`).join(' | ') || 'nenhum');
+
+        const areaCheia = cheias.reduce((a, p) => a + regionArea(p.region), 0);
+        const areaFita = comTracos.reduce((a, p) => a + regionArea(p.region), 0);
+        ok('preencher rende muito mais area que engrossar', areaCheia > areaFita * 5,
+           `${areaCheia.toFixed(0)}mm2 preenchendo vs ${areaFita.toFixed(0)}mm2 engrossando`);
       }
     }
   }

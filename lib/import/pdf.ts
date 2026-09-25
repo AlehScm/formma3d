@@ -1,5 +1,12 @@
 import { opListToDrawing, type Aviso, type DesenhoBruto, type OpsMap } from './pdf-ops';
-import { desenhoParaPecas, OPCOES_PADRAO, type OpcoesPecas, type PecaImportada } from './pecas';
+import {
+  desenhoParaPecas,
+  resolverTracos,
+  OPCOES_PADRAO,
+  type OpcoesPecas,
+  type PecaImportada,
+  type TracoResolvido,
+} from './pecas';
 import { regionBounds } from '../geom/region';
 import { extrairAIPrivateData } from './ai-priv';
 import { aiPostScriptParaDesenho } from './ai-ps';
@@ -58,6 +65,8 @@ export interface ResultadoImport {
   paginaMm: { w: number; h: number };
   /** Tamanho do desenho em si, sem as margens da pagina. E esta a medida util. */
   conteudoMm: { w: number; h: number };
+  /** O que foi feito com o traco -- ja resolvido, para o painel poder mostrar. */
+  tracos: TracoResolvido;
 }
 
 function sniff(buf: ArrayBuffer): 'pdf' | 'postscript' | 'desconhecido' {
@@ -254,7 +263,20 @@ export async function importarPdf(
   const avisos = veioDoPostScript
     ? [...desenho.avisos]
     : diagnosticar(desenho, ext, temDadosPrivadosAI(buf));
+  const tracos = resolverTracos(desenho, opcoes.tracos);
   const pecas = desenhoParaPecas(desenho, opcoes);
+
+  // Um arquivo que e "so o contorno da peca" nao tem preenchimento onde importa, e
+  // o usuario nao tem como saber que o app teve de escolher por ele.
+  if (tracos === 'preencher' && desenho.objetos.some((o) => o.paint === 'stroke')) {
+    const n = desenho.objetos.filter((o) => o.paint === 'stroke').length;
+    avisos.push({
+      codigo: 'traco-preenchido',
+      msg:
+        `${n} forma(s) deste arquivo sao so contorno, sem preenchimento. Preenchi a area que elas cercam, ` +
+        'porque e o que "so o contorno da peca" quer dizer. Se era linha de corte ou guia, troque em "Traco sem preenchimento".',
+    });
+  }
 
   if (paginas > 1) {
     avisos.push({
@@ -279,6 +301,7 @@ export async function importarPdf(
     pagina,
     paginaMm: desenho.paginaMm,
     conteudoMm: { w: bc.w, h: bc.h },
+    tracos,
   };
 }
 
