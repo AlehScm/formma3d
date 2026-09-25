@@ -65,6 +65,34 @@ function sniff(buf: ArrayBuffer): 'pdf' | 'postscript' | 'desconhecido' {
   return head.includes('%PDF-') ? 'pdf' : 'desconhecido';
 }
 
+/**
+ * O .ai guarda o desenho editavel num bloco proprio (`AIPrivateData`), em formato
+ * fechado, e so escreve uma copia em PDF quando "Criar arquivo compativel com PDF"
+ * esta marcado. Sem essa opcao o arquivo continua abrindo -- ele e um PDF valido --
+ * mas a pagina vem vazia, e e por isso que a deteccao nao pode ser pelo cabecalho.
+ *
+ * Procurar o marcador e o unico jeito de distinguir "salvo sem compatibilidade" de
+ * "desenho realmente vazio", e a diferenca importa: a primeira tem conserto.
+ */
+function temDadosPrivadosAI(buf: ArrayBuffer): boolean {
+  const bytes = new Uint8Array(buf);
+  const alvo = 'AIPrivateData';
+  const limite = Math.min(bytes.length, 4 * 1024 * 1024); // o marcador fica no inicio
+  const primeiro = alvo.charCodeAt(0);
+  for (let i = 0; i < limite - alvo.length; i++) {
+    if (bytes[i] !== primeiro) continue;
+    let bate = true;
+    for (let j = 1; j < alvo.length; j++) {
+      if (bytes[i + j] !== alvo.charCodeAt(j)) {
+        bate = false;
+        break;
+      }
+    }
+    if (bate) return true;
+  }
+  return false;
+}
+
 class ErroImport extends Error {}
 
 /** Le a operator list de uma pagina e devolve o desenho bruto, em mm. */
@@ -137,17 +165,28 @@ export async function lerDesenho(buf: ArrayBuffer, pagina = 1): Promise<{ desenh
  * o que falta e o conteudo de pagina, que vira um placeholder de texto. Por isso a
  * deteccao e a posteriori (nenhum contorno + texto vivo), nao pelo cabecalho.
  */
-function diagnosticar(d: DesenhoBruto, ext: string): Aviso[] {
+function diagnosticar(d: DesenhoBruto, ext: string, dadosPrivadosAI: boolean): Aviso[] {
   const avisos: Aviso[] = [...d.avisos];
   if (d.objetos.length) return avisos;
 
-  if (ext === 'ai' && d.temTextoVivo) {
+  // O marcador decide sozinho: ha desenho no arquivo, so nao em formato que se leia.
+  // Nao exigir texto vivo junto -- um .ai sem compatibilidade PDF costuma vir com a
+  // pagina totalmente vazia, sem nem texto.
+  if (dadosPrivadosAI) {
     avisos.push({
       codigo: 'ai-sem-pdf',
       msg:
-        'Este .ai foi salvo sem compatibilidade PDF, entao o arquivo so tem os dados privados do Illustrator. ' +
-        'Abra nele, use Arquivo > Salvar como > Illustrator (.ai) e marque "Criar arquivo compativel com PDF". ' +
-        'Se preferir, exporte como PDF.',
+        'Este arquivo foi salvo SEM a opcao "Criar arquivo compativel com PDF": o desenho esta guardado ' +
+        'num formato fechado do Illustrator, que nenhum programa de fora consegue ler. ' +
+        'Peca para reenviarem assim: no Illustrator, Arquivo > Salvar como > Illustrator (.ai) e MARCAR ' +
+        '"Criar arquivo compativel com PDF". Ou, mais simples, Arquivo > Salvar como > PDF.',
+    });
+  } else if (ext === 'ai' && d.temTextoVivo) {
+    avisos.push({
+      codigo: 'ai-sem-pdf',
+      msg:
+        'Este .ai nao tem contornos legiveis, so texto vivo. Selecione tudo e use Texto > Criar contornos ' +
+        '(Ctrl+Shift+O) antes de salvar.',
     });
   } else if (d.temTextoVivo) {
     avisos.push({
@@ -189,7 +228,7 @@ export async function importarPdf(
     throw new ErroImport('Nao consegui ler o arquivo: ' + (e instanceof Error ? e.message : String(e)));
   }
 
-  const avisos = diagnosticar(desenho, ext);
+  const avisos = diagnosticar(desenho, ext, temDadosPrivadosAI(buf));
   const pecas = desenhoParaPecas(desenho, opcoes);
 
   if (paginas > 1) {
