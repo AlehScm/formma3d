@@ -497,6 +497,42 @@ export default function Page() {
         exportarAtivo={letras.length > 0}
       />
 
+      {/*
+        Os dois seletores de arquivo. Ficam escondidos e sao acionados pelos botoes
+        ("Abrir" no header, "Abrir .ttf" no painel), porque o input nativo nao da
+        para estilizar. Precisam viver aqui, fora dos paineis, senao trocar de secao
+        desmonta o input no meio do dialogo de escolher arquivo.
+      */}
+      <input
+        ref={desenhoRef}
+        type="file"
+        accept=".ai,.pdf,application/pdf,application/postscript"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) void abrirDesenho(f);
+        }}
+      />
+      <input
+        ref={arquivoRef}
+        type="file"
+        accept=".ttf,.otf,.woff"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (!f) return;
+          try {
+            setFont(await carregarFonteArquivo(f));
+            setFonteNome(f.name);
+            setErro(null);
+          } catch (err) {
+            setErro('Nao consegui ler essa fonte: ' + (err instanceof Error ? err.message : String(err)));
+          }
+        }}
+      />
+
       <div className="flex min-h-0 flex-1">
         <Rail ativa={secao} setAtiva={setSecao} alertas={{ camadas: avisos.length }} />
 
