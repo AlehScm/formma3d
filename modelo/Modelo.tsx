@@ -110,6 +110,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       tracking: s.tracking,
       edicoes: s.edicoes,
       fontesTexto: s.fontesTexto,
+      removidas: s.removidas,
       nomeTrabalho: s.nomeTrabalho,
       presetAtivo: s.presetAtivo,
     }))
@@ -145,7 +146,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     [p]
   );
 
-  const { imp, impModo, impTracos, impFundir, impDesativadas, impAltura, fonte, texto, altura, tracking, edicoes, fontesTexto } = origem;
+  const { imp, impModo, impTracos, impFundir, impDesativadas, impAltura, fonte, texto, altura, tracking, edicoes, fontesTexto, removidas } = origem;
   const { apoio, borda, bordaCompensa } = p;
 
   // Pecas do arquivo importado, na escala nativa. Separado da escala para que
@@ -200,10 +201,14 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     }
     if (!fonte || !texto.trim()) return [] as Base[];
     const alvo = alturaArte(altura, apoio, borda, bordaCompensa);
-    return normalizeLetters(textToLetters(fonte, texto, { altura: alvo, tracking })).map((l, i) =>
-      editar({ ...l, chave: `${l.nome}#${i}`, espessuraMin: minThickness(l.region), baseW: l.bounds.w, baseH: l.bounds.h })
-    );
-  }, [pecasNativas, impDesativadas, impAltura, fonte, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes]);
+    // A chave usa a posicao ANTES de filtrar: excluir uma letra nao pode renomear as outras.
+    return normalizeLetters(textToLetters(fonte, texto, { altura: alvo, tracking }))
+      .map((l, i) => ({ l, chave: `${l.nome}#${i}` }))
+      .filter(({ chave }) => !removidas.has(chave))
+      .map(({ l, chave }) =>
+        editar({ ...l, chave, espessuraMin: minThickness(l.region), baseW: l.bounds.w, baseH: l.bounds.h })
+      );
+  }, [pecasNativas, impDesativadas, impAltura, fonte, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes, removidas]);
 
   // Enquanto o slider se move, o React mantem o quadro anterior em vez de travar.
   // So primitivos ou valores estaveis: objeto novo a cada render anularia o efeito.

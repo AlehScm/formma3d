@@ -21,6 +21,7 @@ import {
   IconeAbrir,
   IconeFechar,
   IconeTexto,
+  IconeDesfazer,
 } from '@/components/ui';
 import { CorteApoio } from '@/components/CorteApoio';
 import { APOIOS, FECHAMENTOS, PRESETS, type Apoio, type Fechamento, type PresetId } from '@/lib/geom/modes';
@@ -143,6 +144,9 @@ function Origem() {
   const definir = useProjeto((x) => x.definir);
   const fecharImport = useProjeto((x) => x.fecharImport);
   const alternar = useProjeto((x) => x.alternarPecaImportada);
+  const definirTexto = useProjeto((x) => x.definirTexto);
+  const restaurar = useProjeto((x) => x.restaurarPecas);
+  const removidas = useProjeto((x) => x.removidas.size);
   const abrirDesenho = useInterface((x) => x.abrirDesenho);
   const abrirFonte = useInterface((x) => x.abrirFonte);
   const nomes = useModelo().nomesImportados;
@@ -213,9 +217,16 @@ function Origem() {
 
           {nomes.length > 0 && (
             <div>
-              <p className="mb-1.5 text-base text-texto-2">
-                Peças <span className="text-texto-3">({nomes.length - s.impDesativadas.size} ativas)</span>
-              </p>
+              <div className="mb-1.5 flex items-baseline justify-between">
+                <p className="text-base text-texto-2">
+                  Peças <span className="text-texto-3">({nomes.length - s.impDesativadas.size} ativas)</span>
+                </p>
+                {s.impDesativadas.size > 0 && (
+                  <button type="button" onClick={restaurar} className="text-mini text-acento-forte hover:underline">
+                    religar todas
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1">
                 {nomes.map((n) => {
                   const ativa = !s.impDesativadas.has(n);
@@ -255,7 +266,7 @@ function Origem() {
         <>
           <input
             value={s.texto}
-            onChange={(e) => definir('texto', e.target.value)}
+            onChange={(e) => definirTexto(e.target.value)}
             placeholder="Digite o letreiro"
             aria-label="Texto do letreiro"
             className="h-10 w-full rounded-md border border-borda bg-superficie-2 px-3 text-grande font-semibold tracking-wide text-texto outline-none transition-colors hover:border-borda-forte focus:border-acento"
@@ -286,6 +297,18 @@ function Origem() {
               Fontes do PC
             </Botao>
           </div>
+          {removidas > 0 && (
+            <Alerta
+              tom="neutro"
+              acao={
+                <Botao tamanho="sm" icone={IconeDesfazer} onClick={restaurar}>
+                  Restaurar
+                </Botao>
+              }
+            >
+              {removidas} {removidas === 1 ? 'letra excluída' : 'letras excluídas'} deste texto.
+            </Alerta>
+          )}
           <div className="flex items-center gap-2 border-t border-borda pt-3">
             <IconeTexto className="size-4 text-texto-3" aria-hidden />
             <span className="flex-1 text-mini text-texto-3">Tem o desenho pronto?</span>

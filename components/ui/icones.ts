@@ -12,6 +12,7 @@ export {
   Percent as IconeMargem,
   Ruler as IconeMedidas,
   Sparkles as IconeAcabamento,
+  Trash as IconeExcluir,
   TriangleAlert as IconeAtencao,
   Box as IconeCaixa,
   Check as IconeOk,

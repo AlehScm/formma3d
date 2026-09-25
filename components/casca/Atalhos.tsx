@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useInterface, type Espaco, type Ferramenta } from '@/store/interface';
+import { useProjeto } from '@/store/projeto';
 
 const FERRAMENTAS: Record<string, Ferramenta> = { v: 'selecionar', g: 'mover', r: 'girar', s: 'tamanho' };
 const ESPACOS: Record<string, Espaco> = { '1': 'desenhar', '2': 'imprimir', '3': 'orcamento' };
@@ -21,6 +22,13 @@ export function Atalhos({ onEnquadrar }: { onEnquadrar: () => void }) {
       const k = e.key.toLowerCase();
 
       if (k === 'escape') return ui.selecionar(null);
+      // Delete/Backspace exclui a peca selecionada (nunca com o foco num campo: la
+      // apaga texto, e isso ja foi barrado acima).
+      if ((k === 'delete' || k === 'backspace') && ui.selecionada) {
+        e.preventDefault();
+        useProjeto.getState().removerPeca(ui.selecionada);
+        return ui.selecionar(null);
+      }
       if (k === 'f') return onEnquadrar();
       const espaco = ESPACOS[k];
       if (espaco) return ui.setEspaco(espaco);

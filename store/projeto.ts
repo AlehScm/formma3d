@@ -91,6 +91,12 @@ export interface EstadoProjeto {
    */
   fontesTexto: Map<string, Font>;
 
+  /**
+   * Letras do TEXTO que o usuario excluiu, por chave. Peca de arquivo importado usa
+   * `impDesativadas`, que ja existia e aparece nos quadradinhos de Origem.
+   */
+  removidas: Set<string>;
+
   cfg: CustoCfg;
 }
 
@@ -106,6 +112,15 @@ export interface AcoesProjeto {
   editarPeca: (chave: string, mudanca: Partial<Edicao>) => void;
   resetarPeca: (chave: string) => void;
   alternarPecaImportada: (nome: string) => void;
+  /** Exclui a peca do letreiro (texto ou arquivo). */
+  removerPeca: (chave: string) => void;
+  /** Traz de volta tudo o que foi excluido. */
+  restaurarPecas: () => void;
+  /**
+   * Troca o texto. Zera edicoes e exclusoes: a chave da letra e a posicao dela, e
+   * com outro texto a edicao de uma letra passaria para a vizinha.
+   */
+  definirTexto: (texto: string) => void;
   /** Guarda o resultado de um import novo e zera o que dependia do anterior. */
   receberImport: (imp: Importado, tracos: TracoResolvido) => void;
   guardarFonteTexto: (chave: string, fonte: Font) => void;
@@ -163,6 +178,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
 
   edicoes: new Map(),
   fontesTexto: new Map(),
+  removidas: new Set(),
   cfg: PADRAO,
 
   definir: (k, v) => set({ [k]: v } as Partial<EstadoProjeto>),
@@ -209,6 +225,25 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
       n.delete(chave);
       return { edicoes: n };
     }),
+
+  removerPeca: (chave) =>
+    set((s) => {
+      // Peca importada: a chave e o nome, e o lugar dela e o mesmo dos quadradinhos
+      // de Origem -- excluir aqui aparece desligado la, e religa por la tambem.
+      if (s.imp) {
+        const n = new Set(s.impDesativadas);
+        n.add(chave);
+        return { impDesativadas: n };
+      }
+      const n = new Set(s.removidas);
+      n.add(chave);
+      return { removidas: n };
+    }),
+
+  restaurarPecas: () => set((s) => (s.imp ? { impDesativadas: new Set() } : { removidas: new Set() })),
+
+  definirTexto: (texto) =>
+    set((s) => (texto === s.texto ? {} : { texto, removidas: new Set(), edicoes: new Map() })),
 
   alternarPecaImportada: (nome) =>
     set((s) => {

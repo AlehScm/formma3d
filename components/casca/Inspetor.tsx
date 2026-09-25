@@ -18,6 +18,8 @@ import {
   IconeFechar,
   IconeOriginal,
   IconeTravado,
+  IconeExcluir,
+  Dica,
 } from '@/components/ui';
 import { brl } from '@/lib/cost/calc';
 import { regionBounds } from '@/lib/geom/region';
@@ -54,6 +56,27 @@ export function Inspetor() {
         <Resumo />
       )}
     </aside>
+  );
+}
+
+/** Excluir a peca do letreiro. Volta por "Restaurar" em Origem. */
+function Excluir({ l }: { l: LetraComPeca }) {
+  const remover = useProjeto((s) => s.removerPeca);
+  const selecionar = useInterface((s) => s.selecionar);
+  return (
+    <Dica conteudo="Tira esta peça do letreiro. Dá para trazer de volta em Desenhar › Origem." atalho="Del">
+      <Botao
+        variante="perigo"
+        icone={IconeExcluir}
+        largura
+        onClick={() => {
+          remover(l.chave);
+          selecionar(null);
+        }}
+      >
+        Excluir peça
+      </Botao>
+    </Dica>
   );
 }
 
@@ -132,6 +155,7 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
             Voltar ao original
           </Botao>
         )}
+        <Excluir l={l} />
       </div>
     </>
   );
@@ -205,6 +229,7 @@ function InspetorImpressao({ l }: { l: LetraComPeca }) {
         <Botao icone={IconeBaixar} largura onClick={() => baixarSTL(m, l)}>
           Baixar STL desta peça
         </Botao>
+        <Excluir l={l} />
       </div>
     </>
   );
