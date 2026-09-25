@@ -1,0 +1,36 @@
+'use client';
+
+import { arrumar } from '@/lib/print/arranjo';
+import { caberNaMesa } from '@/lib/print/impressoras';
+import { useInterface } from '@/store/interface';
+import type { Modelo } from '@/modelo/Modelo';
+
+/**
+ * Encaixa as pecas na mesa. So no clique: refazer a cada tique de slider jogaria
+ * fora o ajuste manual feito em cima do resultado.
+ *
+ * O footprint e `part.contorno` -- com borda de apoio e maior que a arte, e e o
+ * que de fato ocupa a mesa.
+ */
+export function arrumarNaPlaca(m: Modelo): void {
+  if (!m.letras.length) return;
+  const ui = useInterface.getState();
+  const r = arrumar(
+    m.letras.map((l) => ({
+      nome: l.chave,
+      region: l.part.contorno,
+      giroQueCabe: caberNaMesa(l.part.contorno, l.part.alturaZ, m.mesa).giro,
+    })),
+    m.mesa,
+    ui.folgaPecas
+  );
+  // Sobrar por falta de espaco nesta placa e nao caber na maquina sao problemas
+  // diferentes: o primeiro se resolve com outra levada, o segundo nao.
+  const impossiveis = r.sobraram.filter((chave) => m.naoCabem.has(chave)).length;
+  ui.definirArranjo(r.colocadas, r.sobraram, {
+    dentro: r.colocadas.length,
+    fora: r.sobraram.length - impossiveis,
+    impossiveis,
+    placas: r.placas,
+  });
+}

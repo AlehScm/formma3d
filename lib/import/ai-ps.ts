@@ -397,7 +397,7 @@ export function aiPostScriptParaDesenho(texto: string, _opts: OpcoesAiPs = {}): 
     avisos.push({
       codigo: 'texto-vivo',
       msg:
-        'O arquivo tem texto que nao foi convertido em contornos: essa parte do desenho nao vira peca. ' +
+        'O arquivo tem texto que não foi convertido em contornos: essa parte do desenho não vira peça. ' +
         'No CorelDRAW use Objeto > Converter em curvas (Ctrl+Q); no Illustrator, Texto > Criar contornos ' +
         '(Ctrl+Shift+O). Depois salve de novo.',
     });

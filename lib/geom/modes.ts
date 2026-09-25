@@ -43,24 +43,24 @@ export const APOIOS: Record<Apoio, { nome: string; curto: string; desc: string }
   dentro: {
     nome: 'Para dentro',
     curto: 'Para dentro',
-    desc: 'Chapa menor que a letra, embutida num bolsao e apoiada num degrau interno.',
+    desc: 'Chapa menor que a letra, embutida num bolsão e apoiada num degrau interno.',
   },
   fora: {
     nome: 'Para fora (bordinha)',
     curto: 'Para fora',
-    desc: 'A peca ganha uma borda para fora; a chapa tem o tamanho da arte e fica cercada por ela.',
+    desc: 'A peça ganha uma borda para fora; a chapa tem o tamanho da arte e fica cercada por ela.',
   },
   dois: {
     nome: 'Dos dois lados',
     curto: 'Dois lados',
-    desc: 'Degrau por baixo e borda por fora, com o labio travando a chapa pela frente.',
+    desc: 'Degrau por baixo e borda por fora, com o lábio travando a chapa pela frente.',
   },
 };
 
 export const FECHAMENTOS: Record<Fechamento, { nome: string; desc: string }> = {
   aberta: { nome: 'Aberta', desc: 'Sem tampa deste lado.' },
-  impressa: { nome: 'Impressa', desc: 'Tampa solida, sai junto com a peca.' },
-  chapa: { nome: 'Chapa', desc: 'Bolsao para receber chapa de ACM, acrilico ou PVC.' },
+  impressa: { nome: 'Impressa', desc: 'Tampa sólida, sai junto com a peça.' },
+  chapa: { nome: 'Chapa', desc: 'Bolsão para receber chapa de ACM, acrílico ou PVC.' },
 };
 
 /** Qual extremidade da peca encosta na mesa de impressao. */
@@ -315,7 +315,7 @@ export interface Orientacao {
  *
  * Antes cada modo carregava uma frase fixa. Com as escolhas soltas isso tem de ser
  * derivado, porque decide se a peca imprime sem suporte: um bolsao virado para baixo
- * deixa o degrau da chapa em voladico, e uma tampa sobre o vazio vira ponte.
+ * deixa o degrau da chapa em balanço, e uma tampa sobre o vazio vira ponte.
  */
 export function orientar(p: Pick<Params, 'frente' | 'traseira' | 'macica' | 'virar'>): Orientacao {
   const { frente: f, traseira: t } = p;
@@ -329,10 +329,10 @@ export function orientar(p: Pick<Params, 'frente' | 'traseira' | 'macica' | 'vir
   // O bolsao da chapa tem de abrir para cima: virado para baixo, o degrau onde ela
   // apoia ficaria no ar.
   if (f === 'chapa' && t !== 'chapa') {
-    return { mesa: 'traseira', texto: 'Traseira na mesa, bolsao da chapa aberto para cima.', podeVirar: false };
+    return { mesa: 'traseira', texto: 'Traseira na mesa, bolsão da chapa aberto para cima.', podeVirar: false };
   }
   if (t === 'chapa' && f !== 'chapa') {
-    return { mesa: 'frente', texto: 'Face na mesa, bolsao do fundo aberto para cima.', podeVirar: false };
+    return { mesa: 'frente', texto: 'Face na mesa, bolsão do fundo aberto para cima.', podeVirar: false };
   }
 
   // Lado aberto para cima nao precisa de ponte; o fechado deita na mesa.
@@ -348,7 +348,7 @@ export function orientar(p: Pick<Params, 'frente' | 'traseira' | 'macica' | 'vir
     return inverte({ mesa: 'frente', texto: 'Face na mesa, para sair lisa.', podeVirar: true });
   }
   if (f === 'chapa') {
-    return inverte({ mesa: 'traseira', texto: 'Chapa nos dois lados: um bolsao imprime virado para baixo.', podeVirar: true });
+    return inverte({ mesa: 'traseira', texto: 'Chapa nos dois lados: um bolsão imprime virado para baixo.', podeVirar: true });
   }
   return inverte({ mesa: 'traseira', texto: 'Aberta dos dois lados: tanto faz o lado.', podeVirar: true });
 }
@@ -387,7 +387,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
 
   // Peca cheia nao tem cavidade onde encaixar chapa.
   if (cfg.macica && (frente === 'chapa' || traseira === 'chapa')) {
-    avisos.push('Peca macica nao tem onde encaixar chapa: a face virou impressa. Desmarque "macica" para usar chapa.');
+    avisos.push('Peça maciça não tem onde encaixar chapa: a face virou impressa. Desmarque "maciça" para usar chapa.');
     if (frente === 'chapa') frente = 'impressa';
     if (traseira === 'chapa') traseira = 'impressa';
   }
@@ -408,7 +408,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
   }
 
   // --- a peca cresce para fora quando a borda existe ---
-  // Dilatar desde a base e o que impede a borda de ficar em voladico.
+  // Dilatar desde a base e o que impede a borda de ficar em balanço.
   const e = temChapa && apoio !== 'dentro' ? Math.max(0, cfg.borda) : 0;
   const { base, preservados } = dilataComMiolo(region, e, Math.max(bico * 2, 0.8));
   if (preservados > 0) {
@@ -425,8 +425,8 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
   if (!temMiolo(espCorpo)) {
     avisos.push(
       e > 0
-        ? `Mesmo com borda de ${e}mm nao sobra miolo para a parede: saiu macica. Aumente a borda ou reduza parede/batente.`
-        : 'A letra e fina demais para ficar oca com esta parede: saiu macica. Experimente o apoio "para fora".'
+        ? `Mesmo com borda de ${e}mm não sobra miolo para a parede: saiu maciça. Aumente a borda ou reduza parede/batente.`
+        : 'A letra é fina demais para ficar oca com esta parede: saiu maciça. Experimente o apoio "para fora".'
     );
     layers.push({ region: base, z0: 0, z1: T, role: 'corpo' });
     return fechar(layers, extras, avisos, base, o, cfg, espessuraMin);
@@ -447,7 +447,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
   const fundoMin = Math.max(bico * 2, 0.8);
 
   if (zCima - zBaixo < fundoMin) {
-    avisos.push(`Profundidade de ${T}mm nao cabe as duas faces: aumente a profundidade.`);
+    avisos.push(`Profundidade de ${T}mm não cabe as duas faces: aumente a profundidade.`);
   }
 
   // --- extremidade de baixo ---
@@ -470,13 +470,13 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
       if (cfg.comLed && cfg.furoFio > 0) {
         const pts = samplePointsInside(base, cfg.furoFio / 2 + parede, 1);
         if (pts[0]) tampa = diffRegion(base, circleRegion(pts[0].x, pts[0].y, cfg.furoFio / 2));
-        else avisos.push('Nao cabe furo de fio nesta letra: gerada sem furo.');
+        else avisos.push('Não cabe furo de fio nesta letra: gerada sem furo.');
       }
       layers.push({ region: tampa, z0, z1, role: x.role, lado: x.qual });
       return;
     }
 
-    // chapa: a cerca sobe reta do fundo do rebaixo ate o topo, nada em voladico
+    // chapa: a cerca sobe reta do fundo do rebaixo ate o topo, nada em balanço
     const cerca = vao(parede);
     const zChapaTopo = naMesa ? z1 : z1 - labio;
     layers.push({ region: cerca, z0, z1: Math.max(z0, zChapaTopo), role: e > 0 ? 'borda' : 'bolsao', lado: x.qual });
@@ -484,7 +484,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
 
     if (naMesa) {
       avisos.push(
-        `O bolsao da ${x.qual === 'frente' ? 'frente' : 'traseira'} imprime virado para baixo: o degrau fica em voladico. ` +
+        `O bolsão da ${x.qual === 'frente' ? 'frente' : 'traseira'} imprime virado para baixo: o degrau fica em balanço. ` +
           'Considere deixar esse lado impresso ou aberto.'
       );
     }
@@ -493,7 +493,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
     // exatamente no contorno da arte original.
     const chapa = shrinkRegion(base, parede + folga);
     if (!chapa.length) {
-      avisos.push('A chapa fica sem area nesta letra: reduza a parede ou aumente a borda.');
+      avisos.push('A chapa fica sem área nesta letra: reduza a parede ou aumente a borda.');
       return;
     }
     const nome = x.qual === 'frente' ? 'chapa-frente' : 'chapa-fundo';
@@ -521,29 +521,29 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
   // --- espacadores de halo, atras da peca ---
   if (cfg.espacadores > 0) {
     if (cima.tipo !== 'aberta') {
-      avisos.push('Espacadores so fazem sentido com o lado de tras aberto: ignorados.');
+      avisos.push('Espaçadores só fazem sentido com o lado de trás aberto: ignorados.');
     } else {
       const raio = Math.max(parede, 3);
       const pts = samplePointsInside(base, raio + 0.5, 3);
       for (const pt of pts) {
         layers.push({ region: circleRegion(pt.x, pt.y, raio), z0: T, z1: T + cfg.espacadores, role: 'espacador' });
       }
-      if (!pts.length) avisos.push('Nao cabem espacadores: afaste a letra da parede na instalacao.');
+      if (!pts.length) avisos.push('Não cabem espaçadores: afaste a letra da parede na instalação.');
     }
   }
 
   // --- avisos de fabricacao ---
   if (e > 0 && e < bico) {
-    avisos.push(`Borda de ${e}mm e menor que uma linha do bico ${bico}mm: nao vai aparecer na peca.`);
+    avisos.push(`Borda de ${e}mm é menor que uma linha do bico ${bico}mm: não vai aparecer na peça.`);
   }
   if (temChapa && batente < bico * 2) {
-    avisos.push(`Batente de ${batente}mm e menor que 2 linhas do bico ${bico}mm: a chapa vai apoiar no ar.`);
+    avisos.push(`Batente de ${batente}mm é menor que 2 linhas do bico ${bico}mm: a chapa vai apoiar no ar.`);
   }
   if (labio > 0 && parede < bico * 3) {
-    avisos.push(`Com labio, a parede precisa de ${(bico * 3).toFixed(1)}mm ou mais para nao descolar.`);
+    avisos.push(`Com lábio, a parede precisa de ${(bico * 3).toFixed(1)}mm ou mais para não descolar.`);
   }
   if (parede < bico * 2) {
-    avisos.push(`Parede de ${parede}mm e menor que 2 linhas do bico ${bico}mm: use ${(bico * 2).toFixed(1)}mm ou mais.`);
+    avisos.push(`Parede de ${parede}mm é menor que 2 linhas do bico ${bico}mm: use ${(bico * 2).toFixed(1)}mm ou mais.`);
   }
 
   return fechar(layers, extras, avisos, base, o, cfg, espessuraMin);
@@ -565,7 +565,7 @@ function fechar(
 
   const esp = espessuraMin ?? minThickness(contorno);
   if (esp < cfg.bico * 2) {
-    avisos.push(`Trecho de ${esp.toFixed(1)}mm e mais fino que 2 linhas do bico ${cfg.bico}mm: vai sair falhado.`);
+    avisos.push(`Trecho de ${esp.toFixed(1)}mm é mais fino que 2 linhas do bico ${cfg.bico}mm: vai sair falhado.`);
   }
 
   const alturaZ = layers.reduce((m, l) => Math.max(m, l.z1), 0);
@@ -586,18 +586,18 @@ export interface Preset {
 
 export const PRESETS: Record<PresetId, Preset> = {
   macica: {
-    nome: 'Macica',
-    desc: 'Bloco cheio. Acabamento maximo, consumo maximo.',
+    nome: 'Maciça',
+    desc: 'Bloco cheio. Acabamento máximo, consumo máximo.',
     params: { macica: true, frente: 'impressa', traseira: 'impressa', profundidade: 40 },
   },
   oca: {
     nome: 'Oca com face',
-    desc: 'Face impressa na frente, fundo aberto. O padrao de letra caixa.',
+    desc: 'Face impressa na frente, fundo aberto. O padrão de letra caixa.',
     params: { macica: false, frente: 'impressa', frenteEsp: 2, traseira: 'aberta', parede: 2.4, profundidade: 40 },
   },
   moldura_acm: {
     nome: 'Moldura para chapa ACM',
-    desc: 'Corpo com bolsao na frente para receber a chapa cortada, fundo impresso.',
+    desc: 'Corpo com bolsão na frente para receber a chapa cortada, fundo impresso.',
     params: {
       macica: false,
       frente: 'chapa',
@@ -613,7 +613,7 @@ export const PRESETS: Record<PresetId, Preset> = {
   },
   frontlit: {
     nome: 'Luminosa front-lit',
-    desc: 'Fundo impresso, face translucida impressa a parte, LED por dentro.',
+    desc: 'Fundo impresso, face translúcida impressa à parte, LED por dentro.',
     params: {
       macica: false,
       frente: 'chapa',
@@ -631,7 +631,7 @@ export const PRESETS: Record<PresetId, Preset> = {
   },
   backlit: {
     nome: 'Backlit / halo',
-    desc: 'Face impressa, fundo aberto e espacadores para a luz vazar atras.',
+    desc: 'Face impressa, fundo aberto e espaçadores para a luz vazar atrás.',
     params: {
       macica: false,
       frente: 'impressa',

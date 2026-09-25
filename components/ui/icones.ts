@@ -1,0 +1,36 @@
+/**
+ * Icones do app: um vocabulario so, do lucide. Importar daqui e nao do pacote,
+ * para o mesmo conceito ter sempre o mesmo desenho (e o bundle so levar estes).
+ */
+export {
+  TriangleAlert as IconeAtencao,
+  Box as IconeCaixa,
+  Check as IconeOk,
+  ChevronDown as IconeAbaixo,
+  ChevronRight as IconeDireita,
+  Copy as IconeCopiar,
+  Download as IconeBaixar,
+  FileUp as IconeAbrir,
+  FilePlus as IconeNovo,
+  Focus as IconeEnquadrar,
+  Info as IconeInfo,
+  Layers as IconeCamadas,
+  LayoutGrid as IconeArrumar,
+  Lock as IconeTravado,
+  LockOpen as IconeDestravado,
+  Maximize2 as IconeTamanho,
+  MousePointer2 as IconeSelecionar,
+  Move as IconeMover,
+  OctagonX as IconePerigo,
+  PenTool as IconeDesenhar,
+  Printer as IconeImprimir,
+  Receipt as IconeOrcamento,
+  RotateCcw as IconeDesfazer,
+  RotateCw as IconeGirar,
+  Rows3 as IconeMontagem,
+  Type as IconeTexto,
+  Undo2 as IconeOriginal,
+  X as IconeFechar,
+} from 'lucide-react';
+
+export type { LucideIcon as Icone } from 'lucide-react';

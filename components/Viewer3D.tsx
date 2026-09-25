@@ -8,6 +8,7 @@ import { partToGeometriesByRole, layerToGeometry } from '@/lib/geom/extrude';
 import type { Part, Role } from '@/lib/geom/modes';
 import { regionBounds } from '@/lib/geom/region';
 import type { Colocada } from '@/lib/print/arranjo';
+import { deslocamentosNaPlaca, paraCoordenadasDaPlaca, type Deslocamento } from '@/features/viewport/referencial';
 
 /** Peca que nao cabe na mesa: cor unica, para nao se confundir com nenhum papel. */
 const COR_NAO_CABE = '#e03131';
@@ -137,8 +138,7 @@ function Peca({
   explode,
   camadas,
   naoCabem,
-  arranjo,
-  sobras,
+  deslocamentos,
   selecionada,
   onSelecionar,
   registrar,
@@ -148,8 +148,8 @@ function Peca({
   explode: number;
   camadas: Camadas;
   naoCabem: ReadonlySet<string>;
-  arranjo: ReadonlyMap<string, Colocada>;
-  sobras: ReadonlyMap<string, [number, number]>;
+  /** Deslocamento de cada peca JA no referencial da cena. Ver `Viewer3D`. */
+  deslocamentos: ReadonlyMap<string, Deslocamento>;
   selecionada: string | null;
   onSelecionar: (chave: string) => void;
   registrar: (chave: string, o: THREE.Object3D | null) => void;
@@ -203,8 +203,7 @@ function Peca({
             key={l.chave}
             part={l.part}
             chave={l.chave}
-            colocada={arranjo.get(l.chave) ?? null}
-            deslocaSobra={sobras.get(l.chave) ?? null}
+            desloc={deslocamentos.get(l.chave) ?? null}
             registrar={registrar}
           >
             {[...g.roles.entries()].map(([role, geo]) => {
@@ -261,15 +260,13 @@ function Peca({
 function PecaPosicionada({
   part,
   chave,
-  colocada,
-  deslocaSobra,
+  desloc,
   registrar,
   children,
 }: {
   part: Part;
   chave: string;
-  colocada: Colocada | null;
-  deslocaSobra: [number, number] | null;
+  desloc: Deslocamento | null;
   registrar: (chave: string, o: THREE.Object3D | null) => void;
   children: React.ReactNode;
 }) {
@@ -284,9 +281,9 @@ function PecaPosicionada({
     return [b.minX + b.w / 2, b.minY + b.h / 2] as [number, number];
   }, [part]);
 
-  const dx = colocada?.dx ?? deslocaSobra?.[0] ?? 0;
-  const dy = colocada?.dy ?? deslocaSobra?.[1] ?? 0;
-  const giro = ((colocada?.giro ?? 0) * Math.PI) / 180;
+  const dx = desloc?.dx ?? 0;
+  const dy = desloc?.dy ?? 0;
+  const giro = ((desloc?.giro ?? 0) * Math.PI) / 180;
 
   return (
     <group ref={ref} position={[centro[0] + dx, centro[1] + dy, 0]} rotation={[0, 0, giro]}>
@@ -374,7 +371,18 @@ function GuardaContexto({ onPerda }: { onPerda: (perdido: boolean) => void }) {
 }
 
 /** Enquadra a camera no letreiro inteiro sempre que o tamanho muda. */
-function Enquadrar({ largura, altura, profundidade }: { largura: number; altura: number; profundidade: number }) {
+function Enquadrar({
+  largura,
+  altura,
+  profundidade,
+  pedido,
+}: {
+  largura: number;
+  altura: number;
+  profundidade: number;
+  /** Muda para reenquadrar sob demanda (atalho F), mesmo sem o tamanho mudar. */
+  pedido: number;
+}) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as { target: THREE.Vector3; update: () => void } | null;
 
@@ -391,7 +399,7 @@ function Enquadrar({ largura, altura, profundidade }: { largura: number; altura:
       controls.target.set(0, 0, profundidade / 2);
       controls.update();
     }
-  }, [largura, altura, profundidade, camera, controls]);
+  }, [largura, altura, profundidade, pedido, camera, controls]);
 
   return null;
 }
@@ -417,8 +425,16 @@ export interface Viewer3DProps {
   onSelecionar?: (chave: string | null) => void;
   /** Ferramenta do gizmo. 'nenhuma' desliga. */
   ferramenta?: 'nenhuma' | 'mover' | 'girar' | 'escalar';
+  /**
+   * Na placa (com `mesa`), o gizmo devolve a posicao ABSOLUTA da peca em
+   * coordenadas da placa -- as mesmas do `arrumar` -- em vez de um delta. Assim
+   * uma peca que sobrou e e arrastada para dentro vira colocada sem pular.
+   */
+  onArranjar?: (chave: string, c: Colocada) => void;
   /** Chamado quando o usuario solta o gizmo, com o delta acumulado. */
   onTransformar?: (chave: string, t: Transformacao) => void;
+  /** Incrementar reenquadra a camera. */
+  pedidoEnquadrar?: number;
 }
 
 export default function Viewer3D({
@@ -437,6 +453,8 @@ export default function Viewer3D({
   onSelecionar = () => {},
   ferramenta = 'nenhuma',
   onTransformar = () => {},
+  onArranjar = () => {},
+  pedidoEnquadrar = 0,
 }: Viewer3DProps) {
   const [perdido, setPerdido] = useState(false);
 
@@ -447,23 +465,21 @@ export default function Viewer3D({
     else grupos.current.delete(chave);
   }, []);
 
-  /**
-   * Quem sobrou do arranjo fica enfileirado A DIREITA da placa, ainda visivel.
-   * Foi o pedido: "o que ficar de fora fica ali no 3d ainda mas fora da placa".
-   */
-  const sobras = useMemo(() => {
-    const m = new Map<string, [number, number]>();
-    if (!mesa || !sobraram.length) return m;
-    const alvoX = mesa.x / 2 + 60;
-    let y = -mesa.y / 2;
-    for (const chave of sobraram) {
-      const o = grupos.current.get(chave);
-      void o;
-      m.set(chave, [alvoX, y]);
-      y += 120;
-    }
-    return m;
-  }, [mesa, sobraram]);
+  // A conta dos referenciais mora em `referencial.ts`, pura e testada: aqui dentro
+  // ela ja tirou as pecas de cima da placa uma vez sem ninguem ver.
+  const deslocamentos = useMemo(
+    () =>
+      mesa
+        ? deslocamentosNaPlaca(
+            letras.map((l) => ({ chave: l.chave, contorno: l.part.contorno })),
+            arranjo,
+            sobraram,
+            mesa,
+            centro
+          )
+        : new Map<string, Deslocamento>(),
+    [mesa, arranjo, sobraram, letras, centro]
+  );
 
   return (
     <>
@@ -509,8 +525,7 @@ export default function Viewer3D({
         explode={explode}
         camadas={camadas}
         naoCabem={naoCabem}
-        arranjo={arranjo}
-        sobras={sobras}
+        deslocamentos={deslocamentos}
         selecionada={selecionada}
         onSelecionar={onSelecionar}
         registrar={registrar}
@@ -519,7 +534,14 @@ export default function Viewer3D({
       <Gizmo
         alvo={selecionada ? (grupos.current.get(selecionada) ?? null) : null}
         ferramenta={ferramenta}
-        onSoltar={(t) => selecionada && onTransformar(selecionada, t)}
+        onSoltar={(t) => {
+          if (!selecionada) return;
+          if (!mesa) return onTransformar(selecionada, t);
+          // Na placa: devolve a posicao absoluta em coordenadas da placa. Parte do
+          // deslocamento efetivo de agora (colocada ou sobra) e desfaz o referencial.
+          const d = deslocamentos.get(selecionada) ?? { dx: 0, dy: 0, giro: 0 };
+          onArranjar(selecionada, paraCoordenadasDaPlaca(selecionada, d, t, mesa, centro));
+        }}
       />
 
       {mesa && <Mesa x={mesa.x} y={mesa.y} />}
@@ -538,6 +560,7 @@ export default function Viewer3D({
       />
 
       <Enquadrar
+        pedido={pedidoEnquadrar}
         largura={Math.max(largura, mesa?.x ?? 0)}
         altura={Math.max(altura, mesa?.y ?? 0)}
         profundidade={profundidade}

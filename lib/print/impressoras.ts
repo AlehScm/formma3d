@@ -160,14 +160,14 @@ export function caberNaMesa(contorno: Region, alturaZ: number, m: Impressora): V
 /** Frase curta para o painel e para os avisos. */
 export function descreverVeredito(v: Veredito, m: Impressora): string {
   if (v.excedeZ > 0) {
-    return `altura de ${(v.excedeZ + m.z).toFixed(0)}mm passa ${v.excedeZ.toFixed(0)}mm do limite de ${m.z}mm`;
+    return `altura de ${(v.excedeZ + m.z).toFixed(0)} mm passa ${v.excedeZ.toFixed(0)} mm do limite de ${m.z} mm`;
   }
   if (!v.cabe) {
     const faltas: string[] = [];
-    if (v.sobraX < 0) faltas.push(`${(-v.sobraX).toFixed(0)}mm em X`);
-    if (v.sobraY < 0) faltas.push(`${(-v.sobraY).toFixed(0)}mm em Y`);
-    return `nao cabe: passou ${faltas.join(' e ')}`;
+    if (v.sobraX < 0) faltas.push(`${(-v.sobraX).toFixed(0)} mm em X`);
+    if (v.sobraY < 0) faltas.push(`${(-v.sobraY).toFixed(0)} mm em Y`);
+    return `não cabe: passou ${faltas.join(' e ')}`;
   }
-  const folga = `sobra ${v.sobraX.toFixed(0)}x${v.sobraY.toFixed(0)}mm`;
-  return v.giro === 0 ? `cabe, ${folga}` : `cabe girada ${v.giro.toFixed(0)}graus, ${folga}`;
+  const folga = `sobra ${v.sobraX.toFixed(0)} × ${v.sobraY.toFixed(0)} mm`;
+  return v.giro === 0 ? `cabe, ${folga}` : `cabe girada ${v.giro.toFixed(0)}°, ${folga}`;
 }

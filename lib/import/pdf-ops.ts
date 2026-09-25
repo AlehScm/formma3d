@@ -424,13 +424,13 @@ export function opListToDrawing(opList: OpListLike, O: OpsMap, cfg: OpsCfg): Des
   if (temTextoVivo && objetos.length) {
     avisos.push({
       codigo: 'texto-vivo',
-      msg: 'O arquivo tem texto que nao foi convertido em contornos e nao pode ser importado. No Illustrator, selecione tudo e use Texto > Criar contornos (Ctrl+Shift+O) antes de salvar.',
+      msg: 'O arquivo tem texto que não foi convertido em contornos e não pode ser importado. No Illustrator, selecione tudo e use Texto > Criar contornos (Ctrl+Shift+O) antes de salvar.',
     });
   }
   if (temStroke && !temFill) {
     avisos.push({
       codigo: 'so-tracos',
-      msg: 'O arquivo nao tem areas preenchidas, so tracos. Engrossei os tracos pela largura da linha. Para um resultado exato, use Objeto > Expandir no Illustrator.',
+      msg: 'O arquivo não tem areas preenchidas, so tracos. Engrossei os tracos pela largura da linha. Para um resultado exato, use Objeto > Expandir no Illustrator.',
     });
   }
 

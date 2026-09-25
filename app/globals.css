@@ -1,53 +1,5 @@
 @import "tailwindcss";
-
-/*
- * Tokens do app. Antes as cores e tamanhos estavam espalhados em valores
- * arbitrarios (text-[11px], bg-white/10) por todos os componentes; aqui viram
- * um vocabulario unico.
- */
-@theme {
-  --font-sans: var(--fonte-ui), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--fonte-mono), ui-monospace, monospace;
-
-  /* Superficies, do fundo para a frente */
-  --color-fundo: #0b0d10;
-  --color-piso: #101319;
-  --color-painel: #151921;
-  --color-elevado: #1c212b;
-  --color-linha: #262c38;
-  --color-linha-forte: #363f4f;
-
-  /* Texto */
-  --color-tinta: #e8ebf0;
-  --color-tinta-media: #a3adbd;
-  --color-tinta-fraca: #6b7687;
-
-  /* Acentos */
-  --color-acento: #4c8bf5;
-  --color-acento-forte: #6ea8ff;
-  --color-lucro: #34d399;
-  --color-alerta: #f4b942;
-
-  /* Cores das partes da peca: as mesmas do preview 3D, para a legenda bater */
-  --color-peca-corpo: #8b93a1;
-  --color-peca-face: #4c8bf5;
-  --color-peca-bolsao: #e8913a;
-  --color-peca-borda: #b6e04a;
-  --color-peca-espacador: #d9534f;
-
-  /* Escala tipografica: a base subiu de 11-12px para 13-14px, que e o que se
-     enxerga de pe na frente da impressora. */
-  --text-micro: 0.6875rem;   /* 11px - so para legenda e unidade */
-  --text-mini: 0.75rem;      /* 12px */
-  --text-base: 0.8125rem;    /* 13px - corpo da interface */
-  --text-medio: 0.875rem;    /* 14px - rotulos de campo */
-  --text-grande: 1rem;       /* 16px */
-  --text-numero: 1.75rem;    /* 28px - preco */
-}
-
-:root {
-  color-scheme: dark;
-}
+@import "../styles/tokens.css";
 
 html,
 body {
@@ -56,10 +8,11 @@ body {
 
 body {
   background: var(--color-fundo);
-  color: var(--color-tinta);
+  color: var(--color-texto);
   font-family: var(--font-sans);
   font-size: var(--text-base);
   overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Algarismos de largura fixa em tudo que e medida, preco ou dimensao. */
@@ -67,38 +20,25 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Sliders: o controle mais usado do app, e o default do navegador e fino demais. */
-input[type='range'] {
+/* Foco visivel so para teclado: clique de mouse nao deixa anel. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-foco);
+}
+
+/* Campo numerico sem as setinhas do navegador: o valor muda pelo deslizante,
+   pela roda ou digitando. */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
   appearance: none;
-  height: 1.25rem;
-  background: transparent;
-  cursor: pointer;
+  margin: 0;
 }
-input[type='range']::-webkit-slider-runnable-track {
-  height: 0.25rem;
-  border-radius: 999px;
-  background: var(--color-linha-forte);
-}
-input[type='range']::-webkit-slider-thumb {
-  appearance: none;
-  margin-top: -0.3125rem;
-  height: 0.875rem;
-  width: 0.875rem;
-  border-radius: 999px;
-  background: var(--color-acento);
-  border: 2px solid var(--color-painel);
-  transition: background 0.12s;
-}
-input[type='range']:hover::-webkit-slider-thumb {
-  background: var(--color-acento-forte);
-}
-input[type='range']:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--color-acento-forte);
-  outline-offset: 2px;
+input[type='number'] {
+  appearance: textfield;
 }
 
 /* Barra de rolagem discreta nos paineis */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-linha-forte) transparent;
+  scrollbar-color: var(--color-borda-forte) transparent;
 }

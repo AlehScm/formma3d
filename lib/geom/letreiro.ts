@@ -68,6 +68,6 @@ export function avisoColisao(c: ColisaoVizinhos, bordaPedida: number): string {
   return (
     `"${c.a}" e "${c.b}" se encostam com borda de ${bordaPedida}mm: ` +
     `use borda de ate ${c.bordaMax.toFixed(1)}mm, aumente o espacamento em ${folgaFaltando.toFixed(1)}mm, ` +
-    `ou imprima as duas como uma peca so.`
+    `ou imprima as duas como uma peça só.`
   );
 }

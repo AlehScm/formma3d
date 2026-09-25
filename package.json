@@ -7,19 +7,22 @@
     "build": "next build",
     "start": "next start",
     "publicar": "node scripts/publicar.mjs",
-    "testar": "tsc --noEmit && tsx scripts/verificar-ops.mts && tsx scripts/verificar-pdf.mts && tsx scripts/verificar-apoio.mts && tsx scripts/verificar-pecas.mts && tsx scripts/verificar-ai.mts"
+    "testar": "tsc --noEmit && tsx scripts/verificar-ops.mts && tsx scripts/verificar-pdf.mts && tsx scripts/verificar-apoio.mts && tsx scripts/verificar-pecas.mts && tsx scripts/verificar-ai.mts && tsx scripts/verificar-mesa.mts && tsx scripts/verificar-arranjo.mts && tsx scripts/verificar-edicao.mts && tsx scripts/verificar-referencial.mts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
     "clipper-lib": "^6.4.2",
     "jszip": "^3.10.2",
+    "lucide-react": "^1.48.0",
     "next": "^16.3.6",
     "opentype.js": "^1.3.4",
     "pdfjs-dist": "6.3.289",
+    "radix-ui": "^1.6.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",

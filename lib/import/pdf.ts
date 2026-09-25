@@ -112,11 +112,11 @@ export async function lerDesenho(buf: ArrayBuffer, pagina = 1): Promise<{ desenh
   if (tipo === 'postscript') {
     throw new ErroImport(
       'Este arquivo e PostScript/EPS, ou um .ai antigo (Illustrator 8 ou anterior). ' +
-        'Abra no Illustrator e salve de novo marcando "Criar arquivo compativel com PDF", ou exporte como PDF.'
+        'Abra no Illustrator e salve de novo marcando "Criar arquivo compatível com PDF", ou exporte como PDF.'
     );
   }
   if (tipo === 'desconhecido') {
-    throw new ErroImport('Nao reconheci este arquivo como .ai ou .pdf.');
+    throw new ErroImport('Não reconheci este arquivo como .ai ou .pdf.');
   }
 
   const pdfjs = await getPdfjs();
@@ -189,31 +189,31 @@ function diagnosticar(d: DesenhoBruto, ext: string, dadosPrivadosAI: boolean): A
     avisos.push({
       codigo: 'ai-sem-pdf',
       msg:
-        'Este .ai foi salvo sem compatibilidade PDF e tambem nao consegui ler o desenho guardado dentro dele. ' +
-        'Peca para reenviarem assim: no Illustrator ou no Corel, Salvar como > PDF. ' +
-        'Se for .ai mesmo, marque "Criar arquivo compativel com PDF" ao salvar.',
+        'Este .ai foi salvo sem compatibilidade PDF e também não consegui ler o desenho guardado dentro dele. ' +
+        'Peça para reenviarem assim: no Illustrator ou no Corel, Salvar como > PDF. ' +
+        'Se for .ai mesmo, marque "Criar arquivo compatível com PDF" ao salvar.',
     });
   } else if (ext === 'ai' && d.temTextoVivo) {
     avisos.push({
       codigo: 'ai-sem-pdf',
       msg:
-        'Este .ai nao tem contornos legiveis, so texto vivo. Selecione tudo e use Texto > Criar contornos ' +
+        'Este .ai não tem contornos legíveis, só texto vivo. Selecione tudo e use Texto > Criar contornos ' +
         '(Ctrl+Shift+O) antes de salvar.',
     });
   } else if (d.temTextoVivo) {
     avisos.push({
       codigo: 'texto-vivo',
       msg:
-        'Nao encontrei contornos, so texto vivo. Selecione tudo e use Texto > Criar contornos (Ctrl+Shift+O) ' +
+        'Não encontrei contornos, só texto vivo. Selecione tudo e use Texto > Criar contornos (Ctrl+Shift+O) ' +
         'antes de salvar.',
     });
   } else if (d.temImagem) {
     avisos.push({
       codigo: 'imagem',
-      msg: 'Este arquivo so tem imagem (bitmap), nao vetor. Envie o arquivo vetorial original.',
+      msg: 'Este arquivo só tem imagem (bitmap), não vetor. Envie o arquivo vetorial original.',
     });
   } else {
-    avisos.push({ codigo: 'sem-contorno', msg: 'Nao encontrei nenhum contorno vetorial neste arquivo.' });
+    avisos.push({ codigo: 'sem-contorno', msg: 'Não encontrei nenhum contorno vetorial neste arquivo.' });
   }
   return avisos;
 }
@@ -237,7 +237,7 @@ export async function importarPdf(
     if (nome === 'InvalidPDFException') {
       throw new ErroImport('Arquivo corrompido ou invalido.');
     }
-    throw new ErroImport('Nao consegui ler o arquivo: ' + (e instanceof Error ? e.message : String(e)));
+    throw new ErroImport('Não consegui ler o arquivo: ' + (e instanceof Error ? e.message : String(e)));
   }
 
   // A pagina do PDF e sempre o caminho primario: quando tem conteudo, e a fonte
@@ -273,15 +273,15 @@ export async function importarPdf(
     avisos.push({
       codigo: 'traco-preenchido',
       msg:
-        `${n} forma(s) deste arquivo sao so contorno, sem preenchimento. Preenchi a area que elas cercam, ` +
-        'porque e o que "so o contorno da peca" quer dizer. Se era linha de corte ou guia, troque em "Traco sem preenchimento".',
+        `${n} forma(s) deste arquivo são só contorno, sem preenchimento. Preenchi a área que elas cercam, ` +
+        'porque é o que "só o contorno da peça" quer dizer. Se era linha de corte ou guia, troque em "Traço sem preenchimento".',
     });
   }
 
   if (paginas > 1) {
     avisos.push({
       codigo: 'multipagina',
-      msg: `O arquivo tem ${paginas} paginas/pranchetas. Importei a pagina ${pagina}.`,
+      msg: `O arquivo tem ${paginas} páginas/pranchetas. Importei a página ${pagina}.`,
     });
   }
   const maior = Math.max(desenho.paginaMm.w, desenho.paginaMm.h);
@@ -312,7 +312,7 @@ export async function importarArquivo(file: File, opcoes: OpcoesPecas = OPCOES_P
   const buf = await file.arrayBuffer();
   // Despacha tambem por conteudo: .ai renomeado para .pdf (e vice-versa) e comum.
   if (!EXTS.includes(ext) && sniff(buf) !== 'pdf') {
-    throw new ErroImport(`Formato .${ext} nao suportado. Use .ai ou .pdf.`);
+    throw new ErroImport(`Formato .${ext} não suportado. Use .ai ou .pdf.`);
   }
   return importarPdf(buf, opcoes, pagina, ext);
 }

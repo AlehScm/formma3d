@@ -54,10 +54,10 @@ export function CorteApoio({ apoio, comLabio }: { apoio: Apoio; comLabio: boolea
           y={yTopo + labio}
           width={W - 20 - xChapaIni}
           height={yChapa - yTopo - labio}
-          fill="#7fb4ff"
+          fill="var(--color-peca-chapa)"
           opacity="0.85"
         />
-        <text x={W - 24} y={yTopo + labio + (yChapa - yTopo - labio) / 2 + 3} textAnchor="end" fontSize="9" fill="#0b2545" fontWeight="600">
+        <text x={W - 24} y={yTopo + labio + (yChapa - yTopo - labio) / 2 + 3} textAnchor="end" fontSize="9" fill="var(--color-peca-chapa-texto)" fontWeight="600">
           chapa
         </text>
 

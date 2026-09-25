@@ -140,10 +140,10 @@ console.log('\n== avisos nos casos-limite ==');
 
   const I = textToLetters(font, 'I', { altura: 40 })[0]!;
   const estreita = buildPart(I.region, { ...base, apoio: 'dentro' as const, parede: 2.4, batente: 4 }, minThickness(I.region));
-  ok('letra sem espaco para batente avisa e vira macica', estreita.avisos.some((a) => /macica|batente/i.test(a)));
+  ok('letra sem espaco para batente avisa e vira macica', estreita.avisos.some((a) => /maciça|batente/i.test(a)));
   // O ganho colateral da borda: a mesma letra que nao cabia passa a caber.
   const comBorda = buildPart(I.region, { ...base, apoio: 'fora', borda: 5, parede: 2.4, batente: 4 }, minThickness(I.region));
-  ok('a borda salva letra fina que viraria macica', !comBorda.avisos.some((a) => a.includes('saiu macica')),
+  ok('a borda salva letra fina que viraria macica', !comBorda.avisos.some((a) => a.includes('saiu maciça')),
      comBorda.layers.map((l) => l.role).join('+'));
 }
 

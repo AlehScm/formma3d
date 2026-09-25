@@ -110,13 +110,13 @@ export function orcar({ volumeMm3, areaChapaMm2 = 0, perimetroLedMm = 0, qtdLetr
 
   const itens: ItemCusto[] = [
     { rotulo: 'Filamento', valor: material, detalhe: `${gramas.toFixed(0)} g` },
-    { rotulo: 'Maquina', valor: maquina, detalhe: `${horas.toFixed(1)} h` },
+    { rotulo: 'Máquina', valor: maquina, detalhe: `${horas.toFixed(1)} h` },
     { rotulo: 'Energia', valor: energia, detalhe: `${((horas * cfg.potencia) / 1000).toFixed(2)} kWh` },
-    { rotulo: 'Mao de obra', valor: maoDeObra, detalhe: `${cfg.setupMin + cfg.posMin * qtdLetras} min` },
+    { rotulo: 'Mão de obra', valor: maoDeObra, detalhe: `${cfg.setupMin + cfg.posMin * qtdLetras} min` },
   ];
   if (chapa > 0) itens.push({ rotulo: 'Chapa ACM', valor: chapa, detalhe: `${(areaChapaMm2 / 1e6).toFixed(3)} m2` });
   if (led > 0) itens.push({ rotulo: 'Fita LED', valor: led, detalhe: `${(perimetroLedMm / 1000).toFixed(2)} m` });
-  itens.push({ rotulo: `Perdas (${cfg.taxaFalha}%)`, valor: falha, detalhe: 'jobs refeitos' });
+  itens.push({ rotulo: `Perdas (${cfg.taxaFalha}%)`, valor: falha, detalhe: 'trabalhos refeitos' });
 
   return { gramas, cm3, horas, rolos: gramas / cfg.rendimento, itens, custo, lucro: preco - custo, preco };
 }

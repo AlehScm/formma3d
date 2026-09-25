@@ -1,0 +1,98 @@
+/*
+ * Design system do formma3d -- tokens.
+ *
+ * Toda cor, raio, sombra e tamanho da interface sai daqui. Componente nenhum
+ * usa hex solto ou valor arbitrario (`text-[11px]`, `bg-[#e06c6c]`): se faltar
+ * um token, ele entra aqui primeiro. O guia vivo esta em `/sistema`.
+ *
+ * Identidade escura por ser ferramenta 3D: o viewport precisa do fundo escuro e
+ * a interface em volta nao pode brigar com ele.
+ */
+@theme static {
+  --font-sans: var(--fonte-ui), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--fonte-mono), ui-monospace, monospace;
+
+  /* ---- Superficies, do fundo para a frente -------------------------------- */
+  --color-fundo: #0b0d10;        /* viewport e fundo do app */
+  --color-superficie: #12161d;   /* barras laterais, topo, status */
+  --color-superficie-2: #181d26; /* campos, cartoes */
+  --color-superficie-3: #202633; /* hover, item ativo */
+  --color-flutuante: #1a1f29;    /* popover, menu, barra sobre o 3D */
+
+  --color-borda: #252b37;
+  --color-borda-forte: #343d4d;
+
+  /* ---- Texto ---------------------------------------------------------------
+     O nivel 3 era #6b7687: 3,8:1 sobre a superficie, abaixo dos 4,5:1 de
+     leitura, e usado justamente nos textos de 11px. Subiu para 5,9:1. */
+  --color-texto: #e8ebf0;
+  --color-texto-2: #a9b3c2;
+  --color-texto-3: #8a95a6;
+
+  /* ---- Cor com significado (nunca decorativa) -------------------------------
+     acento  = interacao e selecao
+     sucesso = dinheiro, "cabe", pronto
+     atencao = confira antes de imprimir
+     perigo  = impede imprimir */
+  --color-acento: #4c8bf5;
+  --color-acento-forte: #6ea8ff;
+  --color-sucesso: #34d399;
+  --color-atencao: #f4b942;
+  --color-perigo: #f0616d;
+
+  /* Eixos do viewport: as mesmas cores do gizmo e do grid. */
+  --color-eixo-x: #e06c6c;
+  --color-eixo-y: #6cc26c;
+  --color-eixo-z: #6c9ce0;
+
+  /* Partes da peca: as mesmas do preview 3D, para a legenda bater. */
+  --color-peca-corpo: #8b93a1;
+  --color-peca-face: #4c8bf5;
+  --color-peca-parede: #6f7785;
+  --color-peca-traseira: #525a68;
+  --color-peca-bolsao: #e8913a;
+  --color-peca-bisel: #6ea8ff;
+  --color-peca-espacador: #d9534f;
+  --color-peca-borda: #b6e04a;
+  --color-peca-labio: #8cba2e;
+  /* A chapa no diagrama de corte, e o texto escrito sobre ela. */
+  --color-peca-chapa: #7fb4ff;
+  --color-peca-chapa-texto: #0b2545;
+  /* O motor 3D (components/Viewer3D.tsx, CORES) guarda uma copia destas cores:
+     material WebGL nao le variavel CSS. Mudou aqui, mude la. */
+
+  /* ---- Tipografia ------------------------------------------------------------ */
+  --text-micro: 0.6875rem; /* 11px - unidade, legenda, rotulo de secao */
+  --text-mini: 0.75rem;    /* 12px - texto secundario, botoes */
+  --text-base: 0.8125rem;  /* 13px - corpo da interface */
+  --text-medio: 0.875rem;  /* 14px - titulo de painel */
+  --text-grande: 1rem;     /* 16px */
+  --text-numero: 1.75rem;  /* 28px - preco */
+
+  /* ---- Forma ------------------------------------------------------------------ */
+  --radius-sm: 4px;
+  --radius-md: 6px;  /* padrao de controle */
+  --radius-lg: 10px; /* cartao, popover */
+  --radius-xl: 14px;
+
+  --shadow-flutuante: 0 8px 24px -6px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-foco: 0 0 0 2px var(--color-fundo), 0 0 0 4px var(--color-acento-forte);
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Camadas de empilhamento: um lugar so, para overlay nunca brigar com popover. */
+  --z-overlay: 10;
+  --z-barra: 20;
+  --z-popover: 40;
+  --z-modal: 50;
+
+  /* Movimento: curto. Ferramenta de trabalho nao anima para enfeitar. */
+  --duracao-rapida: 120ms;
+  --duracao: 200ms;
+
+  /* Densidade: um controle tem 32px de altura; o compacto, 28px. */
+  --altura-controle: 2rem;
+  --altura-controle-sm: 1.75rem;
+}
