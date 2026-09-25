@@ -51,6 +51,8 @@ interface EstadoInterface {
    */
   abrirDesenho: () => void;
   abrirFonte: () => void;
+  /** Abre o seletor de .ttf para desenhar o texto vivo que pede a fonte `nome`. */
+  abrirFonteTexto: (nome: string) => void;
 
   setEspaco: (e: Espaco) => void;
   selecionar: (chave: string | null) => void;
@@ -64,7 +66,7 @@ interface EstadoInterface {
   /** Posicao absoluta na placa (coordenadas do `arrumar`). Tira a peca da lista de sobras. */
   posicionarNoArranjo: (c: Colocada) => void;
   limparArranjo: () => void;
-  registrarSeletores: (desenho: () => void, fonte: () => void) => void;
+  registrarSeletores: (desenho: () => void, fonte: () => void, fonteTexto: (nome: string) => void) => void;
 }
 
 export const useInterface = create<EstadoInterface>()((set) => ({
@@ -83,6 +85,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
 
   abrirDesenho: () => {},
   abrirFonte: () => {},
+  abrirFonteTexto: () => {},
 
   setEspaco: (espaco) =>
     set((s) => ({
@@ -107,5 +110,5 @@ export const useInterface = create<EstadoInterface>()((set) => ({
       return { arranjo: n, sobraram: s.sobraram.filter((k) => k !== c.nome) };
     }),
   limparArranjo: () => set({ arranjo: new Map(), sobraram: [], infoArranjo: null }),
-  registrarSeletores: (abrirDesenho, abrirFonte) => set({ abrirDesenho, abrirFonte }),
+  registrarSeletores: (abrirDesenho, abrirFonte, abrirFonteTexto) => set({ abrirDesenho, abrirFonte, abrirFonteTexto }),
 }));

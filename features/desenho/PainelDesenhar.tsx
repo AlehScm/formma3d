@@ -29,7 +29,8 @@ import type { ModoSeparacao, ModoTraco } from '@/lib/import/pecas';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
-import { listarFontesDoPC, trocarFonteWeb, trocarPagina, usarFonteDoPC } from '@/features/acoes/origem';
+import { buscarFonteDoTexto, listarFontesDoPC, trocarFonteWeb, trocarPagina, usarFonteDoPC } from '@/features/acoes/origem';
+import { chaveFonte } from '@/lib/import/texto-em-curvas';
 
 /**
  * Area Desenhar: o que o letreiro E.
@@ -91,6 +92,9 @@ function useResumos() {
     }))
   );
   const m = useModelo();
+  const fontesTexto = useProjeto((x) => x.fontesTexto);
+  // Texto vivo esperando a fonte: ha desenho faltando, o ponto na aba avisa.
+  const textoPendente = (s.imp?.desenho.textos ?? []).some((t) => !fontesTexto.has(chaveFonte(t.fonte)));
 
   const alt = s.imp ? s.impAltura : s.altura;
   const esp = s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp;
@@ -102,7 +106,11 @@ function useResumos() {
 
   return {
     origem: s.imp ? `${s.imp.nomeArquivo} · ${m.nomesImportados.length} peças` : `“${s.texto}” · ${s.fonteNome}`,
-    alertaOrigem: s.erro ? ('perigo' as const) : s.imp?.avisos.length ? ('atencao' as const) : undefined,
+    alertaOrigem: s.erro
+      ? ('perigo' as const)
+      : s.imp?.avisos.length || textoPendente
+        ? ('atencao' as const)
+        : undefined,
     estilo: s.presetAtivo ? PRESETS[s.presetAtivo].nome : m.desc,
     medidas: `${formatarNumero(alt)} mm · prof. ${formatarNumero(s.profundidade)} mm`,
     chapa: `${formatarNumero(esp, 1)} mm · apoio ${APOIOS[s.apoio].curto.toLowerCase()}`,
@@ -162,6 +170,8 @@ function Origem() {
           {s.imp.avisos.map((a) => (
             <Alerta key={a.codigo}>{a.msg}</Alerta>
           ))}
+
+          <TextosVivos />
 
           {s.imp.paginas > 1 && (
             <CampoNumero
@@ -286,6 +296,50 @@ function Origem() {
         </>
       )}
       {s.erro && <Alerta tom="perigo">{s.erro}</Alerta>}
+    </>
+  );
+}
+
+/**
+ * Texto vivo do arquivo: o CorelDRAW exportou sem converter em curvas. O arquivo
+ * guarda o texto, a fonte, o corpo e a posicao -- so falta a fonte, que o usuario da.
+ */
+function TextosVivos() {
+  const textos = useProjeto((x) => x.imp?.desenho.textos) ?? [];
+  const fontesTexto = useProjeto((x) => x.fontesTexto);
+  const abrirFonteTexto = useInterface((x) => x.abrirFonteTexto);
+  if (!textos.length) return null;
+
+  return (
+    <>
+      {textos.map((t, i) => {
+        const legivel = t.texto.replace(/\s+/g, ' ').trim();
+        const pronto = fontesTexto.has(chaveFonte(t.fonte));
+        return pronto ? (
+          <Alerta key={i} tom="sucesso">
+            Texto “{legivel}” desenhado com a fonte {t.fonte}.
+          </Alerta>
+        ) : (
+          <Alerta
+            key={i}
+            tom="atencao"
+            titulo={`Texto “${legivel}” não aparece ainda`}
+            acao={
+              <div className="flex flex-wrap gap-1.5">
+                <Botao tamanho="sm" variante="primario" onClick={() => void buscarFonteDoTexto(t.fonte)}>
+                  Usar a fonte do computador
+                </Botao>
+                <Botao tamanho="sm" onClick={() => abrirFonteTexto(t.fonte)}>
+                  Carregar .ttf
+                </Botao>
+              </div>
+            }
+          >
+            Ele veio como texto, não como curva, na fonte <strong className="text-texto">{t.fonte}</strong>. O arquivo
+            guarda o tamanho e a posição; com a fonte, o app desenha as letras no lugar certo.
+          </Alerta>
+        );
+      })}
     </>
   );
 }

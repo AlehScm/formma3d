@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useInterface } from '@/store/interface';
-import { abrirDesenho, usarFonteArquivo } from '@/features/acoes/origem';
+import { abrirDesenho, usarFonteArquivo, usarTtfParaTexto } from '@/features/acoes/origem';
 
 /**
  * Os seletores de arquivo nativos, escondidos (nao da para estilizar).
@@ -14,12 +14,19 @@ import { abrirDesenho, usarFonteArquivo } from '@/features/acoes/origem';
 export function EntradasArquivo() {
   const desenho = useRef<HTMLInputElement>(null);
   const fonte = useRef<HTMLInputElement>(null);
+  const fonteTexto = useRef<HTMLInputElement>(null);
+  // Qual fonte o texto vivo pediu: o .ttf escolhido e guardado com esse nome.
+  const pedida = useRef('');
   const registrar = useInterface((s) => s.registrarSeletores);
 
   useEffect(() => {
     registrar(
       () => desenho.current?.click(),
-      () => fonte.current?.click()
+      () => fonte.current?.click(),
+      (nome) => {
+        pedida.current = nome;
+        fonteTexto.current?.click();
+      }
     );
   }, [registrar]);
 
@@ -45,6 +52,17 @@ export function EntradasArquivo() {
           const f = e.target.files?.[0];
           e.target.value = '';
           if (f) void usarFonteArquivo(f);
+        }}
+      />
+      <input
+        ref={fonteTexto}
+        type="file"
+        accept=".ttf,.otf"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f && pedida.current) void usarTtfParaTexto(pedida.current, f);
         }}
       />
     </>

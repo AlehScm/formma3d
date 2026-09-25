@@ -6,6 +6,8 @@ import {
   BotaoIcone,
   CabecalhoPainel,
   CampoNumero,
+  Campo,
+  EntradaNumero,
   ListaValores,
   Metrica,
   Selo,
@@ -19,7 +21,7 @@ import {
 } from '@/components/ui';
 import { brl } from '@/lib/cost/calc';
 import { regionBounds } from '@/lib/geom/region';
-import { edicaoVazia, SEM_EDICAO } from '@/lib/geom/pecaEditada';
+import { edicaoVazia, escalaDeMm, mmDeEscala, SEM_EDICAO } from '@/lib/geom/pecaEditada';
 import { IMPRESSORAS, caberNaMesa, descreverVeredito } from '@/lib/print/impressoras';
 import { FILAMENTOS } from '@/lib/cost/calc';
 import { useProjeto } from '@/store/projeto';
@@ -41,7 +43,7 @@ export function Inspetor() {
   const l = selecionada ? m.letras.find((x) => x.chave === selecionada) : undefined;
 
   return (
-    <aside aria-label="Inspetor" className="flex w-[280px] shrink-0 flex-col border-l border-borda bg-superficie">
+    <aside aria-label="Inspetor" className="flex w-[300px] shrink-0 flex-col border-l border-borda bg-superficie">
       {l ? (
         espaco === 'imprimir' ? (
           <InspetorImpressao l={l} />
@@ -99,27 +101,21 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
               onClick={() => editar(l.chave, { ey: e.ex })}
             />
           </div>
-          <CampoNumero
+          {/* mm e x ligados: digitar um atualiza o outro. A medida em mm parte da que
+              veio do arquivo (ou do texto), sem a borda de apoio. */}
+          <TamanhoEixo
             rotulo="Largura"
-            valor={e.ex}
+            base={l.baseW}
+            escala={e.ex}
             // Com a proporcao travada, mexer num eixo mexe no outro: e o que se espera
             // de "aumentar a letra"; esticar e a excecao.
             set={(v) => editar(l.chave, proporcional ? { ex: v, ey: v } : { ex: v })}
-            min={0.1}
-            max={5}
-            passo={0.01}
-            unidade="×"
-            layout="linha"
           />
-          <CampoNumero
+          <TamanhoEixo
             rotulo="Altura"
-            valor={e.ey}
+            base={l.baseH}
+            escala={e.ey}
             set={(v) => editar(l.chave, proporcional ? { ex: v, ey: v } : { ey: v })}
-            min={0.1}
-            max={5}
-            passo={0.01}
-            unidade="×"
-            layout="linha"
           />
         </div>
 
@@ -138,6 +134,35 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
         )}
       </div>
     </>
+  );
+}
+
+/** Um eixo do tamanho: o mesmo valor em mm e em multiplicador. */
+function TamanhoEixo({ rotulo, base, escala, set }: { rotulo: string; base: number; escala: number; set: (escala: number) => void }) {
+  return (
+    <Campo rotulo={rotulo} dica="Medida da letra, sem a borda de apoio. 1,00 × = tamanho original." layout="linha">
+      <div className="flex items-center gap-1">
+        <EntradaNumero
+          rotuloAcessivel={`${rotulo} em mm`}
+          valor={mmDeEscala(escala, base)}
+          set={(mm) => set(escalaDeMm(mm, base))}
+          min={1}
+          passo={0.5}
+          unidade="mm"
+          largura="w-24"
+        />
+        <EntradaNumero
+          rotuloAcessivel={`${rotulo} em multiplicador`}
+          valor={escala}
+          set={set}
+          min={0.05}
+          max={10}
+          passo={0.01}
+          unidade="×"
+          largura="w-[4.5rem]"
+        />
+      </div>
+    </Campo>
   );
 }
 

@@ -1,3 +1,4 @@
+import type { TextoVivo } from './ai-texto';
 import {
   buildRegion,
   regionBounds,
@@ -94,6 +95,11 @@ export interface DesenhoBruto {
   temStroke: boolean;
   temTextoVivo: boolean;
   temImagem: boolean;
+  /**
+   * Texto vivo que da para desenhar com a fonte certa (so vem do .ai). Nao entra nas
+   * pecas sozinho: precisa da fonte, que o usuario da. Ver `texto-em-curvas.ts`.
+   */
+  textos?: TextoVivo[];
 }
 
 export interface OpListLike {

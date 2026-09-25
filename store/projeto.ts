@@ -85,6 +85,12 @@ export interface EstadoProjeto {
   /** Edicao por peca (mover/girar/tamanho). Muda o produto. Chave = `LetraComPeca.chave`. */
   edicoes: Map<string, Edicao>;
 
+  /**
+   * Fontes para desenhar o texto vivo do arquivo importado, por `chaveFonte(nome)`.
+   * O arquivo diz qual fonte usa; o usuario da a fonte (do computador ou .ttf).
+   */
+  fontesTexto: Map<string, Font>;
+
   cfg: CustoCfg;
 }
 
@@ -102,6 +108,7 @@ export interface AcoesProjeto {
   alternarPecaImportada: (nome: string) => void;
   /** Guarda o resultado de um import novo e zera o que dependia do anterior. */
   receberImport: (imp: Importado, tracos: TracoResolvido) => void;
+  guardarFonteTexto: (chave: string, fonte: Font) => void;
   fecharImport: () => void;
 }
 
@@ -155,6 +162,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
   mesaZ: MAQUINA.z,
 
   edicoes: new Map(),
+  fontesTexto: new Map(),
   cfg: PADRAO,
 
   definir: (k, v) => set({ [k]: v } as Partial<EstadoProjeto>),
@@ -224,4 +232,13 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
     }),
 
   fecharImport: () => set({ imp: null, edicoes: new Map(), erro: null }),
+
+  guardarFonteTexto: (chave, fonte) =>
+    set((s) => {
+      const n = new Map(s.fontesTexto);
+      n.set(chave, fonte);
+      // As letras novas entram na numeracao das pecas (esquerda para a direita), entao
+      // os nomes mudam: edicao ou peca desligada antiga grudaria na peca errada.
+      return { fontesTexto: n, edicoes: new Map(), impDesativadas: new Set() };
+    }),
 }));

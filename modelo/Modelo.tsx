@@ -7,7 +7,8 @@ import { buildPart, alturaArte, orientar, descreverPeca, type Params, type Part,
 import { regionArea, regionPerimeter, minThickness, regionBounds, scaleRegion, translateRegion } from '@/lib/geom/region';
 import { colisoesPorBorda, avisoColisao } from '@/lib/geom/letreiro';
 import { orcar, type Orcamento } from '@/lib/cost/calc';
-import { desenhoParaPecas } from '@/lib/import/pecas';
+import { desenhoParaPecas, resolverTracos } from '@/lib/import/pecas';
+import { chaveFonte, textoEmObjetos } from '@/lib/import/texto-em-curvas';
 import { MANUAL, acharImpressora, caberNaMesa, descreverVeredito, type Impressora, type Veredito } from '@/lib/print/impressoras';
 import { aplicarEdicao, edicaoVazia, escalaUniforme } from '@/lib/geom/pecaEditada';
 import { useProjeto } from '@/store/projeto';
@@ -27,7 +28,14 @@ import { useProjeto } from '@/store/projeto';
  * `chave` identifica a peca de forma unica; `nome` e o rotulo que o usuario le.
  * Em texto os dois diferem: "BARBER" tem dois "B".
  */
-export type LetraComPeca = Letra & { part: Part; chave: string; espessuraMin: number };
+export type LetraComPeca = Letra & {
+  part: Part;
+  chave: string;
+  espessuraMin: number;
+  /** Medida da letra ANTES da edicao da peca (a que veio do arquivo ou do texto), em mm. */
+  baseW: number;
+  baseH: number;
+};
 
 export interface Modelo {
   letras: LetraComPeca[];
@@ -101,6 +109,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       altura: s.altura,
       tracking: s.tracking,
       edicoes: s.edicoes,
+      fontesTexto: s.fontesTexto,
       nomeTrabalho: s.nomeTrabalho,
       presetAtivo: s.presetAtivo,
     }))
@@ -136,21 +145,31 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     [p]
   );
 
-  const { imp, impModo, impTracos, impFundir, impDesativadas, impAltura, fonte, texto, altura, tracking, edicoes } = origem;
+  const { imp, impModo, impTracos, impFundir, impDesativadas, impAltura, fonte, texto, altura, tracking, edicoes, fontesTexto } = origem;
   const { apoio, borda, bordaCompensa } = p;
 
   // Pecas do arquivo importado, na escala nativa. Separado da escala para que
   // arrastar a altura nao refaca a separacao nem remeca a espessura.
   const pecasNativas = useMemo(() => {
     if (!imp) return null;
-    return desenhoParaPecas(imp.desenho, { modo: impModo, tracos: impTracos, fundirProximos: impFundir, areaMinima: 1 }).map(
+    const d = imp.desenho;
+    // Texto vivo cuja fonte o usuario ja deu: vira contorno como o resto do desenho.
+    const letrasTexto = (d.textos ?? []).flatMap((t) => {
+      const f = fontesTexto.get(chaveFonte(t.fonte));
+      return f ? textoEmObjetos(t, f, d.objetos.length) : [];
+    });
+    const completo = letrasTexto.length ? { ...d, objetos: [...d.objetos, ...letrasTexto], temFill: true } : d;
+    // O que fazer com traco se decide olhando o desenho ORIGINAL: as letras do texto
+    // sao preenchimento e mudariam sozinhas essa escolha.
+    const tracos = resolverTracos(d, impTracos);
+    return desenhoParaPecas(completo, { modo: impModo, tracos, fundirProximos: impFundir, areaMinima: 1 }).map(
       (x) => ({ ...x, bounds: regionBounds(x.region), espessuraNativa: minThickness(x.region) })
     );
-  }, [imp, impModo, impTracos, impFundir]);
+  }, [imp, impModo, impTracos, impFundir, fontesTexto]);
 
   // Etapa cara (contornos + espessura): so depende do texto, do tamanho e das edicoes.
   const letrasBase = useMemo(() => {
-    type Base = Letra & { espessuraMin: number; chave: string };
+    type Base = Letra & { espessuraMin: number; chave: string; baseW: number; baseH: number };
 
     // A edicao entra AQUI, antes do buildPart: e o que faz a chapa, o gabarito, a
     // colisao e o preco acompanharem. Com escala nao uniforme a espessura minima
@@ -175,13 +194,14 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       const s = b.h > 0 ? alvo / b.h : 1;
       return ativas.map((x) => {
         const region = translateRegion(scaleRegion(x.region, s), -b.minX * s, -b.minY * s);
-        return editar({ nome: x.nome, chave: x.nome, region, bounds: regionBounds(region), espessuraMin: x.espessuraNativa * s });
+        const bb = regionBounds(region);
+        return editar({ nome: x.nome, chave: x.nome, region, bounds: bb, espessuraMin: x.espessuraNativa * s, baseW: bb.w, baseH: bb.h });
       });
     }
     if (!fonte || !texto.trim()) return [] as Base[];
     const alvo = alturaArte(altura, apoio, borda, bordaCompensa);
     return normalizeLetters(textToLetters(fonte, texto, { altura: alvo, tracking })).map((l, i) =>
-      editar({ ...l, chave: `${l.nome}#${i}`, espessuraMin: minThickness(l.region) })
+      editar({ ...l, chave: `${l.nome}#${i}`, espessuraMin: minThickness(l.region), baseW: l.bounds.w, baseH: l.bounds.h })
     );
   }, [pecasNativas, impDesativadas, impAltura, fonte, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes]);
 

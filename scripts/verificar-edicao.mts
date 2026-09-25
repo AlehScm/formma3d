@@ -7,7 +7,7 @@
  * isso -- que a mudanca chega ate a chapa, e nao fica so na tela.
  */
 import fs from 'fs';
-import { aplicarEdicao, edicaoVazia, escalaUniforme, SEM_EDICAO, type Edicao } from '../lib/geom/pecaEditada';
+import { aplicarEdicao, edicaoVazia, escalaDeMm, escalaUniforme, mmDeEscala, SEM_EDICAO, type Edicao } from '../lib/geom/pecaEditada';
 import { buildPart, PARAMS_PADRAO } from '../lib/geom/modes';
 import { buildRegion, minThickness, regionArea, regionBounds, type Region } from '../lib/geom/region';
 import { parseFont, textToLetters } from '../lib/text/glyphs';
@@ -189,6 +189,20 @@ console.log('\n== a edicao chega na chapa e no volume ==');
   const torta = buildPart(gr, PARAMS_PADRAO, minThickness(gr));
   ok('girar nao muda o volume da peca', perto(torta.volume, reta.volume, reta.volume * 0.01),
      `${(reta.volume / 1000).toFixed(1)} vs ${(torta.volume / 1000).toFixed(1)}cm3`);
+}
+
+console.log('\n== tamanho em mm e em x ==');
+{
+  const r = ret(80, 150);
+  const b0 = regionBounds(r);
+  // Digitar 180 mm na altura tem de dar uma letra de 180 mm, nao um numero parecido.
+  const ey = escalaDeMm(180, b0.h);
+  const b = regionBounds(aplicarEdicao(r, ed({ ex: ey, ey })));
+  ok('180 mm de altura vira exatamente 180 mm', perto(b.h, 180, 0.01), `${b.h.toFixed(3)} mm`);
+  ok('com proporcao, a largura acompanha', perto(b.w, 80 * (180 / 150), 0.01), `${b.w.toFixed(2)} mm`);
+  ok('mm -> x -> mm volta ao mesmo valor', perto(mmDeEscala(escalaDeMm(123.4, b0.w), b0.w), 123.4, 1e-9));
+  ok('1,00 x mostra a medida original', perto(mmDeEscala(1, b0.h), 150, 1e-9));
+  ok('base zero nao explode', escalaDeMm(10, 0) === 1);
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

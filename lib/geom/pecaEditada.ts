@@ -55,3 +55,16 @@ export function aplicarEdicao(region: Region, e: Edicao): Region {
   if (e.dx !== 0 || e.dy !== 0) r = translateRegion(r, e.dx, e.dy);
   return r;
 }
+
+/**
+ * Tamanho em mm <-> escala. O inspetor mostra os dois ligados: digitar 180 mm grava
+ * a escala 180/base; digitar 1,20 mostra base x 1,20 em mm. `base` e a medida da
+ * letra antes da edicao, sem a borda de apoio.
+ */
+export function escalaDeMm(mm: number, base: number): number {
+  return base > 0 ? mm / base : 1;
+}
+
+export function mmDeEscala(escala: number, base: number): number {
+  return escala * base;
+}

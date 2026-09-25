@@ -2,6 +2,7 @@ import { regionBounds, type Bounds, type Contorno, type FillRule, type Pt } from
 import { flattenCubic } from '../geom/flatten';
 import { PT_TO_MM } from './matrix';
 import type { Aviso, DesenhoBruto, ObjetoBruto } from './pdf-ops';
+import { extrairTextosVivos } from './ai-texto';
 
 /**
  * Le o PostScript do Illustrator (o formato guardado dentro do .ai).
@@ -393,19 +394,23 @@ export function aiPostScriptParaDesenho(texto: string, _opts: OpcoesAiPs = {}): 
   fecharSub(false);
   if (contornos.length) emitir(true, false);
 
-  if (temTextoVivo) {
+  // O texto vivo nao e caminho, mas o arquivo guarda texto, fonte, corpo e posicao:
+  // com a fonte em maos o app desenha ele sozinho (ver texto-em-curvas.ts).
+  const vivos = temTextoVivo ? extrairTextosVivos(texto) : { textos: [], naoSuportados: 0 };
+  if (temTextoVivo && (vivos.naoSuportados > 0 || !vivos.textos.length)) {
     avisos.push({
       codigo: 'texto-vivo',
       msg:
-        'O arquivo tem texto que não foi convertido em contornos: essa parte do desenho não vira peça. ' +
-        'No CorelDRAW use Objeto > Converter em curvas (Ctrl+Q); no Illustrator, Texto > Criar contornos ' +
-        '(Ctrl+Shift+O). Depois salve de novo.',
+        'O arquivo tem texto que não foi convertido em contornos e que o app não consegue desenhar sozinho ' +
+        '(texto em caixa ou em caminho). No CorelDRAW use Objeto > Converter em curvas (Ctrl+Q); no ' +
+        'Illustrator, Texto > Criar contornos (Ctrl+Shift+O). Depois salve de novo.',
     });
   }
 
   const b = regionBounds(objetos.flatMap((o) => o.contours.map((c) => ({ outer: c.pts, holes: [] }))));
   return {
     objetos,
+    textos: vivos.textos,
     paginaMm: { w: b.w, h: b.h },
     camadas: [...camadas],
     avisos,

@@ -12,6 +12,14 @@ import { aiPostScriptParaDesenho } from '../lib/import/ai-ps';
 import { desenhoParaPecas, resolverTracos } from '../lib/import/pecas';
 import { regionArea, regionBounds, buildRegion } from '../lib/geom/region';
 import { parseFont, textToLetters } from '../lib/text/glyphs';
+import { extrairTextosVivos, lerDicionario, type Valor } from '../lib/import/ai-texto';
+import { textoEmObjetos } from '../lib/import/texto-em-curvas';
+
+const caminhoT = (v: Valor | undefined, ...ks: string[]): Valor | undefined => {
+  let a = v;
+  for (const k of ks) a = a && typeof a === 'object' && !Array.isArray(a) ? a[k] : undefined;
+  return a;
+};
 
 let falhas = 0;
 let total = 0;
@@ -425,6 +433,87 @@ async function main() {
            `${areaCheia.toFixed(0)}mm2 preenchendo vs ${areaFita.toFixed(0)}mm2 engrossando`);
       }
     }
+  }
+
+  console.log('\n== dicionario do motor de texto ==');
+  {
+    // UTF-16 com BOM, escapes de parentese no nivel do byte, dicionario aninhado.
+    const u16 = (s: string) => '\u00fe\u00ff' + [...s].map((c) => '\u0000' + c).join('').replace(/([()\\])/g, '\\$1');
+    const d = lerDicionario(`/0 << /1 [ 1 2.5 -3 ] /2 (${u16('A (b) c')}) /3 true /4 << /x /nome >> >> /1 (plain\\) ok)`);
+    ok('numero, lista e booleano', JSON.stringify(caminhoT(d, '0', '1')) === '[1,2.5,-3]' && caminhoT(d, '0', '3') === true);
+    ok('string UTF-16 com parentese escapado', caminhoT(d, '0', '2') === 'A (b) c', String(caminhoT(d, '0', '2')));
+    ok('nome e dicionario aninhado', caminhoT(d, '0', '4', 'x') === 'nome');
+    ok('string latin1 com parentese escapado', caminhoT(d, '1') === 'plain) ok', String(caminhoT(d, '1')));
+  }
+
+  console.log('\n== texto vivo do arquivo real ==');
+  {
+    const caminho = 'C:/Users/Administrador/Downloads/barber ai.ai';
+    if (!fs.existsSync(caminho)) {
+      console.log('  (pulado: arquivo de amostra nao esta nesta maquina)');
+    } else {
+      const b = fs.readFileSync(caminho);
+      const ps = (await extrairAIPrivateData(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer))!;
+      const { textos, naoSuportados } = extrairTextosVivos(ps);
+      const t = textos[0];
+      ok('acha um texto de ponto, nenhum nao suportado', textos.length === 1 && naoSuportados === 0, `${textos.length} texto(s), ${naoSuportados} nao suportado(s)`);
+      if (t) {
+        ok('o texto e B A R B E R', t.texto === 'B  A  R  B  E  R', JSON.stringify(t.texto));
+        ok('a fonte e HarmonyOS_Sans_SC', t.fonte === 'HarmonyOS_Sans_SC', t.fonte);
+        ok('corpo de 408,33 pt', perto(t.tamanhoMm / MM, 408.3335, 0.01), `${(t.tamanhoMm / MM).toFixed(2)} pt`);
+        ok('escala horizontal de 116,46%', perto(t.escalaH, 1.1646, 1e-4), String(t.escalaH));
+        ok('alinhado a esquerda', t.alinhamento === 'esquerda', t.alinhamento);
+        ok('ancora convertida para o desenho', perto(t.x / MM, -1813.8, 0.1) && perto(t.y / MM, -6293.5, 0.1),
+           `(${(t.x / MM).toFixed(1)} ; ${(t.y / MM).toFixed(1)}) pt`);
+
+        const d = aiPostScriptParaDesenho(ps);
+        ok('o desenho ja traz o texto para a interface', d.textos?.length === 1);
+        ok('sem o aviso generico de "converta em curvas"', !d.avisos.some((a) => a.codigo === 'texto-vivo'));
+
+        const ttf = 'C:/Windows/Fonts/HarmonyOS_Sans_SC_Regular.ttf';
+        if (!fs.existsSync(ttf)) {
+          console.log('  (pulado: HarmonyOS Sans nao instalada nesta maquina)');
+        } else {
+          const fb = fs.readFileSync(ttf);
+          const fonte = parseFont(fb.buffer.slice(fb.byteOffset, fb.byteOffset + fb.byteLength) as ArrayBuffer);
+          const letras = textoEmObjetos(t, fonte);
+          ok('vira 6 letras (espacos nao viram peca)', letras.length === 6, `${letras.length}`);
+
+          // O teste que prova a posicao: as duas barras curtas, entre as quais o texto
+          // foi desenhado, estao em y -6184..-6101 pt. Nada foi ajustado a mao.
+          const bt = regionBounds(letras.flatMap((o) => o.contours.map((c) => ({ outer: c.pts, holes: [] }))));
+          const centroTexto = (bt.minY + bt.maxY) / 2 / MM;
+          ok('texto centrado na altura das barras (< 3 pt)', Math.abs(centroTexto - -6142.5) < 3, `${centroTexto.toFixed(1)} vs -6142,5 pt`);
+          ok('texto inteiro entre as duas barras', bt.minX / MM > -2066 && bt.maxX / MM < 1513,
+             `x ${(bt.minX / MM).toFixed(0)}..${(bt.maxX / MM).toFixed(0)} pt, barras terminam em -2066 e comecam em 1513`);
+
+          const pecas = desenhoParaPecas({ ...d, objetos: [...d.objetos, ...letras] }, { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 1 });
+          const sem = desenhoParaPecas(d, { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 1 });
+          ok('as 6 letras entram nas pecas', pecas.length === sem.length + 6, `${sem.length} -> ${pecas.length}`);
+          const furos = pecas.reduce((a, p) => a + p.region.reduce((x, y) => x + y.holes.length, 0), 0)
+            - sem.reduce((a, p) => a + p.region.reduce((x, y) => x + y.holes.length, 0), 0);
+          ok('B, A, R, B, R ganham os miolos (B tem 2)', furos === 2 + 1 + 1 + 2 + 1, `${furos} furos novos`);
+        }
+      }
+    }
+  }
+  {
+    // Alinhamento: centro e direita deslocam pela largura da linha.
+    const b = fs.readFileSync('C:/Windows/Fonts/arialbd.ttf');
+    const fonte = parseFont(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer);
+    const base = { texto: 'HI', fonte: 'Arial', tamanhoMm: 50, escalaH: 1, tracking: 0, entrelinhaMm: 60, x: 0, y: 0 };
+    const caixa = (al: 'esquerda' | 'centro' | 'direita') =>
+      regionBounds(textoEmObjetos({ ...base, alinhamento: al }, fonte).flatMap((o) => o.contours.map((c) => ({ outer: c.pts, holes: [] }))));
+    const e = caixa('esquerda');
+    const c = caixa('centro');
+    const d = caixa('direita');
+    ok('esquerda comeca na ancora', e.minX >= 0 && e.minX < 5, e.minX.toFixed(1));
+    ok('centro fica em volta da ancora', c.minX < 0 && c.maxX > 0 && Math.abs(c.minX + c.maxX) < 5, `${c.minX.toFixed(1)}..${c.maxX.toFixed(1)}`);
+    ok('direita termina na ancora', d.maxX <= 0 && d.maxX > -5, d.maxX.toFixed(1));
+    const esticado = regionBounds(textoEmObjetos({ ...base, alinhamento: 'esquerda', escalaH: 2 }, fonte).flatMap((o) => o.contours.map((x) => ({ outer: x.pts, holes: [] }))));
+    ok('escala horizontal 2x dobra a largura', perto(esticado.maxX, e.maxX * 2, 0.5), `${e.maxX.toFixed(1)} -> ${esticado.maxX.toFixed(1)}`);
+    const duas = regionBounds(textoEmObjetos({ ...base, texto: 'H\nH', alinhamento: 'esquerda' }, fonte).flatMap((o) => o.contours.map((x) => ({ outer: x.pts, holes: [] }))));
+    ok('segunda linha desce uma entrelinha', perto(duas.minY, e.minY - 60, 0.5), `${duas.minY.toFixed(1)} vs ${(e.minY - 60).toFixed(1)}`);
   }
 
   console.log(`\n${total - falhas}/${total} passaram\n`);
