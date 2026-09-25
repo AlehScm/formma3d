@@ -30,7 +30,7 @@ console.log('\n1/4  conferindo tipos');
 node(BIN.tsc, ['--noEmit']);
 
 console.log('\n2/4  rodando os testes');
-for (const s of ['verificar-ops', 'verificar-pdf', 'verificar-apoio', 'verificar-pecas']) {
+for (const s of ['verificar-ops', 'verificar-pdf', 'verificar-apoio', 'verificar-pecas', 'verificar-ai']) {
   const saida = execFileSync(process.execPath, [BIN.tsx, `scripts/${s}.mts`], { encoding: 'utf8' });
   const placar = saida.trim().split('\n').filter((l) => l.includes('passaram')).pop() ?? 'ok';
   console.log(`     ${s.padEnd(16)} ${placar.trim()}`);

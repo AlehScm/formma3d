@@ -1,6 +1,8 @@
 import { opListToDrawing, type Aviso, type DesenhoBruto, type OpsMap } from './pdf-ops';
 import { desenhoParaPecas, OPCOES_PADRAO, type OpcoesPecas, type PecaImportada } from './pecas';
 import { regionBounds } from '../geom/region';
+import { extrairAIPrivateData } from './ai-priv';
+import { aiPostScriptParaDesenho } from './ai-ps';
 
 type PdfjsModule = typeof import('pdfjs-dist');
 
@@ -172,14 +174,15 @@ function diagnosticar(d: DesenhoBruto, ext: string, dadosPrivadosAI: boolean): A
   // O marcador decide sozinho: ha desenho no arquivo, so nao em formato que se leia.
   // Nao exigir texto vivo junto -- um .ai sem compatibilidade PDF costuma vir com a
   // pagina totalmente vazia, sem nem texto.
+  // So chega aqui quando nem a pagina nem o PostScript embutido renderam nada --
+  // o caminho do AIPrivateData ja foi tentado antes.
   if (dadosPrivadosAI) {
     avisos.push({
       codigo: 'ai-sem-pdf',
       msg:
-        'Este arquivo foi salvo SEM a opcao "Criar arquivo compativel com PDF": o desenho esta guardado ' +
-        'num formato fechado do Illustrator, que nenhum programa de fora consegue ler. ' +
-        'Peca para reenviarem assim: no Illustrator, Arquivo > Salvar como > Illustrator (.ai) e MARCAR ' +
-        '"Criar arquivo compativel com PDF". Ou, mais simples, Arquivo > Salvar como > PDF.',
+        'Este .ai foi salvo sem compatibilidade PDF e tambem nao consegui ler o desenho guardado dentro dele. ' +
+        'Peca para reenviarem assim: no Illustrator ou no Corel, Salvar como > PDF. ' +
+        'Se for .ai mesmo, marque "Criar arquivo compativel com PDF" ao salvar.',
     });
   } else if (ext === 'ai' && d.temTextoVivo) {
     avisos.push({
@@ -228,7 +231,29 @@ export async function importarPdf(
     throw new ErroImport('Nao consegui ler o arquivo: ' + (e instanceof Error ? e.message : String(e)));
   }
 
-  const avisos = diagnosticar(desenho, ext, temDadosPrivadosAI(buf));
+  // A pagina do PDF e sempre o caminho primario: quando tem conteudo, e a fonte
+  // mais confiavel. So quando ela nao rende nada vale a pena ir atras do
+  // PostScript embutido -- que e o caso do .ai exportado pelo CorelDRAW, onde a
+  // pagina sai vazia de proposito.
+  let veioDoPostScript = false;
+  if (!desenho.objetos.length) {
+    try {
+      const ps = await extrairAIPrivateData(buf);
+      if (ps) {
+        const alternativo = aiPostScriptParaDesenho(ps);
+        if (alternativo.objetos.length) {
+          desenho = alternativo;
+          veioDoPostScript = true;
+        }
+      }
+    } catch {
+      // Se nao der, segue para o diagnostico normal, que explica o que fazer.
+    }
+  }
+
+  const avisos = veioDoPostScript
+    ? [...desenho.avisos]
+    : diagnosticar(desenho, ext, temDadosPrivadosAI(buf));
   const pecas = desenhoParaPecas(desenho, opcoes);
 
   if (paginas > 1) {
