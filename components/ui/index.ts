@@ -16,6 +16,7 @@ export { Menu, MenuItem, MenuSeparador, MenuRotulo } from './Menu';
 export { Campo } from './Campo';
 export { CampoNumero, EntradaNumero } from './CampoNumero';
 export { Segmentado, Selecao, Interruptor, type OpcaoEscolha } from './Escolhas';
-export { Secao, MaisOpcoes, CabecalhoPainel } from './Secao';
+export { MaisOpcoes, CabecalhoPainel } from './Secao';
+export { Categorias, type Categoria } from './Categorias';
 export { Abas, type Aba } from './Abas';
 export { Alerta, Selo, Metrica, ListaValores, Vazio, BarraFerramentas, Separador, corDoTom, type Tom } from './Exibicao';

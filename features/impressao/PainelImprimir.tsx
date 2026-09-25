@@ -8,8 +8,12 @@ import {
   CampoNumero,
   Interruptor,
   MaisOpcoes,
-  Secao,
   Segmentado,
+  Categorias,
+  type Categoria,
+  IconeImprimir,
+  IconeLista,
+  IconeOrientacao,
   Selo,
   cx,
   formatarNumero,
@@ -30,31 +34,60 @@ import { baixarSTL } from '@/features/acoes/exportar';
  * mover e girar na placa so acomodam a peca.
  */
 export function PainelImprimir() {
+  const m = useModelo();
+  const s = useProjeto(useShallow((x) => ({ id: x.impressoraId, mesaX: x.mesaX, mesaY: x.mesaY, mesaZ: x.mesaZ })));
+  const info = useInterface((x) => x.infoArranjo);
+  const categoria = useInterface((x) => x.categoria.imprimir);
+  const setCategoria = useInterface((x) => x.setCategoria);
+  const nome = IMPRESSORAS.find((x) => x.id === s.id)?.nome.replace('Bambu Lab ', '') ?? 'Manual';
+
+  const categorias: Categoria[] = [
+    {
+      id: 'maquina',
+      nome: 'Máquina',
+      icone: IconeImprimir,
+      resumo: `${nome} · ${formatarNumero(s.mesaX)}×${formatarNumero(s.mesaY)}×${formatarNumero(s.mesaZ)} mm`,
+      conteudo: <Maquina />,
+    },
+    {
+      id: 'arranjo',
+      nome: 'Arranjo',
+      icone: IconeArrumar,
+      resumo: info ? `${info.dentro} na placa${info.placas > 1 ? ` · ${info.placas} placas` : ''}` : 'posição do letreiro',
+      conteudo: <Arranjo />,
+    },
+    {
+      id: 'pecas',
+      nome: 'Peças',
+      icone: IconeLista,
+      resumo: `${m.letras.length} · ${m.naoCabem.size ? `${m.naoCabem.size} não cabem` : 'todas cabem'}`,
+      // Ponto vermelho na aba: tem peca que nao cabe nesta maquina.
+      alerta: m.naoCabem.size ? 'perigo' : undefined,
+      conteudo: <Pecas />,
+    },
+    { id: 'orientacao', nome: 'Orientação', icone: IconeOrientacao, resumo: m.orientacao.texto, conteudo: <Orientacao /> },
+  ];
+
   return (
-    <>
-      <SecaoMaquina />
-      <SecaoArranjo />
-      <SecaoPecas />
-      <SecaoOrientacao />
-    </>
+    <Categorias
+      rotulo="Configurações de Imprimir"
+      categorias={categorias}
+      ativa={categoria}
+      setAtiva={(id) => setCategoria('imprimir', id)}
+    />
   );
 }
 
-function SecaoMaquina() {
+function Maquina() {
   const s = useProjeto(
     useShallow((x) => ({ id: x.impressoraId, mesaX: x.mesaX, mesaY: x.mesaY, mesaZ: x.mesaZ, bico: x.bico }))
   );
   const escolher = useProjeto((x) => x.escolherImpressora);
   const definir = useProjeto((x) => x.definir);
   const manual = s.id === MANUAL;
-  const nome = IMPRESSORAS.find((m) => m.id === s.id)?.nome.replace('Bambu Lab ', '') ?? 'Manual';
 
   return (
-    <Secao
-      titulo="Máquina"
-      resumo={`${nome} · ${formatarNumero(s.mesaX)}×${formatarNumero(s.mesaY)}×${formatarNumero(s.mesaZ)} mm`}
-      padraoAberta
-    >
+    <>
       <Segmentado
         valor={s.id}
         set={escolher}
@@ -94,23 +127,19 @@ function SecaoMaquina() {
           layout="linha"
         />
       </MaisOpcoes>
-    </Secao>
+    </>
   );
 }
 
-function SecaoArranjo() {
+function Arranjo() {
   const m = useModelo();
   const folga = useInterface((x) => x.folgaPecas);
   const setFolga = useInterface((x) => x.setFolgaPecas);
   const info = useInterface((x) => x.infoArranjo);
   const limpar = useInterface((x) => x.limparArranjo);
 
-  const resumo = info
-    ? `${info.dentro} na placa${info.placas > 1 ? ` · ${info.placas} placas` : ''}`
-    : 'posição do letreiro';
-
   return (
-    <Secao titulo="Arranjo" resumo={resumo} padraoAberta>
+    <>
       <CampoNumero
         rotulo="Folga entre peças"
         dica="Espaço livre para brim e skirt"
@@ -135,17 +164,17 @@ function SecaoArranjo() {
           {info.impossiveis > 0 && <> · {info.impossiveis} não cabe(m) nesta máquina</>}
         </Alerta>
       )}
-    </Secao>
+    </>
   );
 }
 
-function SecaoPecas() {
+function Pecas() {
   const m = useModelo();
   const selecionada = useInterface((x) => x.selecionada);
   const selecionar = useInterface((x) => x.selecionar);
 
   return (
-    <Secao titulo="Peças" resumo={`${m.letras.length} · ${m.naoCabem.size ? `${m.naoCabem.size} não cabem` : 'todas cabem'}`} padraoAberta>
+    <>
       <ul className="-mx-2 space-y-0.5">
         {m.letras.map((l) => {
           const b = regionBounds(l.part.contorno);
@@ -183,16 +212,16 @@ function SecaoPecas() {
           );
         })}
       </ul>
-    </Secao>
+    </>
   );
 }
 
-function SecaoOrientacao() {
+function Orientacao() {
   const m = useModelo();
   const virar = useProjeto((x) => x.virar);
   const definir = useProjeto((x) => x.definir);
   return (
-    <Secao titulo="Orientação na mesa" resumo={m.orientacao.texto}>
+    <>
       <Alerta tom="acento">{m.orientacao.texto}</Alerta>
       {m.orientacao.podeVirar && (
         <Interruptor
@@ -202,6 +231,6 @@ function SecaoOrientacao() {
           set={(v) => definir('virar', v)}
         />
       )}
-    </Secao>
+    </>
   );
 }

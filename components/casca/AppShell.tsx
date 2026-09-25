@@ -45,7 +45,7 @@ export function AppShell() {
         <BarraTopo />
 
         <div className="flex min-h-0 flex-1">
-          <aside aria-label="Configurações" className="w-[300px] shrink-0 overflow-y-auto border-r border-borda bg-superficie">
+          <aside aria-label="Configurações" className="w-[356px] shrink-0 overflow-hidden border-r border-borda bg-superficie">
             {espaco === 'desenhar' && <PainelDesenhar />}
             {espaco === 'imprimir' && <PainelImprimir />}
             {orcamento && <PainelOrcamento />}

@@ -3,6 +3,15 @@
  * para o mesmo conceito ter sempre o mesmo desenho (e o bundle so levar estes).
  */
 export {
+  ArrowDownToLine as IconeOrientacao,
+  Factory as IconeProducao,
+  List as IconeLista,
+  Package as IconeMaterial,
+  Palette as IconeEstilo,
+  PanelTop as IconeChapa,
+  Percent as IconeMargem,
+  Ruler as IconeMedidas,
+  Sparkles as IconeAcabamento,
   TriangleAlert as IconeAtencao,
   Box as IconeCaixa,
   Check as IconeOk,

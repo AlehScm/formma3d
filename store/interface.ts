@@ -37,6 +37,8 @@ interface EstadoInterface {
   explode: number;
   camadas: CamadasVisiveis;
   inspetorAberto: boolean;
+  /** Categoria aberta na barra lateral, por area: voltar a uma area reabre onde estava. */
+  categoria: Record<Espaco, string>;
 
   arranjo: Map<string, Colocada>;
   sobraram: string[];
@@ -56,6 +58,7 @@ interface EstadoInterface {
   setExplode: (v: number) => void;
   setCamadas: (c: CamadasVisiveis) => void;
   setInspetorAberto: (v: boolean) => void;
+  setCategoria: (espaco: Espaco, id: string) => void;
   setFolgaPecas: (v: number) => void;
   definirArranjo: (colocadas: Colocada[], sobraram: string[], info: InfoArranjo) => void;
   /** Posicao absoluta na placa (coordenadas do `arrumar`). Tira a peca da lista de sobras. */
@@ -71,6 +74,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   explode: 0,
   camadas: { corpo: true, chapa: true, traseira: true },
   inspetorAberto: true,
+  categoria: { desenhar: 'origem', imprimir: 'maquina', orcamento: 'material' },
 
   arranjo: new Map(),
   sobraram: [],
@@ -92,6 +96,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   setExplode: (explode) => set({ explode }),
   setCamadas: (camadas) => set({ camadas }),
   setInspetorAberto: (inspetorAberto) => set({ inspetorAberto }),
+  setCategoria: (espaco, id) => set((s) => ({ categoria: { ...s.categoria, [espaco]: id } })),
   setFolgaPecas: (folgaPecas) => set({ folgaPecas }),
   definirArranjo: (colocadas, sobraram, infoArranjo) =>
     set({ arranjo: new Map(colocadas.map((c) => [c.nome, c])), sobraram, infoArranjo }),

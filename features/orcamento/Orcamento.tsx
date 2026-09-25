@@ -6,7 +6,11 @@ import {
   CampoNumero,
   ListaValores,
   Metrica,
-  Secao,
+  Categorias,
+  type Categoria,
+  IconeMaterial,
+  IconeProducao,
+  IconeMargem,
   Selecao,
   Vazio,
   formatarNumero,
@@ -30,11 +34,18 @@ export function PainelOrcamento() {
   const definir = useProjeto((x) => x.definirCusto);
   const m = useModelo();
   const comLed = useProjeto((x) => x.comLed);
+  const categoria = useInterface((x) => x.categoria.orcamento);
+  const setCategoria = useInterface((x) => x.setCategoria);
   const c = <K extends keyof CustoCfg>(k: K) => (v: CustoCfg[K]) => definir(k, v);
 
-  return (
-    <>
-      <Secao titulo="Material" resumo={`${FILAMENTOS[cfg.filamento].nome} · ${brl(cfg.precoRolo)} o rolo`} padraoAberta>
+  const categorias: Categoria[] = [
+    {
+      id: 'material',
+      nome: 'Material',
+      icone: IconeMaterial,
+      resumo: `${FILAMENTOS[cfg.filamento].nome} · ${brl(cfg.precoRolo)} o rolo`,
+      conteudo: (
+        <>
         <Selecao<FilamentoId>
           rotulo="Filamento"
           valor={cfg.filamento}
@@ -52,9 +63,16 @@ export function PainelOrcamento() {
         {comLed && (
           <CampoNumero rotulo="Fita de LED" valor={cfg.precoFitaLedM} set={c('precoFitaLedM')} min={2} max={200} passo={1} unidade="R$/m" layout="linha" />
         )}
-      </Secao>
-
-      <Secao titulo="Produção" resumo={`${formatarNumero(cfg.vazao, 1)} g/h · ${brl(cfg.valorHora)}/h`} padraoAberta>
+        </>
+      ),
+    },
+    {
+      id: 'producao',
+      nome: 'Produção',
+      icone: IconeProducao,
+      resumo: `${formatarNumero(cfg.vazao, 1)} g/h · ${brl(cfg.valorHora)}/h`,
+      conteudo: (
+        <>
         <CampoNumero
           rotulo="Vazão efetiva"
           dica="Calibre com um trabalho real: gramas do trabalho divididas pelas horas que levou. É o que estima o tempo."
@@ -71,9 +89,16 @@ export function PainelOrcamento() {
         <CampoNumero rotulo="Preparo do trabalho" valor={cfg.setupMin} set={c('setupMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
         <CampoNumero rotulo="Acabamento por peça" valor={cfg.posMin} set={c('posMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
         <MaisEnergia cfg={cfg} c={c} />
-      </Secao>
-
-      <Secao titulo="Margem" resumo={`${cfg.margem}% · falha ${cfg.taxaFalha}%`} padraoAberta>
+        </>
+      ),
+    },
+    {
+      id: 'margem',
+      nome: 'Margem',
+      icone: IconeMargem,
+      resumo: `${cfg.margem}% · falha ${cfg.taxaFalha}%`,
+      conteudo: (
+        <>
         <CampoNumero rotulo="Margem" valor={cfg.margem} set={c('margem')} min={0} max={500} passo={5} unidade="%" />
         <CampoNumero
           rotulo="Taxa de falha"
@@ -86,8 +111,18 @@ export function PainelOrcamento() {
           unidade="%"
           layout="linha"
         />
-      </Secao>
-    </>
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <Categorias
+      rotulo="Configurações de Orçamento"
+      categorias={categorias}
+      ativa={categoria}
+      setAtiva={(id) => setCategoria('orcamento', id)}
+    />
   );
 }
 

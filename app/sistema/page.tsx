@@ -31,7 +31,10 @@ import {
   MenuRotulo,
   MenuSeparador,
   Metrica,
-  Secao,
+  Categorias,
+  IconeMedidas,
+  IconeChapa,
+  IconeAcabamento,
   Segmentado,
   Selecao,
   Selo,
@@ -51,7 +54,7 @@ import {
 const PRINCIPIOS: [string, string][] = [
   ['Uma ação primária por tela', 'Exportar, no topo. Todo o resto é secundário ou fantasma.'],
   ['O 3D tem três zonas', 'Contexto no topo à esquerda, ferramentas na base, status na barra de baixo. Nada mais flutua.'],
-  ['Revelação progressiva', 'Seção recolhida mostra um resumo de uma linha. O raro fica em “Mais opções”.'],
+  ['Um clique até qualquer categoria', 'Barra lateral em abas verticais: nada para recolher nem rolar. O resumo de cada uma fica na dica da aba e no cabeçalho; o raro fica em “Mais opções”.'],
   ['Explicação em dica', 'Texto fixo só quando evita um erro. O resto vai no ícone de informação.'],
   ['Cor com significado', 'Azul: seleção. Verde: dinheiro e “cabe”. Âmbar: confira. Vermelho: impede imprimir.'],
   ['Número é mono', 'Algarismos de largura fixa, unidade separada e mais fraca, vírgula decimal.'],
@@ -134,6 +137,7 @@ export default function PaginaSistema() {
   const [liga, setLiga] = useState(true);
   const [aba, setAba] = useState<'desenhar' | 'imprimir' | 'orcamento'>('desenhar');
   const [ferr, setFerr] = useState('mover');
+  const [categoria, setCategoria] = useState('medidas');
 
   return (
     <main className="h-full overflow-y-auto bg-fundo">
@@ -351,19 +355,40 @@ export default function PaginaSistema() {
           </div>
         </Bloco>
 
-        <Bloco titulo="Estrutura" descricao="Seção recolhida mostra o resumo; as abas trocam a área sem desmontar o 3D.">
+        <Bloco titulo="Estrutura" descricao="Categorias em abas verticais (setas ↑/↓ trocam); as abas do topo trocam a área sem desmontar o 3D.">
           <div className="grid gap-3 md:grid-cols-2">
-            <Amostra rotulo="Secao">
-              <div className="-mx-4 -mb-4 border-t border-borda">
-                <Secao titulo="Medidas" resumo="150 mm · prof. 40 mm" padraoAberta>
-                  <CampoNumero rotulo="Profundidade" valor={40} set={() => {}} min={5} max={200} passo={1} />
-                  <MaisOpcoes>
-                    <CampoNumero rotulo="Parede" valor={2.4} set={() => {}} min={0.8} max={6} passo={0.1} />
-                  </MaisOpcoes>
-                </Secao>
-                <Secao titulo="Chapa ACM" resumo="3 mm · apoio por dentro">
-                  <p className="text-base text-texto-3">Conteúdo.</p>
-                </Secao>
+            <Amostra rotulo="Categorias (barra lateral)">
+              <div className="-mx-4 -mb-4 h-72 border-t border-borda">
+                <Categorias
+                  rotulo="Exemplo"
+                  ativa={categoria}
+                  setAtiva={setCategoria}
+                  categorias={[
+                    {
+                      id: 'medidas',
+                      nome: 'Medidas',
+                      icone: IconeMedidas,
+                      resumo: '150 mm · prof. 40 mm',
+                      conteudo: (
+                        <>
+                          <CampoNumero rotulo="Profundidade" valor={40} set={() => {}} min={5} max={200} passo={1} />
+                          <MaisOpcoes>
+                            <CampoNumero rotulo="Parede" valor={2.4} set={() => {}} min={0.8} max={6} passo={0.1} />
+                          </MaisOpcoes>
+                        </>
+                      ),
+                    },
+                    {
+                      id: 'chapa',
+                      nome: 'Chapa',
+                      icone: IconeChapa,
+                      resumo: '3 mm · apoio por dentro',
+                      alerta: 'atencao',
+                      conteudo: <p className="text-base text-texto-3">Conteúdo da chapa.</p>,
+                    },
+                    { id: 'acabamento', nome: 'Acabamento', icone: IconeAcabamento, resumo: 'nenhum', conteudo: <p className="text-base text-texto-3">Nada ativo.</p> },
+                  ]}
+                />
               </div>
             </Amostra>
             <Amostra rotulo="Abas">

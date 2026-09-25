@@ -8,8 +8,13 @@ import {
   CampoNumero,
   Interruptor,
   MaisOpcoes,
-  Secao,
   Segmentado,
+  Categorias,
+  type Categoria,
+  IconeEstilo,
+  IconeMedidas,
+  IconeChapa,
+  IconeAcabamento,
   Selecao,
   cx,
   formatarNumero,
@@ -34,16 +39,75 @@ import { listarFontesDoPC, trocarFonteWeb, trocarPagina, usarFonteDoPC } from '@
  * primeiras abrem por padrao; as outras mostram o resumo fechadas.
  */
 export function PainelDesenhar() {
-  const temChapa = useModelo().temChapa;
+  const m = useModelo();
+  const categoria = useInterface((x) => x.categoria.desenhar);
+  const setCategoria = useInterface((x) => x.setCategoria);
+  const r = useResumos();
+
+  const categorias: Categoria[] = [
+    { id: 'origem', nome: 'Origem', icone: IconeTexto, resumo: r.origem, alerta: r.alertaOrigem, conteudo: <Origem /> },
+    { id: 'estilo', nome: 'Estilo', icone: IconeEstilo, resumo: r.estilo, conteudo: <Estilo /> },
+    { id: 'medidas', nome: 'Medidas', icone: IconeMedidas, resumo: r.medidas, conteudo: <Medidas /> },
+    // Chapa so existe com chapa: sumir e melhor que mostrar controles que nao fazem nada.
+    ...(m.temChapa ? [{ id: 'chapa', nome: 'Chapa', icone: IconeChapa, resumo: r.chapa, conteudo: <Chapa /> }] : []),
+    { id: 'acabamento', nome: 'Acabamento', icone: IconeAcabamento, resumo: r.acabamento, conteudo: <Acabamento /> },
+  ];
+
   return (
-    <>
-      <SecaoOrigem />
-      <SecaoEstilo />
-      <SecaoMedidas />
-      {temChapa && <SecaoChapa />}
-      <SecaoAcabamento />
-    </>
+    <Categorias
+      rotulo="Configurações de Desenhar"
+      categorias={categorias}
+      ativa={categoria}
+      setAtiva={(id) => setCategoria('desenhar', id)}
+    />
   );
+}
+
+/**
+ * A linha de resumo de cada categoria: aparece na dica da aba e no cabecalho.
+ * Calculada num hook so, sempre, para a ordem dos hooks nao depender de qual
+ * categoria esta visivel.
+ */
+function useResumos() {
+  const s = useProjeto(
+    useShallow((x) => ({
+      imp: x.imp,
+      texto: x.texto,
+      fonteNome: x.fonteNome,
+      erro: x.erro,
+      presetAtivo: x.presetAtivo,
+      altura: x.altura,
+      impAltura: x.impAltura,
+      profundidade: x.profundidade,
+      frente: x.frente,
+      frenteEsp: x.frenteEsp,
+      traseira: x.traseira,
+      traseiraEsp: x.traseiraEsp,
+      apoio: x.apoio,
+      comLed: x.comLed,
+      espacadores: x.espacadores,
+      macica: x.macica,
+      biselAtivo: x.biselAtivo,
+    }))
+  );
+  const m = useModelo();
+
+  const alt = s.imp ? s.impAltura : s.altura;
+  const esp = s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp;
+  const extras = [
+    s.comLed && 'LED',
+    !s.macica && s.traseira === 'aberta' && s.espacadores > 0 && `${s.espacadores} espaçadores`,
+    s.macica && s.biselAtivo && 'chanfro',
+  ].filter(Boolean);
+
+  return {
+    origem: s.imp ? `${s.imp.nomeArquivo} · ${m.nomesImportados.length} peças` : `“${s.texto}” · ${s.fonteNome}`,
+    alertaOrigem: s.erro ? ('perigo' as const) : s.imp?.avisos.length ? ('atencao' as const) : undefined,
+    estilo: s.presetAtivo ? PRESETS[s.presetAtivo].nome : m.desc,
+    medidas: `${formatarNumero(alt)} mm · prof. ${formatarNumero(s.profundidade)} mm`,
+    chapa: `${formatarNumero(esp, 1)} mm · apoio ${APOIOS[s.apoio].curto.toLowerCase()}`,
+    acabamento: extras.length ? extras.join(' · ') : 'nenhum',
+  };
 }
 
 const FECHAMENTO_OPCOES = (Object.keys(FECHAMENTOS) as Fechamento[]).map((k) => ({
@@ -54,7 +118,7 @@ const FECHAMENTO_OPCOES = (Object.keys(FECHAMENTOS) as Fechamento[]).map((k) => 
 
 /* ------------------------------------------------------------------ origem */
 
-function SecaoOrigem() {
+function Origem() {
   const s = useProjeto(
     useShallow((x) => ({
       imp: x.imp,
@@ -75,11 +139,10 @@ function SecaoOrigem() {
   const abrirFonte = useInterface((x) => x.abrirFonte);
   const nomes = useModelo().nomesImportados;
 
-  const resumo = s.imp ? `${s.imp.nomeArquivo} · ${nomes.length} peças` : `“${s.texto}” · ${s.fonteNome}`;
   const fonteWeb = FONTES_WEB.find((f) => f.nome === s.fonteNome);
 
   return (
-    <Secao titulo="Origem" resumo={resumo} padraoAberta>
+    <>
       {s.imp ? (
         <>
           {/* Arquivo aberto: cartao do arquivo + como separar as pecas. */}
@@ -223,13 +286,13 @@ function SecaoOrigem() {
         </>
       )}
       {s.erro && <Alerta tom="perigo">{s.erro}</Alerta>}
-    </Secao>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------ estilo */
 
-function SecaoEstilo() {
+function Estilo() {
   const s = useProjeto(
     useShallow((x) => ({
       presetAtivo: x.presetAtivo,
@@ -242,10 +305,9 @@ function SecaoEstilo() {
   );
   const definir = useProjeto((x) => x.definir);
   const aplicarPreset = useProjeto((x) => x.aplicarPreset);
-  const desc = useModelo().desc;
 
   return (
-    <Secao titulo="Estilo" resumo={s.presetAtivo ? PRESETS[s.presetAtivo].nome : desc} padraoAberta>
+    <>
       {/* Os estilos so PREENCHEM os controles abaixo: qualquer combinacao continua alcancavel. */}
       <div className="grid grid-cols-2 gap-1.5">
         {(Object.keys(PRESETS) as PresetId[]).map((k) => {
@@ -329,13 +391,13 @@ function SecaoEstilo() {
           )}
         </>
       )}
-    </Secao>
+    </>
   );
 }
 
 /* ----------------------------------------------------------------- medidas */
 
-function SecaoMedidas() {
+function Medidas() {
   const s = useProjeto(
     useShallow((x) => ({
       imp: x.imp !== null,
@@ -347,10 +409,9 @@ function SecaoMedidas() {
     }))
   );
   const definir = useProjeto((x) => x.definir);
-  const alt = s.imp ? s.impAltura : s.altura;
 
   return (
-    <Secao titulo="Medidas" resumo={`${formatarNumero(alt)} mm · prof. ${formatarNumero(s.profundidade)} mm`} padraoAberta>
+    <>
       {s.imp ? (
         <CampoNumero
           rotulo="Altura total"
@@ -402,13 +463,13 @@ function SecaoMedidas() {
           passo={0.1}
         />
       </MaisOpcoes>
-    </Secao>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------- chapa */
 
-function SecaoChapa() {
+function Chapa() {
   const s = useProjeto(
     useShallow((x) => ({
       apoio: x.apoio,
@@ -425,10 +486,9 @@ function SecaoChapa() {
   );
   const definir = useProjeto((x) => x.definir);
   const areaChapa = useModelo().totais?.areaChapa ?? 0;
-  const esp = s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp;
 
   return (
-    <Secao titulo="Chapa ACM" resumo={`${formatarNumero(esp, 1)} mm · apoio ${APOIOS[s.apoio].curto.toLowerCase()}`}>
+    <>
       <Segmentado<Apoio>
         rotulo="Apoio"
         dica="Como a chapa encosta na peça impressa"
@@ -511,13 +571,13 @@ function SecaoChapa() {
           layout="linha"
         />
       </MaisOpcoes>
-    </Secao>
+    </>
   );
 }
 
 /* -------------------------------------------------------------- acabamento */
 
-function SecaoAcabamento() {
+function Acabamento() {
   const s = useProjeto(
     useShallow((x) => ({
       comLed: x.comLed,
@@ -535,14 +595,9 @@ function SecaoAcabamento() {
   const podeFuro = s.comLed && !s.macica && (s.frente === 'impressa' || s.traseira === 'impressa');
   const podeEspacador = !s.macica && s.traseira === 'aberta';
 
-  const ativos = [
-    s.comLed && 'LED',
-    podeEspacador && s.espacadores > 0 && `${s.espacadores} espaçadores`,
-    s.macica && s.biselAtivo && 'chanfro',
-  ].filter(Boolean);
 
   return (
-    <Secao titulo="Acabamento" resumo={ativos.length ? ativos.join(' · ') : 'nenhum'}>
+    <>
       <Interruptor
         rotulo="Leva fita de LED"
         dica="Entra no custo e libera o furo de passagem do fio"
@@ -591,6 +646,6 @@ function SecaoAcabamento() {
           )}
         </>
       )}
-    </Secao>
+    </>
   );
 }
