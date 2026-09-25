@@ -19,6 +19,7 @@ import {
 import { FILAMENTOS, type CustoCfg, type FilamentoId, type Orcamento, brl } from '@/lib/cost/calc';
 import { FONTES_WEB, type ResultadoFontesSistema, type FonteSistema } from '@/lib/text/fontes';
 import type { ModoSeparacao, ModoTraco } from '@/lib/import/pecas';
+import { IMPRESSORAS, MANUAL } from '@/lib/print/impressoras';
 
 export interface PainelProps {
   secao: SecaoId;
@@ -105,6 +106,10 @@ export interface PainelProps {
   setMesaX: (v: number) => void;
   mesaY: number;
   setMesaY: (v: number) => void;
+  mesaZ: number;
+  setMesaZ: (v: number) => void;
+  impressoraId: string;
+  escolherImpressora: (id: string) => void;
 
   // --- camadas ---
   camadas: Camadas;
@@ -113,7 +118,14 @@ export interface PainelProps {
   areaChapa: number;
   rolesUsados: Set<Role>;
   temChapa: boolean;
-  pecas: { nome: string; w: number; h: number; gramas: number }[];
+  pecas: {
+    nome: string;
+    w: number;
+    h: number;
+    gramas: number;
+    /** Veredito em cada impressora conhecida. */
+    mesas: { id: string; nome: string; cabe: boolean; texto: string }[];
+  }[];
   baixarSTL: (i: number) => void;
   avisos: string[];
 
@@ -414,9 +426,23 @@ function PainelParametros(p: PainelProps) {
       </Grupo>
 
       <Grupo titulo="Impressora">
+        <Segmentado
+          label="Maquina"
+          valor={p.impressoraId}
+          set={p.escolherImpressora}
+          opcoes={[
+            ...IMPRESSORAS.map((m) => ({
+              valor: m.id,
+              nome: m.nome.replace('Bambu Lab ', ''),
+              dica: `Mesa ${m.x} x ${m.y} mm, altura util ${m.z} mm`,
+            })),
+            { valor: MANUAL, nome: 'Manual', dica: 'Informe a mesa na mao' },
+          ]}
+        />
         <Num label="Diametro do bico" valor={p.bico} set={p.setBico} min={0.2} max={1.2} step={0.05} />
         <Num label="Mesa X" valor={p.mesaX} set={p.setMesaX} min={100} max={600} step={1} />
         <Num label="Mesa Y" valor={p.mesaY} set={p.setMesaY} min={100} max={600} step={1} />
+        <Num label="Altura util (Z)" valor={p.mesaZ} set={p.setMesaZ} min={50} max={600} step={1} dica="Limite de altura da maquina" />
         <Num
           label="Vazao efetiva"
           valor={p.cfg.vazao}
@@ -477,14 +503,29 @@ function PainelCamadas(p: PainelProps) {
         <Grupo titulo={`Pecas (${p.pecas.length})`}>
           <div className="space-y-1">
             {p.pecas.map((x, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-md bg-fundo px-2 py-1.5">
-                <span className="min-w-5 text-center text-base font-semibold text-tinta">{x.nome}</span>
-                <span className="tabular flex-1 font-mono text-micro text-tinta-fraca">
-                  {x.w.toFixed(0)}x{x.h.toFixed(0)} · {x.gramas.toFixed(0)}g
-                </span>
-                <Botao onClick={() => p.baixarSTL(i)} variante="fantasma" title="Baixar o STL desta peca">
-                  stl
-                </Botao>
+              <div key={i} className="rounded-md bg-fundo px-2 py-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="min-w-5 text-center text-base font-semibold text-tinta">{x.nome}</span>
+                  <span className="tabular flex-1 font-mono text-micro text-tinta-fraca">
+                    {x.w.toFixed(0)}x{x.h.toFixed(0)} · {x.gramas.toFixed(0)}g
+                  </span>
+                  <Botao onClick={() => p.baixarSTL(i)} variante="fantasma" title="Baixar o STL desta peca">
+                    stl
+                  </Botao>
+                </div>
+                {/* Veredito nas duas maquinas: o que ele precisa saber e QUAL serve,
+                    nao so se cabe na que esta selecionada. */}
+                <div className="mt-1 space-y-0.5 border-t border-linha/60 pt-1">
+                  {x.mesas.map((m) => (
+                    <div key={m.id} className="flex items-baseline gap-1.5 font-mono text-micro">
+                      <span className={m.cabe ? 'text-emerald-400' : 'text-red-400'}>{m.cabe ? 'cabe' : 'nao'}</span>
+                      <span className="text-tinta-fraca">{m.nome.replace('Bambu Lab ', '')}</span>
+                      <span className="flex-1 truncate text-tinta-fraca/70" title={m.texto}>
+                        {m.texto}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

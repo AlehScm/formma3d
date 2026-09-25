@@ -49,6 +49,7 @@ import { Paineis } from '@/components/Paineis';
 import { CAMADAS_TODAS, type Camadas } from '@/components/Viewer3D';
 import { importarArquivo, importarPdf, ErroImport } from '@/lib/import/pdf';
 import { desenhoParaPecas, type ModoSeparacao, type ModoTraco } from '@/lib/import/pecas';
+import { IMPRESSORAS, MANUAL, acharImpressora, caberNaMesa, descreverVeredito, type Impressora, type Veredito } from '@/lib/print/impressoras';
 import type { DesenhoBruto, Aviso } from '@/lib/import/pdf-ops';
 
 // O canvas WebGL nao pode ser renderizado no servidor.
@@ -124,8 +125,12 @@ export default function Page() {
   const [bico, setBico] = useState(0.4);
   const [biselAtivo, setBiselAtivo] = useState(false);
   const [biselTam, setBiselTam] = useState(1.5);
-  const [mesaX, setMesaX] = useState(256);
-  const [mesaY, setMesaY] = useState(256);
+  // A mesa ativa e sempre mesaX/Y/Z; escolher uma impressora so preenche esses
+  // numeros. Assim ha uma fonte de verdade so, e o modo manual parte do que estava.
+  const [impressoraId, setImpressoraId] = useState(IMPRESSORAS[0]!.id);
+  const [mesaX, setMesaX] = useState(IMPRESSORAS[0]!.x);
+  const [mesaY, setMesaY] = useState(IMPRESSORAS[0]!.y);
+  const [mesaZ, setMesaZ] = useState(IMPRESSORAS[0]!.z);
   const [cfg, setCfg] = useState<CustoCfg>(PADRAO);
 
   // Estado so da interface.
@@ -309,13 +314,22 @@ export default function Page() {
   const paramsDiferidos = useDeferredValue(params);
   const mesaXDiferida = useDeferredValue(mesaX);
   const mesaYDiferida = useDeferredValue(mesaY);
+  const mesaZDiferida = useDeferredValue(mesaZ);
+  const impressoraDiferida = useDeferredValue(impressoraId);
 
   // Etapa barata: aplica o modo de fabricacao aos contornos ja prontos.
-  const { letras, bounds, totais, avisos } = useMemo(() => {
-    const mX = mesaXDiferida;
-    const mY = mesaYDiferida;
+  const { letras, bounds, totais, avisos, mesa, vereditos } = useMemo(() => {
+    // Montada aqui a partir de primitivos: um objeto criado no corpo do componente
+    // seria novo a cada render e anularia o useDeferredValue.
+    const escolhida = acharImpressora(impressoraDiferida);
+    const mesa: Impressora = escolhida
+      ? { ...escolhida, x: mesaXDiferida, y: mesaYDiferida, z: mesaZDiferida }
+      : { id: MANUAL, nome: 'Mesa manual', x: mesaXDiferida, y: mesaYDiferida, z: mesaZDiferida, bicos: 1 };
     if (!letrasBase.length) {
-      return { letras: [] as LetraComPeca[], bounds: null, totais: null, avisos: [] as string[] };
+      return {
+        letras: [] as LetraComPeca[], bounds: null, totais: null, avisos: [] as string[],
+        mesa, vereditos: new Map<string, Veredito>(),
+      };
     }
     const letras: LetraComPeca[] = letrasBase.map((l) => ({
       ...l,
@@ -331,6 +345,7 @@ export default function Page() {
     let perimetroLed = 0;
     let maiorLetra = { w: 0, h: 0, nome: '' };
     const avisos = new Set<string>();
+    const vereditos = new Map<string, Veredito>();
 
     for (const l of letras) {
       // O que importa para a mesa e para o letreiro montado e o footprint REAL da
@@ -349,12 +364,12 @@ export default function Page() {
       if (bp.w > maiorLetra.w) maiorLetra = { w: bp.w, h: bp.h, nome: l.nome };
       for (const a of l.part.avisos) avisos.add(a);
 
-      // Cabe na mesa? Tenta a peca em pe e girada 90 graus antes de reclamar.
-      const cabe = (bp.w <= mX && bp.h <= mY) || (bp.h <= mX && bp.w <= mY);
-      if (!cabe) {
-        avisos.add(
-          `A peca "${l.nome}" (${bp.w.toFixed(0)}x${bp.h.toFixed(0)}mm) nao cabe na mesa de ${mX}x${mY}mm: vai precisar dividir em partes.`
-        );
+      // Cabe na mesa? O teste considera girar: uma peca longa e fina cabe na
+      // diagonal, e o Bambu Studio deixa girar na placa.
+      const v = caberNaMesa(l.part.contorno, l.part.alturaZ, mesa);
+      vereditos.set(l.nome, v);
+      if (!v.cabe) {
+        avisos.add(`A peca "${l.nome}" (${bp.w.toFixed(0)}x${bp.h.toFixed(0)}mm) ${descreverVeredito(v, mesa)} na ${mesa.nome}.`);
       }
     }
 
@@ -365,16 +380,27 @@ export default function Page() {
       for (const c of colisoesPorBorda(letras, e)) avisos.add(avisoColisao(c, e));
     }
 
+    // O limite de Z vem da maquina. Antes era 300mm fixo no codigo, que esta errado
+    // nas duas: a X2D vai a 261mm e a A2L a 325mm.
     const alturaZ = letras[0]?.part.alturaZ ?? paramsDiferidos.profundidade;
-    if (alturaZ > 300) avisos.add(`A peca tem ${alturaZ.toFixed(0)}mm de altura em Z: confira o limite da sua impressora.`);
+    if (alturaZ > mesa.z) {
+      avisos.add(`A peca tem ${alturaZ.toFixed(0)}mm de altura em Z e a ${mesa.nome} vai ate ${mesa.z}mm. Deite a peca ou reduza a profundidade.`);
+    }
 
     return {
       letras,
       bounds: { w: maxX - minX, h: maxY - minY, maiorLetra },
       totais: { volume, areaChapa, perimetroLed, qtd: letras.length },
       avisos: [...avisos],
+      mesa,
+      vereditos,
     };
-  }, [letrasBase, paramsDiferidos, mesaXDiferida, mesaYDiferida]);
+  }, [letrasBase, paramsDiferidos, mesaXDiferida, mesaYDiferida, mesaZDiferida, impressoraDiferida]);
+
+  const naoCabem = useMemo(
+    () => new Set([...vereditos].filter(([, v]) => !v.cabe).map(([nome]) => nome)),
+    [vereditos]
+  );
 
   const orcamento = useMemo(
     () =>
@@ -647,6 +673,18 @@ export default function Page() {
             setMesaX={setMesaX}
             mesaY={mesaY}
             setMesaY={setMesaY}
+            mesaZ={mesaZ}
+            setMesaZ={setMesaZ}
+            impressoraId={impressoraId}
+            escolherImpressora={(id) => {
+              setImpressoraId(id);
+              const m = acharImpressora(id);
+              if (m) {
+                setMesaX(m.x);
+                setMesaY(m.y);
+                setMesaZ(m.z);
+              }
+            }}
             camadas={camadas}
             setCamadas={setCamadas}
             areaChapa={totais?.areaChapa ?? 0}
@@ -659,6 +697,12 @@ export default function Page() {
                 w: b.w,
                 h: b.h,
                 gramas: (l.part.volume / 1000) * FILAMENTOS[cfg.filamento].densidade,
+                // Veredito nas duas maquinas dele: o que decide e "qual serve",
+                // nao so "cabe ou nao" na que esta selecionada.
+                mesas: IMPRESSORAS.map((m) => {
+                  const v = caberNaMesa(l.part.contorno, l.part.alturaZ, m);
+                  return { id: m.id, nome: m.nome, cabe: v.cabe, texto: descreverVeredito(v, m) };
+                }),
               };
             })}
             baixarSTL={(i) => {
@@ -688,6 +732,8 @@ export default function Page() {
               centro={[bounds.w / 2, bounds.h / 2]}
               explode={explode}
               camadas={camadas}
+              mesa={{ x: mesa.x, y: mesa.y }}
+              naoCabem={naoCabem}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-base text-tinta-fraca">

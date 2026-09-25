@@ -6,6 +6,10 @@ import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { partToGeometriesByRole, layerToGeometry } from '@/lib/geom/extrude';
 import type { Part, Role } from '@/lib/geom/modes';
+import { regionBounds } from '@/lib/geom/region';
+
+/** Peca que nao cabe na mesa: cor unica, para nao se confundir com nenhum papel. */
+const COR_NAO_CABE = '#e03131';
 
 // Cada papel da peca tem cor propria: e o que faz o corte da letra ficar obvio no preview.
 export const CORES: Record<Role, { cor: string; metal: number; rug: number }> = {
@@ -52,16 +56,79 @@ function camadaDoRole(role: Role): keyof Camadas {
   return 'corpo';
 }
 
+/**
+ * Mesa da impressora em escala real, no plano Z=0.
+ *
+ * Fica fora do grupo que desloca as pecas, entao cai no centro da cena -- serve
+ * como regua: da para ver de um olho se o letreiro inteiro passa longe de uma
+ * levada de impressao ou se esta na medida.
+ */
+/**
+ * Retangulo vazado como quatro segmentos.
+ *
+ * `lineSegments` e nao `line`: em TSX o nome `line` colide com o elemento SVG e a
+ * tipagem recusa as props de objeto 3D.
+ */
+function retanguloVazado(minX: number, minY: number, maxX: number, maxY: number): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(
+      [
+        minX, minY, 0, maxX, minY, 0,
+        maxX, minY, 0, maxX, maxY, 0,
+        maxX, maxY, 0, minX, maxY, 0,
+        minX, maxY, 0, minX, minY, 0,
+      ],
+      3
+    )
+  );
+  return g;
+}
+
+function Mesa({ x, y }: { x: number; y: number }) {
+  const borda = useMemo(() => retanguloVazado(-x / 2, -y / 2, x / 2, y / 2), [x, y]);
+  useEffect(() => () => borda.dispose(), [borda]);
+
+  return (
+    <group position={[0, 0, -0.01]}>
+      <mesh>
+        <planeGeometry args={[x, y]} />
+        <meshBasicMaterial color="#1b2530" transparent opacity={0.55} side={THREE.DoubleSide} />
+      </mesh>
+      <lineSegments geometry={borda}>
+        <lineBasicMaterial color="#5b8db8" />
+      </lineSegments>
+    </group>
+  );
+}
+
+/** Contorno do footprint de uma peca, para apontar qual e a que nao cabe. */
+function CaixaFootprint({ part, cor }: { part: Part; cor: string }) {
+  const geo = useMemo(() => {
+    const b = regionBounds(part.contorno);
+    return retanguloVazado(b.minX, b.minY, b.maxX, b.maxY);
+  }, [part]);
+  useEffect(() => () => geo.dispose(), [geo]);
+  return (
+    <lineSegments geometry={geo} position={[0, 0, 0.05]}>
+      <lineBasicMaterial color={cor} />
+    </lineSegments>
+  );
+}
+
 function Peca({
   letras,
   centro,
   explode,
   camadas,
+  naoCabem,
 }: {
   letras: LetraRender[];
   centro: [number, number];
   explode: number;
   camadas: Camadas;
+  naoCabem: ReadonlySet<string>;
 }) {
   // As Regions ja carregam a posicao real de cada letra no letreiro (avanco + kerning
   // da fonte), entao o grupo inteiro so precisa ser deslocado para o centro da cena.
@@ -101,21 +168,31 @@ function Peca({
 
   return (
     <group position={[-centro[0], -centro[1], 0]}>
-      {grupos.map((g, i) => (
-        <group key={i}>
-          {[...g.roles.entries()].map(([role, geo]) => {
-            if (!camadas[camadaDoRole(role)]) return null;
-            const c = CORES[role];
-            // A traseira tambem se afasta, para o explode mostrar as tres partes.
-            const dz = role === 'traseira' ? -explode * 0.6 : 0;
-            return (
-              <mesh key={role} geometry={geo} position={[0, 0, dz]} castShadow receiveShadow>
-                <meshStandardMaterial color={c.cor} metalness={c.metal} roughness={c.rug} />
-              </mesh>
-            );
-          })}
-        </group>
-      ))}
+      {grupos.map((g, i) => {
+        // Peca que nao cabe na mesa fica vermelha e ganha o contorno do footprint:
+        // sem isso o aviso em texto nao diz QUAL das letras e o problema.
+        const fora = naoCabem.has(letras[i]!.nome);
+        return (
+          <group key={i}>
+            {[...g.roles.entries()].map(([role, geo]) => {
+              if (!camadas[camadaDoRole(role)]) return null;
+              const c = CORES[role];
+              // A traseira tambem se afasta, para o explode mostrar as tres partes.
+              const dz = role === 'traseira' ? -explode * 0.6 : 0;
+              return (
+                <mesh key={role} geometry={geo} position={[0, 0, dz]} castShadow receiveShadow>
+                  <meshStandardMaterial
+                    color={fora ? COR_NAO_CABE : c.cor}
+                    metalness={fora ? 0.1 : c.metal}
+                    roughness={fora ? 0.6 : c.rug}
+                  />
+                </mesh>
+              );
+            })}
+            {fora && <CaixaFootprint part={letras[i]!.part} cor={COR_NAO_CABE} />}
+          </group>
+        );
+      })}
       {camadas.chapa &&
         chapas.map((geo, i) =>
           geo ? (
@@ -183,6 +260,10 @@ export interface Viewer3DProps {
   /** Quanto afastar a chapa do corpo, em mm. 0 = peca montada. */
   explode?: number;
   camadas?: Camadas;
+  /** Mesa da impressora, desenhada em escala real no centro da cena. */
+  mesa?: { x: number; y: number } | null;
+  /** Nomes das pecas que nao cabem na mesa: saem em vermelho. */
+  naoCabem?: ReadonlySet<string>;
 }
 
 export default function Viewer3D({
@@ -193,6 +274,8 @@ export default function Viewer3D({
   centro = [0, 0],
   explode = 0,
   camadas = CAMADAS_TODAS,
+  mesa = null,
+  naoCabem = new Set<string>(),
 }: Viewer3DProps) {
   const [perdido, setPerdido] = useState(false);
 
@@ -228,7 +311,9 @@ export default function Viewer3D({
       <directionalLight position={[-350, 250, 300]} intensity={0.8} color="#bcd4ff" />
       <directionalLight position={[0, 500, -200]} intensity={0.35} />
 
-      <Peca letras={letras} centro={centro} explode={explode} camadas={camadas} />
+      <Peca letras={letras} centro={centro} explode={explode} camadas={camadas} naoCabem={naoCabem} />
+
+      {mesa && <Mesa x={mesa.x} y={mesa.y} />}
 
       {/* Quadriculado de 10mm / 50mm: referencia de escala real sob o letreiro. */}
       <Grid
@@ -243,7 +328,11 @@ export default function Viewer3D({
         fadeStrength={1.5}
       />
 
-      <Enquadrar largura={largura} altura={altura} profundidade={profundidade} />
+      <Enquadrar
+        largura={Math.max(largura, mesa?.x ?? 0)}
+        altura={Math.max(altura, mesa?.y ?? 0)}
+        profundidade={profundidade}
+      />
       <GuardaContexto onPerda={setPerdido} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} />
     </Canvas>
