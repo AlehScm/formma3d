@@ -22,12 +22,16 @@ import {
   IconeDesfazer,
   IconeAbrir,
   Dica,
+  formatarPeso,
+  formatarTempo,
 } from '@/components/ui';
 import { IMPRESSORAS, MANUAL, caberNaMesa } from '@/lib/print/impressoras';
 import { regionBounds, type Region } from '@/lib/geom/region';
 import { useProjeto } from '@/store/projeto';
 import { placaDe, useInterface } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
+import { useCustos } from '@/features/orcamento/custos';
+import { brl } from '@/lib/cost/calc';
 import { arrumarNaPlaca } from '@/features/acoes/arranjo';
 import { baixarObjeto, baixarPlaca3MF, baixarPlacaSTL, baixarSTL, baixarTodasAsPlacas } from '@/features/acoes/exportar';
 
@@ -253,6 +257,8 @@ function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; 
   const selecionar = useInterface((x) => x.selecionar);
   const vista = useInterface((x) => x.placaVista);
   const verPlaca = useInterface((x) => x.verPlaca);
+  const custos = useCustos();
+  const daPlaca = placa === undefined ? undefined : custos.porPlaca.find((c) => c.indice === placa);
 
   return (
     <div className="space-y-1">
@@ -273,6 +279,15 @@ function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; 
           <span className="tabular font-mono normal-case tracking-normal text-texto-3">{itens.length}</span>
         </button>
       )}
+      {/* Uma placa = uma impressao: aqui entra o preparo da maquina. */}
+      {daPlaca && (
+        <p className="tabular flex justify-between px-1 font-mono text-micro text-texto-3">
+          <span>
+            {formatarPeso(daPlaca.orc.gramas)} · {formatarTempo(daPlaca.orc.horas)}
+          </span>
+          <span className="font-semibold text-sucesso">{brl(daPlaca.orc.preco)}</span>
+        </p>
+      )}
       <ul className="-mx-2 space-y-0.5">
         {itens.map((it) => {
           const b = regionBounds(it.contorno);
@@ -289,6 +304,7 @@ function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; 
                   type="button"
                   aria-pressed={sel}
                   onClick={() => selecionar(sel ? null : it.chave)}
+                  title={`${it.nome}: ${formatarNumero(b.w)} × ${formatarNumero(b.h)} mm`}
                   className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
                 >
                   {it.stl ? (
@@ -298,9 +314,7 @@ function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; 
                   ) : (
                     <span className="w-8 shrink-0 text-center text-base font-semibold text-texto">{it.nome}</span>
                   )}
-                  <span className="tabular min-w-0 flex-1 truncate font-mono text-micro text-texto-3">
-                    {formatarNumero(b.w)}×{formatarNumero(b.h)}
-                  </span>
+                  <span className="flex-1" />
                   {/* As duas maquinas lado a lado: o que decide e QUAL serve. */}
                   {IMPRESSORAS.map((mq) => {
                     const cabe = caberNaMesa(it.contorno, it.alturaZ, mq).cabe;
@@ -310,6 +324,9 @@ function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; 
                       </Selo>
                     );
                   })}
+                  <span className="tabular w-16 shrink-0 text-right font-mono text-micro text-texto-2">
+                    {custos.porPeca.has(it.chave) ? brl(custos.porPeca.get(it.chave)!.preco) : ''}
+                  </span>
                 </button>
                 <BotaoIcone icone={IconeBaixar} rotulo={`Baixar STL de ${it.nome}`} tamanho="sm" onClick={it.baixar} />
               </div>

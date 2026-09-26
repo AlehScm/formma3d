@@ -10,7 +10,7 @@ import { juntar, montarPlaca, type PecaPlaca } from '@/lib/print/placa';
 import type { Colocada } from '@/lib/print/arranjo';
 import { useInterface } from '@/store/interface';
 import { regionToSVG, regionToDXF, gabaritoSVG } from '@/lib/export/vectors';
-import { brl, type Orcamento } from '@/lib/cost/calc';
+import { brl, orcarPlaca, type CustoCfg, type Orcamento } from '@/lib/cost/calc';
 import { useProjeto } from '@/store/projeto';
 import type { LetraComPeca, Modelo, ObjetoModelo } from '@/modelo/Modelo';
 
@@ -79,8 +79,27 @@ export function textoOrcamento(m: Modelo, o: Orcamento): string {
     ...o.itens.map((i) => `${i.rotulo.padEnd(18)} ${brl(i.valor).padStart(12)}  ${i.detalhe}`),
     `${'CUSTO'.padEnd(18)} ${brl(o.custo).padStart(12)}`,
     `${'PREÇO SUGERIDO'.padEnd(18)} ${brl(o.preco).padStart(12)}  (margem ${s.cfg.margem}%)`,
+    ...linhasPorPlaca(m, s.cfg),
     ...(m.avisos.length ? ['', 'AVISOS:', ...m.avisos.map((a) => '- ' + a)] : []),
   ].join('\r\n');
+}
+
+/** Uma linha por placa arrumada: cada placa e uma impressao, com seu preparo. */
+function linhasPorPlaca(m: Modelo, cfg: CustoCfg): string[] {
+  const placas = useInterface.getState().placas.flatMap((p, i) => {
+    const chaves = [...p.keys()].filter((k) => m.insumos.has(k));
+    return chaves.length ? [{ i, chaves, o: orcarPlaca(chaves.map((k) => m.insumos.get(k)!), cfg) }] : [];
+  });
+  if (!placas.length) return [];
+  return [
+    '',
+    'POR PLACA (cada uma e uma impressao):',
+    ...placas.map(
+      ({ i, chaves, o }) =>
+        `Placa ${i + 1}: ${chaves.length} peça(s), ${o.gramas.toFixed(0)} g, ${o.horas.toFixed(1)} h, custo ${brl(o.custo)}, preço ${brl(o.preco)}` +
+        (chaves.some((k) => k.startsWith('stl:')) ? ' (inclui STL)' : '')
+    ),
+  ];
 }
 
 export async function baixarPacote(m: Modelo, o: Orcamento): Promise<void> {

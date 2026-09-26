@@ -81,6 +81,8 @@ export interface OrcarArgs {
   areaChapaMm2?: number;
   perimetroLedMm?: number;
   qtdLetras?: number;
+  /** Quantas vezes a maquina e preparada: uma por placa. 0 = so a parte da peca. */
+  impressoes?: number;
   cfg?: CustoCfg;
 }
 
@@ -89,7 +91,7 @@ export interface OrcarArgs {
  * Separa CUSTO de PRECO: a taxa de falha entra no custo (voce paga pelos jobs
  * perdidos) e a margem so no final, para o preco continuar legivel na negociacao.
  */
-export function orcar({ volumeMm3, areaChapaMm2 = 0, perimetroLedMm = 0, qtdLetras = 1, cfg = PADRAO }: OrcarArgs): Orcamento {
+export function orcar({ volumeMm3, areaChapaMm2 = 0, perimetroLedMm = 0, qtdLetras = 1, impressoes = 1, cfg = PADRAO }: OrcarArgs): Orcamento {
   const fil: Filamento = FILAMENTOS[cfg.filamento] ?? FILAMENTOS.PLA;
   const cm3 = volumeMm3 / 1000;
   const gramas = cm3 * fil.densidade;
@@ -99,7 +101,8 @@ export function orcar({ volumeMm3, areaChapaMm2 = 0, perimetroLedMm = 0, qtdLetr
   const material = gramas * (cfg.precoRolo / cfg.rendimento);
   const maquina = horas * cfg.custoMaquina;
   const energia = horas * (cfg.potencia / 1000) * cfg.precoKwh;
-  const maoDeObra = ((cfg.setupMin + cfg.posMin * qtdLetras) / 60) * cfg.valorHora;
+  const minutos = cfg.setupMin * impressoes + cfg.posMin * qtdLetras;
+  const maoDeObra = (minutos / 60) * cfg.valorHora;
   const chapa = (areaChapaMm2 / 1e6) * cfg.precoAcmM2;
   const led = (perimetroLedMm / 1000) * cfg.precoFitaLedM;
 
@@ -112,7 +115,7 @@ export function orcar({ volumeMm3, areaChapaMm2 = 0, perimetroLedMm = 0, qtdLetr
     { rotulo: 'Filamento', valor: material, detalhe: `${gramas.toFixed(0)} g` },
     { rotulo: 'Máquina', valor: maquina, detalhe: `${horas.toFixed(1)} h` },
     { rotulo: 'Energia', valor: energia, detalhe: `${((horas * cfg.potencia) / 1000).toFixed(2)} kWh` },
-    { rotulo: 'Mão de obra', valor: maoDeObra, detalhe: `${cfg.setupMin + cfg.posMin * qtdLetras} min` },
+    { rotulo: 'Mão de obra', valor: maoDeObra, detalhe: `${minutos} min${impressoes > 1 ? ` (${impressoes} preparos)` : ''}` },
   ];
   if (chapa > 0) itens.push({ rotulo: 'Chapa ACM', valor: chapa, detalhe: `${(areaChapaMm2 / 1e6).toFixed(3)} m2` });
   if (led > 0) itens.push({ rotulo: 'Fita LED', valor: led, detalhe: `${(perimetroLedMm / 1000).toFixed(2)} m` });
@@ -120,3 +123,32 @@ export function orcar({ volumeMm3, areaChapaMm2 = 0, perimetroLedMm = 0, qtdLetr
 
   return { gramas, cm3, horas, rolos: gramas / cfg.rendimento, itens, custo, lucro: preco - custo, preco };
 }
+
+/** O que uma peca consome: e daqui que sai o custo dela. */
+export interface Insumos {
+  volumeMm3: number;
+  areaChapaMm2: number;
+  perimetroLedMm: number;
+}
+
+export const somarInsumos = (lista: Insumos[]): Insumos =>
+  lista.reduce(
+    (a, x) => ({
+      volumeMm3: a.volumeMm3 + x.volumeMm3,
+      areaChapaMm2: a.areaChapaMm2 + x.areaChapaMm2,
+      perimetroLedMm: a.perimetroLedMm + x.perimetroLedMm,
+    }),
+    { volumeMm3: 0, areaChapaMm2: 0, perimetroLedMm: 0 }
+  );
+
+/**
+ * A parte de uma peca: filamento, maquina, energia, acabamento, chapa, LED e perdas.
+ * Sem o preparo da maquina, que e da placa -- senao a soma das pecas cobraria o
+ * preparo uma vez por peca.
+ */
+export const orcarPeca = (ins: Insumos, cfg: CustoCfg = PADRAO): Orcamento =>
+  orcar({ ...ins, qtdLetras: 1, impressoes: 0, cfg });
+
+/** Uma placa = uma impressao: as pecas dela mais um preparo. */
+export const orcarPlaca = (lista: Insumos[], cfg: CustoCfg = PADRAO): Orcamento =>
+  orcar({ ...somarInsumos(lista), qtdLetras: lista.length, impressoes: 1, cfg });

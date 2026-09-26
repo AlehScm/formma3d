@@ -26,6 +26,11 @@ export function lerNumero(texto: string): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
+/** Tempo de maquina: minutos abaixo de uma hora, horas com uma casa acima. */
+export function formatarTempo(horas: number): string {
+  return horas < 1 ? `${formatarNumero(horas * 60, 0)} min` : `${formatarNumero(horas, 1)} h`;
+}
+
 export function formatarPeso(gramas: number): string {
   return gramas >= 1000 ? `${formatarNumero(gramas / 1000, 2)} kg` : `${formatarNumero(gramas, 0)} g`;
 }

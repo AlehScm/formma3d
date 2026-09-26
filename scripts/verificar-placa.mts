@@ -19,6 +19,7 @@ import { partToGeometry } from '../lib/geom/extrude';
 import { buildRegion, intersectRegion, minThickness, regionArea, regionBounds, rotateRegion, translateRegion, type Region } from '../lib/geom/region';
 import { parseFont, textToLetters, normalizeLetters } from '../lib/text/glyphs';
 import { enfileirarArquivos, type ArquivoNaFila } from '../lib/import/fila';
+import { PADRAO, orcar, orcarPeca, orcarPlaca, somarInsumos, type Insumos } from '../lib/cost/calc';
 import { useProjeto, lerChave } from '../store/projeto';
 
 let falhas = 0;
@@ -235,6 +236,28 @@ async function main() {
     st.removerArquivo(y.id);
     ok('remover arquivo deixa o outro', useProjeto.getState().arquivos.map((a) => a.id).join() === x.id);
     ok('lerChave distingue os tres', lerChave('stl:9').tipo === 'stl' && lerChave('a:01').tipo === 'arquivo' && lerChave('A#0').tipo === 'texto');
+  }
+
+  console.log('\n== custo por peca e por placa ==');
+  {
+    const cfg = { ...PADRAO, setupMin: 10, posMin: 5, taxaFalha: 8 };
+    const pecas: Insumos[] = [
+      { volumeMm3: 50000, areaChapaMm2: 20000, perimetroLedMm: 300 },
+      { volumeMm3: 30000, areaChapaMm2: 0, perimetroLedMm: 0 },
+      { volumeMm3: 80000, areaChapaMm2: 45000, perimetroLedMm: 500 },
+    ];
+    const tudo = somarInsumos(pecas);
+    const preparo = orcar({ volumeMm3: 0, qtdLetras: 0, impressoes: 1, cfg }).custo;
+    const somaPecas = pecas.reduce((a, p) => a + orcarPeca(p, cfg).custo, 0);
+    const total2 = orcar({ ...tudo, qtdLetras: 3, impressoes: 2, cfg }).custo;
+    ok('soma das pecas + um preparo por placa = total', perto(somaPecas + 2 * preparo, total2, 1e-9), `${somaPecas.toFixed(2)} + 2x${preparo.toFixed(2)} vs ${total2.toFixed(2)}`);
+    const placas = orcarPlaca([pecas[0]!, pecas[1]!], cfg).custo + orcarPlaca([pecas[2]!], cfg).custo;
+    ok('soma das placas = total com as mesmas placas', perto(placas, total2, 1e-9));
+    ok('peca nao cobra preparo', perto(orcarPeca({ volumeMm3: 0, areaChapaMm2: 0, perimetroLedMm: 0 }, { ...cfg, posMin: 0 }).custo, 0, 1e-12));
+    ok('placa de uma peca = peca + um preparo', perto(orcarPlaca([pecas[1]!], cfg).custo, orcarPeca(pecas[1]!, cfg).custo + preparo, 1e-9));
+    ok('uma impressao so e o orcamento de antes', perto(orcar({ ...tudo, qtdLetras: 3, cfg }).custo, orcar({ ...tudo, qtdLetras: 3, impressoes: 1, cfg }).custo, 1e-12));
+    const cubo = orcarPeca({ volumeMm3: 20 * 20 * 20, areaChapaMm2: 0, perimetroLedMm: 0 }, cfg);
+    ok('STL: custo pelo volume, sem chapa', !cubo.itens.some((i) => i.rotulo === 'Chapa ACM') && perto(cubo.gramas, 8 * 1.24, 1e-9), `${cubo.gramas.toFixed(2)} g`);
   }
 
   console.log(`\n${total - falhas}/${total} passaram\n`);

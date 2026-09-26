@@ -7,7 +7,9 @@ import { buildPart, alturaArte, orientar, descreverPeca, type Params, type Part,
 import type { Font } from 'opentype.js';
 import { regionArea, regionPerimeter, minThickness, regionBounds, type Region } from '@/lib/geom/region';
 import { colisoesPorBorda, avisoColisao } from '@/lib/geom/letreiro';
-import { orcar, type Orcamento } from '@/lib/cost/calc';
+import { orcar, type Insumos, type Orcamento } from '@/lib/cost/calc';
+import { volumeMalha } from '@/lib/import/stl';
+import { useInterface } from '@/store/interface';
 import { desenhoParaPecas, resolverTracos } from '@/lib/import/pecas';
 import { chaveFonte, textoEmObjetos } from '@/lib/import/texto-em-curvas';
 import { MANUAL, acharImpressora, caberNaMesa, cascoConvexo, descreverVeredito, type Impressora, type Veredito } from '@/lib/print/impressoras';
@@ -46,6 +48,7 @@ export interface ObjetoModelo {
   /** Casco convexo em XY: conservador, nunca colide. */
   contorno: Region;
   alturaZ: number;
+  volume: number;
 }
 
 /**
@@ -93,6 +96,8 @@ export interface Modelo {
   pecasPorArquivo: Map<string, string[]>;
   /** Objetos STL prontos, ja com footprint para o arranjo. So existem na placa. */
   objetos: ObjetoModelo[];
+  /** O que cada peca consome (letras e STL), para o custo por peca e por placa. */
+  insumos: Map<string, Insumos>;
   nomeProjeto: string;
   /** Descricao curta da construcao, usada nos nomes de arquivo. */
   desc: string;
@@ -202,7 +207,14 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       objetos3d.map((o) => {
         const pts = [];
         for (let i = 0; i < o.posicoes.length; i += 3) pts.push({ x: o.posicoes[i]!, y: o.posicoes[i + 1]! });
-        return { chave: chaveObjeto3d(o.id), nome: o.nome, posicoes: o.posicoes, alturaZ: o.alturaZ, contorno: [{ outer: cascoConvexo(pts), holes: [] }] };
+        return {
+          chave: chaveObjeto3d(o.id),
+          nome: o.nome,
+          posicoes: o.posicoes,
+          alturaZ: o.alturaZ,
+          contorno: [{ outer: cascoConvexo(pts), holes: [] }],
+          volume: volumeMalha(o.posicoes),
+        };
       }),
     [objetos3d]
   );
@@ -260,7 +272,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       ? { ...escolhida, x: mesaXD, y: mesaYD, z: mesaZD }
       : { id: MANUAL, nome: 'Mesa manual', x: mesaXD, y: mesaYD, z: mesaZD, bicos: 1 };
     if (!letrasBase.length) {
-      return { letras: [] as LetraComPeca[], bounds: null, totais: null, avisos: [] as string[], mesa, vereditos: new Map<string, Veredito>() };
+      return { letras: [] as LetraComPeca[], bounds: null, totais: null, avisos: [] as string[], mesa, vereditos: new Map<string, Veredito>(), insumos: new Map<string, Insumos>() };
     }
     const letras: LetraComPeca[] = letrasBase.map((l) => ({ ...l, part: buildPart(l.region, paramsDiferidos, l.espessuraMin) }));
 
@@ -274,6 +286,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     let maiorLetra = { w: 0, h: 0, nome: '' };
     const avisos = new Set<string>();
     const vereditos = new Map<string, Veredito>();
+    const insumos = new Map<string, Insumos>();
 
     for (const l of letras) {
       // O footprint REAL (`part.contorno`) e o que conta para a mesa e o letreiro.
@@ -282,12 +295,16 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       minY = Math.min(minY, bp.minY);
       maxX = Math.max(maxX, bp.maxX);
       maxY = Math.max(maxY, bp.maxY);
-      volume += l.part.volume;
+      const ins: Insumos = { volumeMm3: l.part.volume, areaChapaMm2: 0, perimetroLedMm: 0 };
       for (const e of l.part.extras) {
-        if (e.kind === 'cut') areaChapa += regionArea(e.region);
-        else volume += e.layers.reduce((a, x) => a + regionArea(x.region) * (x.z1 - x.z0), 0);
+        if (e.kind === 'cut') ins.areaChapaMm2 += regionArea(e.region);
+        else ins.volumeMm3 += e.layers.reduce((a, x) => a + regionArea(x.region) * (x.z1 - x.z0), 0);
       }
-      if (paramsDiferidos.comLed) perimetroLed += regionPerimeter(l.region) / 2;
+      if (paramsDiferidos.comLed) ins.perimetroLedMm = regionPerimeter(l.region) / 2;
+      insumos.set(l.chave, ins);
+      volume += ins.volumeMm3;
+      areaChapa += ins.areaChapaMm2;
+      perimetroLed += ins.perimetroLedMm;
       if (bp.w > maiorLetra.w) maiorLetra = { w: bp.w, h: bp.h, nome: l.nome };
       for (const a of l.part.avisos) avisos.add(a);
 
@@ -311,6 +328,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       avisos: [...avisos],
       mesa,
       vereditos,
+      insumos,
     };
   }, [letrasBase, paramsDiferidos, mesaXD, mesaYD, mesaZD, impressoraD]);
 
@@ -323,10 +341,13 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     }
     const naoCabem = new Set([...vereditos].filter(([, v]) => !v.cabe).map(([k]) => k));
     const primeiro = arquivos[0];
+    const insumos = new Map(geo.insumos);
+    for (const o of objetos) insumos.set(o.chave, { volumeMm3: o.volume, areaChapaMm2: 0, perimetroLedMm: 0 });
     return {
       ...geo,
       vereditos,
       naoCabem,
+      insumos,
       params,
       objetos,
       pecasPorArquivo: new Map((pecasNativas ?? []).map(({ a, pecas }) => [a.id, pecas.map((x) => x.nome)])),
@@ -342,6 +363,11 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     };
   }, [geo, params, pecasNativas, objetos, arquivos, origem.nomeTrabalho, origem.presetAtivo, texto]);
 
+  // Cada placa e uma impressao, com seu preparo. So contam as placas com letra: uma
+  // placa so de STL e outro trabalho, fora do preco do letreiro.
+  const impressoes = useInterface((s) =>
+    Math.max(1, s.placas.filter((p) => [...p.keys()].some((k) => geo.insumos.has(k))).length)
+  );
   const orcamento = useMemo(
     () =>
       geo.totais
@@ -350,10 +376,11 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
             areaChapaMm2: geo.totais.areaChapa,
             perimetroLedMm: geo.totais.perimetroLed,
             qtdLetras: geo.totais.qtd,
+            impressoes,
             cfg,
           })
         : null,
-    [geo.totais, cfg]
+    [geo.totais, cfg, impressoes]
   );
 
   return (

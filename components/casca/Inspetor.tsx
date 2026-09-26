@@ -13,6 +13,7 @@ import {
   Selo,
   formatarNumero,
   formatarPeso,
+  formatarTempo,
   formatarTexto,
   IconeBaixar,
   IconeFechar,
@@ -25,7 +26,7 @@ import { brl } from '@/lib/cost/calc';
 import { regionBounds, type Region } from '@/lib/geom/region';
 import { edicaoVazia, escalaDeMm, mmDeEscala, SEM_EDICAO } from '@/lib/geom/pecaEditada';
 import { IMPRESSORAS, caberNaMesa, descreverVeredito } from '@/lib/print/impressoras';
-import { FILAMENTOS } from '@/lib/cost/calc';
+import { useCustos } from '@/features/orcamento/custos';
 import { useProjeto } from '@/store/projeto';
 import { placaDe, useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type LetraComPeca } from '@/modelo/Modelo';
@@ -96,7 +97,6 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
   const e = useProjeto((s) => s.edicoes.get(l.chave)) ?? SEM_EDICAO;
   const editar = useProjeto((s) => s.editarPeca);
   const resetar = useProjeto((s) => s.resetarPeca);
-  const densidade = useProjeto((s) => FILAMENTOS[s.cfg.filamento].densidade);
   const b = regionBounds(l.part.contorno);
   const proporcional = Math.abs(e.ex - e.ey) < 1e-9;
 
@@ -142,13 +142,8 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
           />
         </div>
 
-        <ListaValores
-          densa
-          itens={[
-            { rotulo: 'Espessura mínima', valor: `${formatarNumero(l.espessuraMin, 1)} mm` },
-            { rotulo: 'Filamento', valor: formatarPeso((l.part.volume / 1000) * densidade) },
-          ]}
-        />
+        <ListaValores densa itens={[{ rotulo: 'Espessura mínima', valor: `${formatarNumero(l.espessuraMin, 1)} mm` }]} />
+        <CustoDaPeca chave={l.chave} />
 
         {!edicaoVazia(e) && (
           <Botao variante="fantasma" icone={IconeOriginal} largura onClick={() => resetar(l.chave)}>
@@ -158,6 +153,30 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
         <Excluir l={l} />
       </div>
     </>
+  );
+}
+
+/**
+ * O que esta peca custa sozinha: filamento, maquina, acabamento, chapa e perdas.
+ * O preparo da maquina fica na placa (uma vez por impressao), nao aqui.
+ */
+function CustoDaPeca({ chave }: { chave: string }) {
+  const o = useCustos().porPeca.get(chave);
+  if (!o) return null;
+  return (
+    <div className="space-y-1">
+      <p className="text-micro font-semibold uppercase tracking-wider text-texto-3">Custo desta peça</p>
+      <ListaValores
+        densa
+        itens={[
+          { rotulo: 'Filamento', valor: formatarPeso(o.gramas) },
+          { rotulo: 'Tempo de máquina', valor: formatarTempo(o.horas) },
+          { rotulo: 'Custo', valor: brl(o.custo) },
+          { rotulo: 'Preço', valor: brl(o.preco), forte: true, tom: 'sucesso' },
+        ]}
+      />
+      <p className="text-micro text-texto-3">Sem o preparo da máquina, que é contado uma vez por placa.</p>
+    </div>
   );
 }
 
@@ -236,6 +255,8 @@ function InspetorImpressao({ p }: { p: PecaDePlaca }) {
             ]}
           />
         )}
+
+        <CustoDaPeca chave={p.chave} />
 
         <Botao icone={IconeBaixar} largura onClick={p.baixar}>
           Baixar STL desta peça

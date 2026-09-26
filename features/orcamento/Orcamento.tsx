@@ -15,13 +15,15 @@ import {
   Vazio,
   formatarNumero,
   formatarPeso,
+  formatarTempo,
   formatarTexto,
   IconeBaixar,
   IconeCopiar,
   IconeOk,
   IconeOrcamento,
 } from '@/components/ui';
-import { FILAMENTOS, brl, type CustoCfg, type FilamentoId } from '@/lib/cost/calc';
+import { FILAMENTOS, brl, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
+import { useCustos } from '@/features/orcamento/custos';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type Modelo } from '@/modelo/Modelo';
@@ -158,7 +160,7 @@ export function FolhaOrcamento() {
   const m = useModelo();
   const o = useOrcamento();
   const cfg = useProjeto((x) => x.cfg);
-  const placas = useInterface((x) => x.infoArranjo?.placas);
+  const placas = useCustos().porPlaca.length;
   const [copiado, setCopiado] = useState(false);
 
   if (!o) {
@@ -204,7 +206,7 @@ export function FolhaOrcamento() {
             valor={formatarNumero(o.horas, 1)}
             unidade="h"
             tamanho="sm"
-            detalhe={placas ? `${placas} ${placas === 1 ? 'placa' : 'placas'}` : undefined}
+            detalhe={placas ? `${placas} ${placas === 1 ? 'impressão' : 'impressões'}` : undefined}
           />
           <Metrica rotulo="Lucro" valor={brl(o.lucro)} tamanho="sm" tom="sucesso" detalhe={`margem ${cfg.margem}%`} />
         </div>
@@ -220,6 +222,8 @@ export function FolhaOrcamento() {
           />
         </div>
 
+        <TabelasDeCusto />
+
         <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-borda px-6 py-4">
           <Botao variante="fantasma" icone={copiado ? IconeOk : IconeCopiar} onClick={() => void copiar()}>
             {copiado ? 'Copiado' : 'Copiar para o cliente'}
@@ -233,5 +237,73 @@ export function FolhaOrcamento() {
         “Copiar para o cliente” leva só medida, acabamento e valor — custo e margem ficam aqui.
       </p>
     </div>
+  );
+}
+
+/** Uma linha por placa (impressao) e, recolhida, uma por peca. */
+function TabelasDeCusto() {
+  const m = useModelo();
+  const { porPeca, porPlaca } = useCustos();
+  const nomes = new Map([...m.letras.map((l) => [l.chave, l.nome] as const), ...m.objetos.map((o) => [o.chave, o.nome] as const)]);
+  const pecas = [...porPeca].filter(([k]) => nomes.has(k));
+  const temStl = porPlaca.some((p) => p.temStl);
+
+  return (
+    <div className="space-y-4 border-t border-borda px-6 py-4">
+      {porPlaca.length > 0 && (
+        <div>
+          <p className="mb-1 text-micro font-medium uppercase tracking-wider text-texto-3">Por placa (cada uma é uma impressão)</p>
+          <TabelaCusto
+            linhas={porPlaca.map((p) => ({
+              nome: `Placa ${p.indice + 1}${p.temStl ? ' *' : ''}`,
+              qtd: p.qtd,
+              o: p.orc,
+            }))}
+          />
+          {temStl && (
+            <p className="mt-1 text-micro text-texto-3">* inclui objeto STL: conta no custo da impressão, mas não no preço do letreiro.</p>
+          )}
+        </div>
+      )}
+      <details className="group">
+        <summary className="cursor-pointer list-none text-micro font-medium uppercase tracking-wider text-texto-3 hover:text-texto">
+          <span className="inline-block transition-transform group-open:rotate-90">›</span> Por peça ({pecas.length})
+        </summary>
+        <div className="mt-1">
+          <TabelaCusto linhas={pecas.map(([k, o]) => ({ nome: nomes.get(k)!, o }))} />
+          <p className="mt-1 text-micro text-texto-3">Sem o preparo da máquina, que entra uma vez em cada placa.</p>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function TabelaCusto({ linhas }: { linhas: { nome: string; qtd?: number; o: Orcamento }[] }) {
+  const comQtd = linhas.some((l) => l.qtd !== undefined);
+  return (
+    <table className="tabular w-full text-mini">
+      <thead>
+        <tr className="text-left text-micro text-texto-3">
+          <th className="py-1.5 font-medium" />
+          {comQtd && <th className="py-1.5 text-right font-medium">Peças</th>}
+          <th className="py-1.5 text-right font-medium">Filamento</th>
+          <th className="py-1.5 text-right font-medium">Tempo</th>
+          <th className="py-1.5 text-right font-medium">Custo</th>
+          <th className="py-1.5 text-right font-medium">Preço</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-borda/60 font-mono">
+        {linhas.map((l) => (
+          <tr key={l.nome}>
+            <td className="py-1.5 font-sans font-medium text-texto">{l.nome}</td>
+            {comQtd && <td className="py-1.5 text-right text-texto-2">{l.qtd}</td>}
+            <td className="py-1.5 text-right text-texto-2">{formatarPeso(l.o.gramas)}</td>
+            <td className="py-1.5 text-right text-texto-2">{formatarTempo(l.o.horas)}</td>
+            <td className="py-1.5 text-right text-texto-2">{brl(l.o.custo)}</td>
+            <td className="py-1.5 text-right font-semibold text-sucesso">{brl(l.o.preco)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
