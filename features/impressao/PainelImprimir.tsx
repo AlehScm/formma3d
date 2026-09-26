@@ -20,6 +20,8 @@ import {
   IconeArrumar,
   IconeBaixar,
   IconeDesfazer,
+  IconeAbrir,
+  Dica,
 } from '@/components/ui';
 import { IMPRESSORAS, MANUAL, caberNaMesa } from '@/lib/print/impressoras';
 import { regionBounds } from '@/lib/geom/region';
@@ -27,7 +29,7 @@ import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
 import { arrumarNaPlaca } from '@/features/acoes/arranjo';
-import { baixarSTL } from '@/features/acoes/exportar';
+import { baixarObjeto, baixarPlaca3MF, baixarPlacaSTL, baixarSTL, baixarTodasAsPlacas } from '@/features/acoes/exportar';
 
 /**
  * Area Imprimir: como o letreiro vai para a maquina. Nada aqui muda o produto --
@@ -151,7 +153,7 @@ function Arranjo() {
         layout="linha"
       />
       <div className="flex gap-1.5">
-        <Botao icone={IconeArrumar} largura disabled={!m.letras.length} onClick={() => arrumarNaPlaca(m)}>
+        <Botao icone={IconeArrumar} largura disabled={!m.letras.length && !m.objetos.length} onClick={() => arrumarNaPlaca(m)}>
           Arrumar na placa
         </Botao>
         {info && <BotaoIcone icone={IconeDesfazer} rotulo="Voltar à posição do letreiro" onClick={limpar} />}
@@ -164,6 +166,29 @@ function Arranjo() {
           {info.impossiveis > 0 && <> · {info.impossiveis} não cabe(m) nesta máquina</>}
         </Alerta>
       )}
+      {info && info.dentro > 0 && (
+        // A placa sai num arquivo so, com as pecas onde estao na tela.
+        <div className="space-y-1.5 border-t border-borda pt-3">
+          <p className="text-mini font-semibold uppercase tracking-wider text-texto-2">Baixar a placa</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Dica conteudo="Formato do Bambu Studio: cada peça continua um objeto separado, na posição do arranjo">
+              <Botao icone={IconeBaixar} largura variante="primario" onClick={() => void baixarPlaca3MF(m)}>
+                3MF
+              </Botao>
+            </Dica>
+            <Dica conteudo="Todas as peças numa malha só, já posicionadas">
+              <Botao icone={IconeBaixar} largura onClick={() => baixarPlacaSTL(m)}>
+                STL
+              </Botao>
+            </Dica>
+          </div>
+          {info.placas > 1 && (
+            <Botao icone={IconeBaixar} largura variante="fantasma" onClick={() => void baixarTodasAsPlacas(m)}>
+              Todas as {info.placas} placas (.zip)
+            </Botao>
+          )}
+        </div>
+      )}
     </>
   );
 }
@@ -172,15 +197,22 @@ function Pecas() {
   const m = useModelo();
   const selecionada = useInterface((x) => x.selecionada);
   const selecionar = useInterface((x) => x.selecionar);
+  const abrirDesenho = useInterface((x) => x.abrirDesenho);
+
+  // Letras do letreiro e objetos STL na mesma lista: dividem a mesma placa.
+  const itens = [
+    ...m.letras.map((l) => ({ chave: l.chave, nome: l.nome, contorno: l.part.contorno, alturaZ: l.part.alturaZ, stl: false, baixar: () => baixarSTL(m, l) })),
+    ...m.objetos.map((o) => ({ chave: o.chave, nome: o.nome, contorno: o.contorno, alturaZ: o.alturaZ, stl: true, baixar: () => baixarObjeto(o) })),
+  ];
 
   return (
     <>
       <ul className="-mx-2 space-y-0.5">
-        {m.letras.map((l) => {
-          const b = regionBounds(l.part.contorno);
-          const sel = selecionada === l.chave;
+        {itens.map((it) => {
+          const b = regionBounds(it.contorno);
+          const sel = selecionada === it.chave;
           return (
-            <li key={l.chave}>
+            <li key={it.chave}>
               <div
                 className={cx(
                   'group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors',
@@ -189,16 +221,22 @@ function Pecas() {
               >
                 <button
                   type="button"
-                  onClick={() => selecionar(sel ? null : l.chave)}
+                  onClick={() => selecionar(sel ? null : it.chave)}
                   className="flex min-w-0 flex-1 items-center gap-2 text-left"
                 >
-                  <span className="w-6 shrink-0 text-center text-base font-semibold text-texto">{l.nome}</span>
+                  {it.stl ? (
+                    <span className="min-w-0 max-w-24 truncate text-base font-medium text-texto" title={it.nome}>
+                      {it.nome}
+                    </span>
+                  ) : (
+                    <span className="w-8 shrink-0 text-center text-base font-semibold text-texto">{it.nome}</span>
+                  )}
                   <span className="tabular min-w-0 flex-1 truncate font-mono text-micro text-texto-3">
                     {formatarNumero(b.w)}×{formatarNumero(b.h)}
                   </span>
                   {/* As duas maquinas lado a lado: o que decide e QUAL serve. */}
                   {IMPRESSORAS.map((mq) => {
-                    const cabe = caberNaMesa(l.part.contorno, l.part.alturaZ, mq).cabe;
+                    const cabe = caberNaMesa(it.contorno, it.alturaZ, mq).cabe;
                     return (
                       <Selo key={mq.id} tom={cabe ? 'sucesso' : 'perigo'}>
                         {mq.nome.replace('Bambu Lab ', '')}
@@ -206,12 +244,20 @@ function Pecas() {
                     );
                   })}
                 </button>
-                <BotaoIcone icone={IconeBaixar} rotulo={`Baixar STL da peça ${l.nome}`} tamanho="sm" onClick={() => baixarSTL(m, l)} />
+                <BotaoIcone icone={IconeBaixar} rotulo={`Baixar STL de ${it.nome}`} tamanho="sm" onClick={it.baixar} />
               </div>
             </li>
           );
         })}
       </ul>
+      <div className="space-y-1.5 border-t border-borda pt-3">
+        <Botao icone={IconeAbrir} largura onClick={() => abrirDesenho(false)}>
+          Importar STL
+        </Botao>
+        <p className="text-mini text-texto-3">
+          Objeto 3D pronto: divide a placa com o letreiro, mas não vira letra caixa e não entra no orçamento.
+        </p>
+      </div>
     </>
   );
 }

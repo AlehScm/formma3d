@@ -4,6 +4,8 @@ import { useProjeto } from '@/store/projeto';
 import { FONTES_WEB, carregarFonteWeb, carregarFonteArquivo, listarFontesSistema, carregarFonteSistema, type FonteSistema } from '@/lib/text/fontes';
 import { importarArquivo, importarPdf, ErroImport } from '@/lib/import/pdf';
 import { chaveFonte } from '@/lib/import/texto-em-curvas';
+import { lerStl } from '@/lib/import/stl';
+import { useInterface } from '@/store/interface';
 
 /**
  * Acoes de origem do letreiro: fonte e arquivo importado.
@@ -69,18 +71,30 @@ export async function usarFonteDoPC(f: FonteSistema): Promise<void> {
   }
 }
 
-export async function abrirDesenho(file: File, pagina = 1): Promise<void> {
+/**
+ * Abre um arquivo. .ai/.pdf viram pecas do letreiro; .stl vira objeto pronto na
+ * placa. `substituir` (Abrir desenho) troca os arquivos do letreiro; sem ele
+ * (Adicionar arquivo) o novo entra ao lado dos que ja estao.
+ */
+export async function abrirArquivo(file: File, substituir: boolean): Promise<void> {
   const s = S();
   s.definir('carregando', true);
   s.definir('erro', null);
   try {
-    const r = await importarArquivo(file, { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 1 }, pagina);
+    if (/\.stl$/i.test(file.name)) {
+      const m = lerStl(await file.arrayBuffer());
+      s.adicionarObjeto3d({ nome: file.name.replace(/\.stl$/i, ''), posicoes: m.posicoes, alturaZ: m.max[2] });
+      // O STL so existe na placa: mostra la, senao ele "some" depois de importado.
+      useInterface.getState().setEspaco('imprimir');
+      return;
+    }
+    const r = await importarArquivo(file, { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 1 }, 1);
     // Arquivo so com texto vivo nao tem peca ainda, mas tem conserto: a fonte.
     if (!r.pecas.length && !r.desenho.textos?.length) {
       s.definir('erro', r.avisos[0]?.msg ?? 'Não encontrei contornos neste arquivo.');
       return;
     }
-    s.receberImport(
+    s.adicionarArquivo(
       {
         desenho: r.desenho,
         nomeArquivo: file.name,
@@ -90,25 +104,31 @@ export async function abrirDesenho(file: File, pagina = 1): Promise<void> {
         conteudoMm: r.conteudoMm,
         buf: await file.arrayBuffer(),
       },
-      r.tracos
+      r.tracos,
+      substituir
     );
   } catch (e) {
-    s.definir('erro', e instanceof ErroImport ? e.message : `Não consegui abrir este arquivo: ${msg(e)}`);
+    s.definir('erro', e instanceof ErroImport ? e.message : `Não consegui abrir “${file.name}”: ${msg(e)}`);
   } finally {
     s.definir('carregando', false);
   }
 }
 
-export async function trocarPagina(n: number): Promise<void> {
+export async function trocarPagina(id: string, n: number): Promise<void> {
   const s = S();
-  const imp = s.imp;
-  if (!imp) return;
+  const a = s.arquivos.find((x) => x.id === id);
+  if (!a) return;
   s.definir('carregando', true);
   try {
-    const r = await importarPdf(imp.buf, { modo: s.impModo, tracos: s.impTracos, fundirProximos: s.impFundir, areaMinima: 1 }, n, 'pdf');
-    s.definir('imp', { ...imp, desenho: r.desenho, pagina: r.pagina, avisos: r.avisos, conteudoMm: r.conteudoMm });
-    s.definir('impAltura', Math.max(1, Math.round(r.conteudoMm.h)));
-    s.definir('impDesativadas', new Set());
+    const r = await importarPdf(a.buf, { modo: a.modo, tracos: a.tracos, fundirProximos: a.fundir, areaMinima: 1 }, n, 'pdf');
+    s.ajustarArquivo(id, {
+      desenho: r.desenho,
+      pagina: r.pagina,
+      avisos: r.avisos,
+      conteudoMm: r.conteudoMm,
+      altura: Math.max(1, Math.round(r.conteudoMm.h)),
+      desativadas: new Set(),
+    });
   } catch (e) {
     s.definir('erro', msg(e));
   } finally {

@@ -28,6 +28,11 @@ export interface Arranjo {
   sobraram: string[];
   /** Quantas placas o conjunto inteiro pediria, repetindo o encaixe no que sobra. */
   placas: number;
+  /**
+   * Colocacoes de cada placa, na ordem (a primeira e `colocadas`). E o que permite
+   * exportar "todas as placas" sem rearrumar nada no fatiador.
+   */
+  todas: Colocada[][];
 }
 
 export interface PecaArranjo {
@@ -245,17 +250,18 @@ export function arrumar(pecas: PecaArranjo[], m: Impressora, folga = 3): Arranjo
 
   const primeira = umaPlaca(ordem);
 
-  // Quantas placas o conjunto pediria. Interessa para prazo, nao para o desenho.
-  let placas = primeira.colocadas.length ? 1 : 0;
+  // As placas seguintes: repete o encaixe no que sobrou ate acabar, ou ate sobrar so
+  // o que nao cabe em placa nenhuma.
+  const todas: Colocada[][] = primeira.colocadas.length ? [primeira.colocadas] : [];
   let restam = primeira.resto;
   while (restam.length) {
     const passo = umaPlaca(restam);
-    if (!passo.colocadas.length) break; // o que sobrou nao cabe em placa nenhuma
-    placas++;
+    if (!passo.colocadas.length) break;
+    todas.push(passo.colocadas);
     restam = passo.resto;
   }
 
-  return { colocadas: primeira.colocadas, sobraram: primeira.resto, placas };
+  return { colocadas: primeira.colocadas, sobraram: primeira.resto, placas: todas.length, todas };
 }
 
 /** Peca com o veredito de encaixe ja consultado, do jeito que `arrumar` espera. */

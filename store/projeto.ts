@@ -31,6 +31,46 @@ export interface Importado {
   buf: ArrayBuffer;
 }
 
+/**
+ * Um arquivo .ai/.pdf do letreiro, com os ajustes DELE: cada arquivo tem a sua
+ * altura e o seu jeito de separar pecas. Estilo, profundidade e chapa sao do
+ * letreiro inteiro.
+ */
+export interface ArquivoImportado extends Importado {
+  id: string;
+  modo: ModoSeparacao;
+  altura: number;
+  fundir: number;
+  tracos: ModoTraco;
+  /** Pecas desligadas, pelo nome nativo ('01', '02'...). */
+  desativadas: Set<string>;
+}
+
+/**
+ * Objeto 3D pronto (STL): nao vira letra caixa e nao entra no orcamento do letreiro.
+ * So divide a placa -- arranjo, veredito de mesa e arquivo da placa.
+ */
+export interface Objeto3d {
+  id: string;
+  nome: string;
+  /** Sopa de triangulos em mm, centrada em XY e assentada em Z=0. */
+  posicoes: Float32Array;
+  alturaZ: number;
+}
+
+/** Chave de peca: `arquivo:nome` (importada), `stl:id` (objeto 3D) ou `nome#pos` (texto). */
+export { chavePecaArquivo } from '@/lib/import/fila';
+export const chaveObjeto3d = (id: string) => `stl:${id}`;
+export function lerChave(chave: string): { tipo: 'stl'; id: string } | { tipo: 'arquivo'; arquivo: string; nome: string } | { tipo: 'texto' } {
+  if (chave.startsWith('stl:')) return { tipo: 'stl', id: chave.slice(4) };
+  const i = chave.indexOf(':');
+  if (i > 0) return { tipo: 'arquivo', arquivo: chave.slice(0, i), nome: chave.slice(i + 1) };
+  return { tipo: 'texto' };
+}
+
+let proximoId = 1;
+const novoId = () => (proximoId++).toString(36);
+
 export interface EstadoProjeto {
   // --- origem ---
   texto: string;
@@ -41,12 +81,11 @@ export interface EstadoProjeto {
   erro: string | null;
   nomeTrabalho: string;
 
-  imp: Importado | null;
-  impModo: ModoSeparacao;
-  impAltura: number;
-  impFundir: number;
-  impTracos: ModoTraco;
-  impDesativadas: Set<string>;
+  /** Arquivos do letreiro. Vazio = o letreiro vem do texto. */
+  arquivos: ArquivoImportado[];
+  /** Qual arquivo tem os ajustes abertos em Origem. */
+  arquivoAtivo: string | null;
+  objetos3d: Objeto3d[];
 
   // --- medidas ---
   altura: number;
@@ -92,8 +131,8 @@ export interface EstadoProjeto {
   fontesTexto: Map<string, Font>;
 
   /**
-   * Letras do TEXTO que o usuario excluiu, por chave. Peca de arquivo importado usa
-   * `impDesativadas`, que ja existia e aparece nos quadradinhos de Origem.
+   * Letras do TEXTO que o usuario excluiu, por chave. Peca de arquivo usa o
+   * `desativadas` do proprio arquivo (os quadradinhos de Origem).
    */
   removidas: Set<string>;
 
@@ -111,19 +150,27 @@ export interface AcoesProjeto {
   escolherImpressora: (id: string) => void;
   editarPeca: (chave: string, mudanca: Partial<Edicao>) => void;
   resetarPeca: (chave: string) => void;
-  alternarPecaImportada: (nome: string) => void;
-  /** Exclui a peca do letreiro (texto ou arquivo). */
+  /** Liga/desliga uma peca de arquivo, pela chave `arquivo:nome`. */
+  alternarPecaImportada: (chave: string) => void;
+  /** Exclui a peca: letra do texto, peca de arquivo ou objeto STL. */
   removerPeca: (chave: string) => void;
-  /** Traz de volta tudo o que foi excluido. */
+  /** Traz de volta tudo o que foi excluido (texto e arquivos). */
   restaurarPecas: () => void;
   /**
    * Troca o texto. Zera edicoes e exclusoes: a chave da letra e a posicao dela, e
    * com outro texto a edicao de uma letra passaria para a vizinha.
    */
   definirTexto: (texto: string) => void;
-  /** Guarda o resultado de um import novo e zera o que dependia do anterior. */
-  receberImport: (imp: Importado, tracos: TracoResolvido) => void;
+  /**
+   * Arquivo novo. `substituir` fecha os outros (Abrir desenho); sem ele, entra ao
+   * lado dos que ja estao (Adicionar arquivo).
+   */
+  adicionarArquivo: (imp: Importado, tracos: TracoResolvido, substituir: boolean) => void;
+  ajustarArquivo: (id: string, mudanca: Partial<Omit<ArquivoImportado, 'id'>>) => void;
+  removerArquivo: (id: string) => void;
+  adicionarObjeto3d: (o: Omit<Objeto3d, 'id'>) => void;
   guardarFonteTexto: (chave: string, fonte: Font) => void;
+  /** Fecha todos os arquivos e volta para o texto. */
   fecharImport: () => void;
 }
 
@@ -138,12 +185,9 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
   erro: null,
   nomeTrabalho: '',
 
-  imp: null,
-  impModo: 'forma',
-  impAltura: 300,
-  impFundir: 0,
-  impTracos: 'auto',
-  impDesativadas: new Set(),
+  arquivos: [],
+  arquivoAtivo: null,
+  objetos3d: [],
 
   altura: 150,
   tracking: 0,
@@ -228,45 +272,73 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
 
   removerPeca: (chave) =>
     set((s) => {
-      // Peca importada: a chave e o nome, e o lugar dela e o mesmo dos quadradinhos
-      // de Origem -- excluir aqui aparece desligado la, e religa por la tambem.
-      if (s.imp) {
-        const n = new Set(s.impDesativadas);
-        n.add(chave);
-        return { impDesativadas: n };
+      const c = lerChave(chave);
+      if (c.tipo === 'stl') return { objetos3d: s.objetos3d.filter((o) => o.id !== c.id) };
+      if (c.tipo === 'arquivo') {
+        // Mesmo lugar dos quadradinhos de Origem: excluir aqui aparece desligado la.
+        return {
+          arquivos: s.arquivos.map((a) => (a.id === c.arquivo ? { ...a, desativadas: new Set(a.desativadas).add(c.nome) } : a)),
+        };
       }
-      const n = new Set(s.removidas);
-      n.add(chave);
-      return { removidas: n };
+      return { removidas: new Set(s.removidas).add(chave) };
     }),
 
-  restaurarPecas: () => set((s) => (s.imp ? { impDesativadas: new Set() } : { removidas: new Set() })),
+  restaurarPecas: () =>
+    set((s) => ({ removidas: new Set(), arquivos: s.arquivos.map((a) => ({ ...a, desativadas: new Set<string>() })) })),
 
   definirTexto: (texto) =>
     set((s) => (texto === s.texto ? {} : { texto, removidas: new Set(), edicoes: new Map() })),
 
-  alternarPecaImportada: (nome) =>
+  alternarPecaImportada: (chave) =>
     set((s) => {
-      const n = new Set(s.impDesativadas);
-      if (n.has(nome)) n.delete(nome);
-      else n.add(nome);
-      return { impDesativadas: n };
+      const c = lerChave(chave);
+      if (c.tipo !== 'arquivo') return {};
+      return {
+        arquivos: s.arquivos.map((a) => {
+          if (a.id !== c.arquivo) return a;
+          const n = new Set(a.desativadas);
+          if (n.has(c.nome)) n.delete(c.nome);
+          else n.add(c.nome);
+          return { ...a, desativadas: n };
+        }),
+      };
     }),
 
-  receberImport: (imp, tracos) =>
-    set({
-      imp,
-      impDesativadas: new Set(),
-      impAltura: Math.max(1, Math.round(imp.conteudoMm.h)),
-      impModo: 'forma',
-      // Mostra no painel a escolha que o 'auto' fez, para o usuario poder discordar.
-      impTracos: tracos,
-      // As chaves das pecas mudam com o arquivo: edicao antiga apontaria para o nada.
-      edicoes: new Map(),
-      erro: null,
+  adicionarArquivo: (imp, tracos, substituir) =>
+    set((s) => {
+      const a: ArquivoImportado = {
+        ...imp,
+        id: novoId(),
+        modo: 'forma',
+        altura: Math.max(1, Math.round(imp.conteudoMm.h)),
+        fundir: 0,
+        // Mostra no painel a escolha que o 'auto' fez, para o usuario poder discordar.
+        tracos,
+        desativadas: new Set(),
+      };
+      return {
+        arquivos: substituir ? [a] : [...s.arquivos, a],
+        arquivoAtivo: a.id,
+        // Substituir troca as pecas: edicao antiga apontaria para o nada.
+        ...(substituir ? { edicoes: new Map() } : {}),
+        erro: null,
+      };
     }),
 
-  fecharImport: () => set({ imp: null, edicoes: new Map(), erro: null }),
+  ajustarArquivo: (id, mudanca) =>
+    set((s) => ({ arquivos: s.arquivos.map((a) => (a.id === id ? { ...a, ...mudanca } : a)) })),
+
+  removerArquivo: (id) =>
+    set((s) => {
+      const arquivos = s.arquivos.filter((a) => a.id !== id);
+      // Edicoes das pecas desse arquivo vao junto.
+      const edicoes = new Map([...s.edicoes].filter(([k]) => !k.startsWith(`${id}:`)));
+      return { arquivos, edicoes, arquivoAtivo: s.arquivoAtivo === id ? (arquivos[0]?.id ?? null) : s.arquivoAtivo };
+    }),
+
+  adicionarObjeto3d: (o) => set((s) => ({ objetos3d: [...s.objetos3d, { ...o, id: novoId() }], erro: null })),
+
+  fecharImport: () => set({ arquivos: [], arquivoAtivo: null, edicoes: new Map(), erro: null }),
 
   guardarFonteTexto: (chave, fonte) =>
     set((s) => {
@@ -274,6 +346,10 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
       n.set(chave, fonte);
       // As letras novas entram na numeracao das pecas (esquerda para a direita), entao
       // os nomes mudam: edicao ou peca desligada antiga grudaria na peca errada.
-      return { fontesTexto: n, edicoes: new Map(), impDesativadas: new Set() };
+      return {
+        fontesTexto: n,
+        edicoes: new Map(),
+        arquivos: s.arquivos.map((a) => (a.desenho.textos?.length ? { ...a, desativadas: new Set<string>() } : a)),
+      };
     }),
 }));

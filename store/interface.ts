@@ -42,6 +42,11 @@ interface EstadoInterface {
 
   arranjo: Map<string, Colocada>;
   sobraram: string[];
+  /**
+   * Placas 2 em diante, como o ultimo "arrumar" deixou. A placa 1 e `arranjo`, que
+   * recebe os ajustes a mao; as seguintes saem direto do encaixe automatico.
+   */
+  placasSeguintes: Colocada[][];
   infoArranjo: InfoArranjo | null;
   folgaPecas: number;
 
@@ -49,7 +54,11 @@ interface EstadoInterface {
    * Abre o seletor de arquivo. Os <input type=file> vivem na casca (trocar de
    * area desmontaria o input no meio do dialogo), e registram aqui como abri-los.
    */
-  abrirDesenho: () => void;
+  /**
+   * Abre o seletor de arquivo (.ai, .pdf, .stl; varios de uma vez). `substituir`
+   * troca os arquivos do letreiro (Abrir desenho); sem ele, adiciona ao lado.
+   */
+  abrirDesenho: (substituir?: boolean) => void;
   abrirFonte: () => void;
   /** Abre o seletor de .ttf para desenhar o texto vivo que pede a fonte `nome`. */
   abrirFonteTexto: (nome: string) => void;
@@ -62,11 +71,11 @@ interface EstadoInterface {
   setInspetorAberto: (v: boolean) => void;
   setCategoria: (espaco: Espaco, id: string) => void;
   setFolgaPecas: (v: number) => void;
-  definirArranjo: (colocadas: Colocada[], sobraram: string[], info: InfoArranjo) => void;
+  definirArranjo: (colocadas: Colocada[], sobraram: string[], info: InfoArranjo, seguintes?: Colocada[][]) => void;
   /** Posicao absoluta na placa (coordenadas do `arrumar`). Tira a peca da lista de sobras. */
   posicionarNoArranjo: (c: Colocada) => void;
   limparArranjo: () => void;
-  registrarSeletores: (desenho: () => void, fonte: () => void, fonteTexto: (nome: string) => void) => void;
+  registrarSeletores: (desenho: (substituir?: boolean) => void, fonte: () => void, fonteTexto: (nome: string) => void) => void;
 }
 
 export const useInterface = create<EstadoInterface>()((set) => ({
@@ -80,6 +89,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
 
   arranjo: new Map(),
   sobraram: [],
+  placasSeguintes: [],
   infoArranjo: null,
   folgaPecas: 3,
 
@@ -101,14 +111,14 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   setInspetorAberto: (inspetorAberto) => set({ inspetorAberto }),
   setCategoria: (espaco, id) => set((s) => ({ categoria: { ...s.categoria, [espaco]: id } })),
   setFolgaPecas: (folgaPecas) => set({ folgaPecas }),
-  definirArranjo: (colocadas, sobraram, infoArranjo) =>
-    set({ arranjo: new Map(colocadas.map((c) => [c.nome, c])), sobraram, infoArranjo }),
+  definirArranjo: (colocadas, sobraram, infoArranjo, placasSeguintes = []) =>
+    set({ arranjo: new Map(colocadas.map((c) => [c.nome, c])), sobraram, infoArranjo, placasSeguintes }),
   posicionarNoArranjo: (c) =>
     set((s) => {
       const n = new Map(s.arranjo);
       n.set(c.nome, c);
       return { arranjo: n, sobraram: s.sobraram.filter((k) => k !== c.nome) };
     }),
-  limparArranjo: () => set({ arranjo: new Map(), sobraram: [], infoArranjo: null }),
+  limparArranjo: () => set({ arranjo: new Map(), sobraram: [], placasSeguintes: [], infoArranjo: null }),
   registrarSeletores: (abrirDesenho, abrirFonte, abrirFonteTexto) => set({ abrirDesenho, abrirFonte, abrirFonteTexto }),
 }));

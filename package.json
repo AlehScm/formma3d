@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "publicar": "node scripts/publicar.mjs",
-    "testar": "tsc --noEmit && tsx scripts/verificar-ops.mts && tsx scripts/verificar-pdf.mts && tsx scripts/verificar-apoio.mts && tsx scripts/verificar-pecas.mts && tsx scripts/verificar-ai.mts && tsx scripts/verificar-mesa.mts && tsx scripts/verificar-arranjo.mts && tsx scripts/verificar-edicao.mts && tsx scripts/verificar-referencial.mts"
+    "testar": "tsc --noEmit && tsx scripts/verificar-ops.mts && tsx scripts/verificar-pdf.mts && tsx scripts/verificar-apoio.mts && tsx scripts/verificar-pecas.mts && tsx scripts/verificar-ai.mts && tsx scripts/verificar-mesa.mts && tsx scripts/verificar-arranjo.mts && tsx scripts/verificar-edicao.mts && tsx scripts/verificar-referencial.mts && tsx scripts/verificar-placa.mts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

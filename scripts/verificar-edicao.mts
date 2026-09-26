@@ -211,7 +211,7 @@ console.log('\n== excluir peca ==');
   const s = () => useProjeto.getState();
   s().definirTexto('LETRA');
   s().removerPeca('E#1');
-  ok('letra de texto excluida vai para removidas', s().removidas.has('E#1') && s().impDesativadas.size === 0);
+  ok('letra de texto excluida vai para removidas', s().removidas.has('E#1') && s().arquivos.length === 0);
   s().editarPeca('T#2', { ex: 2, ey: 2 });
   s().definirTexto('LETRA');
   ok('reescrever o MESMO texto nao perde nada', s().removidas.has('E#1') && s().edicoes.has('T#2'));
@@ -223,12 +223,12 @@ console.log('\n== excluir peca ==');
   ok('restaurar traz as letras de volta', s().removidas.size === 0);
 
   // Arquivo importado: excluir usa o mesmo lugar dos quadradinhos de Origem.
-  useProjeto.setState({ imp: { nomeArquivo: 'x.ai' } as never });
-  s().removerPeca('03');
-  ok('peca importada excluida aparece desligada em Origem', s().impDesativadas.has('03') && s().removidas.size === 0);
+  useProjeto.setState({ arquivos: [{ id: 'k', nomeArquivo: 'x.ai', desativadas: new Set<string>() } as never] });
+  s().removerPeca('k:03');
+  ok('peca importada excluida aparece desligada em Origem', s().arquivos[0].desativadas.has('03') && s().removidas.size === 0);
   s().restaurarPecas();
-  ok('e religa pelo restaurar', s().impDesativadas.size === 0);
-  useProjeto.setState({ imp: null });
+  ok('e religa pelo restaurar', s().arquivos[0].desativadas.size === 0);
+  useProjeto.setState({ arquivos: [] });
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

@@ -68,14 +68,15 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
 
   const naPlaca = espaco === 'imprimir';
 
-  if (!m.letras.length || !m.bounds) {
+  // Sem letreiro ainda pode haver STL na placa: so fica vazio se nao ha nada a desenhar.
+  if (!m.letras.length && !(naPlaca && m.objetos.length)) {
     return (
       <div className="flex h-full items-center justify-center">
         <Vazio
           icone={IconeTexto}
           titulo="Nada para mostrar ainda"
           acao={
-            <Botao icone={IconeAbrir} onClick={abrirDesenho}>
+            <Botao icone={IconeAbrir} onClick={() => abrirDesenho(true)}>
               Abrir desenho .ai ou .pdf
             </Botao>
           }
@@ -98,16 +99,19 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
     <div className="relative h-full">
       <Viewer3D
         letras={m.letras}
-        largura={m.bounds.w}
-        altura={m.bounds.h}
+        largura={m.bounds?.w ?? 0}
+        altura={m.bounds?.h ?? 0}
         profundidade={profundidade}
-        centro={[m.bounds.w / 2, m.bounds.h / 2]}
+        centro={[(m.bounds?.w ?? 0) / 2, (m.bounds?.h ?? 0) / 2]}
         explode={explode}
         camadas={camadas}
         mesa={naPlaca ? { x: m.mesa.x, y: m.mesa.y } : null}
         naoCabem={m.naoCabem}
         arranjo={naPlaca ? arranjo : new Map()}
-        sobraram={naPlaca ? sobraram : []}
+        // STL ainda nao arrumado nao tem posicao de letreiro: fica ao lado da placa,
+        // junto com o que sobrou, ate o usuario arrumar ou arrastar.
+        sobraram={naPlaca ? [...sobraram, ...m.objetos.map((o) => o.chave).filter((k) => !arranjo.has(k) && !sobraram.includes(k))] : []}
+        objetos={m.objetos}
         selecionada={selecionada}
         onSelecionar={selecionar}
         ferramenta={selecionada ? GIZMO[ferramenta] : 'nenhuma'}

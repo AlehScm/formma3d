@@ -6,7 +6,7 @@ import { OrbitControls, Grid, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { partToGeometriesByRole, layerToGeometry } from '@/lib/geom/extrude';
 import type { Part, Role } from '@/lib/geom/modes';
-import { regionBounds } from '@/lib/geom/region';
+import { regionBounds, type Region } from '@/lib/geom/region';
 import type { Colocada } from '@/lib/print/arranjo';
 import { deslocamentosNaPlaca, paraCoordenadasDaPlaca, type Deslocamento } from '@/features/viewport/referencial';
 
@@ -14,6 +14,8 @@ import { deslocamentosNaPlaca, paraCoordenadasDaPlaca, type Deslocamento } from 
 const COR_NAO_CABE = '#e03131';
 /** Peca selecionada. */
 const COR_SELECAO = '#ffd43b';
+/** Objeto STL pronto: cor neutra propria, para nao parecer parte da letra. */
+const COR_OBJETO = '#a0a8b8';
 
 // Cada papel da peca tem cor propria: e o que faz o corte da letra ficar obvio no preview.
 export const CORES: Record<Role, { cor: string; metal: number; rug: number }> = {
@@ -45,6 +47,14 @@ export interface LetraRender {
   /** Identificador unico: `nome` repete em texto ("BARBER" tem dois "B"). */
   chave: string;
   part: Part;
+}
+
+/** Objeto STL pronto: so aparece na placa. Posicoes centradas em XY, Z a partir de 0. */
+export interface ObjetoRender {
+  chave: string;
+  nome: string;
+  posicoes: Float32Array;
+  contorno: Region;
 }
 
 /** O que o gizmo devolve quando o usuario solta o mouse. */
@@ -119,11 +129,11 @@ function Mesa({ x, y }: { x: number; y: number }) {
 }
 
 /** Contorno do footprint de uma peca, para apontar qual e a que nao cabe. */
-function CaixaFootprint({ part, cor }: { part: Part; cor: string }) {
+function CaixaFootprint({ contorno, cor }: { contorno: Region; cor: string }) {
   const geo = useMemo(() => {
-    const b = regionBounds(part.contorno);
+    const b = regionBounds(contorno);
     return retanguloVazado(b.minX, b.minY, b.maxX, b.maxY);
-  }, [part]);
+  }, [contorno]);
   useEffect(() => () => geo.dispose(), [geo]);
   return (
     <lineSegments geometry={geo} position={[0, 0, 0.05]}>
@@ -139,6 +149,7 @@ function Peca({
   camadas,
   naoCabem,
   deslocamentos,
+  objetos,
   selecionada,
   onSelecionar,
   registrar,
@@ -150,6 +161,7 @@ function Peca({
   naoCabem: ReadonlySet<string>;
   /** Deslocamento de cada peca JA no referencial da cena. Ver `Viewer3D`. */
   deslocamentos: ReadonlyMap<string, Deslocamento>;
+  objetos: ObjetoRender[];
   selecionada: string | null;
   onSelecionar: (chave: string) => void;
   registrar: (chave: string, o: THREE.Object3D | null) => void;
@@ -201,7 +213,7 @@ function Peca({
         return (
           <PecaPosicionada
             key={l.chave}
-            part={l.part}
+            contorno={l.part.contorno}
             chave={l.chave}
             desloc={deslocamentos.get(l.chave) ?? null}
             registrar={registrar}
@@ -233,8 +245,8 @@ function Peca({
                 </mesh>
               );
             })}
-            {fora && <CaixaFootprint part={l.part} cor={COR_NAO_CABE} />}
-            {sel && <CaixaFootprint part={l.part} cor={COR_SELECAO} />}
+            {fora && <CaixaFootprint contorno={l.part.contorno} cor={COR_NAO_CABE} />}
+            {sel && <CaixaFootprint contorno={l.part.contorno} cor={COR_SELECAO} />}
             {camadas.chapa && chapas[i] ? (
               <mesh geometry={chapas[i]!} position={[0, 0, explode]}>
                 <meshPhysicalMaterial color="#cfe4ff" transparent opacity={0.45} roughness={0.15} metalness={0} transmission={0.6} />
@@ -243,7 +255,63 @@ function Peca({
           </PecaPosicionada>
         );
       })}
+      {objetos.map((o) => (
+        <PecaPosicionada key={o.chave} contorno={o.contorno} chave={o.chave} desloc={deslocamentos.get(o.chave) ?? null} registrar={registrar}>
+          <MalhaObjeto
+            o={o}
+            fora={naoCabem.has(o.chave)}
+            sel={selecionada === o.chave}
+            onSelecionar={onSelecionar}
+          />
+        </PecaPosicionada>
+      ))}
     </group>
+  );
+}
+
+/**
+ * Objeto STL. A malha nao depende do letreiro, entao a geometria so e refeita
+ * quando o arquivo muda.
+ */
+function MalhaObjeto({
+  o,
+  fora,
+  sel,
+  onSelecionar,
+}: {
+  o: ObjetoRender;
+  fora: boolean;
+  sel: boolean;
+  onSelecionar: (chave: string) => void;
+}) {
+  const geo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(o.posicoes, 3));
+    g.computeVertexNormals();
+    return g;
+  }, [o.posicoes]);
+  useEffect(() => () => geo.dispose(), [geo]);
+  return (
+    <>
+      <mesh
+        geometry={geo}
+        castShadow
+        receiveShadow
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelecionar(o.chave);
+        }}
+      >
+        <meshStandardMaterial
+          color={fora ? COR_NAO_CABE : COR_OBJETO}
+          metalness={0.1}
+          roughness={0.6}
+          emissive={sel ? COR_SELECAO : '#000000'}
+          emissiveIntensity={sel ? 0.35 : 0}
+        />
+      </mesh>
+      {(fora || sel) && <CaixaFootprint contorno={o.contorno} cor={sel ? COR_SELECAO : COR_NAO_CABE} />}
+    </>
   );
 }
 
@@ -258,13 +326,13 @@ function Peca({
  * posicao absoluta no letreiro, e girar na origem jogaria a letra para longe.
  */
 function PecaPosicionada({
-  part,
+  contorno,
   chave,
   desloc,
   registrar,
   children,
 }: {
-  part: Part;
+  contorno: Region;
   chave: string;
   desloc: Deslocamento | null;
   registrar: (chave: string, o: THREE.Object3D | null) => void;
@@ -277,9 +345,9 @@ function PecaPosicionada({
   }, [chave, registrar]);
 
   const centro = useMemo(() => {
-    const b = regionBounds(part.contorno);
+    const b = regionBounds(contorno);
     return [b.minX + b.w / 2, b.minY + b.h / 2] as [number, number];
-  }, [part]);
+  }, [contorno]);
 
   const dx = desloc?.dx ?? 0;
   const dy = desloc?.dy ?? 0;
@@ -421,6 +489,8 @@ export interface Viewer3DProps {
   arranjo?: ReadonlyMap<string, Colocada>;
   /** Chaves que sobraram do arranjo: ficam enfileiradas ao lado da placa. */
   sobraram?: readonly string[];
+  /** Objetos STL prontos. So desenhados na placa (quando ha `mesa`). */
+  objetos?: ObjetoRender[];
   selecionada?: string | null;
   onSelecionar?: (chave: string | null) => void;
   /** Ferramenta do gizmo. 'nenhuma' desliga. */
@@ -449,6 +519,7 @@ export default function Viewer3D({
   naoCabem = new Set<string>(),
   arranjo = new Map<string, Colocada>(),
   sobraram = [],
+  objetos = [],
   selecionada = null,
   onSelecionar = () => {},
   ferramenta = 'nenhuma',
@@ -471,14 +542,14 @@ export default function Viewer3D({
     () =>
       mesa
         ? deslocamentosNaPlaca(
-            letras.map((l) => ({ chave: l.chave, contorno: l.part.contorno })),
+            [...letras.map((l) => ({ chave: l.chave, contorno: l.part.contorno })), ...objetos],
             arranjo,
             sobraram,
             mesa,
             centro
           )
         : new Map<string, Deslocamento>(),
-    [mesa, arranjo, sobraram, letras, centro]
+    [mesa, arranjo, sobraram, letras, objetos, centro]
   );
 
   return (
@@ -526,6 +597,7 @@ export default function Viewer3D({
         camadas={camadas}
         naoCabem={naoCabem}
         deslocamentos={deslocamentos}
+        objetos={mesa ? objetos : []}
         selecionada={selecionada}
         onSelecionar={onSelecionar}
         registrar={registrar}

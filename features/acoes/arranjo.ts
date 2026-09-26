@@ -13,24 +13,24 @@ import type { Modelo } from '@/modelo/Modelo';
  * que de fato ocupa a mesa.
  */
 export function arrumarNaPlaca(m: Modelo): void {
-  if (!m.letras.length) return;
+  if (!m.letras.length && !m.objetos.length) return;
   const ui = useInterface.getState();
+  // Letras do letreiro e objetos STL dividem a mesma placa, pela mesma regra.
   const r = arrumar(
-    m.letras.map((l) => ({
-      nome: l.chave,
-      region: l.part.contorno,
-      giroQueCabe: caberNaMesa(l.part.contorno, l.part.alturaZ, m.mesa).giro,
-    })),
+    [
+      ...m.letras.map((l) => ({ nome: l.chave, region: l.part.contorno, alturaZ: l.part.alturaZ })),
+      ...m.objetos.map((o) => ({ nome: o.chave, region: o.contorno, alturaZ: o.alturaZ })),
+    ].map((p) => ({ nome: p.nome, region: p.region, giroQueCabe: caberNaMesa(p.region, p.alturaZ, m.mesa).giro })),
     m.mesa,
     ui.folgaPecas
   );
   // Sobrar por falta de espaco nesta placa e nao caber na maquina sao problemas
   // diferentes: o primeiro se resolve com outra levada, o segundo nao.
   const impossiveis = r.sobraram.filter((chave) => m.naoCabem.has(chave)).length;
-  ui.definirArranjo(r.colocadas, r.sobraram, {
-    dentro: r.colocadas.length,
-    fora: r.sobraram.length - impossiveis,
-    impossiveis,
-    placas: r.placas,
-  });
+  ui.definirArranjo(
+    r.colocadas,
+    r.sobraram,
+    { dentro: r.colocadas.length, fora: r.sobraram.length - impossiveis, impossiveis, placas: r.placas },
+    r.todas.slice(1)
+  );
 }

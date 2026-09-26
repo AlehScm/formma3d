@@ -27,7 +27,7 @@ import { CorteApoio } from '@/components/CorteApoio';
 import { APOIOS, FECHAMENTOS, PRESETS, type Apoio, type Fechamento, type PresetId } from '@/lib/geom/modes';
 import { FONTES_WEB } from '@/lib/text/fontes';
 import type { ModoSeparacao, ModoTraco } from '@/lib/import/pecas';
-import { useProjeto } from '@/store/projeto';
+import { useProjeto, chavePecaArquivo } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
 import { buscarFonteDoTexto, listarFontesDoPC, trocarFonteWeb, trocarPagina, usarFonteDoPC } from '@/features/acoes/origem';
@@ -73,13 +73,12 @@ export function PainelDesenhar() {
 function useResumos() {
   const s = useProjeto(
     useShallow((x) => ({
-      imp: x.imp,
+      arquivos: x.arquivos,
       texto: x.texto,
       fonteNome: x.fonteNome,
       erro: x.erro,
       presetAtivo: x.presetAtivo,
       altura: x.altura,
-      impAltura: x.impAltura,
       profundidade: x.profundidade,
       frente: x.frente,
       frenteEsp: x.frenteEsp,
@@ -95,9 +94,12 @@ function useResumos() {
   const m = useModelo();
   const fontesTexto = useProjeto((x) => x.fontesTexto);
   // Texto vivo esperando a fonte: ha desenho faltando, o ponto na aba avisa.
-  const textoPendente = (s.imp?.desenho.textos ?? []).some((t) => !fontesTexto.has(chaveFonte(t.fonte)));
-
-  const alt = s.imp ? s.impAltura : s.altura;
+  const textoPendente = s.arquivos.some((a) => (a.desenho.textos ?? []).some((t) => !fontesTexto.has(chaveFonte(t.fonte))));
+  const nPecas = m.letras.length;
+  const medidaAltura =
+    s.arquivos.length > 1
+      ? `${s.arquivos.length} arquivos`
+      : `${formatarNumero(s.arquivos[0]?.altura ?? s.altura)} mm`;
   const esp = s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp;
   const extras = [
     s.comLed && 'LED',
@@ -106,14 +108,19 @@ function useResumos() {
   ].filter(Boolean);
 
   return {
-    origem: s.imp ? `${s.imp.nomeArquivo} · ${m.nomesImportados.length} peças` : `“${s.texto}” · ${s.fonteNome}`,
+    origem:
+      s.arquivos.length > 1
+        ? `${s.arquivos.length} arquivos · ${nPecas} peças`
+        : s.arquivos[0]
+          ? `${s.arquivos[0].nomeArquivo} · ${nPecas} peças`
+          : `“${s.texto}” · ${s.fonteNome}`,
     alertaOrigem: s.erro
       ? ('perigo' as const)
-      : s.imp?.avisos.length || textoPendente
+      : s.arquivos.some((a) => a.avisos.length) || textoPendente
         ? ('atencao' as const)
         : undefined,
     estilo: s.presetAtivo ? PRESETS[s.presetAtivo].nome : m.desc,
-    medidas: `${formatarNumero(alt)} mm · prof. ${formatarNumero(s.profundidade)} mm`,
+    medidas: `${medidaAltura} · prof. ${formatarNumero(s.profundidade)} mm`,
     chapa: `${formatarNumero(esp, 1)} mm · apoio ${APOIOS[s.apoio].curto.toLowerCase()}`,
     acabamento: extras.length ? extras.join(' · ') : 'nenhum',
   };
@@ -130,137 +137,84 @@ const FECHAMENTO_OPCOES = (Object.keys(FECHAMENTOS) as Fechamento[]).map((k) => 
 function Origem() {
   const s = useProjeto(
     useShallow((x) => ({
-      imp: x.imp,
+      arquivos: x.arquivos,
+      arquivoAtivo: x.arquivoAtivo,
       texto: x.texto,
       fonteNome: x.fonteNome,
       fontesSistema: x.fontesSistema,
       erro: x.erro,
-      impModo: x.impModo,
-      impFundir: x.impFundir,
-      impTracos: x.impTracos,
-      impDesativadas: x.impDesativadas,
     }))
   );
   const definir = useProjeto((x) => x.definir);
   const fecharImport = useProjeto((x) => x.fecharImport);
-  const alternar = useProjeto((x) => x.alternarPecaImportada);
+  const removerArquivo = useProjeto((x) => x.removerArquivo);
   const definirTexto = useProjeto((x) => x.definirTexto);
   const restaurar = useProjeto((x) => x.restaurarPecas);
   const removidas = useProjeto((x) => x.removidas.size);
   const abrirDesenho = useInterface((x) => x.abrirDesenho);
   const abrirFonte = useInterface((x) => x.abrirFonte);
-  const nomes = useModelo().nomesImportados;
+  const pecasPorArquivo = useModelo().pecasPorArquivo;
 
   const fonteWeb = FONTES_WEB.find((f) => f.nome === s.fonteNome);
+  const ativo = s.arquivos.find((a) => a.id === s.arquivoAtivo) ?? s.arquivos[0];
+  const varios = s.arquivos.length > 1;
 
   return (
     <>
-      {s.imp ? (
+      {s.arquivos.length ? (
         <>
-          {/* Arquivo aberto: cartao do arquivo + como separar as pecas. */}
-          <div className="flex items-start gap-2 rounded-md border border-borda bg-superficie-2 p-2.5">
-            <IconeAbrir className="mt-0.5 size-4 shrink-0 text-acento-forte" strokeWidth={1.8} aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-medium text-texto" title={s.imp.nomeArquivo}>
-                {s.imp.nomeArquivo}
-              </p>
-              <p className="tabular font-mono text-micro text-texto-3">
-                {formatarNumero(s.imp.conteudoMm.w)} × {formatarNumero(s.imp.conteudoMm.h)} mm · {nomes.length} peças
-              </p>
-            </div>
-            <BotaoIcone icone={IconeFechar} rotulo="Fechar o arquivo e voltar ao texto" tamanho="sm" onClick={fecharImport} />
-          </div>
-
-          {s.imp.avisos.map((a) => (
-            <Alerta key={a.codigo}>{a.msg}</Alerta>
-          ))}
-
-          <TextosVivos />
-
-          {s.imp.paginas > 1 && (
-            <CampoNumero
-              rotulo="Página / prancheta"
-              valor={s.imp.pagina}
-              set={(v) => void trocarPagina(Math.round(v))}
-              min={1}
-              max={s.imp.paginas}
-              passo={1}
-              unidade={`de ${s.imp.paginas}`}
-              layout="linha"
-            />
-          )}
-
-          <Selecao<ModoSeparacao>
-            rotulo="Separar peças por"
-            valor={s.impModo}
-            set={(v) => definir('impModo', v)}
-            opcoes={[
-              { valor: 'forma', nome: 'Cada forma solta' },
-              { valor: 'objeto', nome: 'Objetos do arquivo' },
-              ...(s.imp.desenho.camadas.length > 1 ? [{ valor: 'camada' as const, nome: 'Camadas do arquivo' }] : []),
-            ]}
-          />
-
-          {s.imp.desenho.temStroke && (
-            <Segmentado<ModoTraco>
-              rotulo="Traço sem preenchimento"
-              dica="Contorno fechado costuma ser o limite da peça; linha solta, guia ou corte."
-              valor={s.impTracos}
-              set={(v) => definir('impTracos', v)}
-              opcoes={[
-                { valor: 'ignorar', nome: 'Ignorar', dica: 'Traço solto costuma ser linha de corte, guia ou registro' },
-                { valor: 'preencher', nome: 'Preencher', dica: 'Contorno fechado é o limite da peça: vale a área que ele cerca' },
-                { valor: 'engrossar', nome: 'Engrossar', dica: 'Vira fita da largura da linha, como o Expandir do Illustrator' },
-              ]}
-            />
-          )}
-
-          {nomes.length > 0 && (
-            <div>
-              <div className="mb-1.5 flex items-baseline justify-between">
-                <p className="text-base text-texto-2">
-                  Peças <span className="text-texto-3">({nomes.length - s.impDesativadas.size} ativas)</span>
-                </p>
-                {s.impDesativadas.size > 0 && (
-                  <button type="button" onClick={restaurar} className="text-mini text-acento-forte hover:underline">
-                    religar todas
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {nomes.map((n) => {
-                  const ativa = !s.impDesativadas.has(n);
-                  return (
+          {/* Os arquivos do letreiro. Com mais de um, cada peca ganha a letra do
+              arquivo (A01, B03) e clicar num cartao abre os ajustes dele. */}
+          <ul className="space-y-1.5">
+            {s.arquivos.map((a, i) => {
+              const sel = a.id === ativo?.id;
+              const n = pecasPorArquivo.get(a.id)?.length ?? 0;
+              return (
+                <li key={a.id}>
+                  <div
+                    className={cx(
+                      'flex items-start gap-2 rounded-md border p-2.5 transition-colors',
+                      sel && varios ? 'border-acento/50 bg-acento/10' : 'border-borda bg-superficie-2'
+                    )}
+                  >
                     <button
-                      key={n}
                       type="button"
-                      onClick={() => alternar(n)}
-                      aria-pressed={ativa}
-                      title={ativa ? 'Desligar esta peça' : 'Ligar esta peça'}
-                      className={cx(
-                        'h-6 rounded-sm border px-1.5 font-mono text-micro transition-colors',
-                        ativa ? 'border-acento/40 bg-acento/15 text-acento-forte' : 'border-borda text-texto-3 line-through'
-                      )}
+                      onClick={() => definir('arquivoAtivo', a.id)}
+                      className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                      aria-pressed={sel}
                     >
-                      {n}
+                      {varios ? (
+                        <span className="mt-0.5 w-4 shrink-0 font-mono text-mini font-semibold text-acento-forte">
+                          {String.fromCharCode(65 + (i % 26))}
+                        </span>
+                      ) : (
+                        <IconeAbrir className="mt-0.5 size-4 shrink-0 text-acento-forte" strokeWidth={1.8} aria-hidden />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-base font-medium text-texto" title={a.nomeArquivo}>
+                          {a.nomeArquivo}
+                        </span>
+                        <span className="tabular block font-mono text-micro text-texto-3">
+                          {formatarNumero(a.conteudoMm.w)} × {formatarNumero(a.conteudoMm.h)} mm · {n} peças
+                        </span>
+                      </span>
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                    <BotaoIcone
+                      icone={IconeFechar}
+                      rotulo={varios ? 'Tirar este arquivo do projeto' : 'Fechar o arquivo e voltar ao texto'}
+                      tamanho="sm"
+                      onClick={() => (varios ? removerArquivo(a.id) : fecharImport())}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <Botao tamanho="sm" variante="fantasma" icone={IconeAbrir} onClick={() => abrirDesenho(false)} largura>
+            Adicionar arquivo (.ai, .pdf ou .stl)
+          </Botao>
 
-          <MaisOpcoes>
-            <CampoNumero
-              rotulo="Juntar peças próximas"
-              dica="Une acentos e o pingo do i à letra. 0 desliga."
-              valor={s.impFundir}
-              set={(v) => definir('impFundir', v)}
-              min={0}
-              max={30}
-              passo={0.5}
-            />
-          </MaisOpcoes>
+          {ativo && <AjustesArquivo id={ativo.id} titulo={varios ? ativo.nomeArquivo : undefined} />}
         </>
       ) : (
         <>
@@ -312,7 +266,7 @@ function Origem() {
           <div className="flex items-center gap-2 border-t border-borda pt-3">
             <IconeTexto className="size-4 text-texto-3" aria-hidden />
             <span className="flex-1 text-mini text-texto-3">Tem o desenho pronto?</span>
-            <Botao tamanho="sm" variante="fantasma" icone={IconeAbrir} onClick={abrirDesenho}>
+            <Botao tamanho="sm" variante="fantasma" icone={IconeAbrir} onClick={() => abrirDesenho(true)}>
               Abrir .ai / .pdf
             </Botao>
           </div>
@@ -323,12 +277,118 @@ function Origem() {
   );
 }
 
+/** Ajustes de UM arquivo: cada arquivo separa as pecas do seu jeito. */
+function AjustesArquivo({ id, titulo }: { id: string; titulo?: string }) {
+  const a = useProjeto((x) => x.arquivos.find((y) => y.id === id));
+  const ajustar = useProjeto((x) => x.ajustarArquivo);
+  const alternar = useProjeto((x) => x.alternarPecaImportada);
+  const nomes = useModelo().pecasPorArquivo.get(id) ?? [];
+  if (!a) return null;
+
+  return (
+    <div className="space-y-4 border-t border-borda pt-4">
+      {titulo && <p className="truncate text-mini font-semibold uppercase tracking-wider text-texto-2">Ajustes de {titulo}</p>}
+
+      {a.avisos.map((x) => (
+        <Alerta key={x.codigo}>{x.msg}</Alerta>
+      ))}
+
+      <TextosVivos id={id} />
+
+      {a.paginas > 1 && (
+        <CampoNumero
+          rotulo="Página / prancheta"
+          valor={a.pagina}
+          set={(v) => void trocarPagina(id, Math.round(v))}
+          min={1}
+          max={a.paginas}
+          passo={1}
+          unidade={`de ${a.paginas}`}
+          layout="linha"
+        />
+      )}
+
+      <Selecao<ModoSeparacao>
+        rotulo="Separar peças por"
+        valor={a.modo}
+        set={(v) => ajustar(id, { modo: v, desativadas: new Set() })}
+        opcoes={[
+          { valor: 'forma', nome: 'Cada forma solta' },
+          { valor: 'objeto', nome: 'Objetos do arquivo' },
+          ...(a.desenho.camadas.length > 1 ? [{ valor: 'camada' as const, nome: 'Camadas do arquivo' }] : []),
+        ]}
+      />
+
+      {a.desenho.temStroke && (
+        <Segmentado<ModoTraco>
+          rotulo="Traço sem preenchimento"
+          dica="Contorno fechado costuma ser o limite da peça; linha solta, guia ou corte."
+          valor={a.tracos}
+          set={(v) => ajustar(id, { tracos: v, desativadas: new Set() })}
+          opcoes={[
+            { valor: 'ignorar', nome: 'Ignorar', dica: 'Traço solto costuma ser linha de corte, guia ou registro' },
+            { valor: 'preencher', nome: 'Preencher', dica: 'Contorno fechado é o limite da peça: vale a área que ele cerca' },
+            { valor: 'engrossar', nome: 'Engrossar', dica: 'Vira fita da largura da linha, como o Expandir do Illustrator' },
+          ]}
+        />
+      )}
+
+      {nomes.length > 0 && (
+        <div>
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <p className="text-base text-texto-2">
+              Peças <span className="text-texto-3">({nomes.length - a.desativadas.size} ativas)</span>
+            </p>
+            {a.desativadas.size > 0 && (
+              <button type="button" onClick={() => ajustar(id, { desativadas: new Set() })} className="text-mini text-acento-forte hover:underline">
+                religar todas
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {nomes.map((n) => {
+              const ligada = !a.desativadas.has(n);
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => alternar(chavePecaArquivo(id, n))}
+                  aria-pressed={ligada}
+                  title={ligada ? 'Desligar esta peça' : 'Ligar esta peça'}
+                  className={cx(
+                    'h-6 rounded-sm border px-1.5 font-mono text-micro transition-colors',
+                    ligada ? 'border-acento/40 bg-acento/15 text-acento-forte' : 'border-borda text-texto-3 line-through'
+                  )}
+                >
+                  {n}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <MaisOpcoes>
+        <CampoNumero
+          rotulo="Juntar peças próximas"
+          dica="Une acentos e o pingo do i à letra. 0 desliga."
+          valor={a.fundir}
+          set={(v) => ajustar(id, { fundir: v, desativadas: new Set() })}
+          min={0}
+          max={30}
+          passo={0.5}
+        />
+      </MaisOpcoes>
+    </div>
+  );
+}
+
 /**
  * Texto vivo do arquivo: o CorelDRAW exportou sem converter em curvas. O arquivo
  * guarda o texto, a fonte, o corpo e a posicao -- so falta a fonte, que o usuario da.
  */
-function TextosVivos() {
-  const textos = useProjeto((x) => x.imp?.desenho.textos) ?? [];
+function TextosVivos({ id }: { id: string }) {
+  const textos = useProjeto((x) => x.arquivos.find((a) => a.id === id)?.desenho.textos) ?? [];
   const fontesTexto = useProjeto((x) => x.fontesTexto);
   const abrirFonteTexto = useInterface((x) => x.abrirFonteTexto);
   if (!textos.length) return null;
@@ -477,28 +537,33 @@ function Estilo() {
 function Medidas() {
   const s = useProjeto(
     useShallow((x) => ({
-      imp: x.imp !== null,
+      arquivos: x.arquivos,
       altura: x.altura,
-      impAltura: x.impAltura,
       tracking: x.tracking,
       profundidade: x.profundidade,
       parede: x.parede,
     }))
   );
   const definir = useProjeto((x) => x.definir);
+  const ajustar = useProjeto((x) => x.ajustarArquivo);
+  const varios = s.arquivos.length > 1;
 
   return (
     <>
-      {s.imp ? (
-        <CampoNumero
-          rotulo="Altura total"
-          dica="Altura do desenho inteiro montado"
-          valor={s.impAltura}
-          set={(v) => definir('impAltura', v)}
-          min={10}
-          max={3000}
-          passo={1}
-        />
+      {s.arquivos.length ? (
+        // Cada arquivo tem a sua altura: o logo e o telefone nao sao do mesmo tamanho.
+        s.arquivos.map((a, i) => (
+          <CampoNumero
+            key={a.id}
+            rotulo={varios ? `Altura de ${String.fromCharCode(65 + (i % 26))} · ${a.nomeArquivo.replace(/\.[^.]+$/, '')}` : 'Altura total'}
+            dica="Altura do desenho inteiro deste arquivo, montado"
+            valor={a.altura}
+            set={(v) => ajustar(a.id, { altura: v })}
+            min={10}
+            max={3000}
+            passo={1}
+          />
+        ))
       ) : (
         <>
           <CampoNumero

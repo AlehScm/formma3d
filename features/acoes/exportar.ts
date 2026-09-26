@@ -4,11 +4,15 @@ import JSZip from 'jszip';
 import { APOIOS, PRESETS } from '@/lib/geom/modes';
 import type { Region } from '@/lib/geom/region';
 import { partToGeometry } from '@/lib/geom/extrude';
-import { geometryToSTL } from '@/lib/export/stl';
+import { geometryToSTL, posicoesDaGeometria, posicoesParaSTL } from '@/lib/export/stl';
+import { gerar3mf } from '@/lib/export/tresmf';
+import { juntar, montarPlaca, type PecaPlaca } from '@/lib/print/placa';
+import type { Colocada } from '@/lib/print/arranjo';
+import { useInterface } from '@/store/interface';
 import { regionToSVG, regionToDXF, gabaritoSVG } from '@/lib/export/vectors';
 import { brl, type Orcamento } from '@/lib/cost/calc';
 import { useProjeto } from '@/store/projeto';
-import type { LetraComPeca, Modelo } from '@/modelo/Modelo';
+import type { LetraComPeca, Modelo, ObjetoModelo } from '@/modelo/Modelo';
 
 /**
  * Tudo que sai do app como arquivo ou texto. Funcoes puras sobre o modelo: nenhum
@@ -25,7 +29,7 @@ export function baixar(nome: string, data: BlobPart, tipo?: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-export const seguro = (s: string): string => (s || 'letra').replace(/[^a-zA-Z0-9]/g, '_');
+export const seguro = (s: string): string => (s || 'letra').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'letra';
 
 const regioesDeCorte = (letras: LetraComPeca[]): Region =>
   letras.flatMap((l) => l.part.extras.flatMap((e) => (e.kind === 'cut' ? e.region : [])));
@@ -60,8 +64,8 @@ export function textoOrcamento(m: Modelo, o: Orcamento): string {
     `Letreiro: ${m.nomeProjeto}`,
     `Peça: ${s.presetAtivo ? PRESETS[s.presetAtivo].nome : m.desc}`,
     `Orientação de impressão: ${m.orientacao.texto}`,
-    s.imp
-      ? `Altura total: ${s.impAltura} mm | Profundidade: ${s.profundidade} mm`
+    s.arquivos.length
+      ? `Altura: ${s.arquivos.map((a) => `${a.nomeArquivo} ${a.altura} mm`).join(', ')} | Profundidade: ${s.profundidade} mm`
       : `Altura das maiúsculas: ${s.altura} mm | Profundidade: ${s.profundidade} mm`,
     `Largura total montado: ${m.bounds ? m.bounds.w.toFixed(0) : '?'} mm`,
     `Parede: ${s.parede} mm | Bico: ${s.bico} mm`,
@@ -111,4 +115,70 @@ export async function baixarPacote(m: Modelo, o: Orcamento): Promise<void> {
   pasta.file('orcamento.txt', textoOrcamento(m, o));
 
   baixar(`${seguro(m.nomeProjeto)}_${m.desc}.zip`, await zip.generateAsync({ type: 'blob' }));
+}
+
+/* ------------------------------------------------------------- placa inteira */
+
+/** Todas as pecas que podem ir para a placa: letras do letreiro e objetos STL. */
+function pecasDaPlaca(m: Modelo): PecaPlaca[] {
+  return [
+    ...m.letras.flatMap((l) => {
+      const geo = partToGeometry(l.part);
+      if (!geo) return [];
+      const posicoes = posicoesDaGeometria(geo);
+      geo.dispose();
+      return [{ chave: l.chave, nome: l.nome, posicoes, contorno: l.part.contorno }];
+    }),
+    ...m.objetos.map((o) => ({ chave: o.chave, nome: o.nome, posicoes: o.posicoes, contorno: o.contorno })),
+  ];
+}
+
+/**
+ * As placas como o usuario ve: a 1 com os ajustes feitos a mao (`arranjo`), as
+ * seguintes como o encaixe automatico deixou.
+ */
+export function placasAtuais(): Colocada[][] {
+  const ui = useInterface.getState();
+  const primeira = [...ui.arranjo.values()];
+  return primeira.length ? [primeira, ...ui.placasSeguintes] : [];
+}
+
+const nomePlaca = (m: Modelo, i: number, total: number) =>
+  `${seguro(m.nomeProjeto)}_placa${total > 1 ? `_${i + 1}_de_${total}` : ''}`;
+
+/** A placa num STL so: todas as pecas juntas, ja posicionadas. */
+export function baixarPlacaSTL(m: Modelo, i = 0): void {
+  const placas = placasAtuais();
+  const c = placas[i];
+  if (!c) return;
+  const objs = montarPlaca(pecasDaPlaca(m), c);
+  baixar(`${nomePlaca(m, i, placas.length)}.stl`, posicoesParaSTL(juntar(objs), 'placa'), 'model/stl');
+}
+
+/** A placa em 3MF: cada peca como objeto separado, na posicao do arranjo. */
+export async function baixarPlaca3MF(m: Modelo, i = 0): Promise<void> {
+  const placas = placasAtuais();
+  const c = placas[i];
+  if (!c) return;
+  baixar(`${nomePlaca(m, i, placas.length)}.3mf`, await gerar3mf(montarPlaca(pecasDaPlaca(m), c)));
+}
+
+/** Todas as placas num .zip, cada uma em 3MF e em STL. */
+export async function baixarTodasAsPlacas(m: Modelo): Promise<void> {
+  const placas = placasAtuais();
+  if (!placas.length) return;
+  const pecas = pecasDaPlaca(m);
+  const zip = new JSZip();
+  for (const [i, c] of placas.entries()) {
+    const objs = montarPlaca(pecas, c);
+    const nome = nomePlaca(m, i, placas.length);
+    zip.file(`${nome}.3mf`, await gerar3mf(objs));
+    zip.file(`${nome}.stl`, posicoesParaSTL(juntar(objs), nome));
+  }
+  baixar(`${seguro(m.nomeProjeto)}_placas.zip`, await zip.generateAsync({ type: 'blob' }));
+}
+
+/** Um objeto STL importado, de volta como veio (centrado, assentado em Z=0). */
+export function baixarObjeto(o: ObjetoModelo): void {
+  baixar(`${seguro(o.nome)}.stl`, posicoesParaSTL(o.posicoes, o.nome), 'model/stl');
 }

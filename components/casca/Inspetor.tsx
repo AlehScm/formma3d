@@ -22,14 +22,14 @@ import {
   Dica,
 } from '@/components/ui';
 import { brl } from '@/lib/cost/calc';
-import { regionBounds } from '@/lib/geom/region';
+import { regionBounds, type Region } from '@/lib/geom/region';
 import { edicaoVazia, escalaDeMm, mmDeEscala, SEM_EDICAO } from '@/lib/geom/pecaEditada';
 import { IMPRESSORAS, caberNaMesa, descreverVeredito } from '@/lib/print/impressoras';
 import { FILAMENTOS } from '@/lib/cost/calc';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type LetraComPeca } from '@/modelo/Modelo';
-import { baixarSTL } from '@/features/acoes/exportar';
+import { baixarObjeto, baixarSTL } from '@/features/acoes/exportar';
 
 /**
  * Inspetor: propriedades do que esta selecionado. Sem selecao, o resumo do
@@ -43,24 +43,24 @@ export function Inspetor() {
   const espaco = useInterface((s) => s.espaco);
   const selecionada = useInterface((s) => s.selecionada);
   const l = selecionada ? m.letras.find((x) => x.chave === selecionada) : undefined;
+  const o = selecionada ? m.objetos.find((x) => x.chave === selecionada) : undefined;
+
+  // Na placa, letra e STL sao a mesma coisa: nome, footprint, altura e um arquivo.
+  const naPlaca = l
+    ? { chave: l.chave, nome: l.nome, contorno: l.part.contorno, alturaZ: l.part.alturaZ, baixar: () => baixarSTL(m, l) }
+    : o
+      ? { chave: o.chave, nome: o.nome, contorno: o.contorno, alturaZ: o.alturaZ, baixar: () => baixarObjeto(o) }
+      : undefined;
 
   return (
     <aside aria-label="Inspetor" className="flex w-[300px] shrink-0 flex-col border-l border-borda bg-superficie">
-      {l ? (
-        espaco === 'imprimir' ? (
-          <InspetorImpressao l={l} />
-        ) : (
-          <InspetorPeca l={l} />
-        )
-      ) : (
-        <Resumo />
-      )}
+      {espaco === 'imprimir' && naPlaca ? <InspetorImpressao p={naPlaca} /> : l ? <InspetorPeca l={l} /> : <Resumo />}
     </aside>
   );
 }
 
 /** Excluir a peca do letreiro. Volta por "Restaurar" em Origem. */
-function Excluir({ l }: { l: LetraComPeca }) {
+function Excluir({ l }: { l: { chave: string; nome: string } }) {
   const remover = useProjeto((s) => s.removerPeca);
   const selecionar = useInterface((s) => s.selecionar);
   return (
@@ -80,7 +80,7 @@ function Excluir({ l }: { l: LetraComPeca }) {
   );
 }
 
-function Cabecalho({ l, subtitulo }: { l: LetraComPeca; subtitulo: string }) {
+function Cabecalho({ l, subtitulo }: { l: { chave: string; nome: string }; subtitulo: string }) {
   const selecionar = useInterface((s) => s.selecionar);
   return (
     <CabecalhoPainel
@@ -191,19 +191,28 @@ function TamanhoEixo({ rotulo, base, escala, set }: { rotulo: string; base: numb
 }
 
 /** Imprimir: em qual maquina a peca cabe, e o STL dela. */
-function InspetorImpressao({ l }: { l: LetraComPeca }) {
+interface PecaDePlaca {
+  chave: string;
+  nome: string;
+  contorno: Region;
+  alturaZ: number;
+  baixar: () => void;
+}
+
+/** Imprimir: em qual maquina a peca cabe, e o STL dela. Serve a letra e a STL. */
+function InspetorImpressao({ p }: { p: PecaDePlaca }) {
   const m = useModelo();
-  const colocada = useInterface((s) => s.arranjo.get(l.chave));
-  const b = regionBounds(l.part.contorno);
+  const colocada = useInterface((s) => s.arranjo.get(p.chave));
+  const b = regionBounds(p.contorno);
 
   return (
     <>
-      <Cabecalho l={l} subtitulo={`${formatarNumero(b.w)} × ${formatarNumero(b.h)} × ${formatarNumero(l.part.alturaZ)} mm`} />
+      <Cabecalho l={p} subtitulo={`${formatarNumero(b.w)} × ${formatarNumero(b.h)} × ${formatarNumero(p.alturaZ)} mm`} />
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
         <div className="space-y-2">
           <p className="text-micro font-semibold uppercase tracking-wider text-texto-3">Cabe em qual máquina</p>
           {IMPRESSORAS.map((mq) => {
-            const v = caberNaMesa(l.part.contorno, l.part.alturaZ, mq);
+            const v = caberNaMesa(p.contorno, p.alturaZ, mq);
             return (
               <div key={mq.id} className="rounded-md border border-borda bg-superficie-2 px-3 py-2">
                 <div className="flex items-center justify-between">
@@ -226,10 +235,10 @@ function InspetorImpressao({ l }: { l: LetraComPeca }) {
           />
         )}
 
-        <Botao icone={IconeBaixar} largura onClick={() => baixarSTL(m, l)}>
+        <Botao icone={IconeBaixar} largura onClick={p.baixar}>
           Baixar STL desta peça
         </Botao>
-        <Excluir l={l} />
+        <Excluir l={p} />
       </div>
     </>
   );

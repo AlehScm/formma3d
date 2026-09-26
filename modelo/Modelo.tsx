@@ -4,14 +4,16 @@ import { createContext, useContext, useDeferredValue, useMemo, type ReactNode } 
 import { useShallow } from 'zustand/react/shallow';
 import { textToLetters, normalizeLetters, type Letra } from '@/lib/text/glyphs';
 import { buildPart, alturaArte, orientar, descreverPeca, type Params, type Part, type Role } from '@/lib/geom/modes';
-import { regionArea, regionPerimeter, minThickness, regionBounds, scaleRegion, translateRegion } from '@/lib/geom/region';
+import type { Font } from 'opentype.js';
+import { regionArea, regionPerimeter, minThickness, regionBounds, type Region } from '@/lib/geom/region';
 import { colisoesPorBorda, avisoColisao } from '@/lib/geom/letreiro';
 import { orcar, type Orcamento } from '@/lib/cost/calc';
 import { desenhoParaPecas, resolverTracos } from '@/lib/import/pecas';
 import { chaveFonte, textoEmObjetos } from '@/lib/import/texto-em-curvas';
-import { MANUAL, acharImpressora, caberNaMesa, descreverVeredito, type Impressora, type Veredito } from '@/lib/print/impressoras';
+import { MANUAL, acharImpressora, caberNaMesa, cascoConvexo, descreverVeredito, type Impressora, type Veredito } from '@/lib/print/impressoras';
 import { aplicarEdicao, edicaoVazia, escalaUniforme } from '@/lib/geom/pecaEditada';
-import { useProjeto } from '@/store/projeto';
+import { useProjeto, chaveObjeto3d, type ArquivoImportado } from '@/store/projeto';
+import { enfileirarArquivos } from '@/lib/import/fila';
 
 /**
  * O modelo derivado: letras prontas, vereditos de mesa, avisos e orcamento.
@@ -37,6 +39,47 @@ export type LetraComPeca = Letra & {
   baseH: number;
 };
 
+export interface ObjetoModelo {
+  chave: string;
+  nome: string;
+  posicoes: Float32Array;
+  /** Casco convexo em XY: conservador, nunca colide. */
+  contorno: Region;
+  alturaZ: number;
+}
+
+/**
+ * Separacao em pecas + espessura minima: a etapa cara, que so depende do desenho
+ * e do jeito de separar -- nao da altura. Guardada por desenho para arrastar a
+ * altura de um arquivo nao refazer o calculo de todos.
+ */
+type Nativas = { nome: string; region: Region; bounds: ReturnType<typeof regionBounds>; espessuraNativa: number }[];
+const cacheNativas = new WeakMap<object, { chave: string; fontes: Map<string, unknown>; r: Nativas }>();
+
+function nativasDoArquivo(a: ArquivoImportado, fontesTexto: Map<string, Font>): Nativas {
+  const d = a.desenho;
+  const chave = `${a.modo}|${a.tracos}|${a.fundir}`;
+  const c = cacheNativas.get(d);
+  if (c && c.chave === chave && c.fontes === fontesTexto) return c.r;
+  // Texto vivo cuja fonte o usuario ja deu: vira contorno como o resto do desenho.
+  const letrasTexto = (d.textos ?? []).flatMap((t) => {
+    const f = fontesTexto.get(chaveFonte(t.fonte));
+    return f ? textoEmObjetos(t, f, d.objetos.length) : [];
+  });
+  const completo = letrasTexto.length ? { ...d, objetos: [...d.objetos, ...letrasTexto], temFill: true } : d;
+  // O que fazer com traco se decide olhando o desenho ORIGINAL: as letras do texto
+  // sao preenchimento e mudariam sozinhas essa escolha.
+  const tracos = resolverTracos(d, a.tracos);
+  const r = desenhoParaPecas(completo, { modo: a.modo, tracos, fundirProximos: a.fundir, areaMinima: 1 }).map((x) => ({
+    ...x,
+    bounds: regionBounds(x.region),
+    espessuraNativa: minThickness(x.region),
+  }));
+  cacheNativas.set(d, { chave, fontes: fontesTexto, r });
+  return r;
+}
+
+
 export interface Modelo {
   letras: LetraComPeca[];
   bounds: { w: number; h: number; maiorLetra: { w: number; h: number; nome: string } } | null;
@@ -46,8 +89,10 @@ export interface Modelo {
   vereditos: Map<string, Veredito>;
   naoCabem: Set<string>;
   params: Params;
-  /** Pecas do arquivo importado antes de escalar, para o painel de origem. */
-  nomesImportados: string[];
+  /** Nomes nativos das pecas de cada arquivo ('01', '02'...), para os quadradinhos de Origem. */
+  pecasPorArquivo: Map<string, string[]>;
+  /** Objetos STL prontos, ja com footprint para o arranjo. So existem na placa. */
+  objetos: ObjetoModelo[];
   nomeProjeto: string;
   /** Descricao curta da construcao, usada nos nomes de arquivo. */
   desc: string;
@@ -98,12 +143,8 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
   );
   const origem = useProjeto(
     useShallow((s) => ({
-      imp: s.imp,
-      impModo: s.impModo,
-      impTracos: s.impTracos,
-      impFundir: s.impFundir,
-      impDesativadas: s.impDesativadas,
-      impAltura: s.impAltura,
+      arquivos: s.arquivos,
+      objetos3d: s.objetos3d,
       fonte: s.fonte,
       texto: s.texto,
       altura: s.altura,
@@ -146,27 +187,25 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     [p]
   );
 
-  const { imp, impModo, impTracos, impFundir, impDesativadas, impAltura, fonte, texto, altura, tracking, edicoes, fontesTexto, removidas } = origem;
+  const { arquivos, objetos3d, fonte, texto, altura, tracking, edicoes, fontesTexto, removidas } = origem;
   const { apoio, borda, bordaCompensa } = p;
 
-  // Pecas do arquivo importado, na escala nativa. Separado da escala para que
-  // arrastar a altura nao refaca a separacao nem remeca a espessura.
-  const pecasNativas = useMemo(() => {
-    if (!imp) return null;
-    const d = imp.desenho;
-    // Texto vivo cuja fonte o usuario ja deu: vira contorno como o resto do desenho.
-    const letrasTexto = (d.textos ?? []).flatMap((t) => {
-      const f = fontesTexto.get(chaveFonte(t.fonte));
-      return f ? textoEmObjetos(t, f, d.objetos.length) : [];
-    });
-    const completo = letrasTexto.length ? { ...d, objetos: [...d.objetos, ...letrasTexto], temFill: true } : d;
-    // O que fazer com traco se decide olhando o desenho ORIGINAL: as letras do texto
-    // sao preenchimento e mudariam sozinhas essa escolha.
-    const tracos = resolverTracos(d, impTracos);
-    return desenhoParaPecas(completo, { modo: impModo, tracos, fundirProximos: impFundir, areaMinima: 1 }).map(
-      (x) => ({ ...x, bounds: regionBounds(x.region), espessuraNativa: minThickness(x.region) })
-    );
-  }, [imp, impModo, impTracos, impFundir, fontesTexto]);
+  // Pecas de cada arquivo, na escala nativa (ver `nativasDoArquivo`).
+  const pecasNativas = useMemo(
+    () => (arquivos.length ? arquivos.map((a) => ({ a, pecas: nativasDoArquivo(a, fontesTexto) })) : null),
+    [arquivos, fontesTexto]
+  );
+
+  // Objetos STL: footprint pelo casco convexo dos vertices em XY.
+  const objetos = useMemo<ObjetoModelo[]>(
+    () =>
+      objetos3d.map((o) => {
+        const pts = [];
+        for (let i = 0; i < o.posicoes.length; i += 3) pts.push({ x: o.posicoes[i]!, y: o.posicoes[i + 1]! });
+        return { chave: chaveObjeto3d(o.id), nome: o.nome, posicoes: o.posicoes, alturaZ: o.alturaZ, contorno: [{ outer: cascoConvexo(pts), holes: [] }] };
+      }),
+    [objetos3d]
+  );
 
   // Etapa cara (contornos + espessura): so depende do texto, do tamanho e das edicoes.
   const letrasBase = useMemo(() => {
@@ -188,16 +227,13 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     };
 
     if (pecasNativas) {
-      const ativas = pecasNativas.filter((x) => !impDesativadas.has(x.nome));
-      if (!ativas.length) return [] as Base[];
-      const b = regionBounds(ativas.flatMap((x) => x.region));
-      const alvo = alturaArte(impAltura, apoio, borda, bordaCompensa);
-      const s = b.h > 0 ? alvo / b.h : 1;
-      return ativas.map((x) => {
-        const region = translateRegion(scaleRegion(x.region, s), -b.minX * s, -b.minY * s);
-        const bb = regionBounds(region);
-        return editar({ nome: x.nome, chave: x.nome, region, bounds: bb, espessuraMin: x.espessuraNativa * s, baseW: bb.w, baseH: bb.h });
-      });
+      const alvoDe = (a: ArquivoImportado) => alturaArte(a.altura, apoio, borda, bordaCompensa);
+      return enfileirarArquivos(pecasNativas.map(({ a, pecas }) => ({ id: a.id, alvo: alvoDe(a), desativadas: a.desativadas, pecas }))).map(
+        (x) => {
+          const bb = regionBounds(x.region);
+          return editar({ ...x, bounds: bb, baseW: bb.w, baseH: bb.h });
+        }
+      );
     }
     if (!fonte || !texto.trim()) return [] as Base[];
     const alvo = alturaArte(altura, apoio, borda, bordaCompensa);
@@ -208,7 +244,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       .map(({ l, chave }) =>
         editar({ ...l, chave, espessuraMin: minThickness(l.region), baseW: l.bounds.w, baseH: l.bounds.h })
       );
-  }, [pecasNativas, impDesativadas, impAltura, fonte, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes, removidas]);
+  }, [pecasNativas, fonte, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes, removidas]);
 
   // Enquanto o slider se move, o React mantem o quadro anterior em vez de travar.
   // So primitivos ou valores estaveis: objeto novo a cada render anularia o efeito.
@@ -279,21 +315,32 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
   }, [letrasBase, paramsDiferidos, mesaXD, mesaYD, mesaZD, impressoraD]);
 
   const modelo = useMemo<Modelo>(() => {
-    const naoCabem = new Set([...geo.vereditos].filter(([, v]) => !v.cabe).map(([k]) => k));
+    // Os STL entram no veredito de mesa junto com as letras: dividem a mesma placa.
+    const vereditos = new Map(geo.vereditos);
+    for (const o of objetos) {
+      const v = caberNaMesa(o.contorno, o.alturaZ, geo.mesa);
+      vereditos.set(o.chave, v);
+    }
+    const naoCabem = new Set([...vereditos].filter(([, v]) => !v.cabe).map(([k]) => k));
+    const primeiro = arquivos[0];
     return {
       ...geo,
+      vereditos,
       naoCabem,
       params,
-      nomesImportados: pecasNativas?.map((x) => x.nome) ?? [],
+      objetos,
+      pecasPorArquivo: new Map((pecasNativas ?? []).map(({ a, pecas }) => [a.id, pecas.map((x) => x.nome)])),
       // Nomeia STL, zip e orcamento: arquivo importado, nome dado a mao, ou o texto.
-      nomeProjeto: imp ? imp.nomeArquivo.replace(/\.[^.]+$/, '') : origem.nomeTrabalho || texto,
+      nomeProjeto: primeiro
+        ? primeiro.nomeArquivo.replace(/\.[^.]+$/, '') + (arquivos.length > 1 ? ` + ${arquivos.length - 1}` : '')
+        : origem.nomeTrabalho || texto,
       desc: origem.presetAtivo ?? descreverPeca(params),
       orientacao: orientar(params),
       temChapa: params.frente === 'chapa' || params.traseira === 'chapa',
       temCorte: geo.letras.some((l) => l.part.extras.some((x) => x.kind === 'cut')),
       rolesUsados: new Set<Role>(geo.letras.flatMap((l) => l.part.layers.map((x) => x.role))),
     };
-  }, [geo, params, pecasNativas, imp, origem.nomeTrabalho, origem.presetAtivo, texto]);
+  }, [geo, params, pecasNativas, objetos, arquivos, origem.nomeTrabalho, origem.presetAtivo, texto]);
 
   const orcamento = useMemo(
     () =>

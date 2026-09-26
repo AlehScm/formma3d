@@ -21,7 +21,15 @@ import { brl } from '@/lib/cost/calc';
 import { useProjeto } from '@/store/projeto';
 import { useInterface, type Espaco } from '@/store/interface';
 import { useModelo, useOrcamento } from '@/modelo/Modelo';
-import { baixarChapaDXF, baixarChapaSVG, baixarGabarito, baixarPacote } from '@/features/acoes/exportar';
+import {
+  baixarChapaDXF,
+  baixarChapaSVG,
+  baixarGabarito,
+  baixarPacote,
+  baixarPlaca3MF,
+  baixarPlacaSTL,
+  baixarTodasAsPlacas,
+} from '@/features/acoes/exportar';
 
 /**
  * Topo do app: identidade, projeto, as tres areas e a UNICA acao primaria da tela
@@ -32,13 +40,14 @@ export function BarraTopo() {
   const espaco = useInterface((s) => s.espaco);
   const setEspaco = useInterface((s) => s.setEspaco);
   const abrirDesenho = useInterface((s) => s.abrirDesenho);
-  const imp = useProjeto((s) => s.imp);
+  const imp = useProjeto((s) => s.arquivos.length > 0);
   const definir = useProjeto((s) => s.definir);
   const fecharImport = useProjeto((s) => s.fecharImport);
   const m = useModelo();
   const o = useOrcamento();
   const [editando, setEditando] = useState(false);
-  const temPecas = m.letras.length > 0;
+  const temPecas = m.letras.length > 0 || m.objetos.length > 0;
+  const placas = useInterface((s) => (s.arranjo.size ? 1 + s.placasSeguintes.length : 0));
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-borda bg-superficie px-3">
@@ -78,8 +87,11 @@ export function BarraTopo() {
               </button>
             }
           >
-            <MenuItem icone={IconeAbrir} detalhe=".ai .pdf" onSelect={abrirDesenho}>
+            <MenuItem icone={IconeAbrir} detalhe=".ai .pdf" onSelect={() => abrirDesenho(true)}>
               Abrir desenho
+            </MenuItem>
+            <MenuItem icone={IconeNovo} detalhe=".ai .pdf .stl" onSelect={() => abrirDesenho(false)}>
+              Adicionar arquivo ao projeto
             </MenuItem>
             <MenuItem icone={IconeNovo} onSelect={fecharImport} disabled={!imp}>
               Novo letreiro de texto
@@ -126,7 +138,7 @@ export function BarraTopo() {
         }
       >
         <MenuRotulo>Tudo de uma vez</MenuRotulo>
-        <MenuItem icone={IconeBaixar} detalhe=".zip" disabled={!o} onSelect={() => o && void baixarPacote(m, o)}>
+        <MenuItem icone={IconeBaixar} detalhe=".zip" disabled={!o || !m.letras.length} onSelect={() => o && void baixarPacote(m, o)}>
           Pacote completo
         </MenuItem>
         {m.temCorte && (
@@ -142,10 +154,28 @@ export function BarraTopo() {
           </>
         )}
         <MenuSeparador />
-        <MenuRotulo>Para instalar</MenuRotulo>
-        <MenuItem icone={IconeBaixar} detalhe=".svg" onSelect={() => baixarGabarito(m)}>
-          Gabarito 1:1
+        <MenuRotulo>Para imprimir, já arrumado</MenuRotulo>
+        <MenuItem icone={IconeBaixar} detalhe=".3mf" disabled={!placas} onSelect={() => void baixarPlaca3MF(m)}>
+          Placa{placas > 1 ? ' 1' : ''}
         </MenuItem>
+        <MenuItem icone={IconeBaixar} detalhe=".stl" disabled={!placas} onSelect={() => baixarPlacaSTL(m)}>
+          Placa{placas > 1 ? ' 1' : ''}
+        </MenuItem>
+        {placas > 1 && (
+          <MenuItem icone={IconeBaixar} detalhe=".zip" onSelect={() => void baixarTodasAsPlacas(m)}>
+            Todas as {placas} placas
+          </MenuItem>
+        )}
+        {!placas && <p className="px-2 pb-1 text-mini text-texto-3">Arrume as peças em Imprimir primeiro.</p>}
+        {m.letras.length > 0 && (
+          <>
+            <MenuSeparador />
+            <MenuRotulo>Para instalar</MenuRotulo>
+            <MenuItem icone={IconeBaixar} detalhe=".svg" onSelect={() => baixarGabarito(m)}>
+              Gabarito 1:1
+            </MenuItem>
+          </>
+        )}
       </Menu>
     </header>
   );
