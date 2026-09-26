@@ -133,14 +133,9 @@ function pecasDaPlaca(m: Modelo): PecaPlaca[] {
   ];
 }
 
-/**
- * As placas como o usuario ve: a 1 com os ajustes feitos a mao (`arranjo`), as
- * seguintes como o encaixe automatico deixou.
- */
+/** As placas como o usuario ve, com os ajustes feitos a mao. */
 export function placasAtuais(): Colocada[][] {
-  const ui = useInterface.getState();
-  const primeira = [...ui.arranjo.values()];
-  return primeira.length ? [primeira, ...ui.placasSeguintes] : [];
+  return useInterface.getState().placas.map((p) => [...p.values()]);
 }
 
 const nomePlaca = (m: Modelo, i: number, total: number) =>
@@ -150,7 +145,7 @@ const nomePlaca = (m: Modelo, i: number, total: number) =>
 export function baixarPlacaSTL(m: Modelo, i = 0): void {
   const placas = placasAtuais();
   const c = placas[i];
-  if (!c) return;
+  if (!c?.length) return;
   const objs = montarPlaca(pecasDaPlaca(m), c);
   baixar(`${nomePlaca(m, i, placas.length)}.stl`, posicoesParaSTL(juntar(objs), 'placa'), 'model/stl');
 }
@@ -159,7 +154,7 @@ export function baixarPlacaSTL(m: Modelo, i = 0): void {
 export async function baixarPlaca3MF(m: Modelo, i = 0): Promise<void> {
   const placas = placasAtuais();
   const c = placas[i];
-  if (!c) return;
+  if (!c?.length) return;
   baixar(`${nomePlaca(m, i, placas.length)}.3mf`, await gerar3mf(montarPlaca(pecasDaPlaca(m), c)));
 }
 
@@ -170,6 +165,7 @@ export async function baixarTodasAsPlacas(m: Modelo): Promise<void> {
   const pecas = pecasDaPlaca(m);
   const zip = new JSZip();
   for (const [i, c] of placas.entries()) {
+    if (!c.length) continue;
     const objs = montarPlaca(pecas, c);
     const nome = nomePlaca(m, i, placas.length);
     zip.file(`${nome}.3mf`, await gerar3mf(objs));

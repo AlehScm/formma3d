@@ -24,9 +24,9 @@ import {
   Dica,
 } from '@/components/ui';
 import { IMPRESSORAS, MANUAL, caberNaMesa } from '@/lib/print/impressoras';
-import { regionBounds } from '@/lib/geom/region';
+import { regionBounds, type Region } from '@/lib/geom/region';
 import { useProjeto } from '@/store/projeto';
-import { useInterface } from '@/store/interface';
+import { placaDe, useInterface } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
 import { arrumarNaPlaca } from '@/features/acoes/arranjo';
 import { baixarObjeto, baixarPlaca3MF, baixarPlacaSTL, baixarSTL, baixarTodasAsPlacas } from '@/features/acoes/exportar';
@@ -139,6 +139,9 @@ function Arranjo() {
   const setFolga = useInterface((x) => x.setFolgaPecas);
   const info = useInterface((x) => x.infoArranjo);
   const limpar = useInterface((x) => x.limparArranjo);
+  const placas = useInterface((x) => x.placas);
+  const vista = useInterface((x) => x.placaVista);
+  const naVista = placas[vista]?.size ?? 0;
 
   return (
     <>
@@ -159,32 +162,38 @@ function Arranjo() {
         {info && <BotaoIcone icone={IconeDesfazer} rotulo="Voltar à posição do letreiro" onClick={limpar} />}
       </div>
       {info && (
-        <Alerta tom={info.impossiveis > 0 ? 'perigo' : info.fora > 0 ? 'atencao' : 'sucesso'}>
-          <span className="font-medium">{info.dentro} nesta placa</span>
-          {info.placas > 1 && <> · {info.placas} placas no total</>}
-          {info.fora > 0 && <> · {info.fora} na próxima</>}
-          {info.impossiveis > 0 && <> · {info.impossiveis} não cabe(m) nesta máquina</>}
+        <Alerta tom={info.impossiveis > 0 ? 'perigo' : placas.length > 1 ? 'atencao' : 'sucesso'}>
+          {placas.length > 1 ? (
+            <span className="font-medium">
+              Não cabe tudo de uma vez: são {placas.length} impressões. Troque de placa em cima do 3D.
+            </span>
+          ) : (
+            <span className="font-medium">Tudo numa placa só: uma impressão.</span>
+          )}
+          {info.impossiveis > 0 && <> {info.impossiveis} peça(s) maior(es) que a mesa ficam de fora, em vermelho.</>}
         </Alerta>
       )}
-      {info && info.dentro > 0 && (
+      {info && naVista > 0 && (
         // A placa sai num arquivo so, com as pecas onde estao na tela.
         <div className="space-y-1.5 border-t border-borda pt-3">
-          <p className="text-mini font-semibold uppercase tracking-wider text-texto-2">Baixar a placa</p>
+          <p className="text-mini font-semibold uppercase tracking-wider text-texto-2">
+            Baixar a placa {placas.length > 1 ? `${vista + 1} de ${placas.length}` : ''} · {naVista} peça(s)
+          </p>
           <div className="grid grid-cols-2 gap-1.5">
             <Dica conteudo="Formato do Bambu Studio: cada peça continua um objeto separado, na posição do arranjo">
-              <Botao icone={IconeBaixar} largura variante="primario" onClick={() => void baixarPlaca3MF(m)}>
+              <Botao icone={IconeBaixar} largura variante="primario" onClick={() => void baixarPlaca3MF(m, vista)}>
                 3MF
               </Botao>
             </Dica>
             <Dica conteudo="Todas as peças numa malha só, já posicionadas">
-              <Botao icone={IconeBaixar} largura onClick={() => baixarPlacaSTL(m)}>
+              <Botao icone={IconeBaixar} largura onClick={() => baixarPlacaSTL(m, vista)}>
                 STL
               </Botao>
             </Dica>
           </div>
-          {info.placas > 1 && (
+          {placas.length > 1 && (
             <Botao icone={IconeBaixar} largura variante="fantasma" onClick={() => void baixarTodasAsPlacas(m)}>
-              Todas as {info.placas} placas (.zip)
+              Todas as {placas.length} placas (.zip)
             </Botao>
           )}
         </div>
@@ -193,20 +202,77 @@ function Arranjo() {
   );
 }
 
+interface ItemPeca {
+  chave: string;
+  nome: string;
+  contorno: Region;
+  alturaZ: number;
+  stl: boolean;
+  baixar: () => void;
+}
+
 function Pecas() {
   const m = useModelo();
-  const selecionada = useInterface((x) => x.selecionada);
-  const selecionar = useInterface((x) => x.selecionar);
+  const placas = useInterface((x) => x.placas);
   const abrirDesenho = useInterface((x) => x.abrirDesenho);
 
   // Letras do letreiro e objetos STL na mesma lista: dividem a mesma placa.
-  const itens = [
+  const itens: ItemPeca[] = [
     ...m.letras.map((l) => ({ chave: l.chave, nome: l.nome, contorno: l.part.contorno, alturaZ: l.part.alturaZ, stl: false, baixar: () => baixarSTL(m, l) })),
     ...m.objetos.map((o) => ({ chave: o.chave, nome: o.nome, contorno: o.contorno, alturaZ: o.alturaZ, stl: true, baixar: () => baixarObjeto(o) })),
   ];
 
+  // Depois de arrumar, a lista segue as placas: da para ver o que sai em cada impressao.
+  const grupos: { titulo: string; placa?: number; itens: ItemPeca[] }[] = placas.length
+    ? [
+        ...placas.map((p, i) => ({ titulo: `Placa ${i + 1}`, placa: i, itens: itens.filter((it) => p.has(it.chave)) })),
+        { titulo: 'Fora das placas', itens: itens.filter((it) => placaDe(placas, it.chave) < 0) },
+      ].filter((g) => g.itens.length)
+    : [{ titulo: '', itens }];
+
   return (
     <>
+      <p className="text-mini text-texto-3">Clique numa peça para vê-la no 3D e mexer nela.</p>
+      {grupos.map((g) => (
+        <GrupoPecas key={g.titulo || 'todas'} {...g} />
+      ))}
+      <div className="space-y-1.5 border-t border-borda pt-3">
+        <Botao icone={IconeAbrir} largura onClick={() => abrirDesenho(false)}>
+          Importar STL
+        </Botao>
+        <p className="text-mini text-texto-3">
+          Objeto 3D pronto: divide a placa com o letreiro, mas não vira letra caixa e não entra no orçamento.
+        </p>
+      </div>
+    </>
+  );
+}
+
+function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; itens: ItemPeca[] }) {
+  const selecionada = useInterface((x) => x.selecionada);
+  const selecionar = useInterface((x) => x.selecionar);
+  const vista = useInterface((x) => x.placaVista);
+  const verPlaca = useInterface((x) => x.verPlaca);
+
+  return (
+    <div className="space-y-1">
+      {titulo && (
+        <button
+          type="button"
+          onClick={() => placa !== undefined && verPlaca(placa)}
+          disabled={placa === undefined}
+          className={cx(
+            'flex w-full items-center justify-between rounded px-1 text-left text-mini font-semibold uppercase tracking-wider',
+            placa === undefined ? 'text-perigo' : placa === vista ? 'text-acento' : 'text-texto-2 hover:text-texto'
+          )}
+        >
+          <span>
+            {titulo}
+            {placa === vista && ' · na tela'}
+          </span>
+          <span className="tabular font-mono normal-case tracking-normal text-texto-3">{itens.length}</span>
+        </button>
+      )}
       <ul className="-mx-2 space-y-0.5">
         {itens.map((it) => {
           const b = regionBounds(it.contorno);
@@ -216,13 +282,14 @@ function Pecas() {
               <div
                 className={cx(
                   'group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors',
-                  sel ? 'bg-acento/10 ring-1 ring-acento/40' : 'hover:bg-superficie-3'
+                  sel ? 'bg-acento/15 ring-1 ring-acento' : 'hover:bg-superficie-3'
                 )}
               >
                 <button
                   type="button"
+                  aria-pressed={sel}
                   onClick={() => selecionar(sel ? null : it.chave)}
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
                 >
                   {it.stl ? (
                     <span className="min-w-0 max-w-24 truncate text-base font-medium text-texto" title={it.nome}>
@@ -250,15 +317,7 @@ function Pecas() {
           );
         })}
       </ul>
-      <div className="space-y-1.5 border-t border-borda pt-3">
-        <Botao icone={IconeAbrir} largura onClick={() => abrirDesenho(false)}>
-          Importar STL
-        </Botao>
-        <p className="text-mini text-texto-3">
-          Objeto 3D pronto: divide a placa com o letreiro, mas não vira letra caixa e não entra no orçamento.
-        </p>
-      </div>
-    </>
+    </div>
   );
 }
 

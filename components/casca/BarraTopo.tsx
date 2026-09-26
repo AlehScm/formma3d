@@ -47,7 +47,8 @@ export function BarraTopo() {
   const o = useOrcamento();
   const [editando, setEditando] = useState(false);
   const temPecas = m.letras.length > 0 || m.objetos.length > 0;
-  const placas = useInterface((s) => (s.arranjo.size ? 1 + s.placasSeguintes.length : 0));
+  const placas = useInterface((s) => s.placas.length);
+  const vista = useInterface((s) => (s.placas[s.placaVista]?.size ? s.placaVista : -1));
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-borda bg-superficie px-3">
@@ -155,11 +156,11 @@ export function BarraTopo() {
         )}
         <MenuSeparador />
         <MenuRotulo>Para imprimir, já arrumado</MenuRotulo>
-        <MenuItem icone={IconeBaixar} detalhe=".3mf" disabled={!placas} onSelect={() => void baixarPlaca3MF(m)}>
-          Placa{placas > 1 ? ' 1' : ''}
+        <MenuItem icone={IconeBaixar} detalhe=".3mf" disabled={vista < 0} onSelect={() => void baixarPlaca3MF(m, vista)}>
+          Placa{placas > 1 ? ` ${vista + 1} (a que está na tela)` : ''}
         </MenuItem>
-        <MenuItem icone={IconeBaixar} detalhe=".stl" disabled={!placas} onSelect={() => baixarPlacaSTL(m)}>
-          Placa{placas > 1 ? ' 1' : ''}
+        <MenuItem icone={IconeBaixar} detalhe=".stl" disabled={vista < 0} onSelect={() => baixarPlacaSTL(m, vista)}>
+          Placa{placas > 1 ? ` ${vista + 1} (a que está na tela)` : ''}
         </MenuItem>
         {placas > 1 && (
           <MenuItem icone={IconeBaixar} detalhe=".zip" onSelect={() => void baixarTodasAsPlacas(m)}>

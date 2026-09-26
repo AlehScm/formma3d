@@ -27,7 +27,7 @@ import { edicaoVazia, escalaDeMm, mmDeEscala, SEM_EDICAO } from '@/lib/geom/peca
 import { IMPRESSORAS, caberNaMesa, descreverVeredito } from '@/lib/print/impressoras';
 import { FILAMENTOS } from '@/lib/cost/calc';
 import { useProjeto } from '@/store/projeto';
-import { useInterface } from '@/store/interface';
+import { placaDe, useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type LetraComPeca } from '@/modelo/Modelo';
 import { baixarObjeto, baixarSTL } from '@/features/acoes/exportar';
 
@@ -202,7 +202,9 @@ interface PecaDePlaca {
 /** Imprimir: em qual maquina a peca cabe, e o STL dela. Serve a letra e a STL. */
 function InspetorImpressao({ p }: { p: PecaDePlaca }) {
   const m = useModelo();
-  const colocada = useInterface((s) => s.arranjo.get(p.chave));
+  const placas = useInterface((s) => s.placas);
+  const i = placaDe(placas, p.chave);
+  const colocada = placas[i]?.get(p.chave);
   const b = regionBounds(p.contorno);
 
   return (
@@ -229,7 +231,7 @@ function InspetorImpressao({ p }: { p: PecaDePlaca }) {
           <ListaValores
             densa
             itens={[
-              { rotulo: 'Na placa', valor: m.mesa.nome.replace('Bambu Lab ', '') },
+              { rotulo: 'Placa', valor: `${i + 1} de ${placas.length} · ${m.mesa.nome.replace('Bambu Lab ', '')}` },
               { rotulo: 'Giro na placa', valor: `${formatarNumero(colocada.giro)}°` },
             ]}
           />

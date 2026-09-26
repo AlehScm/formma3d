@@ -27,10 +27,11 @@ export function arrumarNaPlaca(m: Modelo): void {
   // Sobrar por falta de espaco nesta placa e nao caber na maquina sao problemas
   // diferentes: o primeiro se resolve com outra levada, o segundo nao.
   const impossiveis = r.sobraram.filter((chave) => m.naoCabem.has(chave)).length;
-  ui.definirArranjo(
-    r.colocadas,
-    r.sobraram,
-    { dentro: r.colocadas.length, fora: r.sobraram.length - impossiveis, impossiveis, placas: r.placas },
-    r.todas.slice(1)
-  );
+  const emPlaca = new Set(r.todas.flat().map((c) => c.nome));
+  ui.definirArranjo(r.todas, r.sobraram.filter((k) => !emPlaca.has(k)), {
+    dentro: r.colocadas.length,
+    fora: r.sobraram.length - impossiveis,
+    impossiveis,
+    placas: r.placas,
+  });
 }

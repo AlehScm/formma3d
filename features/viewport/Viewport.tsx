@@ -1,7 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import {
+  cx,
   Balao,
   BarraFerramentas,
   Botao,
@@ -27,12 +29,15 @@ import { useModelo } from '@/modelo/Modelo';
 import { useProjeto } from '@/store/projeto';
 import { useInterface, type Ferramenta } from '@/store/interface';
 import { SEM_EDICAO } from '@/lib/geom/pecaEditada';
+import type { Colocada } from '@/lib/print/arranjo';
 
 // O canvas WebGL nao pode ser renderizado no servidor.
 const Viewer3D = dynamic(() => import('@/components/Viewer3D'), {
   ssr: false,
   loading: () => <div className="flex h-full items-center justify-center text-base text-texto-3">carregando 3D…</div>,
 });
+
+const SEM_ARRANJO: ReadonlyMap<string, Colocada> = new Map();
 
 const GIZMO: Record<Ferramenta, 'nenhuma' | 'mover' | 'girar' | 'escalar'> = {
   selecionar: 'nenhuma',
@@ -59,7 +64,9 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   const setExplode = useInterface((s) => s.setExplode);
   const camadas = useInterface((s) => s.camadas);
   const setCamadas = useInterface((s) => s.setCamadas);
-  const arranjo = useInterface((s) => s.arranjo);
+  const placas = useInterface((s) => s.placas);
+  const placaVista = useInterface((s) => s.placaVista);
+  const verPlaca = useInterface((s) => s.verPlaca);
   const sobraram = useInterface((s) => s.sobraram);
   const posicionarNoArranjo = useInterface((s) => s.posicionarNoArranjo);
   const abrirDesenho = useInterface((s) => s.abrirDesenho);
@@ -67,6 +74,22 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   const editarPeca = useProjeto((s) => s.editarPeca);
 
   const naPlaca = espaco === 'imprimir';
+  const arranjo = placas[placaVista] ?? SEM_ARRANJO;
+  // Cada placa e uma impressao: a cena mostra so a escolhida. As pecas das outras
+  // somem daqui e aparecem quando a placa delas e escolhida.
+  // Memo: arrays novos a cada render refariam os deslocamentos da cena toda vez.
+  const { letras, objetos, naFila } = useMemo(() => {
+    const emOutra = new Set(placas.flatMap((p, i) => (i === placaVista ? [] : [...p.keys()])));
+    const visivel = (chave: string) => !naPlaca || !emOutra.has(chave);
+    const emPlaca = (chave: string) => placas.some((p) => p.has(chave));
+    return {
+      letras: m.letras.filter((l) => visivel(l.chave)),
+      objetos: m.objetos.filter((o) => visivel(o.chave)),
+      naFila: naPlaca
+        ? [...sobraram, ...m.objetos.map((o) => o.chave).filter((k) => !emPlaca(k) && !sobraram.includes(k))]
+        : [],
+    };
+  }, [m.letras, m.objetos, placas, placaVista, sobraram, naPlaca]);
 
   // Sem letreiro ainda pode haver STL na placa: so fica vazio se nao ha nada a desenhar.
   if (!m.letras.length && !(naPlaca && m.objetos.length)) {
@@ -98,20 +121,21 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   return (
     <div className="relative h-full">
       <Viewer3D
-        letras={m.letras}
-        largura={m.bounds?.w ?? 0}
-        altura={m.bounds?.h ?? 0}
+        letras={letras}
+        // Depois de arrumar, a camera enquadra a placa, nao o letreiro montado (que pode ter metros).
+        largura={naPlaca && placas.length ? m.mesa.x * 1.3 : (m.bounds?.w ?? 0)}
+        altura={naPlaca && placas.length ? m.mesa.y : (m.bounds?.h ?? 0)}
         profundidade={profundidade}
         centro={[(m.bounds?.w ?? 0) / 2, (m.bounds?.h ?? 0) / 2]}
         explode={explode}
         camadas={camadas}
         mesa={naPlaca ? { x: m.mesa.x, y: m.mesa.y } : null}
         naoCabem={m.naoCabem}
-        arranjo={naPlaca ? arranjo : new Map()}
+        arranjo={naPlaca ? arranjo : SEM_ARRANJO}
         // STL ainda nao arrumado nao tem posicao de letreiro: fica ao lado da placa,
         // junto com o que sobrou, ate o usuario arrumar ou arrastar.
-        sobraram={naPlaca ? [...sobraram, ...m.objetos.map((o) => o.chave).filter((k) => !arranjo.has(k) && !sobraram.includes(k))] : []}
-        objetos={m.objetos}
+        sobraram={naFila}
+        objetos={objetos}
         selecionada={selecionada}
         onSelecionar={selecionar}
         ferramenta={selecionada ? GIZMO[ferramenta] : 'nenhuma'}
@@ -126,16 +150,46 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
       />
 
       {/* Zona 1: contexto. */}
-      <div className="pointer-events-none absolute left-3 top-3 rounded-md border border-borda bg-flutuante/90 px-2.5 py-1.5 text-mini text-texto-2 backdrop-blur">
-        {naPlaca ? (
-          <>
-            Placa · <span className="text-texto">{m.mesa.nome.replace('Bambu Lab ', '')}</span>{' '}
-            <span className="tabular font-mono text-texto-3">
-              {formatarNumero(m.mesa.x)}×{formatarNumero(m.mesa.y)} mm
-            </span>
-          </>
-        ) : (
-          <>Letreiro montado</>
+      <div className="absolute left-3 top-3 flex items-center gap-2">
+        <div className="pointer-events-none rounded-md border border-borda bg-flutuante/90 px-2.5 py-1.5 text-mini text-texto-2 backdrop-blur">
+          {naPlaca ? (
+            <>
+              {m.mesa.nome.replace('Bambu Lab ', '')}{' '}
+              <span className="tabular font-mono text-texto-3">
+                {formatarNumero(m.mesa.x)}×{formatarNumero(m.mesa.y)} mm
+              </span>
+            </>
+          ) : (
+            <>Letreiro montado</>
+          )}
+        </div>
+        {/* Uma aba por impressao. So aparece depois de arrumar. */}
+        {naPlaca && placas.length > 0 && (
+          <div
+            role="tablist"
+            aria-label="Placas"
+            className="flex items-center gap-0.5 rounded-md border border-borda bg-flutuante/90 p-0.5 backdrop-blur"
+          >
+            {placas.map((p, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === placaVista}
+                onClick={() => verPlaca(i)}
+                className={cx(
+                  'flex h-7 items-center gap-1.5 rounded px-2.5 text-mini transition-colors',
+                  i === placaVista ? 'bg-acento text-white' : 'text-texto-2 hover:bg-superficie-3 hover:text-texto'
+                )}
+              >
+                Placa {i + 1}
+                <span className={cx('tabular font-mono', i === placaVista ? 'text-white/70' : 'text-texto-3')}>{p.size}</span>
+              </button>
+            ))}
+            {sobraram.length > 0 && (
+              <span className="px-2 text-mini text-perigo">{sobraram.length} fora</span>
+            )}
+          </div>
         )}
       </div>
 

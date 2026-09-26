@@ -40,13 +40,12 @@ interface EstadoInterface {
   /** Categoria aberta na barra lateral, por area: voltar a uma area reabre onde estava. */
   categoria: Record<Espaco, string>;
 
-  arranjo: Map<string, Colocada>;
+  /** Cada placa (uma impressao) com as pecas dela, na ordem do encaixe. */
+  placas: Map<string, Colocada>[];
+  /** A placa que a cena mostra e que os botoes de baixar usam. */
+  placaVista: number;
+  /** Pecas que nao entraram em placa nenhuma: ficam em fila ao lado da mesa. */
   sobraram: string[];
-  /**
-   * Placas 2 em diante, como o ultimo "arrumar" deixou. A placa 1 e `arranjo`, que
-   * recebe os ajustes a mao; as seguintes saem direto do encaixe automatico.
-   */
-  placasSeguintes: Colocada[][];
   infoArranjo: InfoArranjo | null;
   folgaPecas: number;
 
@@ -71,12 +70,20 @@ interface EstadoInterface {
   setInspetorAberto: (v: boolean) => void;
   setCategoria: (espaco: Espaco, id: string) => void;
   setFolgaPecas: (v: number) => void;
-  definirArranjo: (colocadas: Colocada[], sobraram: string[], info: InfoArranjo, seguintes?: Colocada[][]) => void;
-  /** Posicao absoluta na placa (coordenadas do `arrumar`). Tira a peca da lista de sobras. */
+  definirArranjo: (placas: Colocada[][], sobraram: string[], info: InfoArranjo) => void;
+  verPlaca: (i: number) => void;
+  /**
+   * Posicao absoluta na placa vista (coordenadas do `arrumar`). Arrastar uma peca
+   * de outra placa ou da fila para esta a tira de onde estava.
+   */
   posicionarNoArranjo: (c: Colocada) => void;
   limparArranjo: () => void;
   registrarSeletores: (desenho: (substituir?: boolean) => void, fonte: () => void, fonteTexto: (nome: string) => void) => void;
 }
+
+/** Em qual placa a peca esta, ou -1. */
+export const placaDe = (placas: readonly ReadonlyMap<string, unknown>[], chave: string): number =>
+  placas.findIndex((p) => p.has(chave));
 
 export const useInterface = create<EstadoInterface>()((set) => ({
   espaco: 'desenhar',
@@ -87,9 +94,9 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   inspetorAberto: true,
   categoria: { desenhar: 'origem', imprimir: 'maquina', orcamento: 'material' },
 
-  arranjo: new Map(),
+  placas: [],
+  placaVista: 0,
   sobraram: [],
-  placasSeguintes: [],
   infoArranjo: null,
   folgaPecas: 3,
 
@@ -104,21 +111,33 @@ export const useInterface = create<EstadoInterface>()((set) => ({
       // acomoda; cair para "mover" evita uma ferramenta ativa que nao faz nada.
       ferramenta: espaco !== 'desenhar' && s.ferramenta === 'tamanho' ? 'mover' : s.ferramenta,
     })),
-  selecionar: (selecionada) => set({ selecionada }),
+  // Selecionar uma peca que esta em outra placa leva a cena ate ela.
+  selecionar: (selecionada) =>
+    set((s) => {
+      const i = selecionada ? placaDe(s.placas, selecionada) : -1;
+      return i >= 0 ? { selecionada, placaVista: i } : { selecionada };
+    }),
   setFerramenta: (ferramenta) => set({ ferramenta }),
   setExplode: (explode) => set({ explode }),
   setCamadas: (camadas) => set({ camadas }),
   setInspetorAberto: (inspetorAberto) => set({ inspetorAberto }),
   setCategoria: (espaco, id) => set((s) => ({ categoria: { ...s.categoria, [espaco]: id } })),
   setFolgaPecas: (folgaPecas) => set({ folgaPecas }),
-  definirArranjo: (colocadas, sobraram, infoArranjo, placasSeguintes = []) =>
-    set({ arranjo: new Map(colocadas.map((c) => [c.nome, c])), sobraram, infoArranjo, placasSeguintes }),
+  definirArranjo: (placas, sobraram, infoArranjo) =>
+    set({ placas: placas.map((p) => new Map(p.map((c) => [c.nome, c]))), placaVista: 0, sobraram, infoArranjo }),
+  verPlaca: (i) => set((s) => ({ placaVista: Math.max(0, Math.min(i, s.placas.length - 1)) })),
   posicionarNoArranjo: (c) =>
     set((s) => {
-      const n = new Map(s.arranjo);
-      n.set(c.nome, c);
-      return { arranjo: n, sobraram: s.sobraram.filter((k) => k !== c.nome) };
+      const placas = s.placas.map((p, i) => {
+        if (i !== s.placaVista && !p.has(c.nome)) return p;
+        const n = new Map(p);
+        n.delete(c.nome);
+        if (i === s.placaVista) n.set(c.nome, c);
+        return n;
+      });
+      if (!placas.length) placas.push(new Map([[c.nome, c]]));
+      return { placas, sobraram: s.sobraram.filter((k) => k !== c.nome) };
     }),
-  limparArranjo: () => set({ arranjo: new Map(), sobraram: [], placasSeguintes: [], infoArranjo: null }),
+  limparArranjo: () => set({ placas: [], placaVista: 0, sobraram: [], infoArranjo: null }),
   registrarSeletores: (abrirDesenho, abrirFonte, abrirFonteTexto) => set({ abrirDesenho, abrirFonte, abrirFonteTexto }),
 }));
