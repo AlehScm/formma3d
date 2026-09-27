@@ -54,9 +54,9 @@ export const PADRAO: CustoCfg = {
   custoMaquina: 2.5,
   potencia: 120,
   precoKwh: 0.95,
-  valorHora: 30,
-  setupMin: 10,
-  posMin: 5,
+  valorHora: 0,
+  setupMin: 0,
+  posMin: 0,
   taxaFalha: 8,
   margem: 120,
   precoAcmM2: 90,
@@ -164,8 +164,11 @@ export function orcar({
     { rotulo: 'Filamento', valor: material, detalhe: `${gramas.toFixed(0)} g` },
     { rotulo: 'Máquina', valor: maquina, detalhe: `${horas.toFixed(1)} h` },
     { rotulo: 'Energia', valor: energia, detalhe: `${((horas * cfg.potencia) / 1000).toFixed(2)} kWh` },
-    { rotulo: 'Mão de obra', valor: maoDeObra, detalhe: `${minutos} min${impressoes > 1 ? ` (${impressoes} preparos)` : ''}` },
   ];
+  // Sem mao de obra configurada (o padrao), a linha so faria ruido com R$ 0,00.
+  if (maoDeObra > 0) {
+    itens.push({ rotulo: 'Mão de obra', valor: maoDeObra, detalhe: `${minutos} min${impressoes > 1 ? ` (${impressoes} preparos)` : ''}` });
+  }
   if (chapa > 0) itens.push({ rotulo: 'Chapa ACM', valor: chapa, detalhe: `${(areaChapaMm2 / 1e6).toFixed(3)} m2` });
   if (led > 0) itens.push({ rotulo: 'Fita LED', valor: led, detalhe: `${(perimetroLedMm / 1000).toFixed(2)} m` });
   itens.push({ rotulo: `Perdas (${cfg.taxaFalha}%)`, valor: falha, detalhe: 'trabalhos refeitos' });

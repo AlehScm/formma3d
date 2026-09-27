@@ -242,7 +242,7 @@ async function main() {
 
   console.log('\n== custo por peca e por placa ==');
   {
-    const cfg = { ...PADRAO, setupMin: 10, posMin: 5, taxaFalha: 8 };
+    const cfg = { ...PADRAO, valorHora: 30, setupMin: 10, posMin: 5, taxaFalha: 8 };
     const insumos = new Map<string, Insumos>([
       ['a', { volumeMm3: 50000, areaChapaMm2: 20000, perimetroLedMm: 300 }],
       ['b', { volumeMm3: 30000, areaChapaMm2: 0, perimetroLedMm: 0 }],
@@ -279,7 +279,7 @@ async function main() {
 
   console.log('\n== placas avulsas e placas fora do orcamento ==');
   {
-    const cfg = { ...PADRAO, setupMin: 10, posMin: 5 };
+    const cfg = { ...PADRAO, valorHora: 30, setupMin: 10, posMin: 5 };
     const insumos = new Map<string, Insumos>([
       ['a', { volumeMm3: 50000, areaChapaMm2: 20000, perimetroLedMm: 0 }],
       ['b', { volumeMm3: 30000, areaChapaMm2: 10000, perimetroLedMm: 0 }],
