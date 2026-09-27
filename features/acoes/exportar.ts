@@ -1,7 +1,7 @@
 'use client';
 
 import JSZip from 'jszip';
-import { APOIOS, PRESETS } from '@/lib/geom/modes';
+import { APOIOS, BATENTES, PRESETS } from '@/lib/geom/modes';
 import type { Region } from '@/lib/geom/region';
 import { partToGeometry } from '@/lib/geom/extrude';
 import { geometryToSTL, posicoesDaGeometria, posicoesParaSTL } from '@/lib/export/stl';
@@ -71,7 +71,7 @@ export function textoOrcamento(m: Modelo, o: Orcamento): string {
     `Largura total montado: ${m.bounds ? m.bounds.w.toFixed(0) : '?'} mm`,
     `Parede: ${s.parede} mm | Bico: ${s.bico} mm`,
     ...(temChapa
-      ? [`Chapa: ${s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp} mm, folga ${s.folga} mm, batente ${s.batente} mm, apoio ${APOIOS[s.apoio].curto}`]
+      ? [`Chapa: ${s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp} mm, folga ${s.folga} mm, batente ${s.batente} mm (${BATENTES[s.batenteModo].nome.toLowerCase()}), apoio ${APOIOS[s.apoio].curto}`]
       : []),
     '',
     `Filamento: ${s.cfg.filamento} - ${o.gramas.toFixed(0)} g (${o.rolos.toFixed(2)} rolo)`,

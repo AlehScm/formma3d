@@ -24,7 +24,7 @@ import {
   IconeDesfazer,
 } from '@/components/ui';
 import { CorteApoio } from '@/components/CorteApoio';
-import { APOIOS, FECHAMENTOS, PRESETS, type Apoio, type Fechamento, type PresetId } from '@/lib/geom/modes';
+import { APOIOS, BATENTES, FECHAMENTOS, PRESETS, type Apoio, type BatenteModo, type Fechamento, type PresetId } from '@/lib/geom/modes';
 import { FONTES_WEB } from '@/lib/text/fontes';
 import type { ModoSeparacao, ModoTraco } from '@/lib/import/pecas';
 import { useProjeto, chavePecaArquivo } from '@/store/projeto';
@@ -620,6 +620,8 @@ function Chapa() {
       bordaCompensa: x.bordaCompensa,
       labio: x.labio,
       batente: x.batente,
+      batenteModo: x.batenteModo,
+      batenteAltura: x.batenteAltura,
       folga: x.folga,
       frente: x.frente,
       frenteEsp: x.frenteEsp,
@@ -670,6 +672,26 @@ function Chapa() {
           min={0}
           max={8}
           passo={0.1}
+          layout="linha"
+        />
+      )}
+
+      <Segmentado<BatenteModo>
+        rotulo="Batente"
+        dica="O degrau onde a chapa apoia"
+        valor={s.batenteModo}
+        set={(v) => definir('batenteModo', v)}
+        opcoes={(Object.keys(BATENTES) as BatenteModo[]).map((k) => ({ valor: k, nome: BATENTES[k].nome, dica: BATENTES[k].desc }))}
+      />
+      {s.batenteModo === 'aba' && (
+        <CampoNumero
+          rotulo="Altura da aba"
+          dica="Parte reta da aba, logo abaixo da chapa. Por baixo dela vem uma rampa de 45° para imprimir sem suporte."
+          valor={s.batenteAltura}
+          set={(v) => definir('batenteAltura', v)}
+          min={0.4}
+          max={20}
+          passo={0.2}
           layout="linha"
         />
       )}

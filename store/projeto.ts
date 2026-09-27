@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import type { Font } from 'opentype.js';
-import { PRESETS, type Apoio, type ChapaModo, type Fechamento, type PresetId } from '@/lib/geom/modes';
+import { PRESETS, type Apoio, type BatenteModo, type ChapaModo, type Fechamento, type PresetId } from '@/lib/geom/modes';
 import { PADRAO, type CustoCfg } from '@/lib/cost/calc';
 import type { PlacaAvulsa } from '@/lib/cost/trabalho';
 import type { ResultadoFontesSistema } from '@/lib/text/fontes';
@@ -106,6 +106,8 @@ export interface EstadoProjeto {
   apoio: Apoio;
   borda: number;
   batente: number;
+  batenteModo: BatenteModo;
+  batenteAltura: number;
   labio: number;
   bordaCompensa: boolean;
   comLed: boolean;
@@ -216,6 +218,8 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
   apoio: 'dentro',
   borda: 3,
   batente: 2.5,
+  batenteModo: 'parede',
+  batenteAltura: 3,
   labio: 1,
   bordaCompensa: true,
   comLed: false,

@@ -14,7 +14,7 @@ import {
 // com frequencia em contorno de fonte.
 
 /** Papel de cada camada. Governa a cor no preview e o que o usuario entende. */
-export type Role = 'corpo' | 'face' | 'parede' | 'traseira' | 'bolsao' | 'bisel' | 'espacador' | 'borda' | 'labio';
+export type Role = 'corpo' | 'face' | 'parede' | 'traseira' | 'bolsao' | 'bisel' | 'espacador' | 'borda' | 'labio' | 'batente';
 
 /**
  * Como cada extremidade da peca e fechada.
@@ -55,6 +55,20 @@ export const APOIOS: Record<Apoio, { nome: string; curto: string; desc: string }
     curto: 'Dois lados',
     desc: 'Degrau por baixo e borda por fora, com o lábio travando a chapa pela frente.',
   },
+};
+
+/**
+ * Como o degrau da chapa e feito.
+ *
+ *  parede - a parede inteira engrossa o batente, do fundo ate a chapa. Mais forte.
+ *  aba    - parede fina no corpo e o batente so logo abaixo da chapa, com rampa de 45°
+ *           por baixo para imprimir sem suporte. Gasta bem menos filamento.
+ */
+export type BatenteModo = 'parede' | 'aba';
+
+export const BATENTES: Record<BatenteModo, { nome: string; desc: string }> = {
+  parede: { nome: 'Parede inteira', desc: 'O batente engrossa a parede do fundo até a chapa. Mais forte.' },
+  aba: { nome: 'Só a aba', desc: 'Parede fina e o batente só embaixo da chapa, com rampa de 45°. Mais barato.' },
 };
 
 export const FECHAMENTOS: Record<Fechamento, { nome: string; desc: string }> = {
@@ -107,6 +121,9 @@ export interface Params {
   borda: number;
   /** Largura do degrau interno onde a chapa apoia. */
   batente: number;
+  batenteModo: BatenteModo;
+  /** Altura da parte reta da aba (modo `aba`), onde a chapa encosta. */
+  batenteAltura: number;
   /** Quanto a borda sobe acima da chapa, travando pela frente (apoio `dois`). */
   labio: number;
   /** A medida pedida vale para a peca pronta: a arte encolhe 2x borda para compensar. */
@@ -171,6 +188,8 @@ export const PARAMS_PADRAO: Params = {
   apoio: 'dentro',
   borda: 3,
   batente: 2.5,
+  batenteModo: 'parede',
+  batenteAltura: 3,
   labio: 1,
   bordaCompensa: true,
   comLed: false,
@@ -456,7 +475,37 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
   const zCorpo0 = Math.max(zBaixo, 0);
   const zCorpo1 = Math.max(zCorpo0, zCima);
   if (zCorpo1 > zCorpo0) {
-    layers.push({ region: vao(espCorpo), z0: zCorpo0, z1: zCorpo1, role: temChapa ? 'corpo' : 'parede' });
+    const papel: Role = temChapa ? 'corpo' : 'parede';
+    const abaEmBaixo = baixo.tipo === 'chapa';
+    const abaEmCima = cima.tipo === 'chapa';
+    const hAba = Math.max(0, cfg.batenteAltura);
+    const precisa = (abaEmBaixo ? hAba : 0) + (abaEmCima ? hAba + batente : 0);
+    const soAba = cfg.batenteModo === 'aba' && temChapa && batente > 0;
+
+    if (soAba && zCorpo1 - zCorpo0 >= precisa) {
+      // Parede fina no corpo; o batente so onde a chapa encosta.
+      let z = zCorpo0;
+      if (abaEmBaixo) {
+        // Chapa na mesa: a aba vem logo acima dela. Afinar subindo nao e balanco.
+        layers.push({ region: vao(espCorpo), z0: z, z1: z + hAba, role: 'batente' });
+        z += hAba;
+      }
+      const zFina = abaEmCima ? zCorpo1 - hAba - batente : zCorpo1;
+      if (zFina > z) layers.push({ region: vao(parede), z0: z, z1: zFina, role: papel });
+      if (abaEmCima) {
+        // Aba no meio da parede ficaria no ar: por baixo, rampa de 45° em degraus
+        // que avancam para dentro no maximo a propria altura.
+        const passos = Math.max(1, Math.ceil(batente / 0.4));
+        const h = batente / passos;
+        for (let k = 1; k <= passos; k++) {
+          layers.push({ region: vao(parede + (batente * k) / passos), z0: zFina + (k - 1) * h, z1: zFina + k * h, role: 'batente' });
+        }
+        layers.push({ region: vao(espCorpo), z0: zCorpo1 - hAba, z1: zCorpo1, role: 'batente' });
+      }
+    } else {
+      if (soAba) avisos.push('Não cabe só a aba nesta profundidade: o batente ficou na parede inteira.');
+      layers.push({ region: vao(espCorpo), z0: zCorpo0, z1: zCorpo1, role: papel });
+    }
   }
   // --- extremidade de cima ---
   monta(cima, zCima, T, false);

@@ -28,6 +28,7 @@ export const CORES: Record<Role, { cor: string; metal: number; rug: number }> = 
   espacador: { cor: '#d9534f', metal: 0.1, rug: 0.7 },
   borda: { cor: '#b6e04a', metal: 0.15, rug: 0.55 },
   labio: { cor: '#8cba2e', metal: 0.15, rug: 0.55 },
+  batente: { cor: '#c9a0ff', metal: 0.15, rug: 0.55 },
 };
 
 export const LEGENDA: [Role, string][] = [
@@ -38,6 +39,7 @@ export const LEGENDA: [Role, string][] = [
   ['bolsao', 'Bolsao da chapa'],
   ['borda', 'Borda de apoio'],
   ['labio', 'Labio (trava a chapa)'],
+  ['batente', 'Batente (aba da chapa)'],
   ['bisel', 'Chanfro'],
   ['espacador', 'Espacador do halo'],
 ];
