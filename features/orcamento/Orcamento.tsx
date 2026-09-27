@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Botao,
   CampoNumero,
@@ -16,14 +16,18 @@ import {
   formatarNumero,
   formatarPeso,
   formatarTempo,
+  formatarTempoHM,
   formatarTexto,
+  lerNumero,
+  lerTempo,
+  cx,
   IconeBaixar,
   IconeCopiar,
   IconeOk,
   IconeOrcamento,
 } from '@/components/ui';
-import { FILAMENTOS, brl, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
-import { useCustos } from '@/features/orcamento/custos';
+import { FILAMENTOS, brl, calibrar, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
+import { useCustos, type CustoPlaca } from '@/features/orcamento/custos';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type Modelo } from '@/modelo/Modelo';
@@ -72,20 +76,20 @@ export function PainelOrcamento() {
       id: 'producao',
       nome: 'Produção',
       icone: IconeProducao,
-      resumo: `${formatarNumero(cfg.vazao, 1)} g/h · ${brl(cfg.valorHora)}/h`,
+      resumo: `${brl(cfg.custoMaquina)}/h máquina · ${brl(cfg.valorHora)}/h`,
       conteudo: (
         <>
-        <CampoNumero
-          rotulo="Vazão efetiva"
-          dica="Calibre com um trabalho real: gramas do trabalho divididas pelas horas que levou. É o que estima o tempo."
-          valor={cfg.vazao}
-          set={c('vazao')}
-          min={2}
-          max={60}
-          passo={0.5}
-          unidade="g/h"
-          layout="linha"
-        />
+        <p className="rounded-md border border-borda bg-superficie-2 px-3 py-2 text-mini text-texto-2">
+          Gramas e tempo vêm do Bambu Studio: preencha em <span className="text-texto">Por placa</span>, na folha ao lado.
+          {cfg.amostras > 0 ? (
+            <span className="mt-1 block text-texto-3">
+              Estimativa aprendida de {cfg.amostras} {cfg.amostras === 1 ? 'placa' : 'placas'}: {formatarNumero(cfg.vazao, 1)} g/h, gramas ×{' '}
+              {formatarNumero(cfg.fatorGramas, 2)}.
+            </span>
+          ) : (
+            <span className="mt-1 block text-texto-3">Até lá, o valor é estimado pelo volume das peças.</span>
+          )}
+        </p>
         <CampoNumero rotulo="Custo de máquina" valor={cfg.custoMaquina} set={c('custoMaquina')} min={0} max={30} passo={0.5} unidade="R$/h" layout="linha" />
         <CampoNumero rotulo="Mão de obra" valor={cfg.valorHora} set={c('valorHora')} min={0} max={200} passo={5} unidade="R$/h" layout="linha" />
         <CampoNumero rotulo="Preparo do trabalho" valor={cfg.setupMin} set={c('setupMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
@@ -246,25 +250,10 @@ function TabelasDeCusto() {
   const { porPeca, porPlaca } = useCustos();
   const nomes = new Map([...m.letras.map((l) => [l.chave, l.nome] as const), ...m.objetos.map((o) => [o.chave, o.nome] as const)]);
   const pecas = [...porPeca].filter(([k]) => nomes.has(k));
-  const temStl = porPlaca.some((p) => p.temStl);
 
   return (
     <div className="space-y-4 border-t border-borda px-6 py-4">
-      {porPlaca.length > 0 && (
-        <div>
-          <p className="mb-1 text-micro font-medium uppercase tracking-wider text-texto-3">Por placa (cada uma é uma impressão)</p>
-          <TabelaCusto
-            linhas={porPlaca.map((p) => ({
-              nome: `Placa ${p.indice + 1}${p.temStl ? ' *' : ''}`,
-              qtd: p.qtd,
-              o: p.orc,
-            }))}
-          />
-          {temStl && (
-            <p className="mt-1 text-micro text-texto-3">* inclui objeto STL: conta no custo da impressão, mas não no preço do letreiro.</p>
-          )}
-        </div>
-      )}
+      {porPlaca.length > 0 && <PlacasReais />}
       <details className="group">
         <summary className="cursor-pointer list-none text-micro font-medium uppercase tracking-wider text-texto-3 hover:text-texto">
           <span className="inline-block transition-transform group-open:rotate-90">›</span> Por peça ({pecas.length})
@@ -305,5 +294,170 @@ function TabelaCusto({ linhas }: { linhas: { nome: string; qtd?: number; o: Orca
         ))}
       </tbody>
     </table>
+  );
+}
+
+/**
+ * Por placa, com os gramas e o tempo que o Bambu Studio mostra depois de fatiar.
+ * Sem eles, a linha fica na estimativa. Cada dado real tambem ensina a estimativa.
+ */
+function PlacasReais() {
+  const { porPlaca } = useCustos();
+  const arrumado = useInterface((x) => x.placas.length > 0);
+  const temStl = porPlaca.some((p) => p.temStl);
+  const faltam = porPlaca.filter((p) => p.estimado).length;
+
+  return (
+    <div>
+      <p className="mb-1 text-micro font-medium uppercase tracking-wider text-texto-3">
+        {arrumado ? 'Por placa (cada uma é uma impressão)' : 'Impressão'}
+      </p>
+      <p className="mb-2 text-mini text-texto-2">
+        Fatie no Bambu Studio e copie os <span className="text-texto">gramas</span> e o <span className="text-texto">tempo</span>{' '}
+        {arrumado ? 'de cada placa' : 'do trabalho'}. {faltam > 0 && <span className="text-atencao">Sem isso o valor é estimado.</span>}
+      </p>
+      <table className="tabular w-full text-mini">
+        <thead>
+          <tr className="text-left text-micro text-texto-3">
+            <th className="py-1.5 font-medium" />
+            <th className="py-1.5 text-right font-medium">Peças</th>
+            <th className="py-1.5 pl-2 font-medium">Filamento</th>
+            <th className="py-1.5 pl-2 font-medium">Tempo</th>
+            <th className="py-1.5 text-right font-medium">Custo</th>
+            <th className="py-1.5 text-right font-medium">Preço</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-borda/60 font-mono">
+          {porPlaca.map((p) => (
+            <LinhaPlaca key={p.indice} p={p} nome={arrumado ? `Placa ${p.indice + 1}${p.temStl ? ' *' : ''}` : 'Trabalho'} />
+          ))}
+        </tbody>
+      </table>
+      {temStl && <p className="mt-1 text-micro text-texto-3">* inclui objeto STL: conta no custo da impressão, mas não no preço do letreiro.</p>}
+    </div>
+  );
+}
+
+function LinhaPlaca({ p, nome }: { p: CustoPlaca; nome: string }) {
+  const m = useModelo();
+  const real = useInterface((x) => x.reais[p.indice] ?? null);
+  const definirReal = useInterface((x) => x.definirReal);
+  const definirCusto = useProjeto((x) => x.definirCusto);
+  const [g, setG] = useState(real ? formatarNumero(real.gramas, 0) : '');
+  const [t, setT] = useState(real ? formatarTempoHM(real.horas) : '');
+  // Rearrumar ou mexer na placa apaga o dado real: os campos acompanham.
+  const antes = useRef(real);
+  useEffect(() => {
+    if (antes.current && !real) {
+      setG('');
+      setT('');
+    }
+    antes.current = real;
+  }, [real]);
+
+  // Os dois juntos: gramas sem tempo (ou o contrario) ainda nao da para usar.
+  const confirmar = (gt: string, tt: string) => {
+    const gramas = lerNumero(gt);
+    const horas = lerTempo(tt);
+    if (!gramas || gramas <= 0 || !horas) return;
+    if (real && Math.abs(real.gramas - gramas) < 1e-9 && Math.abs(real.horas - horas) < 1e-9) return;
+    definirReal(p.indice, { gramas, horas });
+    const volume = p.chaves.reduce((a, k) => a + (m.insumos.get(k)?.volumeMm3 ?? 0), 0);
+    const cfg = calibrar(useProjeto.getState().cfg, { gramas, horas }, volume);
+    definirCusto('vazao', cfg.vazao);
+    definirCusto('fatorGramas', cfg.fatorGramas);
+    definirCusto('amostras', cfg.amostras);
+  };
+  const limpar = () => {
+    setG('');
+    setT('');
+    definirReal(p.indice, null);
+  };
+  const tempoInvalido = t.trim() !== '' && lerTempo(t) === null;
+
+  return (
+    <tr>
+      <td className="py-1.5 font-sans font-medium text-texto">
+        {nome}
+        <span className={cx('ml-1.5 font-sans text-micro font-normal', p.estimado ? 'text-atencao' : 'text-sucesso')}>
+          {p.estimado ? 'estimado' : 'real'}
+        </span>
+      </td>
+      <td className="py-1.5 text-right text-texto-2">{p.chaves.length}</td>
+      <td className="py-1 pl-2">
+        <CampoReal
+          rotulo={`Gramas: ${nome}`}
+          valor={g}
+          set={setG}
+          dica={formatarNumero(p.orc.gramas, 0)}
+          unidade="g"
+          onConfirmar={() => confirmar(g, t)}
+        />
+      </td>
+      <td className="py-1 pl-2">
+        <CampoReal
+          rotulo={`Tempo: ${nome}`}
+          valor={t}
+          set={setT}
+          dica={formatarTempoHM(p.orc.horas)}
+          invalido={tempoInvalido}
+          onConfirmar={() => confirmar(g, t)}
+        />
+      </td>
+      <td className="py-1.5 text-right text-texto-2">{brl(p.orc.custo)}</td>
+      <td className="whitespace-nowrap py-1.5 text-right font-semibold text-sucesso">
+        {brl(p.orc.preco)}
+        {!p.estimado && (
+          <button
+            type="button"
+            onClick={limpar}
+            className="ml-1 font-sans text-micro font-normal text-texto-3 hover:text-perigo"
+            title="Voltar para a estimativa"
+          >
+            ×
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function CampoReal({
+  rotulo,
+  valor,
+  set,
+  dica,
+  unidade,
+  invalido,
+  onConfirmar,
+}: {
+  rotulo: string;
+  valor: string;
+  set: (v: string) => void;
+  /** A estimativa, em cinza, enquanto nao ha valor real. */
+  dica: string;
+  unidade?: string;
+  invalido?: boolean;
+  onConfirmar: () => void;
+}) {
+  return (
+    <div
+      className={cx(
+        'flex h-7 w-28 items-center rounded-md border bg-superficie-2 transition-colors focus-within:border-acento',
+        invalido ? 'border-perigo' : 'border-borda hover:border-borda-forte'
+      )}
+    >
+      <input
+        type="text"
+        aria-label={rotulo}
+        value={valor}
+        placeholder={dica}
+        onChange={(e) => set(e.target.value)}
+        onBlur={onConfirmar}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        className="min-w-0 flex-1 bg-transparent pl-2 font-mono text-mini text-texto outline-none placeholder:text-texto-3/60"
+      />
+      {unidade && <span className="pr-2 font-mono text-micro text-texto-3">{unidade}</span>}
+    </div>
   );
 }

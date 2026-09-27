@@ -42,3 +42,37 @@ export function formatarPeso(gramas: number): string {
 export function formatarTexto(t: string): string {
   return t.replace(/(\d)\.(\d)/g, '$1,$2').replace(/m2/g, 'm²');
 }
+
+/** Tempo como o Bambu Studio mostra: "1d 2h 5m", "5h 32m", "48m". */
+export function formatarTempoHM(horas: number): string {
+  const min = Math.round(horas * 60);
+  const d = Math.floor(min / 1440);
+  const h = Math.floor((min % 1440) / 60);
+  const m = min % 60;
+  return [d && `${d}d`, (d || h) && `${h}h`, `${m}m`].filter(Boolean).join(' ');
+}
+
+/**
+ * Le o tempo do jeito que vier: "5h 32m", "5h32", "1d 2h 3m", "5:32", "332 min",
+ * "5,5" (horas). Devolve horas, ou null.
+ */
+export function lerTempo(texto: string): number | null {
+  const t = texto.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!t) return null;
+  const relogio = /^(\d+):(\d{1,2})$/.exec(t);
+  if (relogio) return Number(relogio[1]) + Number(relogio[2]) / 60;
+  if (/[dhm]/.test(t)) {
+    const partes = [...t.matchAll(/(\d+(?:[.,]\d+)?)\s*(d|h|min|m)?/g)];
+    if (!partes.length || t.replace(/(\d+(?:[.,]\d+)?)\s*(d|h|min|m)?/g, '').trim()) return null;
+    let horas = 0;
+    partes.forEach(([, n, u], i) => {
+      const v = Number(n!.replace(',', '.'));
+      // "5h32": numero sem unidade depois de horas sao minutos.
+      const unidade = u ?? (i > 0 && partes[i - 1]![2] === 'h' ? 'm' : 'h');
+      horas += unidade === 'd' ? v * 24 : unidade === 'h' ? v : v / 60;
+    });
+    return horas > 0 ? horas : null;
+  }
+  const v = lerNumero(t);
+  return v !== null && v > 0 ? v : null;
+}

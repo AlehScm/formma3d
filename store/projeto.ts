@@ -353,3 +353,26 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
       };
     }),
 }));
+
+const CHAVE_CUSTOS = 'formma3d:custos';
+
+/**
+ * Os custos da oficina (preco do rolo, mao de obra, o que a estimativa aprendeu)
+ * valem para todos os trabalhos: ficam no navegador. Devolve o cancelamento.
+ */
+export function lembrarCustos(): () => void {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(CHAVE_CUSTOS) ?? 'null') as Partial<CustoCfg> | null;
+    if (salvo && typeof salvo === 'object') useProjeto.setState((s) => ({ cfg: { ...s.cfg, ...salvo } }));
+  } catch {
+    // Sem armazenamento (aba anonima, bloqueado): segue com o padrao.
+  }
+  return useProjeto.subscribe((s, antes) => {
+    if (s.cfg === antes.cfg) return;
+    try {
+      localStorage.setItem(CHAVE_CUSTOS, JSON.stringify(s.cfg));
+    } catch {
+      // Idem: nao salvar nao pode travar o app.
+    }
+  });
+}

@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import type { Colocada } from '@/lib/print/arranjo';
+import type { DadoReal } from '@/lib/cost/trabalho';
 
 /**
  * Estado da INTERFACE: o que se ve, nao o que se fabrica.
@@ -46,6 +47,11 @@ interface EstadoInterface {
   placaVista: number;
   /** Pecas que nao entraram em placa nenhuma: ficam em fila ao lado da mesa. */
   sobraram: string[];
+  /**
+   * Gramas e tempo que o fatiador deu para cada placa (mesma posicao de `placas`;
+   * sem arranjo, a posicao 0 e o trabalho inteiro). Rearrumar apaga: a placa mudou.
+   */
+  reais: (DadoReal | null)[];
   infoArranjo: InfoArranjo | null;
   folgaPecas: number;
 
@@ -72,6 +78,7 @@ interface EstadoInterface {
   setFolgaPecas: (v: number) => void;
   definirArranjo: (placas: Colocada[][], sobraram: string[], info: InfoArranjo) => void;
   verPlaca: (i: number) => void;
+  definirReal: (i: number, r: DadoReal | null) => void;
   /**
    * Posicao absoluta na placa vista (coordenadas do `arrumar`). Arrastar uma peca
    * de outra placa ou da fila para esta a tira de onde estava.
@@ -97,6 +104,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   placas: [],
   placaVista: 0,
   sobraram: [],
+  reais: [],
   infoArranjo: null,
   folgaPecas: 3,
 
@@ -124,10 +132,19 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   setCategoria: (espaco, id) => set((s) => ({ categoria: { ...s.categoria, [espaco]: id } })),
   setFolgaPecas: (folgaPecas) => set({ folgaPecas }),
   definirArranjo: (placas, sobraram, infoArranjo) =>
-    set({ placas: placas.map((p) => new Map(p.map((c) => [c.nome, c]))), placaVista: 0, sobraram, infoArranjo }),
+    set({ placas: placas.map((p) => new Map(p.map((c) => [c.nome, c]))), placaVista: 0, sobraram, infoArranjo, reais: [] }),
+  definirReal: (i, r) =>
+    set((s) => {
+      const reais = [...s.reais];
+      while (reais.length <= i) reais.push(null);
+      reais[i] = r;
+      return { reais };
+    }),
   verPlaca: (i) => set((s) => ({ placaVista: Math.max(0, Math.min(i, s.placas.length - 1)) })),
   posicionarNoArranjo: (c) =>
     set((s) => {
+      // Placa que ganhou ou perdeu peca nao e mais a que foi fatiada.
+      const reais = s.reais.map((r, i) => (i === s.placaVista || s.placas[i]?.has(c.nome) ? null : r));
       const placas = s.placas.map((p, i) => {
         if (i !== s.placaVista && !p.has(c.nome)) return p;
         const n = new Map(p);
@@ -136,8 +153,8 @@ export const useInterface = create<EstadoInterface>()((set) => ({
         return n;
       });
       if (!placas.length) placas.push(new Map([[c.nome, c]]));
-      return { placas, sobraram: s.sobraram.filter((k) => k !== c.nome) };
+      return { placas, reais, sobraram: s.sobraram.filter((k) => k !== c.nome) };
     }),
-  limparArranjo: () => set({ placas: [], placaVista: 0, sobraram: [], infoArranjo: null }),
+  limparArranjo: () => set({ placas: [], placaVista: 0, sobraram: [], infoArranjo: null, reais: [] }),
   registrarSeletores: (abrirDesenho, abrirFonte, abrirFonteTexto) => set({ abrirDesenho, abrirFonte, abrirFonteTexto }),
 }));

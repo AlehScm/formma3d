@@ -19,7 +19,9 @@ import { partToGeometry } from '../lib/geom/extrude';
 import { buildRegion, intersectRegion, minThickness, regionArea, regionBounds, rotateRegion, translateRegion, type Region } from '../lib/geom/region';
 import { parseFont, textToLetters, normalizeLetters } from '../lib/text/glyphs';
 import { enfileirarArquivos, type ArquivoNaFila } from '../lib/import/fila';
-import { PADRAO, orcar, orcarPeca, orcarPlaca, somarInsumos, type Insumos } from '../lib/cost/calc';
+import { PADRAO, calibrar, gramasEstimadas, orcar, type Insumos } from '../lib/cost/calc';
+import { custosDoTrabalho } from '../lib/cost/trabalho';
+import { formatarTempoHM, lerTempo } from '../components/ui/formato';
 import { useProjeto, lerChave } from '../store/projeto';
 
 let falhas = 0;
@@ -241,23 +243,64 @@ async function main() {
   console.log('\n== custo por peca e por placa ==');
   {
     const cfg = { ...PADRAO, setupMin: 10, posMin: 5, taxaFalha: 8 };
-    const pecas: Insumos[] = [
-      { volumeMm3: 50000, areaChapaMm2: 20000, perimetroLedMm: 300 },
-      { volumeMm3: 30000, areaChapaMm2: 0, perimetroLedMm: 0 },
-      { volumeMm3: 80000, areaChapaMm2: 45000, perimetroLedMm: 500 },
-    ];
-    const tudo = somarInsumos(pecas);
+    const insumos = new Map<string, Insumos>([
+      ['a', { volumeMm3: 50000, areaChapaMm2: 20000, perimetroLedMm: 300 }],
+      ['b', { volumeMm3: 30000, areaChapaMm2: 0, perimetroLedMm: 0 }],
+      ['c', { volumeMm3: 80000, areaChapaMm2: 45000, perimetroLedMm: 500 }],
+      ['stl:x', { volumeMm3: 8000, areaChapaMm2: 0, perimetroLedMm: 0 }],
+    ]);
+    const ehLetra = (k: string) => !k.startsWith('stl:');
+    const placas = [['a', 'b'], ['c', 'stl:x']];
     const preparo = orcar({ volumeMm3: 0, qtdLetras: 0, impressoes: 1, cfg }).custo;
-    const somaPecas = pecas.reduce((a, p) => a + orcarPeca(p, cfg).custo, 0);
-    const total2 = orcar({ ...tudo, qtdLetras: 3, impressoes: 2, cfg }).custo;
-    ok('soma das pecas + um preparo por placa = total', perto(somaPecas + 2 * preparo, total2, 1e-9), `${somaPecas.toFixed(2)} + 2x${preparo.toFixed(2)} vs ${total2.toFixed(2)}`);
-    const placas = orcarPlaca([pecas[0]!, pecas[1]!], cfg).custo + orcarPlaca([pecas[2]!], cfg).custo;
-    ok('soma das placas = total com as mesmas placas', perto(placas, total2, 1e-9));
-    ok('peca nao cobra preparo', perto(orcarPeca({ volumeMm3: 0, areaChapaMm2: 0, perimetroLedMm: 0 }, { ...cfg, posMin: 0 }).custo, 0, 1e-12));
-    ok('placa de uma peca = peca + um preparo', perto(orcarPlaca([pecas[1]!], cfg).custo, orcarPeca(pecas[1]!, cfg).custo + preparo, 1e-9));
-    ok('uma impressao so e o orcamento de antes', perto(orcar({ ...tudo, qtdLetras: 3, cfg }).custo, orcar({ ...tudo, qtdLetras: 3, impressoes: 1, cfg }).custo, 1e-12));
-    const cubo = orcarPeca({ volumeMm3: 20 * 20 * 20, areaChapaMm2: 0, perimetroLedMm: 0 }, cfg);
-    ok('STL: custo pelo volume, sem chapa', !cubo.itens.some((i) => i.rotulo === 'Chapa ACM') && perto(cubo.gramas, 8 * 1.24, 1e-9), `${cubo.gramas.toFixed(2)} g`);
+    const soma = (ks: string[], c: ReturnType<typeof custosDoTrabalho>) => ks.reduce((t, k) => t + c.porPeca.get(k)!.custo, 0);
+
+    const est = custosDoTrabalho({ insumos, placas, reais: [], ehLetra, cfg });
+    ok('estimado: soma das pecas + um preparo por placa = total', perto(soma(['a', 'b', 'c'], est) + 2 * preparo, est.total!.custo, 1e-9));
+    ok('estimado: cada placa = suas pecas + um preparo', est.porPlaca.every((p) => perto(p.orc.custo, soma(p.chaves, est) + preparo, 1e-9)));
+    ok('sem dado real, tudo marcado como estimado', est.estimado && est.porPlaca.every((p) => p.estimado));
+    ok('letreiro nao leva o STL', perto(est.total!.gramas, est.porPeca.get('a')!.gramas + est.porPeca.get('b')!.gramas + est.porPeca.get('c')!.gramas, 1e-9));
+
+    // Placa 1 fatiada: 250 g em 9h30.
+    const real = custosDoTrabalho({ insumos, placas, reais: [{ gramas: 250, horas: 9.5 }], ehLetra, cfg });
+    const p1 = real.porPlaca[0]!;
+    ok('placa com dado real usa os gramas e o tempo dela', perto(p1.orc.gramas, 250, 1e-9) && perto(p1.orc.horas, 9.5, 1e-9) && !p1.estimado);
+    ok('a outra placa continua estimada', real.porPlaca[1]!.estimado && perto(real.porPlaca[1]!.orc.gramas, est.porPlaca[1]!.orc.gramas, 1e-9));
+    const ga = real.porPeca.get('a')!.gramas;
+    const gb = real.porPeca.get('b')!.gramas;
+    ok('pecas dividem o real na proporcao do volume', perto(ga + gb, 250, 1e-9) && perto(ga / gb, 50 / 30, 1e-9), `${ga.toFixed(1)} + ${gb.toFixed(1)} g`);
+    ok('real: soma das pecas + preparos = total', perto(soma(['a', 'b', 'c'], real) + 2 * preparo, real.total!.custo, 1e-9));
+    ok('ainda estimado enquanto falta a placa 2', real.estimado);
+    const tudoReal = custosDoTrabalho({ insumos, placas, reais: [{ gramas: 250, horas: 9.5 }, { gramas: 120, horas: 5 }], ehLetra, cfg });
+    ok('placa com STL: o letreiro fica so com a parte das letras', tudoReal.total!.gramas < 250 + 120 && !tudoReal.estimado, `${tudoReal.total!.gramas.toFixed(1)} g`);
+
+    const semArranjo = custosDoTrabalho({ insumos, placas: [[...insumos.keys()]], reais: [{ gramas: 400, horas: 12 }], ehLetra, cfg });
+    ok('sem arranjo: o trabalho todo e uma placa', semArranjo.porPlaca.length === 1 && perto(semArranjo.porPlaca[0]!.orc.gramas, 400, 1e-9));
+  }
+
+  console.log('\n== aprender com o real ==');
+  {
+    const c0 = { ...PADRAO, vazao: 12, fatorGramas: 1, amostras: 0 };
+    const vol = 200000; // 248 g pelo volume em PLA
+    const c1 = calibrar(c0, { gramas: 310, horas: 20 }, vol);
+    ok('primeira placa define a vazao', perto(c1.vazao, 15.5, 1e-9) && c1.amostras === 1, `${c1.vazao} g/h`);
+    ok('e o fator de gramas', perto(c1.fatorGramas, 310 / 248, 1e-9), c1.fatorGramas.toFixed(3));
+    ok('a estimativa seguinte ja usa o fator', perto(gramasEstimadas(vol, c1), 310, 1e-9));
+    const c2 = calibrar(c1, { gramas: 248, horas: 31 }, vol);
+    ok('a segunda faz media, nao substitui', perto(c2.vazao, (15.5 + 8) / 2, 1e-9));
+    ok('dado invalido nao mexe', calibrar(c1, { gramas: 0, horas: 3 }, vol) === c1);
+  }
+
+  console.log('\n== ler o tempo do fatiador ==');
+  {
+    const casos: [string, number | null][] = [
+      ['5h 32m', 5 + 32 / 60], ['5h32m', 5 + 32 / 60], ['5h32', 5 + 32 / 60], ['1d 2h 3m', 26 + 3 / 60],
+      ['48m', 0.8], ['332 min', 332 / 60], ['5:32', 5 + 32 / 60], ['5,5', 5.5], ['2h', 2], ['abc', null], ['', null], ['5x', null],
+    ];
+    for (const [t, h] of casos) {
+      const v = lerTempo(t);
+      ok(`"${t}"`, h === null ? v === null : v !== null && perto(v, h, 1e-9), String(v));
+    }
+    ok('formatar volta igual', formatarTempoHM(26 + 3 / 60) === '1d 2h 3m' && formatarTempoHM(0.8) === '48m' && formatarTempoHM(5.5) === '5h 30m');
   }
 
   console.log(`\n${total - falhas}/${total} passaram\n`);

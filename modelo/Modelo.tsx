@@ -7,7 +7,8 @@ import { buildPart, alturaArte, orientar, descreverPeca, type Params, type Part,
 import type { Font } from 'opentype.js';
 import { regionArea, regionPerimeter, minThickness, regionBounds, type Region } from '@/lib/geom/region';
 import { colisoesPorBorda, avisoColisao } from '@/lib/geom/letreiro';
-import { orcar, type Insumos, type Orcamento } from '@/lib/cost/calc';
+import type { Insumos, Orcamento } from '@/lib/cost/calc';
+import { custosDoTrabalho, type Custos } from '@/lib/cost/trabalho';
 import { volumeMalha } from '@/lib/import/stl';
 import { useInterface } from '@/store/interface';
 import { desenhoParaPecas, resolverTracos } from '@/lib/import/pecas';
@@ -109,6 +110,7 @@ export interface Modelo {
 
 const ContextoModelo = createContext<Modelo | null>(null);
 const ContextoOrcamento = createContext<Orcamento | null>(null);
+const ContextoCustos = createContext<Custos | null>(null);
 
 export function useModelo(): Modelo {
   const m = useContext(ContextoModelo);
@@ -118,6 +120,13 @@ export function useModelo(): Modelo {
 
 export function useOrcamento(): Orcamento | null {
   return useContext(ContextoOrcamento);
+}
+
+/** Custo de cada peca (sem preparo) e de cada placa (com um preparo). */
+export function useCustos(): Custos {
+  const c = useContext(ContextoCustos);
+  if (!c) throw new Error('useCustos fora do ProvedorModelo');
+  return c;
 }
 
 export function ProvedorModelo({ children }: { children: ReactNode }) {
@@ -363,29 +372,27 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     };
   }, [geo, params, pecasNativas, objetos, arquivos, origem.nomeTrabalho, origem.presetAtivo, texto]);
 
-  // Cada placa e uma impressao, com seu preparo. So contam as placas com letra: uma
-  // placa so de STL e outro trabalho, fora do preco do letreiro.
-  const impressoes = useInterface((s) =>
-    Math.max(1, s.placas.filter((p) => [...p.keys()].some((k) => geo.insumos.has(k))).length)
-  );
-  const orcamento = useMemo(
+  // Custo por peca, por placa e do letreiro, com os gramas e o tempo reais que o
+  // usuario deu por placa. Sem arranjo, o trabalho inteiro conta como uma placa.
+  const placas = useInterface((s) => s.placas);
+  const reais = useInterface((s) => s.reais);
+  const custos = useMemo(
     () =>
-      geo.totais
-        ? orcar({
-            volumeMm3: geo.totais.volume,
-            areaChapaMm2: geo.totais.areaChapa,
-            perimetroLedMm: geo.totais.perimetroLed,
-            qtdLetras: geo.totais.qtd,
-            impressoes,
-            cfg,
-          })
-        : null,
-    [geo.totais, cfg, impressoes]
+      custosDoTrabalho({
+        insumos: modelo.insumos,
+        placas: placas.length ? placas.map((p) => [...p.keys()]) : [[...modelo.insumos.keys()]],
+        reais,
+        ehLetra: (k) => geo.insumos.has(k),
+        cfg,
+      }),
+    [modelo.insumos, geo.insumos, placas, reais, cfg]
   );
 
   return (
     <ContextoModelo.Provider value={modelo}>
-      <ContextoOrcamento.Provider value={orcamento}>{children}</ContextoOrcamento.Provider>
+      <ContextoCustos.Provider value={custos}>
+        <ContextoOrcamento.Provider value={custos.total}>{children}</ContextoOrcamento.Provider>
+      </ContextoCustos.Provider>
     </ContextoModelo.Provider>
   );
 }

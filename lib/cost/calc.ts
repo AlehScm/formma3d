@@ -23,8 +23,12 @@ export interface CustoCfg {
   precoRolo: number;
   /** g por rolo. */
   rendimento: number;
-  /** g/h efetivos: calibre com um job real. */
+  /** g/h efetivos. Aprendido dos trabalhos reais (gramas e tempo do fatiador). */
   vazao: number;
+  /** Gramas reais / gramas estimadas pelo volume (paredes, preenchimento, suporte). */
+  fatorGramas: number;
+  /** Quantas placas reais ja entraram na calibracao. */
+  amostras: number;
   /** R$/h de depreciacao + manutencao. */
   custoMaquina: number;
   potencia: number;
@@ -45,6 +49,8 @@ export const PADRAO: CustoCfg = {
   precoRolo: 110,
   rendimento: 1000,
   vazao: 12,
+  fatorGramas: 1,
+  amostras: 0,
   custoMaquina: 2.5,
   potencia: 120,
   precoKwh: 0.95,
@@ -56,6 +62,31 @@ export const PADRAO: CustoCfg = {
   precoAcmM2: 90,
   precoFitaLedM: 18,
 };
+
+/** Gramas pelo volume da peca, corrigidas pelo que os trabalhos reais mostraram. */
+export function gramasEstimadas(volumeMm3: number, cfg: CustoCfg = PADRAO): number {
+  const fil: Filamento = FILAMENTOS[cfg.filamento] ?? FILAMENTOS.PLA;
+  return (volumeMm3 / 1000) * fil.densidade * (cfg.fatorGramas || 1);
+}
+
+/**
+ * Aprende com uma placa real: a vazao (g/h) e quanto o fatiador gasta a mais ou a
+ * menos que o volume. Media das ultimas amostras, para um trabalho fora da curva
+ * nao estragar a estimativa dos proximos.
+ */
+export function calibrar(cfg: CustoCfg, real: { gramas: number; horas: number }, volumeMm3: number): CustoCfg {
+  if (!(real.gramas > 0) || !(real.horas > 0) || !(volumeMm3 > 0)) return cfg;
+  const fil: Filamento = FILAMENTOS[cfg.filamento] ?? FILAMENTOS.PLA;
+  const bruto = (volumeMm3 / 1000) * fil.densidade;
+  const n = Math.min(cfg.amostras, 9);
+  const media = (antigo: number, novo: number) => (n ? (antigo * n + novo) / (n + 1) : novo);
+  return {
+    ...cfg,
+    vazao: media(cfg.vazao, real.gramas / real.horas),
+    fatorGramas: media(cfg.fatorGramas || 1, real.gramas / bruto),
+    amostras: cfg.amostras + 1,
+  };
+}
 
 export const brl = (v: number): string => 'R$ ' + v.toFixed(2).replace('.', ',');
 
@@ -83,6 +114,9 @@ export interface OrcarArgs {
   qtdLetras?: number;
   /** Quantas vezes a maquina e preparada: uma por placa. 0 = so a parte da peca. */
   impressoes?: number;
+  /** Do fatiador ou da impressao de verdade: substituem a estimativa pelo volume. */
+  gramasReais?: number;
+  horasReais?: number;
   cfg?: CustoCfg;
 }
 
@@ -91,12 +125,20 @@ export interface OrcarArgs {
  * Separa CUSTO de PRECO: a taxa de falha entra no custo (voce paga pelos jobs
  * perdidos) e a margem so no final, para o preco continuar legivel na negociacao.
  */
-export function orcar({ volumeMm3, areaChapaMm2 = 0, perimetroLedMm = 0, qtdLetras = 1, impressoes = 1, cfg = PADRAO }: OrcarArgs): Orcamento {
+export function orcar({
+  volumeMm3,
+  areaChapaMm2 = 0,
+  perimetroLedMm = 0,
+  qtdLetras = 1,
+  impressoes = 1,
+  gramasReais,
+  horasReais,
+  cfg = PADRAO,
+}: OrcarArgs): Orcamento {
   const fil: Filamento = FILAMENTOS[cfg.filamento] ?? FILAMENTOS.PLA;
   const cm3 = volumeMm3 / 1000;
-  const gramas = cm3 * fil.densidade;
-  const vazao = cfg.vazao || fil.vazao;
-  const horas = gramas / Math.max(0.1, vazao);
+  const gramas = gramasReais ?? gramasEstimadas(volumeMm3, cfg);
+  const horas = horasReais ?? gramas / Math.max(0.1, cfg.vazao || fil.vazao);
 
   const material = gramas * (cfg.precoRolo / cfg.rendimento);
   const maquina = horas * cfg.custoMaquina;
@@ -140,15 +182,3 @@ export const somarInsumos = (lista: Insumos[]): Insumos =>
     }),
     { volumeMm3: 0, areaChapaMm2: 0, perimetroLedMm: 0 }
   );
-
-/**
- * A parte de uma peca: filamento, maquina, energia, acabamento, chapa, LED e perdas.
- * Sem o preparo da maquina, que e da placa -- senao a soma das pecas cobraria o
- * preparo uma vez por peca.
- */
-export const orcarPeca = (ins: Insumos, cfg: CustoCfg = PADRAO): Orcamento =>
-  orcar({ ...ins, qtdLetras: 1, impressoes: 0, cfg });
-
-/** Uma placa = uma impressao: as pecas dela mais um preparo. */
-export const orcarPlaca = (lista: Insumos[], cfg: CustoCfg = PADRAO): Orcamento =>
-  orcar({ ...somarInsumos(lista), qtdLetras: lista.length, impressoes: 1, cfg });

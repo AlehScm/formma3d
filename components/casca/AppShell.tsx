@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useInterface } from '@/store/interface';
+import { lembrarCustos } from '@/store/projeto';
 import { ProvedorModelo } from '@/modelo/Modelo';
 import { carregarFonteInicial } from '@/features/acoes/origem';
 import { Viewport } from '@/features/viewport/Viewport';
@@ -32,6 +33,7 @@ export function AppShell() {
 
   useEffect(() => {
     void carregarFonteInicial();
+    return lembrarCustos();
   }, []);
 
   const orcamento = espaco === 'orcamento';

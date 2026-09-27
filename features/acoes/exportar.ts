@@ -10,7 +10,8 @@ import { juntar, montarPlaca, type PecaPlaca } from '@/lib/print/placa';
 import type { Colocada } from '@/lib/print/arranjo';
 import { useInterface } from '@/store/interface';
 import { regionToSVG, regionToDXF, gabaritoSVG } from '@/lib/export/vectors';
-import { brl, orcarPlaca, type CustoCfg, type Orcamento } from '@/lib/cost/calc';
+import { brl, type CustoCfg, type Orcamento } from '@/lib/cost/calc';
+import { custosDoTrabalho } from '@/lib/cost/trabalho';
 import { useProjeto } from '@/store/projeto';
 import type { LetraComPeca, Modelo, ObjetoModelo } from '@/modelo/Modelo';
 
@@ -84,20 +85,25 @@ export function textoOrcamento(m: Modelo, o: Orcamento): string {
   ].join('\r\n');
 }
 
-/** Uma linha por placa arrumada: cada placa e uma impressao, com seu preparo. */
+/** Uma linha por placa: cada placa e uma impressao, com seu preparo. */
 function linhasPorPlaca(m: Modelo, cfg: CustoCfg): string[] {
-  const placas = useInterface.getState().placas.flatMap((p, i) => {
-    const chaves = [...p.keys()].filter((k) => m.insumos.has(k));
-    return chaves.length ? [{ i, chaves, o: orcarPlaca(chaves.map((k) => m.insumos.get(k)!), cfg) }] : [];
+  const ui = useInterface.getState();
+  const letras = new Set(m.letras.map((l) => l.chave));
+  const { porPlaca } = custosDoTrabalho({
+    insumos: m.insumos,
+    placas: ui.placas.length ? ui.placas.map((p) => [...p.keys()]) : [[...m.insumos.keys()]],
+    reais: ui.reais,
+    ehLetra: (k) => letras.has(k),
+    cfg,
   });
-  if (!placas.length) return [];
+  if (!porPlaca.length) return [];
   return [
     '',
     'POR PLACA (cada uma e uma impressao):',
-    ...placas.map(
-      ({ i, chaves, o }) =>
-        `Placa ${i + 1}: ${chaves.length} peça(s), ${o.gramas.toFixed(0)} g, ${o.horas.toFixed(1)} h, custo ${brl(o.custo)}, preço ${brl(o.preco)}` +
-        (chaves.some((k) => k.startsWith('stl:')) ? ' (inclui STL)' : '')
+    ...porPlaca.map(
+      ({ indice, chaves, temStl, estimado, orc: o }) =>
+        `Placa ${indice + 1}: ${chaves.length} peça(s), ${o.gramas.toFixed(0)} g, ${o.horas.toFixed(1)} h${estimado ? ' (estimado)' : ''}, custo ${brl(o.custo)}, preço ${brl(o.preco)}` +
+        (temStl ? ' (inclui STL)' : '')
     ),
   ];
 }
