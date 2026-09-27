@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Botao,
   CampoNumero,
@@ -26,8 +26,11 @@ import {
   IconeOk,
   IconeOrcamento,
   IconeMais,
+  Interruptor,
+  Cartao,
+  Dica,
 } from '@/components/ui';
-import { FILAMENTOS, brl, calibrar, esquecerCalibracao, orcar, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
+import { FILAMENTOS, brl, calibrar, dividirEntreSocios, esquecerCalibracao, orcar, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
 import { useCustos, type CustoPlaca } from '@/features/orcamento/custos';
 import type { PlacaAvulsa } from '@/lib/cost/trabalho';
 import { useProjeto } from '@/store/projeto';
@@ -181,7 +184,6 @@ export function FolhaOrcamento() {
   const avulsas = useProjeto((x) => x.avulsas);
   const adicionarAvulsa = useProjeto((x) => x.adicionarAvulsa);
   const custos = useCustos();
-  const placas = custos.porPlaca.filter((p) => !p.excluida).length + custos.porAvulsa.size;
   const [copiado, setCopiado] = useState(false);
 
   // Da para usar so para orcar: sem letreiro, com impressoes feitas fora do app.
@@ -204,6 +206,9 @@ export function FolhaOrcamento() {
   }
   // Tudo tirado do orcamento, ou avulsa ainda sem numeros: a folha fica, zerada.
   const o = total ?? orcar({ volumeMm3: 0, qtdLetras: 0, impressoes: 0, gramasReais: 0, horasReais: 0, cfg });
+  const contam = custos.porPlaca.filter((p) => !p.excluida);
+  const impressoes = contam.length + custos.porAvulsa.size;
+  const estimadas = contam.filter((p) => p.estimado).length;
 
   const copiar = async () => {
     try {
@@ -216,96 +221,160 @@ export function FolhaOrcamento() {
   };
 
   return (
-    <div className="h-full overflow-y-auto">
-      <article className="mx-auto my-8 max-w-2xl rounded-xl border border-borda bg-superficie shadow-flutuante">
-        <header className="flex items-start justify-between gap-4 border-b border-borda px-6 py-5">
+    // Container query: a largura util depende da barra lateral fixa, nao da janela.
+    <div className="@container h-full overflow-y-auto">
+      <div className="space-y-4 p-4 @2xl:p-6">
+        <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="text-micro font-medium uppercase tracking-wider text-texto-3">Orçamento</p>
-            <h1 className="mt-1 truncate text-grande font-semibold text-texto">{m.nomeProjeto || 'Sem nome'}</h1>
+            <h1 className="mt-0.5 truncate text-grande font-semibold text-texto">{m.nomeProjeto || 'Sem nome'}</h1>
             <p className="mt-0.5 text-mini text-texto-3">
+              {new Date().toLocaleDateString('pt-BR')}
               {m.letras.length > 0 && (
                 <>
+                  {' · '}
                   {m.letras.length} {m.letras.length === 1 ? 'peça' : 'peças'}
-                  {m.bounds && ` · ${formatarNumero(m.bounds.w)} × ${formatarNumero(m.bounds.h)} mm`} ·{' '}
+                  {m.bounds && ` · ${formatarNumero(m.bounds.w)} × ${formatarNumero(m.bounds.h)} mm`}
                 </>
               )}
-              {new Date().toLocaleDateString('pt-BR')}
             </p>
           </div>
-          <Metrica rotulo="Preço sugerido" valor={brl(o.preco)} tom="sucesso" tamanho="lg" />
+          <div className="flex flex-wrap gap-2">
+            <Dica conteudo="Leva só medida, acabamento e valor. Custo, margem e sócios ficam aqui.">
+              <Botao variante="fantasma" icone={copiado ? IconeOk : IconeCopiar} onClick={() => void copiar()}>
+                {copiado ? 'Copiado' : 'Copiar para o cliente'}
+              </Botao>
+            </Dica>
+            <Botao icone={IconeBaixar} disabled={!m.letras.length} onClick={() => void baixarPacote(m, o)}>
+              Baixar pacote
+            </Botao>
+          </div>
         </header>
 
-        <div className="grid grid-cols-3 gap-4 border-b border-borda px-6 py-4">
-          <Metrica rotulo="Filamento" valor={formatarPeso(o.gramas)} tamanho="sm" detalhe={`${formatarNumero(o.rolos, 2)} rolo`} />
-          <Metrica
-            rotulo="Tempo de máquina"
-            valor={formatarNumero(o.horas, 1)}
-            unidade="h"
-            tamanho="sm"
-            detalhe={placas ? `${placas} ${placas === 1 ? 'impressão' : 'impressões'}` : undefined}
-          />
-          <Metrica rotulo="Lucro" valor={brl(o.lucro)} tamanho="sm" tom="sucesso" detalhe={`margem ${cfg.margem}%`} />
+        <section aria-label="Resumo" className="grid grid-cols-2 gap-3 @2xl:grid-cols-3 @5xl:grid-cols-6">
+          <Indicador destaque>
+            <Metrica rotulo="Preço sugerido" valor={brl(o.preco)} tom="sucesso" tamanho="lg" />
+          </Indicador>
+          <Indicador>
+            <Metrica rotulo="Custo" valor={brl(o.custo)} tamanho="md" detalhe={`perdas ${cfg.taxaFalha}% incluídas`} />
+          </Indicador>
+          <Indicador>
+            <Metrica rotulo="Lucro" valor={brl(o.lucro)} tom="sucesso" tamanho="md" detalhe={`margem ${cfg.margem}%`} />
+          </Indicador>
+          <Indicador>
+            <Metrica rotulo="Filamento" valor={formatarPeso(o.gramas)} tamanho="md" detalhe={`${formatarNumero(o.rolos, 2)} rolo`} />
+          </Indicador>
+          <Indicador>
+            <Metrica rotulo="Tempo de máquina" valor={formatarTempoHM(o.horas)} tamanho="md" detalhe={`${formatarNumero(o.horas, 1)} h`} />
+          </Indicador>
+          <Indicador>
+            <Metrica
+              rotulo="Impressões"
+              valor={impressoes}
+              tamanho="md"
+              tom={estimadas ? 'atencao' : 'neutro'}
+              detalhe={estimadas ? `${estimadas} ainda estimada${estimadas > 1 ? 's' : ''}` : 'todas com dado real'}
+            />
+          </Indicador>
+        </section>
+
+        <div className="grid gap-4 @5xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+          <div className="min-w-0 space-y-4">
+            <CartaoImpressoes />
+            <CartaoPorPeca />
+          </div>
+          <div className="grid min-w-0 content-start gap-4 @2xl:grid-cols-2 @5xl:grid-cols-1">
+            <Cartao titulo="Composição do custo">
+              <BarraComposicao o={o} />
+              <ListaValores
+                densa
+                itens={[
+                  ...o.itens.map((i) => ({ rotulo: <ItemCor rotulo={i.rotulo} />, valor: brl(i.valor), detalhe: formatarTexto(i.detalhe) })),
+                  { rotulo: 'Custo total', valor: brl(o.custo), forte: true },
+                  { rotulo: 'Preço sugerido', valor: brl(o.preco), forte: true, tom: 'sucesso' as const },
+                ]}
+              />
+            </Cartao>
+            <DivisaoSocios o={o} />
+          </div>
         </div>
-
-        <div className="px-6 py-4">
-          <p className="mb-1 text-micro font-medium uppercase tracking-wider text-texto-3">Composição do custo</p>
-          <ListaValores
-            itens={[
-              ...o.itens.map((i) => ({ rotulo: i.rotulo, valor: brl(i.valor), detalhe: formatarTexto(i.detalhe) })),
-              { rotulo: 'Custo total', valor: brl(o.custo), forte: true },
-              { rotulo: 'Preço sugerido', valor: brl(o.preco), forte: true, tom: 'sucesso' as const },
-            ]}
-          />
-        </div>
-
-        <TabelasDeCusto />
-
-        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-borda px-6 py-4">
-          <Botao variante="fantasma" icone={copiado ? IconeOk : IconeCopiar} onClick={() => void copiar()}>
-            {copiado ? 'Copiado' : 'Copiar para o cliente'}
-          </Botao>
-          <Botao icone={IconeBaixar} disabled={!m.letras.length} onClick={() => void baixarPacote(m, o)}>
-            Baixar pacote
-          </Botao>
-        </footer>
-      </article>
-      <p className="mb-8 text-center text-mini text-texto-3">
-        “Copiar para o cliente” leva só medida, acabamento e valor — custo e margem ficam aqui.
-      </p>
+      </div>
     </div>
   );
 }
 
-/** Uma linha por placa (impressao) e, recolhida, uma por peca. */
-function TabelasDeCusto() {
+function Indicador({ children, destaque }: { children: ReactNode; destaque?: boolean }) {
+  return (
+    <div
+      className={cx(
+        'min-w-0 rounded-lg border bg-superficie px-4 py-3',
+        destaque ? 'col-span-2 border-sucesso/40 @2xl:col-span-1' : 'border-borda'
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Cor de cada item do custo: a mesma na barra e na lista. */
+const COR_ITEM: Record<string, string> = {
+  Filamento: 'bg-acento',
+  Máquina: 'bg-atencao',
+  Energia: 'bg-peca-borda',
+  'Mão de obra': 'bg-peca-bolsao',
+  'Chapa ACM': 'bg-peca-chapa',
+  'Fita LED': 'bg-peca-labio',
+};
+const corItem = (rotulo: string) => COR_ITEM[rotulo] ?? 'bg-texto-3';
+
+function ItemCor({ rotulo }: { rotulo: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={cx('size-2 shrink-0 rounded-sm', corItem(rotulo))} aria-hidden />
+      {rotulo}
+    </span>
+  );
+}
+
+/** O que pesa no custo, de relance: uma fatia por item. */
+function BarraComposicao({ o }: { o: Orcamento }) {
+  const itens = o.itens.filter((i) => i.valor > 0);
+  if (!(o.custo > 0)) return null;
+  return (
+    <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-superficie-3" role="img" aria-label="Divisão do custo por item">
+      {itens.map((i) => (
+        <div
+          key={i.rotulo}
+          className={corItem(i.rotulo)}
+          style={{ width: `${(i.valor / o.custo) * 100}%` }}
+          title={`${i.rotulo}: ${brl(i.valor)} (${formatarNumero((i.valor / o.custo) * 100, 0)}%)`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CartaoPorPeca() {
   const m = useModelo();
   const { porPeca } = useCustos();
   const nomes = new Map([...m.letras.map((l) => [l.chave, l.nome] as const), ...m.objetos.map((o) => [o.chave, o.nome] as const)]);
   const pecas = [...porPeca].filter(([k]) => nomes.has(k));
+  if (!pecas.length) return null;
 
   return (
-    <div className="space-y-4 border-t border-borda px-6 py-4">
-      <PlacasReais />
-      {pecas.length > 0 && (
-      <details className="group">
-        <summary className="cursor-pointer list-none text-micro font-medium uppercase tracking-wider text-texto-3 hover:text-texto">
-          <span className="inline-block transition-transform group-open:rotate-90">›</span> Por peça ({pecas.length})
-        </summary>
-        <div className="mt-1">
-          <TabelaCusto linhas={pecas.map(([k, o]) => ({ nome: nomes.get(k)!, o }))} />
-          <p className="mt-1 text-micro text-texto-3">Sem o preparo da máquina, que entra uma vez em cada placa.</p>
-        </div>
-      </details>
-      )}
-    </div>
+    <Cartao titulo={`Por peça (${pecas.length})`} nota="Sem o preparo da máquina, que entra uma vez em cada placa.">
+      <div className="max-h-96 overflow-auto">
+        <TabelaCusto linhas={pecas.map(([k, o]) => ({ nome: nomes.get(k)!, o }))} />
+      </div>
+    </Cartao>
   );
 }
 
 function TabelaCusto({ linhas }: { linhas: { nome: string; qtd?: number; o: Orcamento }[] }) {
   const comQtd = linhas.some((l) => l.qtd !== undefined);
   return (
-    <table className="tabular w-full text-mini">
-      <thead>
+    <table className="tabular w-full min-w-[480px] text-mini">
+      <thead className="sticky top-0 bg-superficie">
         <tr className="text-left text-micro text-texto-3">
           <th className="py-1.5 font-medium" />
           {comQtd && <th className="py-1.5 text-right font-medium">Peças</th>}
@@ -335,7 +404,7 @@ function TabelaCusto({ linhas }: { linhas: { nome: string; qtd?: number; o: Orca
  * Por placa, com os gramas e o tempo que o Bambu Studio mostra depois de fatiar.
  * Sem eles, a linha fica na estimativa. Cada dado real tambem ensina a estimativa.
  */
-function PlacasReais() {
+function CartaoImpressoes() {
   const { porPlaca } = useCustos();
   const avulsas = useProjeto((x) => x.avulsas);
   const adicionarAvulsa = useProjeto((x) => x.adicionarAvulsa);
@@ -344,16 +413,22 @@ function PlacasReais() {
   const faltam = porPlaca.filter((p) => p.estimado && !p.excluida).length;
 
   return (
-    <div>
-      <p className="mb-1 text-micro font-medium uppercase tracking-wider text-texto-3">
-        Impressões (cada placa é uma)
-      </p>
-      <p className="mb-2 text-mini text-texto-2">
-        Fatie no Bambu Studio e copie os <span className="text-texto">gramas</span> e o <span className="text-texto">tempo</span>{' '}
-        de cada placa. Desmarque a placa que não entra no orçamento.{' '}
+    <Cartao
+      titulo="Impressões"
+      nota={temStl ? '* inclui objeto STL: conta no custo da impressão, mas não no preço do letreiro.' : undefined}
+      acao={
+        <Botao variante="fantasma" tamanho="sm" icone={IconeMais} onClick={adicionarAvulsa}>
+          Placa feita fora do app
+        </Botao>
+      }
+    >
+      <p className="mb-3 text-mini text-texto-2">
+        Fatie no Bambu Studio e copie os <span className="text-texto">gramas</span> e o <span className="text-texto">tempo</span> de cada
+        placa. Desmarque a placa que não entra no orçamento.{' '}
         {faltam > 0 && <span className="text-atencao">Sem gramas e tempo, o valor é estimado.</span>}
       </p>
-      <table className="tabular w-full text-mini">
+      <div className="overflow-x-auto">
+      <table className="tabular w-full min-w-[620px] text-mini">
         <thead>
           <tr className="text-left text-micro text-texto-3">
             <th className="py-1.5 font-medium" />
@@ -373,11 +448,8 @@ function PlacasReais() {
           ))}
         </tbody>
       </table>
-      <Botao variante="fantasma" icone={IconeMais} onClick={adicionarAvulsa}>
-        Adicionar placa feita fora do app
-      </Botao>
-      {temStl && <p className="mt-1 text-micro text-texto-3">* inclui objeto STL: conta no custo da impressão, mas não no preço do letreiro.</p>}
-    </div>
+      </div>
+    </Cartao>
   );
 }
 
@@ -591,5 +663,85 @@ function LinhaAvulsa({ a }: { a: PlacaAvulsa }) {
         </button>
       </td>
     </tr>
+  );
+}
+
+/**
+ * Quanto cada socio recebe. Ligado, o dono da maquina recebe antes a maquina e a
+ * luz; o resto (filamento incluido) e dividido igual.
+ */
+function DivisaoSocios({ o }: { o: Orcamento }) {
+  const cfg = useProjeto((x) => x.cfg);
+  const definirCusto = useProjeto((x) => x.definirCusto);
+  const pagarMaquina = useProjeto((x) => x.pagarMaquina);
+  const definir = useProjeto((x) => x.definir);
+  const socios = cfg.socios;
+  const dono = Math.min(cfg.donoMaquina, socios.length - 1);
+  const maquinaEnergia = o.maquina + o.energia;
+  const partes = dividirEntreSocios(o.preco, maquinaEnergia, socios.length, dono, pagarMaquina);
+
+  const renomear = (i: number, nome: string) => definirCusto('socios', socios.map((x, k) => (k === i ? nome.trim() || x : x)));
+  const remover = (i: number) => {
+    definirCusto('socios', socios.filter((_, k) => k !== i));
+    // O dono continua o mesmo; se foi ele que saiu, volta para o primeiro.
+    definirCusto('donoMaquina', i < dono ? dono - 1 : i === dono ? 0 : dono);
+  };
+
+  return (
+    <Cartao titulo="Divisão entre sócios">
+      <Interruptor
+        rotulo={
+          <>
+            Dono da máquina recebe máquina + energia <span className="tabular font-mono text-texto-3">({brl(maquinaEnergia)})</span>
+          </>
+        }
+        dica="Ele paga o desgaste da impressora e a luz: recebe isso antes. O resto é dividido igual."
+        valor={pagarMaquina}
+        set={(v) => definir('pagarMaquina', v)}
+      />
+      <ul className="mt-2 divide-y divide-borda/60">
+        {socios.map((nome, i) => (
+          <li key={`${i}:${nome}`} className="group flex items-center gap-2 py-1.5">
+            <input
+              type="text"
+              aria-label={`Nome do sócio ${i + 1}`}
+              defaultValue={nome}
+              onBlur={(e) => renomear(i, e.currentTarget.value)}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              className="h-7 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 text-base text-texto outline-none hover:border-borda focus:border-acento"
+            />
+            {pagarMaquina && (
+              <label className="flex cursor-pointer items-center gap-1 text-micro text-texto-3" title="Dono da máquina">
+                <input
+                  type="radio"
+                  name="dono-maquina"
+                  checked={i === dono}
+                  onChange={() => definirCusto('donoMaquina', i)}
+                  className="accent-[var(--color-acento)]"
+                />
+                máquina
+              </label>
+            )}
+            {pagarMaquina && i === dono && (
+              <span className="tabular font-mono text-micro text-texto-3">inclui {brl(maquinaEnergia)}</span>
+            )}
+            <span className="tabular w-24 text-right font-mono text-base font-semibold text-sucesso">{brl(partes[i] ?? 0)}</span>
+            {socios.length > 1 && (
+              <button
+                type="button"
+                onClick={() => remover(i)}
+                className="text-micro text-texto-3 opacity-0 transition-opacity hover:text-perigo group-hover:opacity-100 focus:opacity-100"
+                title="Tirar este sócio"
+              >
+                ×
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <Botao variante="fantasma" tamanho="sm" icone={IconeMais} onClick={() => definirCusto('socios', [...socios, `Sócio ${socios.length + 1}`])}>
+        Adicionar sócio
+      </Botao>
+    </Cartao>
   );
 }

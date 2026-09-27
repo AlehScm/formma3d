@@ -19,4 +19,4 @@ export { Segmentado, Selecao, Interruptor, type OpcaoEscolha } from './Escolhas'
 export { MaisOpcoes, CabecalhoPainel } from './Secao';
 export { Categorias, type Categoria } from './Categorias';
 export { Abas, type Aba } from './Abas';
-export { Alerta, Selo, Metrica, ListaValores, Vazio, BarraFerramentas, Separador, corDoTom, type Tom } from './Exibicao';
+export { Alerta, Cartao, Selo, Metrica, ListaValores, Vazio, BarraFerramentas, Separador, corDoTom, type Tom } from './Exibicao';

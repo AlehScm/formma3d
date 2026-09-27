@@ -19,7 +19,7 @@ import { partToGeometry } from '../lib/geom/extrude';
 import { buildRegion, intersectRegion, minThickness, regionArea, regionBounds, rotateRegion, translateRegion, type Region } from '../lib/geom/region';
 import { parseFont, textToLetters, normalizeLetters } from '../lib/text/glyphs';
 import { enfileirarArquivos, type ArquivoNaFila } from '../lib/import/fila';
-import { PADRAO, calibrar, esquecerCalibracao, gramasEstimadas, orcar, type Insumos } from '../lib/cost/calc';
+import { PADRAO, calibrar, dividirEntreSocios, esquecerCalibracao, gramasEstimadas, orcar, type Insumos } from '../lib/cost/calc';
 import { custosDoTrabalho } from '../lib/cost/trabalho';
 import { formatarTempoHM, lerTempo } from '../components/ui/formato';
 import { useProjeto, lerChave } from '../store/projeto';
@@ -299,6 +299,19 @@ async function main() {
     ok('so avulsa, sem letreiro: orca pelos dados do fatiador', perto(soAvulsa.total!.custo, direto.custo, 1e-9) && perto(soAvulsa.total!.gramas, 120, 1e-9));
     const junto = custosDoTrabalho({ ...base, avulsas: [av] });
     ok('letreiro + avulsa = soma das duas', perto(junto.total!.custo, tudo.total!.custo + soAvulsa.porAvulsa.get('x')!.custo, 1e-9));
+  }
+
+  console.log('\n== divisao entre socios ==');
+  {
+    const o = orcar({ volumeMm3: 0, qtdLetras: 1, impressoes: 1, gramasReais: 31.02, horasReais: 1.4, cfg: PADRAO });
+    const me = o.maquina + o.energia;
+    ok('maquina e energia saem no orcamento', perto(o.maquina, 1.4 * PADRAO.custoMaquina, 1e-9) && o.energia > 0, `${me.toFixed(2)}`);
+    const iguais = dividirEntreSocios(o.preco, me, 3, 0, false);
+    ok('desligado: tres partes iguais', iguais.length === 3 && iguais.every((p) => perto(p, o.preco / 3, 1e-9)));
+    const comMaq = dividirEntreSocios(o.preco, me, 3, 1, true);
+    ok('ligado: dono recebe maquina + energia + a parte dele', perto(comMaq[1]!, me + (o.preco - me) / 3, 1e-9) && perto(comMaq[0]!, (o.preco - me) / 3, 1e-9));
+    ok('a soma das partes e o preco', perto(comMaq.reduce((a, b) => a + b, 0), o.preco, 1e-9) && perto(iguais.reduce((a, b) => a + b, 0), o.preco, 1e-9));
+    ok('um socio so recebe tudo', perto(dividirEntreSocios(o.preco, me, 1, 0, true)[0]!, o.preco, 1e-9));
   }
 
   console.log('\n== aprender com o real ==');

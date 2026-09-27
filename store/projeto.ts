@@ -140,6 +140,11 @@ export interface EstadoProjeto {
   cfg: CustoCfg;
   /** Impressoes feitas fora do app que entram no orcamento. */
   avulsas: PlacaAvulsa[];
+  /**
+   * O dono da maquina recebe antes a maquina e a luz. Fora do `cfg` de proposito:
+   * nao e salvo e volta desligado a cada abertura, para ser escolhido por orcamento.
+   */
+  pagarMaquina: boolean;
 }
 
 type Campo = keyof EstadoProjeto;
@@ -231,6 +236,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
   removidas: new Set(),
   cfg: PADRAO,
   avulsas: [],
+  pagarMaquina: false,
 
   definir: (k, v) => set({ [k]: v } as Partial<EstadoProjeto>),
   definirCusto: (k, v) => set((s) => ({ cfg: { ...s.cfg, [k]: v } })),
@@ -377,6 +383,7 @@ export function lembrarCustos(): () => void {
     if (salvo && typeof salvo === 'object') {
       // Versao antiga guardava so a contagem: sem as amostras, recomeca o aprendizado.
       const ok = Array.isArray(salvo.amostras);
+      if (!Array.isArray(salvo.socios) || !salvo.socios.length) delete salvo.socios;
       useProjeto.setState((s) => ({
         cfg: { ...s.cfg, ...salvo, ...(ok ? {} : { amostras: [], vazao: PADRAO.vazao, fatorGramas: 1 }) },
       }));

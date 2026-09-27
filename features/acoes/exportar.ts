@@ -10,7 +10,7 @@ import { juntar, montarPlaca, type PecaPlaca } from '@/lib/print/placa';
 import type { Colocada } from '@/lib/print/arranjo';
 import { useInterface } from '@/store/interface';
 import { regionToSVG, regionToDXF, gabaritoSVG } from '@/lib/export/vectors';
-import { brl, type CustoCfg, type Orcamento } from '@/lib/cost/calc';
+import { brl, dividirEntreSocios, type CustoCfg, type Orcamento } from '@/lib/cost/calc';
 import { custosDoTrabalho } from '@/lib/cost/trabalho';
 import { useProjeto } from '@/store/projeto';
 import type { LetraComPeca, Modelo, ObjetoModelo } from '@/modelo/Modelo';
@@ -81,8 +81,21 @@ export function textoOrcamento(m: Modelo, o: Orcamento): string {
     `${'CUSTO'.padEnd(18)} ${brl(o.custo).padStart(12)}`,
     `${'PREÇO SUGERIDO'.padEnd(18)} ${brl(o.preco).padStart(12)}  (margem ${s.cfg.margem}%)`,
     ...linhasPorPlaca(m, s.cfg),
+    ...linhasSocios(o, s.cfg, s.pagarMaquina),
     ...(m.avisos.length ? ['', 'AVISOS:', ...m.avisos.map((a) => '- ' + a)] : []),
   ].join('\r\n');
+}
+
+/** Quanto cada socio recebe: e interno, nao vai no "copiar para o cliente". */
+function linhasSocios(o: Orcamento, cfg: CustoCfg, pagarMaquina: boolean): string[] {
+  const dono = Math.min(cfg.donoMaquina, cfg.socios.length - 1);
+  const me = o.maquina + o.energia;
+  const partes = dividirEntreSocios(o.preco, me, cfg.socios.length, dono, pagarMaquina);
+  return [
+    '',
+    `DIVISAO ENTRE SOCIOS${pagarMaquina ? ` (${cfg.socios[dono]} recebe antes maquina + energia: ${brl(me)})` : ''}:`,
+    ...cfg.socios.map((nome, i) => `${nome.padEnd(18)} ${brl(partes[i] ?? 0).padStart(12)}`),
+  ];
 }
 
 /** Uma linha por placa: cada placa e uma impressao, com seu preparo. */

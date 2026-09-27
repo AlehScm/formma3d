@@ -29,6 +29,10 @@ export interface CustoCfg {
   fatorGramas: number;
   /** Placas reais que ensinaram a estimativa (as ultimas 10, uma por placa). */
   amostras: Amostra[];
+  /** Nomes de quem divide o preco. */
+  socios: string[];
+  /** Posicao em `socios` de quem paga a maquina e a luz. */
+  donoMaquina: number;
   /** R$/h de depreciacao + manutencao. */
   custoMaquina: number;
   potencia: number;
@@ -51,6 +55,8 @@ export const PADRAO: CustoCfg = {
   vazao: 12,
   fatorGramas: 1,
   amostras: [],
+  socios: ['Sócio 1', 'Sócio 2', 'Sócio 3'],
+  donoMaquina: 0,
   custoMaquina: 2.5,
   potencia: 120,
   precoKwh: 0.95,
@@ -95,6 +101,18 @@ export function calibrar(cfg: CustoCfg, id: string, real: { gramas: number; hora
 /** Volta a estimativa para o padrao, sem mexer nos precos. */
 export const esquecerCalibracao = (cfg: CustoCfg): CustoCfg => ({ ...cfg, vazao: PADRAO.vazao, fatorGramas: 1, amostras: [] });
 
+/**
+ * Quanto cada socio recebe do preco. Com `pagarMaquina`, o dono da maquina recebe
+ * antes a maquina e a luz (ele paga as duas); o resto e dividido igual. A soma das
+ * partes e sempre o preco.
+ */
+export function dividirEntreSocios(preco: number, maquinaEnergia: number, socios: number, dono: number, pagarMaquina: boolean): number[] {
+  const n = Math.max(1, Math.floor(socios));
+  const antes = pagarMaquina ? Math.min(Math.max(0, maquinaEnergia), preco) : 0;
+  const parte = (preco - antes) / n;
+  return Array.from({ length: n }, (_, i) => parte + (i === dono ? antes : 0));
+}
+
 export const brl = (v: number): string => 'R$ ' + v.toFixed(2).replace('.', ',');
 
 export interface ItemCusto {
@@ -108,6 +126,9 @@ export interface Orcamento {
   cm3: number;
   horas: number;
   rolos: number;
+  /** Desgaste e luz: o que o dono da maquina paga. */
+  maquina: number;
+  energia: number;
   itens: ItemCusto[];
   custo: number;
   lucro: number;
@@ -173,7 +194,7 @@ export function orcar({
   if (led > 0) itens.push({ rotulo: 'Fita LED', valor: led, detalhe: `${(perimetroLedMm / 1000).toFixed(2)} m` });
   itens.push({ rotulo: `Perdas (${cfg.taxaFalha}%)`, valor: falha, detalhe: 'trabalhos refeitos' });
 
-  return { gramas, cm3, horas, rolos: gramas / cfg.rendimento, itens, custo, lucro: preco - custo, preco };
+  return { gramas, cm3, horas, rolos: gramas / cfg.rendimento, maquina, energia, itens, custo, lucro: preco - custo, preco };
 }
 
 /** O que uma peca consome: e daqui que sai o custo dela. */

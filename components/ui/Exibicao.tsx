@@ -108,6 +108,34 @@ export function Metrica({
   );
 }
 
+/** Bloco de conteudo com titulo: paineis de leitura como o Orcamento. */
+export function Cartao({
+  titulo,
+  acao,
+  nota,
+  children,
+  className,
+}: {
+  titulo: ReactNode;
+  /** Botao ou controle no canto do titulo. */
+  acao?: ReactNode;
+  /** Rodape discreto: ressalva, legenda. */
+  nota?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cx('min-w-0 rounded-lg border border-borda bg-superficie', className)}>
+      <header className="flex min-h-11 items-center justify-between gap-2 border-b border-borda px-4 py-2">
+        <h2 className="text-micro font-semibold uppercase tracking-wider text-texto-2">{titulo}</h2>
+        {acao}
+      </header>
+      <div className="p-4">{children}</div>
+      {nota && <p className="border-t border-borda px-4 py-2 text-micro text-texto-3">{nota}</p>}
+    </section>
+  );
+}
+
 /** Lista chave-valor: resumo, orcamento, propriedades. */
 export function ListaValores({
   itens,
