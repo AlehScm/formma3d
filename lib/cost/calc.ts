@@ -46,7 +46,7 @@ export interface CustoCfg {
 
 export const PADRAO: CustoCfg = {
   filamento: 'PLA',
-  precoRolo: 110,
+  precoRolo: 100,
   rendimento: 1000,
   vazao: 12,
   fatorGramas: 1,
