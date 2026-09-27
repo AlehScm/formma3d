@@ -19,7 +19,7 @@ import { partToGeometry } from '../lib/geom/extrude';
 import { buildRegion, intersectRegion, minThickness, regionArea, regionBounds, rotateRegion, translateRegion, type Region } from '../lib/geom/region';
 import { parseFont, textToLetters, normalizeLetters } from '../lib/text/glyphs';
 import { enfileirarArquivos, type ArquivoNaFila } from '../lib/import/fila';
-import { PADRAO, calibrar, gramasEstimadas, orcar, type Insumos } from '../lib/cost/calc';
+import { PADRAO, calibrar, esquecerCalibracao, gramasEstimadas, orcar, type Insumos } from '../lib/cost/calc';
 import { custosDoTrabalho } from '../lib/cost/trabalho';
 import { formatarTempoHM, lerTempo } from '../components/ui/formato';
 import { useProjeto, lerChave } from '../store/projeto';
@@ -277,17 +277,50 @@ async function main() {
     ok('sem arranjo: o trabalho todo e uma placa', semArranjo.porPlaca.length === 1 && perto(semArranjo.porPlaca[0]!.orc.gramas, 400, 1e-9));
   }
 
+  console.log('\n== placas avulsas e placas fora do orcamento ==');
+  {
+    const cfg = { ...PADRAO, setupMin: 10, posMin: 5 };
+    const insumos = new Map<string, Insumos>([
+      ['a', { volumeMm3: 50000, areaChapaMm2: 20000, perimetroLedMm: 0 }],
+      ['b', { volumeMm3: 30000, areaChapaMm2: 10000, perimetroLedMm: 0 }],
+    ]);
+    const base = { insumos, placas: [['a'], ['b']], reais: [], ehLetra: () => true, cfg };
+    const tudo = custosDoTrabalho(base);
+    const semB = custosDoTrabalho({ ...base, excluidas: new Set([1]) });
+    const soA = custosDoTrabalho({ ...base, insumos: new Map([['a', insumos.get('a')!]]), placas: [['a']] });
+    ok('placa fora do orcamento sai do total (chapa junto)', perto(semB.total!.custo, soA.total!.custo, 1e-9) && semB.total!.custo < tudo.total!.custo);
+    ok('mas continua na lista, marcada', semB.porPlaca[1]!.excluida && semB.porPlaca.length === 2);
+    const todasFora = custosDoTrabalho({ ...base, excluidas: new Set([0, 1]) });
+    ok('tudo fora e sem avulsa: nada a orcar', todasFora.total === null);
+
+    const av = { id: 'x', nome: 'Chaveiros', pecas: 4, gramas: 120, horas: 3 };
+    const soAvulsa = custosDoTrabalho({ insumos: new Map(), placas: [], reais: [], ehLetra: () => true, avulsas: [av], cfg });
+    const direto = orcar({ volumeMm3: 0, qtdLetras: 4, impressoes: 1, gramasReais: 120, horasReais: 3, cfg });
+    ok('so avulsa, sem letreiro: orca pelos dados do fatiador', perto(soAvulsa.total!.custo, direto.custo, 1e-9) && perto(soAvulsa.total!.gramas, 120, 1e-9));
+    const junto = custosDoTrabalho({ ...base, avulsas: [av] });
+    ok('letreiro + avulsa = soma das duas', perto(junto.total!.custo, tudo.total!.custo + soAvulsa.porAvulsa.get('x')!.custo, 1e-9));
+  }
+
   console.log('\n== aprender com o real ==');
   {
-    const c0 = { ...PADRAO, vazao: 12, fatorGramas: 1, amostras: 0 };
+    const c0 = { ...PADRAO, vazao: 12, fatorGramas: 1, amostras: [] };
     const vol = 200000; // 248 g pelo volume em PLA
-    const c1 = calibrar(c0, { gramas: 310, horas: 20 }, vol);
-    ok('primeira placa define a vazao', perto(c1.vazao, 15.5, 1e-9) && c1.amostras === 1, `${c1.vazao} g/h`);
+    const c1 = calibrar(c0, 'p1', { gramas: 310, horas: 20 }, vol);
+    ok('primeira placa define a vazao', perto(c1.vazao, 15.5, 1e-9) && c1.amostras.length === 1, `${c1.vazao} g/h`);
     ok('e o fator de gramas', perto(c1.fatorGramas, 310 / 248, 1e-9), c1.fatorGramas.toFixed(3));
     ok('a estimativa seguinte ja usa o fator', perto(gramasEstimadas(vol, c1), 310, 1e-9));
-    const c2 = calibrar(c1, { gramas: 248, horas: 31 }, vol);
-    ok('a segunda faz media, nao substitui', perto(c2.vazao, (15.5 + 8) / 2, 1e-9));
-    ok('dado invalido nao mexe', calibrar(c1, { gramas: 0, horas: 3 }, vol) === c1);
+    const c2 = calibrar(c1, 'p2', { gramas: 248, horas: 31 }, vol);
+    ok('outra placa entra na conta', c2.amostras.length === 2 && perto(c2.vazao, (310 + 248) / 51, 1e-9));
+    let c3 = c2;
+    for (let i = 0; i < 5; i++) c3 = calibrar(c3, 'p2', { gramas: 248, horas: 31 }, vol);
+    ok('redigitar a mesma placa nao soma de novo', c3.amostras.length === 2 && perto(c3.vazao, c2.vazao, 1e-12));
+    const c4 = calibrar(c2, 'p2', { gramas: 300, horas: 30 }, vol);
+    ok('corrigir a placa troca a amostra', c4.amostras.length === 2 && perto(c4.vazao, 610 / 50, 1e-9));
+    let c5 = c0;
+    for (let i = 0; i < 14; i++) c5 = calibrar(c5, `x${i}`, { gramas: 100, horas: 5 }, vol);
+    ok('guarda so as ultimas 10', c5.amostras.length === 10 && c5.amostras[0]!.id === 'x4');
+    ok('dado invalido nao mexe', calibrar(c1, 'p9', { gramas: 0, horas: 3 }, vol) === c1);
+    ok('esquecer volta ao padrao', esquecerCalibracao(c2).amostras.length === 0 && esquecerCalibracao(c2).fatorGramas === 1);
   }
 
   console.log('\n== ler o tempo do fatiador ==');

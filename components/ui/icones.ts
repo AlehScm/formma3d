@@ -27,6 +27,7 @@ export {
   Layers as IconeCamadas,
   LayoutGrid as IconeArrumar,
   Lock as IconeTravado,
+  Plus as IconeMais,
   LockOpen as IconeDestravado,
   Maximize2 as IconeTamanho,
   MousePointer2 as IconeSelecionar,

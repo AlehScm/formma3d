@@ -25,9 +25,11 @@ import {
   IconeCopiar,
   IconeOk,
   IconeOrcamento,
+  IconeMais,
 } from '@/components/ui';
-import { FILAMENTOS, brl, calibrar, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
+import { FILAMENTOS, brl, calibrar, esquecerCalibracao, orcar, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
 import { useCustos, type CustoPlaca } from '@/features/orcamento/custos';
+import type { PlacaAvulsa } from '@/lib/cost/trabalho';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type Modelo } from '@/modelo/Modelo';
@@ -81,10 +83,22 @@ export function PainelOrcamento() {
         <>
         <p className="rounded-md border border-borda bg-superficie-2 px-3 py-2 text-mini text-texto-2">
           Gramas e tempo vêm do Bambu Studio: preencha em <span className="text-texto">Por placa</span>, na folha ao lado.
-          {cfg.amostras > 0 ? (
+          {cfg.amostras.length > 0 ? (
             <span className="mt-1 block text-texto-3">
-              Estimativa aprendida de {cfg.amostras} {cfg.amostras === 1 ? 'placa' : 'placas'}: {formatarNumero(cfg.vazao, 1)} g/h, gramas ×{' '}
-              {formatarNumero(cfg.fatorGramas, 2)}.
+              Estimativa aprendida de {cfg.amostras.length} {cfg.amostras.length === 1 ? 'placa' : 'placas'}:{' '}
+              {formatarNumero(cfg.vazao, 1)} g/h, gramas × {formatarNumero(cfg.fatorGramas, 2)}.{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  const n = esquecerCalibracao(cfg);
+                  definir('vazao', n.vazao);
+                  definir('fatorGramas', n.fatorGramas);
+                  definir('amostras', n.amostras);
+                }}
+                className="text-texto-2 underline underline-offset-2 hover:text-texto"
+              >
+                Esquecer
+              </button>
             </span>
           ) : (
             <span className="mt-1 block text-texto-3">Até lá, o valor é estimado pelo volume das peças.</span>
@@ -162,20 +176,34 @@ function textoCliente(m: Modelo, preco: number): string {
 
 export function FolhaOrcamento() {
   const m = useModelo();
-  const o = useOrcamento();
+  const total = useOrcamento();
   const cfg = useProjeto((x) => x.cfg);
-  const placas = useCustos().porPlaca.length;
+  const avulsas = useProjeto((x) => x.avulsas);
+  const adicionarAvulsa = useProjeto((x) => x.adicionarAvulsa);
+  const custos = useCustos();
+  const placas = custos.porPlaca.filter((p) => !p.excluida).length + custos.porAvulsa.size;
   const [copiado, setCopiado] = useState(false);
 
-  if (!o) {
+  // Da para usar so para orcar: sem letreiro, com impressoes feitas fora do app.
+  if (!total && !m.letras.length && !avulsas.length) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Vazio icone={IconeOrcamento} titulo="Sem orçamento ainda">
-          O orçamento aparece assim que houver um letreiro em Desenhar.
+        <Vazio
+          icone={IconeOrcamento}
+          titulo="Sem orçamento ainda"
+          acao={
+            <Botao icone={IconeMais} onClick={adicionarAvulsa}>
+              Orçar com os dados do fatiador
+            </Botao>
+          }
+        >
+          Faça um letreiro em Desenhar, ou orce direto com gramas e tempo de uma impressão feita fora daqui.
         </Vazio>
       </div>
     );
   }
+  // Tudo tirado do orcamento, ou avulsa ainda sem numeros: a folha fica, zerada.
+  const o = total ?? orcar({ volumeMm3: 0, qtdLetras: 0, impressoes: 0, gramasReais: 0, horasReais: 0, cfg });
 
   const copiar = async () => {
     try {
@@ -195,8 +223,12 @@ export function FolhaOrcamento() {
             <p className="text-micro font-medium uppercase tracking-wider text-texto-3">Orçamento</p>
             <h1 className="mt-1 truncate text-grande font-semibold text-texto">{m.nomeProjeto || 'Sem nome'}</h1>
             <p className="mt-0.5 text-mini text-texto-3">
-              {m.letras.length} {m.letras.length === 1 ? 'peça' : 'peças'}
-              {m.bounds && ` · ${formatarNumero(m.bounds.w)} × ${formatarNumero(m.bounds.h)} mm`} ·{' '}
+              {m.letras.length > 0 && (
+                <>
+                  {m.letras.length} {m.letras.length === 1 ? 'peça' : 'peças'}
+                  {m.bounds && ` · ${formatarNumero(m.bounds.w)} × ${formatarNumero(m.bounds.h)} mm`} ·{' '}
+                </>
+              )}
               {new Date().toLocaleDateString('pt-BR')}
             </p>
           </div>
@@ -232,7 +264,7 @@ export function FolhaOrcamento() {
           <Botao variante="fantasma" icone={copiado ? IconeOk : IconeCopiar} onClick={() => void copiar()}>
             {copiado ? 'Copiado' : 'Copiar para o cliente'}
           </Botao>
-          <Botao icone={IconeBaixar} onClick={() => void baixarPacote(m, o)}>
+          <Botao icone={IconeBaixar} disabled={!m.letras.length} onClick={() => void baixarPacote(m, o)}>
             Baixar pacote
           </Botao>
         </footer>
@@ -247,13 +279,14 @@ export function FolhaOrcamento() {
 /** Uma linha por placa (impressao) e, recolhida, uma por peca. */
 function TabelasDeCusto() {
   const m = useModelo();
-  const { porPeca, porPlaca } = useCustos();
+  const { porPeca } = useCustos();
   const nomes = new Map([...m.letras.map((l) => [l.chave, l.nome] as const), ...m.objetos.map((o) => [o.chave, o.nome] as const)]);
   const pecas = [...porPeca].filter(([k]) => nomes.has(k));
 
   return (
     <div className="space-y-4 border-t border-borda px-6 py-4">
-      {porPlaca.length > 0 && <PlacasReais />}
+      <PlacasReais />
+      {pecas.length > 0 && (
       <details className="group">
         <summary className="cursor-pointer list-none text-micro font-medium uppercase tracking-wider text-texto-3 hover:text-texto">
           <span className="inline-block transition-transform group-open:rotate-90">›</span> Por peça ({pecas.length})
@@ -263,6 +296,7 @@ function TabelasDeCusto() {
           <p className="mt-1 text-micro text-texto-3">Sem o preparo da máquina, que entra uma vez em cada placa.</p>
         </div>
       </details>
+      )}
     </div>
   );
 }
@@ -303,18 +337,21 @@ function TabelaCusto({ linhas }: { linhas: { nome: string; qtd?: number; o: Orca
  */
 function PlacasReais() {
   const { porPlaca } = useCustos();
+  const avulsas = useProjeto((x) => x.avulsas);
+  const adicionarAvulsa = useProjeto((x) => x.adicionarAvulsa);
   const arrumado = useInterface((x) => x.placas.length > 0);
   const temStl = porPlaca.some((p) => p.temStl);
-  const faltam = porPlaca.filter((p) => p.estimado).length;
+  const faltam = porPlaca.filter((p) => p.estimado && !p.excluida).length;
 
   return (
     <div>
       <p className="mb-1 text-micro font-medium uppercase tracking-wider text-texto-3">
-        {arrumado ? 'Por placa (cada uma é uma impressão)' : 'Impressão'}
+        Impressões (cada placa é uma)
       </p>
       <p className="mb-2 text-mini text-texto-2">
         Fatie no Bambu Studio e copie os <span className="text-texto">gramas</span> e o <span className="text-texto">tempo</span>{' '}
-        {arrumado ? 'de cada placa' : 'do trabalho'}. {faltam > 0 && <span className="text-atencao">Sem isso o valor é estimado.</span>}
+        de cada placa. Desmarque a placa que não entra no orçamento.{' '}
+        {faltam > 0 && <span className="text-atencao">Sem gramas e tempo, o valor é estimado.</span>}
       </p>
       <table className="tabular w-full text-mini">
         <thead>
@@ -329,10 +366,16 @@ function PlacasReais() {
         </thead>
         <tbody className="divide-y divide-borda/60 font-mono">
           {porPlaca.map((p) => (
-            <LinhaPlaca key={p.indice} p={p} nome={arrumado ? `Placa ${p.indice + 1}${p.temStl ? ' *' : ''}` : 'Trabalho'} />
+            <LinhaPlaca key={p.indice} p={p} nome={arrumado ? `Placa ${p.indice + 1}${p.temStl ? ' *' : ''}` : 'Letreiro'} />
+          ))}
+          {avulsas.map((a) => (
+            <LinhaAvulsa key={a.id} a={a} />
           ))}
         </tbody>
       </table>
+      <Botao variante="fantasma" icone={IconeMais} onClick={adicionarAvulsa}>
+        Adicionar placa feita fora do app
+      </Botao>
       {temStl && <p className="mt-1 text-micro text-texto-3">* inclui objeto STL: conta no custo da impressão, mas não no preço do letreiro.</p>}
     </div>
   );
@@ -342,6 +385,7 @@ function LinhaPlaca({ p, nome }: { p: CustoPlaca; nome: string }) {
   const m = useModelo();
   const real = useInterface((x) => x.reais[p.indice] ?? null);
   const definirReal = useInterface((x) => x.definirReal);
+  const alternarExcluida = useInterface((x) => x.alternarExcluida);
   const definirCusto = useProjeto((x) => x.definirCusto);
   const [g, setG] = useState(real ? formatarNumero(real.gramas, 0) : '');
   const [t, setT] = useState(real ? formatarTempoHM(real.horas) : '');
@@ -363,7 +407,9 @@ function LinhaPlaca({ p, nome }: { p: CustoPlaca; nome: string }) {
     if (real && Math.abs(real.gramas - gramas) < 1e-9 && Math.abs(real.horas - horas) < 1e-9) return;
     definirReal(p.indice, { gramas, horas });
     const volume = p.chaves.reduce((a, k) => a + (m.insumos.get(k)?.volumeMm3 ?? 0), 0);
-    const cfg = calibrar(useProjeto.getState().cfg, { gramas, horas }, volume);
+    // A placa e identificada pelo trabalho e pelas pecas dela.
+    const id = `${m.nomeProjeto}|${[...p.chaves].sort().join(',')}`;
+    const cfg = calibrar(useProjeto.getState().cfg, id, { gramas, horas }, volume);
     definirCusto('vazao', cfg.vazao);
     definirCusto('fatorGramas', cfg.fatorGramas);
     definirCusto('amostras', cfg.amostras);
@@ -376,12 +422,23 @@ function LinhaPlaca({ p, nome }: { p: CustoPlaca; nome: string }) {
   const tempoInvalido = t.trim() !== '' && lerTempo(t) === null;
 
   return (
-    <tr>
+    <tr className={cx(p.excluida && 'opacity-45')}>
       <td className="py-1.5 font-sans font-medium text-texto">
-        {nome}
-        <span className={cx('ml-1.5 font-sans text-micro font-normal', p.estimado ? 'text-atencao' : 'text-sucesso')}>
-          {p.estimado ? 'estimado' : 'real'}
-        </span>
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={!p.excluida}
+            onChange={() => alternarExcluida(p.indice)}
+            className="size-3.5 accent-[var(--color-acento)]"
+            aria-label={`${nome} entra no orçamento`}
+          />
+          <span>
+            {nome}
+            <span className={cx('ml-1.5 text-micro font-normal', p.excluida ? 'text-texto-3' : p.estimado ? 'text-atencao' : 'text-sucesso')}>
+              {p.excluida ? 'fora do orçamento' : p.estimado ? 'estimado' : 'real'}
+            </span>
+          </span>
+        </label>
       </td>
       <td className="py-1.5 text-right text-texto-2">{p.chaves.length}</td>
       <td className="py-1 pl-2">
@@ -404,7 +461,7 @@ function LinhaPlaca({ p, nome }: { p: CustoPlaca; nome: string }) {
           onConfirmar={() => confirmar(g, t)}
         />
       </td>
-      <td className="py-1.5 text-right text-texto-2">{brl(p.orc.custo)}</td>
+      <td className="whitespace-nowrap py-1.5 text-right text-texto-2">{brl(p.orc.custo)}</td>
       <td className="whitespace-nowrap py-1.5 text-right font-semibold text-sucesso">
         {brl(p.orc.preco)}
         {!p.estimado && (
@@ -443,7 +500,7 @@ function CampoReal({
   return (
     <div
       className={cx(
-        'flex h-7 w-28 items-center rounded-md border bg-superficie-2 transition-colors focus-within:border-acento',
+        'flex h-7 w-24 items-center rounded-md border bg-superficie-2 transition-colors focus-within:border-acento',
         invalido ? 'border-perigo' : 'border-borda hover:border-borda-forte'
       )}
     >
@@ -459,5 +516,80 @@ function CampoReal({
       />
       {unidade && <span className="pr-2 font-mono text-micro text-texto-3">{unidade}</span>}
     </div>
+  );
+}
+
+/** Impressao feita fora do app: nome, pecas, gramas e tempo, direto do fatiador. */
+function LinhaAvulsa({ a }: { a: PlacaAvulsa }) {
+  const ajustar = useProjeto((x) => x.ajustarAvulsa);
+  const remover = useProjeto((x) => x.removerAvulsa);
+  const o = useCustos().porAvulsa.get(a.id);
+  const [nome, setNome] = useState(a.nome);
+  const [pecas, setPecas] = useState(String(a.pecas));
+  const [g, setG] = useState(a.gramas ? formatarNumero(a.gramas, 0) : '');
+  const [t, setT] = useState(a.horas ? formatarTempoHM(a.horas) : '');
+  const tempoInvalido = t.trim() !== '' && lerTempo(t) === null;
+
+  return (
+    <tr>
+      <td className="py-1 pr-2 font-sans">
+        <input
+          type="text"
+          aria-label="Nome da placa"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          onBlur={() => ajustar(a.id, { nome: nome.trim() || a.nome })}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          className="h-7 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1.5 text-mini font-medium text-texto outline-none hover:border-borda focus:border-acento"
+        />
+      </td>
+      <td className="py-1 text-right">
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label={`Peças: ${a.nome}`}
+          value={pecas}
+          onChange={(e) => setPecas(e.target.value)}
+          onBlur={() => {
+            const n = Math.round(lerNumero(pecas) ?? a.pecas);
+            ajustar(a.id, { pecas: Math.max(1, n) });
+            setPecas(String(Math.max(1, n)));
+          }}
+          className="h-7 w-10 rounded-md border border-borda bg-superficie-2 px-1.5 text-right font-mono text-mini text-texto outline-none focus:border-acento"
+        />
+      </td>
+      <td className="py-1 pl-2">
+        <CampoReal
+          rotulo={`Gramas: ${a.nome}`}
+          valor={g}
+          set={setG}
+          dica="gramas"
+          unidade="g"
+          onConfirmar={() => ajustar(a.id, { gramas: Math.max(0, lerNumero(g) ?? 0) })}
+        />
+      </td>
+      <td className="py-1 pl-2">
+        <CampoReal
+          rotulo={`Tempo: ${a.nome}`}
+          valor={t}
+          set={setT}
+          dica="ex. 5h 32m"
+          invalido={tempoInvalido}
+          onConfirmar={() => ajustar(a.id, { horas: lerTempo(t) ?? 0 })}
+        />
+      </td>
+      <td className="whitespace-nowrap py-1.5 text-right text-texto-2">{o ? brl(o.custo) : '—'}</td>
+      <td className="whitespace-nowrap py-1.5 text-right font-semibold text-sucesso">
+        {o ? brl(o.preco) : <span className="font-sans font-normal text-texto-3" title="Preencha gramas e tempo">—</span>}
+        <button
+          type="button"
+          onClick={() => remover(a.id)}
+          className="ml-1 font-sans text-micro font-normal text-texto-3 hover:text-perigo"
+          title="Tirar esta placa"
+        >
+          ×
+        </button>
+      </td>
+    </tr>
   );
 }

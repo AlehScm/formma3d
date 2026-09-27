@@ -89,22 +89,30 @@ export function textoOrcamento(m: Modelo, o: Orcamento): string {
 function linhasPorPlaca(m: Modelo, cfg: CustoCfg): string[] {
   const ui = useInterface.getState();
   const letras = new Set(m.letras.map((l) => l.chave));
-  const { porPlaca } = custosDoTrabalho({
+  const avulsas = useProjeto.getState().avulsas.filter((a) => a.gramas > 0 && a.horas > 0);
+  const { porPlaca, porAvulsa } = custosDoTrabalho({
     insumos: m.insumos,
     placas: ui.placas.length ? ui.placas.map((p) => [...p.keys()]) : [[...m.insumos.keys()]],
     reais: ui.reais,
     ehLetra: (k) => letras.has(k),
+    excluidas: ui.excluidas,
+    avulsas,
     cfg,
   });
-  if (!porPlaca.length) return [];
+  if (!porPlaca.length && !avulsas.length) return [];
   return [
     '',
     'POR PLACA (cada uma e uma impressao):',
     ...porPlaca.map(
-      ({ indice, chaves, temStl, estimado, orc: o }) =>
+      ({ indice, chaves, temStl, estimado, excluida, orc: o }) =>
         `Placa ${indice + 1}: ${chaves.length} peça(s), ${o.gramas.toFixed(0)} g, ${o.horas.toFixed(1)} h${estimado ? ' (estimado)' : ''}, custo ${brl(o.custo)}, preço ${brl(o.preco)}` +
-        (temStl ? ' (inclui STL)' : '')
+        (temStl ? ' (inclui STL)' : '') +
+        (excluida ? ' (FORA DO ORCAMENTO)' : '')
     ),
+    ...avulsas.map((a) => {
+      const o = porAvulsa.get(a.id)!;
+      return `${a.nome} (feita fora do app): ${a.pecas} peça(s), ${a.gramas.toFixed(0)} g, ${a.horas.toFixed(1)} h, custo ${brl(o.custo)}, preço ${brl(o.preco)}`;
+    }),
   ];
 }
 

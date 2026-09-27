@@ -14,13 +14,28 @@ export interface CustoPlaca {
   temStl: boolean;
   /** Sem dado real: gramas e tempo vieram da estimativa. */
   estimado: boolean;
+  /** Tirada do orcamento pelo usuario: continua no arranjo, nao no preco. */
+  excluida: boolean;
   orc: Orcamento;
+}
+
+/** Impressao feita fora do app: so entra no orcamento, com o que o fatiador disse. */
+export interface PlacaAvulsa {
+  id: string;
+  nome: string;
+  pecas: number;
+  gramas: number;
+  horas: number;
 }
 
 export interface Custos {
   porPeca: Map<string, Orcamento>;
   porPlaca: CustoPlaca[];
-  /** O letreiro: so as letras (sem STL), um preparo por placa que tem letra. */
+  porAvulsa: Map<string, Orcamento>;
+  /**
+   * O que vai para o cliente: as letras das placas incluidas (sem STL), com um
+   * preparo por placa que tem letra, mais as placas avulsas. Null = nada a orcar.
+   */
   total: Orcamento | null;
   /** Alguma placa do letreiro ainda esta na estimativa. */
   estimado: boolean;
@@ -33,6 +48,9 @@ export interface ArgsTrabalho {
   reais: readonly (DadoReal | null | undefined)[];
   /** Pecas do letreiro (as outras sao STL). */
   ehLetra: (chave: string) => boolean;
+  /** Posicoes de `placas` tiradas do orcamento. */
+  excluidas?: ReadonlySet<number>;
+  avulsas?: readonly PlacaAvulsa[];
   cfg?: CustoCfg;
 }
 
@@ -42,7 +60,7 @@ export interface ArgsTrabalho {
  * cada uma. Tudo sai de `orcar`, que e linear: a soma das pecas mais um preparo por
  * placa fecha com o total.
  */
-export function custosDoTrabalho({ insumos, placas, reais, ehLetra, cfg = PADRAO }: ArgsTrabalho): Custos {
+export function custosDoTrabalho({ insumos, placas, reais, ehLetra, excluidas = new Set(), avulsas = [], cfg = PADRAO }: ArgsTrabalho): Custos {
   const vazao = Math.max(0.1, cfg.vazao || 12);
   const gramas = new Map<string, number>();
   const horas = new Map<string, number>();
@@ -78,6 +96,7 @@ export function custosDoTrabalho({ insumos, placas, reais, ehLetra, cfg = PADRAO
             chaves,
             temStl: chaves.some((k) => !ehLetra(k)),
             estimado: !reais[indice],
+            excluida: excluidas.has(indice),
             orc: orcar({
               ...somarInsumos(chaves.map((k) => insumos.get(k)!)),
               qtdLetras: chaves.length,
@@ -91,19 +110,31 @@ export function custosDoTrabalho({ insumos, placas, reais, ehLetra, cfg = PADRAO
       : []
   );
 
-  const letras = [...insumos.keys()].filter(ehLetra);
-  const total = letras.length
-    ? orcar({
-        ...somarInsumos(letras.map((k) => insumos.get(k)!)),
-        qtdLetras: letras.length,
-        impressoes: Math.max(1, listas.filter((p) => p.some(ehLetra)).length),
-        gramasReais: soma(letras, gramas),
-        horasReais: soma(letras, horas),
-        cfg,
-      })
-    : null;
+  // Letra de placa tirada do orcamento sai do preco. Peca fora de toda placa
+  // (maior que a mesa) continua: ela existe, so ainda nao cabe.
+  const fora = new Set(listas.flatMap((p, i) => (excluidas.has(i) ? p : [])));
+  const letras = [...insumos.keys()].filter((k) => ehLetra(k) && !fora.has(k));
+  const porAvulsa = new Map(
+    avulsas.map((a) => [
+      a.id,
+      orcar({ volumeMm3: 0, qtdLetras: a.pecas, impressoes: 1, gramasReais: a.gramas, horasReais: a.horas, cfg }),
+    ])
+  );
+  const somaAvulsa = (f: (a: PlacaAvulsa) => number) => avulsas.reduce((t, a) => t + f(a), 0);
+  const total =
+    letras.length || avulsas.length
+      ? orcar({
+          ...somarInsumos(letras.map((k) => insumos.get(k)!)),
+          qtdLetras: letras.length + somaAvulsa((a) => a.pecas),
+          impressoes:
+            (letras.length ? Math.max(1, listas.filter((p, i) => !excluidas.has(i) && p.some(ehLetra)).length) : 0) + avulsas.length,
+          gramasReais: soma(letras, gramas) + somaAvulsa((a) => a.gramas),
+          horasReais: soma(letras, horas) + somaAvulsa((a) => a.horas),
+          cfg,
+        })
+      : null;
 
   // Peca fora de toda placa (maior que a mesa) nunca tem dado real.
   const emPlacaReal = new Set(listas.flatMap((p, i) => (reais[i] ? p : [])));
-  return { porPeca, porPlaca, total, estimado: letras.some((k) => !emPlacaReal.has(k)) };
+  return { porPeca, porPlaca, porAvulsa, total, estimado: letras.some((k) => !emPlacaReal.has(k)) };
 }

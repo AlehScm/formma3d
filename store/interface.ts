@@ -52,6 +52,8 @@ interface EstadoInterface {
    * sem arranjo, a posicao 0 e o trabalho inteiro). Rearrumar apaga: a placa mudou.
    */
   reais: (DadoReal | null)[];
+  /** Placas tiradas do orcamento (posicao em `placas`). Rearrumar devolve todas. */
+  excluidas: Set<number>;
   infoArranjo: InfoArranjo | null;
   folgaPecas: number;
 
@@ -79,6 +81,7 @@ interface EstadoInterface {
   definirArranjo: (placas: Colocada[][], sobraram: string[], info: InfoArranjo) => void;
   verPlaca: (i: number) => void;
   definirReal: (i: number, r: DadoReal | null) => void;
+  alternarExcluida: (i: number) => void;
   /**
    * Posicao absoluta na placa vista (coordenadas do `arrumar`). Arrastar uma peca
    * de outra placa ou da fila para esta a tira de onde estava.
@@ -105,6 +108,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   placaVista: 0,
   sobraram: [],
   reais: [],
+  excluidas: new Set(),
   infoArranjo: null,
   folgaPecas: 3,
 
@@ -132,7 +136,13 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   setCategoria: (espaco, id) => set((s) => ({ categoria: { ...s.categoria, [espaco]: id } })),
   setFolgaPecas: (folgaPecas) => set({ folgaPecas }),
   definirArranjo: (placas, sobraram, infoArranjo) =>
-    set({ placas: placas.map((p) => new Map(p.map((c) => [c.nome, c]))), placaVista: 0, sobraram, infoArranjo, reais: [] }),
+    set({ placas: placas.map((p) => new Map(p.map((c) => [c.nome, c]))), placaVista: 0, sobraram, infoArranjo, reais: [], excluidas: new Set() }),
+  alternarExcluida: (i) =>
+    set((s) => {
+      const excluidas = new Set(s.excluidas);
+      if (!excluidas.delete(i)) excluidas.add(i);
+      return { excluidas };
+    }),
   definirReal: (i, r) =>
     set((s) => {
       const reais = [...s.reais];
@@ -155,6 +165,6 @@ export const useInterface = create<EstadoInterface>()((set) => ({
       if (!placas.length) placas.push(new Map([[c.nome, c]]));
       return { placas, reais, sobraram: s.sobraram.filter((k) => k !== c.nome) };
     }),
-  limparArranjo: () => set({ placas: [], placaVista: 0, sobraram: [], infoArranjo: null, reais: [] }),
+  limparArranjo: () => set({ placas: [], placaVista: 0, sobraram: [], infoArranjo: null, reais: [], excluidas: new Set() }),
   registrarSeletores: (abrirDesenho, abrirFonte, abrirFonteTexto) => set({ abrirDesenho, abrirFonte, abrirFonteTexto }),
 }));

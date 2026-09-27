@@ -376,6 +376,8 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
   // usuario deu por placa. Sem arranjo, o trabalho inteiro conta como uma placa.
   const placas = useInterface((s) => s.placas);
   const reais = useInterface((s) => s.reais);
+  const excluidas = useInterface((s) => s.excluidas);
+  const avulsasTodas = useProjeto((s) => s.avulsas);
   const custos = useMemo(
     () =>
       custosDoTrabalho({
@@ -383,9 +385,12 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
         placas: placas.length ? placas.map((p) => [...p.keys()]) : [[...modelo.insumos.keys()]],
         reais,
         ehLetra: (k) => geo.insumos.has(k),
+        excluidas,
+        // Avulsa sem gramas ou tempo ainda esta sendo preenchida: nao conta.
+        avulsas: avulsasTodas.filter((a) => a.gramas > 0 && a.horas > 0),
         cfg,
       }),
-    [modelo.insumos, geo.insumos, placas, reais, cfg]
+    [modelo.insumos, geo.insumos, placas, reais, excluidas, avulsasTodas, cfg]
   );
 
   return (

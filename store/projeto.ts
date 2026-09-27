@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type { Font } from 'opentype.js';
 import { PRESETS, type Apoio, type ChapaModo, type Fechamento, type PresetId } from '@/lib/geom/modes';
 import { PADRAO, type CustoCfg } from '@/lib/cost/calc';
+import type { PlacaAvulsa } from '@/lib/cost/trabalho';
 import type { ResultadoFontesSistema } from '@/lib/text/fontes';
 import type { ModoSeparacao, ModoTraco, TracoResolvido } from '@/lib/import/pecas';
 import type { Aviso, DesenhoBruto } from '@/lib/import/pdf-ops';
@@ -137,6 +138,8 @@ export interface EstadoProjeto {
   removidas: Set<string>;
 
   cfg: CustoCfg;
+  /** Impressoes feitas fora do app que entram no orcamento. */
+  avulsas: PlacaAvulsa[];
 }
 
 type Campo = keyof EstadoProjeto;
@@ -145,6 +148,9 @@ export interface AcoesProjeto {
   /** Setter generico. `definir('altura', 150)`. */
   definir: <K extends Campo>(k: K, v: EstadoProjeto[K]) => void;
   definirCusto: <K extends keyof CustoCfg>(k: K, v: CustoCfg[K]) => void;
+  adicionarAvulsa: () => void;
+  ajustarAvulsa: (id: string, mudanca: Partial<Omit<PlacaAvulsa, 'id'>>) => void;
+  removerAvulsa: (id: string) => void;
   /** Preenche os controles com um estilo pronto, sem travar nenhum. */
   aplicarPreset: (id: PresetId) => void;
   escolherImpressora: (id: string) => void;
@@ -224,9 +230,14 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
   fontesTexto: new Map(),
   removidas: new Set(),
   cfg: PADRAO,
+  avulsas: [],
 
   definir: (k, v) => set({ [k]: v } as Partial<EstadoProjeto>),
   definirCusto: (k, v) => set((s) => ({ cfg: { ...s.cfg, [k]: v } })),
+  adicionarAvulsa: () =>
+    set((s) => ({ avulsas: [...s.avulsas, { id: novoId(), nome: `Avulsa ${s.avulsas.length + 1}`, pecas: 1, gramas: 0, horas: 0 }] })),
+  ajustarAvulsa: (id, mudanca) => set((s) => ({ avulsas: s.avulsas.map((a) => (a.id === id ? { ...a, ...mudanca } : a)) })),
+  removerAvulsa: (id) => set((s) => ({ avulsas: s.avulsas.filter((a) => a.id !== id) })),
 
   aplicarPreset: (id) =>
     set(() => {
@@ -363,7 +374,13 @@ const CHAVE_CUSTOS = 'formma3d:custos';
 export function lembrarCustos(): () => void {
   try {
     const salvo = JSON.parse(localStorage.getItem(CHAVE_CUSTOS) ?? 'null') as Partial<CustoCfg> | null;
-    if (salvo && typeof salvo === 'object') useProjeto.setState((s) => ({ cfg: { ...s.cfg, ...salvo } }));
+    if (salvo && typeof salvo === 'object') {
+      // Versao antiga guardava so a contagem: sem as amostras, recomeca o aprendizado.
+      const ok = Array.isArray(salvo.amostras);
+      useProjeto.setState((s) => ({
+        cfg: { ...s.cfg, ...salvo, ...(ok ? {} : { amostras: [], vazao: PADRAO.vazao, fatorGramas: 1 }) },
+      }));
+    }
   } catch {
     // Sem armazenamento (aba anonima, bloqueado): segue com o padrao.
   }

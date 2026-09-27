@@ -27,8 +27,8 @@ export interface CustoCfg {
   vazao: number;
   /** Gramas reais / gramas estimadas pelo volume (paredes, preenchimento, suporte). */
   fatorGramas: number;
-  /** Quantas placas reais ja entraram na calibracao. */
-  amostras: number;
+  /** Placas reais que ensinaram a estimativa (as ultimas 10, uma por placa). */
+  amostras: Amostra[];
   /** R$/h de depreciacao + manutencao. */
   custoMaquina: number;
   potencia: number;
@@ -50,7 +50,7 @@ export const PADRAO: CustoCfg = {
   rendimento: 1000,
   vazao: 12,
   fatorGramas: 1,
-  amostras: 0,
+  amostras: [],
   custoMaquina: 2.5,
   potencia: 120,
   precoKwh: 0.95,
@@ -69,24 +69,31 @@ export function gramasEstimadas(volumeMm3: number, cfg: CustoCfg = PADRAO): numb
   return (volumeMm3 / 1000) * fil.densidade * (cfg.fatorGramas || 1);
 }
 
+export interface Amostra {
+  /** Identifica a placa: redigitar a mesma placa troca a amostra, nao soma outra. */
+  id: string;
+  gramas: number;
+  horas: number;
+  /** Gramas pelo volume, sem fator: o que o fatiador corrige. */
+  bruto: number;
+}
+
 /**
  * Aprende com uma placa real: a vazao (g/h) e quanto o fatiador gasta a mais ou a
- * menos que o volume. Media das ultimas amostras, para um trabalho fora da curva
- * nao estragar a estimativa dos proximos.
+ * menos que o volume. Ponderado pelas ultimas 10 placas, para um trabalho fora da
+ * curva nao estragar a estimativa dos proximos.
  */
-export function calibrar(cfg: CustoCfg, real: { gramas: number; horas: number }, volumeMm3: number): CustoCfg {
+export function calibrar(cfg: CustoCfg, id: string, real: { gramas: number; horas: number }, volumeMm3: number): CustoCfg {
   if (!(real.gramas > 0) || !(real.horas > 0) || !(volumeMm3 > 0)) return cfg;
   const fil: Filamento = FILAMENTOS[cfg.filamento] ?? FILAMENTOS.PLA;
   const bruto = (volumeMm3 / 1000) * fil.densidade;
-  const n = Math.min(cfg.amostras, 9);
-  const media = (antigo: number, novo: number) => (n ? (antigo * n + novo) / (n + 1) : novo);
-  return {
-    ...cfg,
-    vazao: media(cfg.vazao, real.gramas / real.horas),
-    fatorGramas: media(cfg.fatorGramas || 1, real.gramas / bruto),
-    amostras: cfg.amostras + 1,
-  };
+  const amostras = [...cfg.amostras.filter((a) => a.id !== id), { id, gramas: real.gramas, horas: real.horas, bruto }].slice(-10);
+  const soma = (f: (a: Amostra) => number) => amostras.reduce((t, a) => t + f(a), 0);
+  return { ...cfg, amostras, vazao: soma((a) => a.gramas) / soma((a) => a.horas), fatorGramas: soma((a) => a.gramas) / soma((a) => a.bruto) };
 }
+
+/** Volta a estimativa para o padrao, sem mexer nos precos. */
+export const esquecerCalibracao = (cfg: CustoCfg): CustoCfg => ({ ...cfg, vazao: PADRAO.vazao, fatorGramas: 1, amostras: [] });
 
 export const brl = (v: number): string => 'R$ ' + v.toFixed(2).replace('.', ',');
 
