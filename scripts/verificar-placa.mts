@@ -220,6 +220,24 @@ async function main() {
     ok('espessura acompanha a escala', perto(fila[2].espessuraMin, 30 * 4), String(fila[2].espessuraMin));
     const sem = enfileirarArquivos([arq('a', 100, ['01']), arq('b', 200)]);
     ok('desligar o 01 de A nao mexe no 01 de B', sem.some((p) => p.chave === 'b:01') && !sem.some((p) => p.chave === 'a:01'));
+
+    {
+      // O bug relatado: excluir as pecas mais altas esticava as que sobravam.
+      const alta: ArquivoNaFila = {
+        id: 'z',
+        alvo: 200,
+        desativadas: new Set(),
+        pecas: [
+          { nome: 'alta', region: quad(0, 20, 100), espessuraNativa: 20 },
+          { nome: 'baixa', region: quad(40, 20, 25), espessuraNativa: 20 },
+        ],
+      };
+      const baixaAntes = enfileirarArquivos([alta]).find((p) => p.nome === 'baixa')!;
+      const baixaDepois = enfileirarArquivos([{ ...alta, desativadas: new Set(['alta']) }]).find((p) => p.nome === 'baixa')!;
+      const bA = regionBounds(baixaAntes.region), bD = regionBounds(baixaDepois.region);
+      ok('excluir a peca mais alta nao aumenta as outras', perto(bA.h, bD.h) && perto(bA.w, bD.w), `${bA.h.toFixed(1)} -> ${bD.h.toFixed(1)} mm`);
+      ok('nem tira elas do lugar', perto(bA.minX, bD.minX) && perto(bA.minY, bD.minY));
+    }
     ok('um arquivo so: rotulo sem letra', enfileirarArquivos([arq('a', 100)])[0].nome === '01');
 
     const imp = (nome: string) =>

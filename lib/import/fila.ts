@@ -32,7 +32,10 @@ export function enfileirarArquivos(arquivos: ArquivoNaFila[]): PecaNaFila[] {
   arquivos.forEach((a, i) => {
     const ativas = a.pecas.filter((x) => !a.desativadas.has(x.nome));
     if (!ativas.length) return;
-    const b = regionBounds(ativas.flatMap((x) => x.region));
+    // Escala e posicao pelo desenho INTEIRO: excluir uma peca nao pode mudar o
+    // tamanho das outras. Pelas que sobraram, tirar a mais alta esticava o resto
+    // ate a altura do arquivo.
+    const b = regionBounds(a.pecas.flatMap((x) => x.region));
     const s = b.h > 0 ? a.alvo / b.h : 1;
     for (const x of ativas) {
       todas.push({
