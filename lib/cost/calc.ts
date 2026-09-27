@@ -57,7 +57,7 @@ export const PADRAO: CustoCfg = {
   valorHora: 0,
   setupMin: 0,
   posMin: 0,
-  taxaFalha: 8,
+  taxaFalha: 3,
   margem: 120,
   precoAcmM2: 90,
   precoFitaLedM: 18,
