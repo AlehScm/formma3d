@@ -23,6 +23,7 @@ import { useInterface, type Espaco } from '@/store/interface';
 import { useModelo, useOrcamento } from '@/modelo/Modelo';
 import {
   baixarChapaDXF,
+  baixarChapaPDF,
   baixarChapaSVG,
   baixarGabarito,
   baixarPacote,
@@ -150,6 +151,9 @@ export function BarraTopo() {
               Chapa ACM
             </MenuItem>
             <MenuItem icone={IconeBaixar} detalhe=".svg" onSelect={() => baixarChapaSVG(m)}>
+              Chapa ACM
+            </MenuItem>
+            <MenuItem icone={IconeBaixar} detalhe=".pdf" onSelect={() => baixarChapaPDF(m)}>
               Chapa ACM
             </MenuItem>
           </>

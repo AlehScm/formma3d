@@ -38,6 +38,68 @@ export function regionToSVG(region: Region, { margem = 5, titulo = 'chapa' }: Sv
   ].join('\n');
 }
 
+/** O maior lado de pagina que o PDF aceita sem `UserUnit`: 200 polegadas (5,08 m). */
+const PDF_MAX_PT = 14400;
+const PT_POR_MM = 72 / 25.4;
+
+/** So ASCII e sem os caracteres especiais de string PDF: o xref conta bytes. */
+const textoPdf = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[^\x20-\x7e]/g, '')
+    .replace(/[\\()]/g, (c) => '\\' + c);
+
+/**
+ * Region -> PDF vetorial em escala 1:1, para grafica e bireo de corte. Mesmo desenho do
+ * SVG: contorno preto de 0,1 mm, sem preenchimento, um caminho por contorno (os
+ * miolos inclusive). Montado a mao: sao so quatro objetos e o xref.
+ */
+export function regionToPDF(region: Region, { margem = 5, titulo = 'chapa' }: SvgOpts = {}): Uint8Array {
+  const b = regionBounds(region);
+  const wMm = b.w + margem * 2;
+  const hMm = b.h + margem * 2;
+  // Chapa maior que 5,08 m: UserUnit estica a unidade e o desenho continua 1:1.
+  const uu = Math.max(1, Math.ceil((Math.max(wMm, hMm) * PT_POR_MM) / PDF_MAX_PT));
+  const k = PT_POR_MM / uu;
+  const n = (v: number) => v.toFixed(3);
+  // O Y do PDF cresce para cima, como o da Region: so translada para a margem.
+  const X = (p: Pt) => n((p.x - b.minX + margem) * k);
+  const Y = (p: Pt) => n((p.y - b.minY + margem) * k);
+
+  const ops: string[] = [`${n(0.1 * k)} w`, '0 0 0 RG', '1 j'];
+  const contorno = (pts: Pt[]) => {
+    if (pts.length < 2) return;
+    ops.push(`${X(pts[0]!)} ${Y(pts[0]!)} m`);
+    for (const p of pts.slice(1)) ops.push(`${X(p)} ${Y(p)} l`);
+    ops.push('h');
+  };
+  for (const poly of region) {
+    contorno(poly.outer);
+    for (const hole of poly.holes) contorno(hole);
+  }
+  ops.push('S');
+  const conteudo = ops.join('\n');
+
+  const objetos = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${n(wMm * k)} ${n(hMm * k)}]${uu > 1 ? ` /UserUnit ${uu}` : ''} /Contents 4 0 R /Resources << >> >>`,
+    `<< /Length ${conteudo.length} >>\nstream\n${conteudo}\nendstream`,
+    `<< /Title (${textoPdf(titulo)}) /Producer (formma3d) >>`,
+  ];
+  let pdf = `%PDF-${uu > 1 ? '1.6' : '1.4'}\n`;
+  const offsets: number[] = [];
+  objetos.forEach((o, i) => {
+    offsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n`;
+  for (const o of offsets) pdf += `${String(o).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R /Info 5 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return new TextEncoder().encode(pdf);
+}
+
 function dxfPolyline(pts: Pt[]): string[] {
   const out = ['0', 'LWPOLYLINE', '8', 'CORTE', '100', 'AcDbEntity', '100', 'AcDbPolyline', '90', String(pts.length), '70', '1'];
   for (const p of pts) {

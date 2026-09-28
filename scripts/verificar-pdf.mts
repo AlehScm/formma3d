@@ -184,5 +184,37 @@ console.log('\n== golden: glifo -> PDF -> volta ==');
   ok('altura preservada', perto(bVolta.h, bOrig.h, 0.02), `${bVolta.h.toFixed(3)} vs ${bOrig.h.toFixed(3)} mm`);
 }
 
+console.log('\n== chapa exportada em PDF, lida de volta pelo pdf.js ==');
+{
+  const { regionToPDF } = await import('../lib/export/vectors');
+  const fb = fs.readFileSync('C:/Windows/Fonts/arialbd.ttf');
+  const fonte = parseFont(fb.buffer.slice(fb.byteOffset, fb.byteOffset + fb.byteLength) as ArrayBuffer);
+  const O = textToLetters(fonte, 'O', { altura: 150 })[0]!.region; // com miolo
+  const bytes = regionToPDF(O, { titulo: 'Letreiro Ação (teste)' });
+  const txt = new TextDecoder().decode(bytes);
+  ok('comeca com %PDF e termina com %%EOF', txt.startsWith('%PDF-1.4') && txt.trimEnd().endsWith('%%EOF'));
+  const sx = Number(/startxref\n(\d+)/.exec(txt)?.[1]);
+  ok('startxref aponta para o xref', txt.slice(sx, sx + 4) === 'xref', String(sx));
+  const offs = [...txt.matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));
+  ok('cada entrada do xref aponta para o objeto certo', offs.every((o, i) => txt.slice(o).startsWith(`${i + 1} 0 obj`)), `${offs.length} objetos`);
+  ok('titulo com acento nao quebra o arquivo', txt.includes('/Title (Letreiro Acao \\(teste\\))'));
+
+  const d = await extrair(bytes);
+  const volta = desenhoParaPecas(d, { modo: 'forma', tracos: 'preencher', fundirProximos: 0, areaMinima: 1 });
+  const rv = volta.flatMap((p) => p.region);
+  const bO = regionBounds(O), bV = regionBounds(rv);
+  ok('volta em escala 1:1 (largura)', perto(bV.w, bO.w, 0.05), `${bV.w.toFixed(3)} vs ${bO.w.toFixed(3)} mm`);
+  ok('volta em escala 1:1 (altura)', perto(bV.h, bO.h, 0.05), `${bV.h.toFixed(3)} vs ${bO.h.toFixed(3)} mm`);
+  ok('o miolo do O continua buraco (mesma area)', perto(regionArea(rv), regionArea(O), regionArea(O) * 0.005), `${regionArea(rv).toFixed(0)} vs ${regionArea(O).toFixed(0)} mm2`);
+  ok('sai como traco de corte, sem preenchimento', d.objetos.length > 0 && d.objetos.every((o) => o.paint === 'stroke'));
+
+  // Chapa maior que 5,08 m: UserUnit mantem 1:1.
+  const grande = buildRegion([[{ x: 0, y: 0 }, { x: 6000, y: 0 }, { x: 6000, y: 500 }, { x: 0, y: 500 }]], 'nonzero');
+  const tg = new TextDecoder().decode(regionToPDF(grande));
+  const mb = /MediaBox \[0 0 ([\d.]+) ([\d.]+)\] \/UserUnit (\d+)/.exec(tg);
+  ok('chapa de 6 m usa UserUnit e cabe no limite do PDF', !!mb && Number(mb[1]) <= 14400 && tg.startsWith('%PDF-1.6'), mb ? `${mb[1]} pt x ${mb[3]}` : 'sem UserUnit');
+  ok('e continua 1:1', !!mb && perto((Number(mb[1]) * Number(mb[3]) * 25.4) / 72, 6010, 0.01), mb ? `${((Number(mb[1]) * Number(mb[3]) * 25.4) / 72).toFixed(2)} mm` : '');
+}
+
 console.log(`\n${total - falhas}/${total} passaram\n`);
 process.exit(falhas ? 1 : 0);

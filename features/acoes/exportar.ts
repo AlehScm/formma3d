@@ -9,7 +9,7 @@ import { gerar3mf } from '@/lib/export/tresmf';
 import { juntar, montarPlaca, type PecaPlaca } from '@/lib/print/placa';
 import type { Colocada } from '@/lib/print/arranjo';
 import { useInterface } from '@/store/interface';
-import { regionToSVG, regionToDXF, gabaritoSVG } from '@/lib/export/vectors';
+import { regionToSVG, regionToDXF, regionToPDF, gabaritoSVG } from '@/lib/export/vectors';
 import { brl, dividirEntreSocios, type CustoCfg, type Orcamento } from '@/lib/cost/calc';
 import { custosDoTrabalho } from '@/lib/cost/trabalho';
 import { useProjeto } from '@/store/projeto';
@@ -44,6 +44,10 @@ export function baixarSTL(m: Modelo, letra: LetraComPeca): void {
 
 export function baixarChapaSVG(m: Modelo): void {
   baixar(`${seguro(m.nomeProjeto)}_chapa_acm.svg`, regionToSVG(regioesDeCorte(m.letras), { titulo: m.nomeProjeto }), 'image/svg+xml');
+}
+
+export function baixarChapaPDF(m: Modelo): void {
+  baixar(`${seguro(m.nomeProjeto)}_chapa_acm.pdf`, regionToPDF(regioesDeCorte(m.letras), { titulo: `${m.nomeProjeto} - chapa ACM` }) as BlobPart, 'application/pdf');
 }
 
 export function baixarChapaDXF(m: Modelo): void {
@@ -156,6 +160,7 @@ export async function baixarPacote(m: Modelo, o: Orcamento): Promise<void> {
   if (chapas.length) {
     pasta.file('chapa_acm_todas.svg', regionToSVG(chapas, { titulo: m.nomeProjeto }));
     pasta.file('chapa_acm_todas.dxf', regionToDXF(chapas));
+    pasta.file('chapa_acm_todas.pdf', regionToPDF(chapas, { titulo: `${m.nomeProjeto} - chapa ACM` }));
   }
   pasta.file('gabarito_instalacao_1a1.svg', gabaritoSVG(m.letras));
   pasta.file('orcamento.txt', textoOrcamento(m, o));
