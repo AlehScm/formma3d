@@ -40,6 +40,11 @@ export type LetraComPeca = Letra & {
   /** Medida da letra ANTES da edicao da peca (a que veio do arquivo ou do texto), em mm. */
   baseW: number;
   baseH: number;
+  /**
+   * Ponto em torno do qual a edicao gira e escala a peca: o centro original dela
+   * mais o deslocamento. E o que o gizmo de varias pecas faz orbitar.
+   */
+  ancora: { x: number; y: number };
 };
 
 export interface ObjetoModelo {
@@ -234,17 +239,20 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
 
   // Etapa cara (contornos + espessura): so depende do texto, do tamanho e das edicoes.
   const letrasBase = useMemo(() => {
-    type Base = Letra & { espessuraMin: number; chave: string; baseW: number; baseH: number };
+    type Base = Letra & { espessuraMin: number; chave: string; baseW: number; baseH: number; ancora: { x: number; y: number } };
 
     // A edicao entra AQUI, antes do buildPart: e o que faz a chapa, o gabarito, a
     // colisao e o preco acompanharem. Com escala nao uniforme a espessura minima
     // nao escala linearmente e a peca editada e remedida.
-    const editar = (b: Base): Base => {
+    const editar = (b0: Omit<Base, 'ancora'>): Base => {
+      const bb = regionBounds(b0.region);
+      const b: Base = { ...b0, ancora: { x: bb.minX + bb.w / 2, y: bb.minY + bb.h / 2 } };
       const e = edicoes.get(b.chave);
       if (!e || edicaoVazia(e)) return b;
       const region = aplicarEdicao(b.region, e);
       return {
         ...b,
+        ancora: { x: b.ancora.x + e.dx, y: b.ancora.y + e.dy },
         region,
         bounds: regionBounds(region),
         espessuraMin: escalaUniforme(e) ? b.espessuraMin * Math.abs(e.ex) : minThickness(region),

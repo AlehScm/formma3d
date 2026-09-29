@@ -9,6 +9,7 @@ import type { Part, Role } from '@/lib/geom/modes';
 import { regionBounds, type Region } from '@/lib/geom/region';
 import type { Colocada } from '@/lib/print/arranjo';
 import { deslocamentosNaPlaca, paraCoordenadasDaPlaca, type Deslocamento } from '@/features/viewport/referencial';
+import { centroDe, transformarConjunto, type TransformacaoConjunto } from '@/lib/cena/grupo';
 
 /** Peca que nao cabe na mesa: cor unica, para nao se confundir com nenhum papel. */
 const COR_NAO_CABE = '#e03131';
@@ -49,7 +50,19 @@ export interface LetraRender {
   /** Identificador unico: `nome` repete em texto ("BARBER" tem dois "B"). */
   chave: string;
   part: Part;
+  /** Onde a edicao gira a peca (Desenhar). O gizmo de varias pecas faz ela orbitar. */
+  ancora?: { x: number; y: number };
 }
+
+/** Teclas seguradas no clique: Ctrl soma/tira, Shift faz intervalo. */
+export interface ModsClique {
+  ctrl?: boolean;
+  shift?: boolean;
+}
+const modsDe = (e: { nativeEvent: MouseEvent }): ModsClique => ({
+  ctrl: e.nativeEvent.ctrlKey || e.nativeEvent.metaKey,
+  shift: e.nativeEvent.shiftKey,
+});
 
 /** Objeto STL pronto: so aparece na placa. Posicoes centradas em XY, Z a partir de 0. */
 export interface ObjetoRender {
@@ -152,8 +165,9 @@ function Peca({
   naoCabem,
   deslocamentos,
   objetos,
-  selecionada,
-  onSelecionar,
+  selecao,
+  travadas,
+  onClicar,
   registrar,
 }: {
   letras: LetraRender[];
@@ -164,8 +178,9 @@ function Peca({
   /** Deslocamento de cada peca JA no referencial da cena. Ver `Viewer3D`. */
   deslocamentos: ReadonlyMap<string, Deslocamento>;
   objetos: ObjetoRender[];
-  selecionada: string | null;
-  onSelecionar: (chave: string) => void;
+  selecao: ReadonlySet<string>;
+  travadas: ReadonlySet<string>;
+  onClicar: (chave: string, mods: ModsClique, menu?: boolean) => void;
   registrar: (chave: string, o: THREE.Object3D | null) => void;
 }) {
   // As Regions ja carregam a posicao real de cada letra no letreiro (avanco + kerning
@@ -211,7 +226,8 @@ function Peca({
         // Peca que nao cabe na mesa fica vermelha e ganha o contorno do footprint:
         // sem isso o aviso em texto nao diz QUAL das letras e o problema.
         const fora = naoCabem.has(l.chave);
-        const sel = selecionada === l.chave;
+        const sel = selecao.has(l.chave);
+        const travada = travadas.has(l.chave);
         return (
           <PecaPosicionada
             key={l.chave}
@@ -232,9 +248,16 @@ function Peca({
                   position={[0, 0, dz]}
                   castShadow
                   receiveShadow
+                  // Travada: o clique atravessa, como camada travada no Photoshop.
                   onClick={(e) => {
+                    if (travada) return;
                     e.stopPropagation();
-                    onSelecionar(l.chave);
+                    onClicar(l.chave, modsDe(e));
+                  }}
+                  onContextMenu={(e) => {
+                    if (travada) return;
+                    e.stopPropagation();
+                    onClicar(l.chave, modsDe(e), true);
                   }}
                 >
                   <meshStandardMaterial
@@ -262,8 +285,9 @@ function Peca({
           <MalhaObjeto
             o={o}
             fora={naoCabem.has(o.chave)}
-            sel={selecionada === o.chave}
-            onSelecionar={onSelecionar}
+            sel={selecao.has(o.chave)}
+            travada={travadas.has(o.chave)}
+            onClicar={onClicar}
           />
         </PecaPosicionada>
       ))}
@@ -279,12 +303,14 @@ function MalhaObjeto({
   o,
   fora,
   sel,
-  onSelecionar,
+  travada,
+  onClicar,
 }: {
   o: ObjetoRender;
   fora: boolean;
   sel: boolean;
-  onSelecionar: (chave: string) => void;
+  travada: boolean;
+  onClicar: (chave: string, mods: ModsClique, menu?: boolean) => void;
 }) {
   const geo = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -300,8 +326,14 @@ function MalhaObjeto({
         castShadow
         receiveShadow
         onClick={(e) => {
+          if (travada) return;
           e.stopPropagation();
-          onSelecionar(o.chave);
+          onClicar(o.chave, modsDe(e));
+        }}
+        onContextMenu={(e) => {
+          if (travada) return;
+          e.stopPropagation();
+          onClicar(o.chave, modsDe(e), true);
         }}
       >
         <meshStandardMaterial
@@ -359,6 +391,106 @@ function PecaPosicionada({
     <group ref={ref} position={[centro[0] + dx, centro[1] + dy, 0]} rotation={[0, 0, giro]}>
       <group position={[-centro[0], -centro[1], 0]}>{children}</group>
     </group>
+  );
+}
+
+const SEM_SELECAO: readonly string[] = [];
+const SEM_TRAVADAS: ReadonlySet<string> = new Set();
+
+interface MembroGizmo {
+  chave: string;
+  obj: THREE.Object3D;
+  /** No referencial das pecas (letreiro), onde a peca gira e escala. */
+  ancora: { x: number; y: number };
+}
+
+/**
+ * Gizmo de varias pecas: um pivo no centro da selecao. No arrasto, o delta do pivo
+ * e aplicado a cada peca so para a previa andar junto; ao soltar, sai um delta por
+ * peca (`transformarConjunto`) e as malhas voltam ao lugar -- o produto (letreiro)
+ * ou o arranjo (placa) e que passam a carregar a mudanca, como no gizmo de uma peca.
+ */
+function GizmoConjunto({
+  membros,
+  offset,
+  ferramenta,
+  onSoltar,
+}: {
+  membros: MembroGizmo[];
+  /** Onde o referencial das pecas fica na cena (o grupo das pecas e deslocado). */
+  offset: [number, number];
+  ferramenta: 'nenhuma' | 'mover' | 'girar' | 'escalar';
+  onSoltar: (deltas: Map<string, Transformacao>) => void;
+}) {
+  const pivo = useMemo(() => new THREE.Object3D(), []);
+  const inicio = useRef<{
+    c: { x: number; y: number };
+    m: { obj: THREE.Object3D; p: THREE.Vector3; r: number; s: THREE.Vector3 }[];
+  } | null>(null);
+  const c = centroDe(membros.map((m) => m.ancora));
+  if (!inicio.current) {
+    pivo.position.set(c.x + offset[0], c.y + offset[1], 0);
+    pivo.rotation.set(0, 0, 0);
+    pivo.scale.set(1, 1, 1);
+  }
+  const modo = ferramenta === 'mover' ? 'translate' : ferramenta === 'girar' ? 'rotate' : 'scale';
+
+  const lerT = (): TransformacaoConjunto => ({
+    tx: pivo.position.x - (c.x + offset[0]),
+    ty: pivo.position.y - (c.y + offset[1]),
+    giro: (pivo.rotation.z * 180) / Math.PI,
+    sx: pivo.scale.x,
+    sy: pivo.scale.y,
+  });
+
+  return (
+    <>
+      <primitive object={pivo} />
+      <TransformControls
+        object={pivo}
+        mode={modo}
+        showX={ferramenta !== 'girar'}
+        showY={ferramenta !== 'girar'}
+        showZ={ferramenta === 'girar'}
+        onMouseDown={() => {
+          inicio.current = {
+            c,
+            m: membros.map((m) => ({ obj: m.obj, p: m.obj.position.clone(), r: m.obj.rotation.z, s: m.obj.scale.clone() })),
+          };
+        }}
+        onObjectChange={() => {
+          const i = inicio.current;
+          if (!i) return;
+          // Previa: cada malha orbita o centro junto com o pivo (no referencial dela).
+          const t = lerT();
+          const prev = transformarConjunto(new Map(i.m.map((m, k) => [String(k), { x: m.p.x, y: m.p.y }])), i.c, t);
+          i.m.forEach((m, k) => {
+            const d = prev.get(String(k))!;
+            m.obj.position.set(m.p.x + d.dx, m.p.y + d.dy, m.p.z);
+            m.obj.rotation.z = m.r + (t.giro * Math.PI) / 180;
+            m.obj.scale.set(m.s.x * t.sx, m.s.y * t.sy, m.s.z);
+          });
+        }}
+        onMouseUp={() => {
+          const i = inicio.current;
+          if (!i) return;
+          const t = lerT();
+          for (const m of i.m) {
+            m.obj.position.copy(m.p);
+            m.obj.rotation.z = m.r;
+            m.obj.scale.copy(m.s);
+          }
+          inicio.current = null;
+          pivo.position.set(i.c.x + offset[0], i.c.y + offset[1], 0);
+          pivo.rotation.set(0, 0, 0);
+          pivo.scale.set(1, 1, 1);
+          const nada = Math.abs(t.tx) < 1e-6 && Math.abs(t.ty) < 1e-6 && Math.abs(t.giro) < 1e-6 && t.sx === 1 && t.sy === 1;
+          if (nada) return;
+          const deltas = transformarConjunto(new Map(membros.map((m) => [m.chave, m.ancora])), i.c, t);
+          onSoltar(deltas);
+        }}
+      />
+    </>
   );
 }
 
@@ -494,7 +626,16 @@ export interface Viewer3DProps {
   /** Objetos STL prontos. So desenhados na placa (quando ha `mesa`). */
   objetos?: ObjetoRender[];
   selecionada?: string | null;
+  /** Tudo que esta marcado (a `selecionada` e a principal). */
+  selecao?: readonly string[];
+  /** Pecas travadas: nao recebem clique nem gizmo. */
+  travadas?: ReadonlySet<string>;
   onSelecionar?: (chave: string | null) => void;
+  /** Clique numa peca. `menu` = botao direito (so marca se ela ainda nao estava). */
+  onClicar?: (chave: string, mods: ModsClique, menu?: boolean) => void;
+  /** Soltou o gizmo com varias pecas: o delta de cada uma. */
+  onTransformarVarios?: (d: Map<string, Transformacao>) => void;
+  onArranjarVarios?: (cs: Colocada[]) => void;
   /** Ferramenta do gizmo. 'nenhuma' desliga. */
   ferramenta?: 'nenhuma' | 'mover' | 'girar' | 'escalar';
   /**
@@ -523,7 +664,12 @@ export default function Viewer3D({
   sobraram = [],
   objetos = [],
   selecionada = null,
+  selecao = SEM_SELECAO,
+  travadas = SEM_TRAVADAS,
   onSelecionar = () => {},
+  onClicar = () => {},
+  onTransformarVarios = () => {},
+  onArranjarVarios = () => {},
   ferramenta = 'nenhuma',
   onTransformar = () => {},
   onArranjar = () => {},
@@ -537,6 +683,16 @@ export default function Viewer3D({
     if (o) grupos.current.set(chave, o);
     else grupos.current.delete(chave);
   }, []);
+
+  const conjunto = useMemo(() => new Set(selecao), [selecao]);
+  // Quem o gizmo move: selecionadas que estao na cena e nao estao travadas. A ancora
+  // e o ponto em torno do qual a peca gira -- na placa, a propria posicao dela.
+  const [, forcar] = useState(0);
+  useEffect(() => {
+    // Os grupos se registram depois do primeiro render: um tique para o gizmo achar.
+    const t = setTimeout(() => forcar((n) => n + 1), 0);
+    return () => clearTimeout(t);
+  }, [selecao, letras, objetos, mesa]);
 
   // A conta dos referenciais mora em `referencial.ts`, pura e testada: aqui dentro
   // ela ja tirou as pecas de cima da placa uma vez sem ninguem ver.
@@ -553,6 +709,22 @@ export default function Viewer3D({
         : new Map<string, Deslocamento>(),
     [mesa, arranjo, sobraram, letras, objetos, centro]
   );
+
+  const membros: MembroGizmo[] = selecao.flatMap((chave) => {
+    if (travadas.has(chave)) return [];
+    const obj = grupos.current.get(chave);
+    const l = letras.find((x) => x.chave === chave);
+    const contorno = l?.part.contorno ?? objetos.find((x) => x.chave === chave)?.contorno;
+    if (!obj || !contorno) return [];
+    const b = regionBounds(contorno);
+    const d = deslocamentos.get(chave);
+    // Na placa a peca gira no centro do contorno ja deslocado; no letreiro, na
+    // ancora da edicao (o centro original + deslocamento).
+    const ancora = mesa
+      ? { x: b.minX + b.w / 2 + (d?.dx ?? 0), y: b.minY + b.h / 2 + (d?.dy ?? 0) }
+      : (l?.ancora ?? { x: b.minX + b.w / 2, y: b.minY + b.h / 2 });
+    return [{ chave, obj, ancora }];
+  });
 
   return (
     <>
@@ -580,7 +752,7 @@ export default function Viewer3D({
       <color attach="background" args={['#0b0d10']} />
 
       {/* Clique no vazio desmarca. Fica atras de tudo e nao recebe luz. */}
-      <mesh position={[0, 0, -400]} onClick={() => onSelecionar(null)}>
+      <mesh position={[0, 0, -400]} onClick={(e) => !modsDe(e).ctrl && !modsDe(e).shift && onSelecionar(null)}>
         <planeGeometry args={[100000, 100000]} />
         <meshBasicMaterial visible={false} />
       </mesh>
@@ -600,21 +772,39 @@ export default function Viewer3D({
         naoCabem={naoCabem}
         deslocamentos={deslocamentos}
         objetos={mesa ? objetos : []}
-        selecionada={selecionada}
-        onSelecionar={onSelecionar}
+        selecao={conjunto}
+        travadas={travadas}
+        onClicar={onClicar}
         registrar={registrar}
       />
 
+      {membros.length > 1 && ferramenta !== 'nenhuma' && (
+        <GizmoConjunto
+          membros={membros}
+          offset={[-centro[0], -centro[1]]}
+          ferramenta={ferramenta}
+          onSoltar={(deltas) => {
+            if (!mesa) return onTransformarVarios(deltas);
+            onArranjarVarios(
+              [...deltas].map(([chave, t]) =>
+                paraCoordenadasDaPlaca(chave, deslocamentos.get(chave) ?? { dx: 0, dy: 0, giro: 0 }, t, mesa, centro)
+              )
+            );
+          }}
+        />
+      )}
+
       <Gizmo
-        alvo={selecionada ? (grupos.current.get(selecionada) ?? null) : null}
+        alvo={membros.length === 1 ? membros[0]!.obj : null}
         ferramenta={ferramenta}
         onSoltar={(t) => {
-          if (!selecionada) return;
-          if (!mesa) return onTransformar(selecionada, t);
+          const chave = membros[0]?.chave;
+          if (!chave) return;
+          if (!mesa) return onTransformar(chave, t);
           // Na placa: devolve a posicao absoluta em coordenadas da placa. Parte do
           // deslocamento efetivo de agora (colocada ou sobra) e desfaz o referencial.
-          const d = deslocamentos.get(selecionada) ?? { dx: 0, dy: 0, giro: 0 };
-          onArranjar(selecionada, paraCoordenadasDaPlaca(selecionada, d, t, mesa, centro));
+          const d = deslocamentos.get(chave) ?? { dx: 0, dy: 0, giro: 0 };
+          onArranjar(chave, paraCoordenadasDaPlaca(chave, d, t, mesa, centro));
         }}
       />
 

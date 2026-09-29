@@ -29,6 +29,8 @@ import { useModelo } from '@/modelo/Modelo';
 import { useProjeto } from '@/store/projeto';
 import { useInterface, type Ferramenta } from '@/store/interface';
 import { SEM_EDICAO } from '@/lib/geom/pecaEditada';
+import { MenuObjetos } from '@/components/casca/MenuObjetos';
+import { ordemObjetos } from '@/features/acoes/selecao';
 import type { Colocada } from '@/lib/print/arranjo';
 
 // O canvas WebGL nao pode ser renderizado no servidor.
@@ -58,6 +60,10 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   const espaco = useInterface((s) => s.espaco);
   const selecionada = useInterface((s) => s.selecionada);
   const selecionar = useInterface((s) => s.selecionar);
+  const selecao = useInterface((s) => s.selecao);
+  const clicarObjeto = useInterface((s) => s.clicarObjeto);
+  const ocultas = useInterface((s) => s.ocultas);
+  const travadas = useInterface((s) => s.travadas);
   const ferramenta = useInterface((s) => s.ferramenta);
   const setFerramenta = useInterface((s) => s.setFerramenta);
   const explode = useInterface((s) => s.explode);
@@ -72,6 +78,7 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   const abrirDesenho = useInterface((s) => s.abrirDesenho);
   const profundidade = useProjeto((s) => s.profundidade);
   const editarPeca = useProjeto((s) => s.editarPeca);
+  const somarEdicoes = useProjeto((s) => s.somarEdicoes);
 
   const naPlaca = espaco === 'imprimir';
   const arranjo = placas[placaVista] ?? SEM_ARRANJO;
@@ -80,7 +87,8 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   // Memo: arrays novos a cada render refariam os deslocamentos da cena toda vez.
   const { letras, objetos, naFila } = useMemo(() => {
     const emOutra = new Set(placas.flatMap((p, i) => (i === placaVista ? [] : [...p.keys()])));
-    const visivel = (chave: string) => !naPlaca || !emOutra.has(chave);
+    // Oculta (olho do painel) some da tela, mas continua no produto e no custo.
+    const visivel = (chave: string) => !ocultas.has(chave) && (!naPlaca || !emOutra.has(chave));
     const emPlaca = (chave: string) => placas.some((p) => p.has(chave));
     return {
       letras: m.letras.filter((l) => visivel(l.chave)),
@@ -89,7 +97,7 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
         ? [...sobraram, ...m.objetos.map((o) => o.chave).filter((k) => !emPlaca(k) && !sobraram.includes(k))]
         : [],
     };
-  }, [m.letras, m.objetos, placas, placaVista, sobraram, naPlaca]);
+  }, [m.letras, m.objetos, placas, placaVista, sobraram, naPlaca, ocultas]);
 
   // Sem letreiro ainda pode haver STL na placa: so fica vazio se nao ha nada a desenhar.
   if (!m.letras.length && !(naPlaca && m.objetos.length)) {
@@ -120,6 +128,8 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
 
   return (
     <div className="relative h-full">
+      <MenuObjetos>
+      <div className="absolute inset-0">
       <Viewer3D
         letras={letras}
         // Depois de arrumar, a camera enquadra a placa, nao o letreiro montado (que pode ter metros).
@@ -137,8 +147,15 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
         sobraram={naFila}
         objetos={objetos}
         selecionada={selecionada}
+        selecao={selecao}
+        travadas={travadas}
         onSelecionar={selecionar}
-        ferramenta={selecionada ? GIZMO[ferramenta] : 'nenhuma'}
+        onClicar={(chave, mods, menu) => {
+          // Botao direito numa peca ja marcada nao desfaz a selecao: o menu age nela toda.
+          if (menu && selecao.includes(chave)) return;
+          clicarObjeto(chave, menu ? {} : mods, ordemObjetos(m));
+        }}
+        ferramenta={selecao.length ? GIZMO[ferramenta] : 'nenhuma'}
         pedidoEnquadrar={pedidoEnquadrar}
         // Na placa a transformacao so acomoda: nao toca no produto.
         onArranjar={(_, c) => posicionarNoArranjo(c)}
@@ -147,7 +164,11 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
           const a = useProjeto.getState().edicoes.get(chave) ?? SEM_EDICAO;
           editarPeca(chave, { dx: a.dx + t.dx, dy: a.dy + t.dy, giro: a.giro + t.giro, ex: a.ex * t.ex, ey: a.ey * t.ey });
         }}
+        onTransformarVarios={(d) => somarEdicoes(d)}
+        onArranjarVarios={(cs) => cs.forEach((c) => posicionarNoArranjo(c))}
       />
+      </div>
+      </MenuObjetos>
 
       {/* Zona 1: contexto. */}
       <div className="absolute left-3 top-3 flex items-center gap-2">

@@ -3,6 +3,8 @@
 import { create } from 'zustand';
 import type { Colocada } from '@/lib/print/arranjo';
 import type { DadoReal } from '@/lib/cost/trabalho';
+import { clicar, type Modificadores } from '@/lib/cena/selecao';
+import { useProjeto } from '@/store/projeto';
 
 /**
  * Estado da INTERFACE: o que se ve, nao o que se fabrica.
@@ -33,7 +35,13 @@ export interface InfoArranjo {
 
 interface EstadoInterface {
   espaco: Espaco;
+  /** Tudo que esta marcado. A ultima e a principal (inspetor e gizmo olham para ela). */
+  selecao: string[];
+  /** A principal: `selecao` no fim, ou null. Mantida junto para quem so le uma. */
   selecionada: string | null;
+  /** So da tela: ocultar e travar nao mudam produto, custo nem exportacao. */
+  ocultas: Set<string>;
+  travadas: Set<string>;
   ferramenta: Ferramenta;
   explode: number;
   camadas: CamadasVisiveis;
@@ -72,6 +80,12 @@ interface EstadoInterface {
 
   setEspaco: (e: Espaco) => void;
   selecionar: (chave: string | null) => void;
+  /** Troca a selecao inteira (Ctrl+A, menu, painel). */
+  definirSelecao: (chaves: string[]) => void;
+  /** Clique numa peca, no 3D ou no painel, com Ctrl/Shift. `ordem` e a do painel. */
+  clicarObjeto: (chave: string, mods: Modificadores, ordem: readonly string[]) => void;
+  alternarOcultas: (chaves: readonly string[]) => void;
+  alternarTravadas: (chaves: readonly string[]) => void;
   setFerramenta: (f: Ferramenta) => void;
   setExplode: (v: number) => void;
   setCamadas: (c: CamadasVisiveis) => void;
@@ -91,13 +105,37 @@ interface EstadoInterface {
   registrarSeletores: (desenho: (substituir?: boolean) => void, fonte: () => void, fonteTexto: (nome: string) => void) => void;
 }
 
+/**
+ * Nova selecao + a principal. Selecionar uma peca que esta em outra placa leva a
+ * cena ate ela.
+ */
+function comSelecao(s: EstadoInterface, selecao: string[]): Partial<EstadoInterface> {
+  const selecionada = selecao[selecao.length - 1] ?? null;
+  const i = selecionada ? placaDe(s.placas, selecionada) : -1;
+  return i >= 0 ? { selecao, selecionada, placaVista: i } : { selecao, selecionada };
+}
+
+/** Liga todas se alguma estava desligada; senao desliga todas (como o olho do Photoshop). */
+function alternar(atual: ReadonlySet<string>, chaves: readonly string[]): Set<string> {
+  const n = new Set(atual);
+  const todas = chaves.every((k) => n.has(k));
+  for (const k of chaves) {
+    if (todas) n.delete(k);
+    else n.add(k);
+  }
+  return n;
+}
+
 /** Em qual placa a peca esta, ou -1. */
 export const placaDe = (placas: readonly ReadonlyMap<string, unknown>[], chave: string): number =>
   placas.findIndex((p) => p.has(chave));
 
 export const useInterface = create<EstadoInterface>()((set) => ({
   espaco: 'desenhar',
+  selecao: [],
   selecionada: null,
+  ocultas: new Set(),
+  travadas: new Set(),
   ferramenta: 'selecionar',
   explode: 0,
   camadas: { corpo: true, chapa: true, traseira: true },
@@ -123,12 +161,12 @@ export const useInterface = create<EstadoInterface>()((set) => ({
       // acomoda; cair para "mover" evita uma ferramenta ativa que nao faz nada.
       ferramenta: espaco !== 'desenhar' && s.ferramenta === 'tamanho' ? 'mover' : s.ferramenta,
     })),
-  // Selecionar uma peca que esta em outra placa leva a cena ate ela.
-  selecionar: (selecionada) =>
-    set((s) => {
-      const i = selecionada ? placaDe(s.placas, selecionada) : -1;
-      return i >= 0 ? { selecionada, placaVista: i } : { selecionada };
-    }),
+  selecionar: (chave) => set((s) => comSelecao(s, chave ? [chave] : [])),
+  definirSelecao: (chaves) => set((s) => comSelecao(s, chaves)),
+  clicarObjeto: (chave, mods, ordem) =>
+    set((s) => comSelecao(s, clicar(s.selecao, chave, mods, useProjeto.getState().grupos, ordem))),
+  alternarOcultas: (chaves) => set((s) => ({ ocultas: alternar(s.ocultas, chaves) })),
+  alternarTravadas: (chaves) => set((s) => ({ travadas: alternar(s.travadas, chaves) })),
   setFerramenta: (ferramenta) => set({ ferramenta }),
   setExplode: (explode) => set({ explode }),
   setCamadas: (camadas) => set({ camadas }),

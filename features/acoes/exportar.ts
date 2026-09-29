@@ -171,16 +171,17 @@ export async function baixarPacote(m: Modelo, o: Orcamento): Promise<void> {
 /* ------------------------------------------------------------- placa inteira */
 
 /** Todas as pecas que podem ir para a placa: letras do letreiro e objetos STL. */
-function pecasDaPlaca(m: Modelo): PecaPlaca[] {
+function pecasDaPlaca(m: Modelo, so?: ReadonlySet<string>): PecaPlaca[] {
   return [
     ...m.letras.flatMap((l) => {
+      if (so && !so.has(l.chave)) return [];
       const geo = partToGeometry(l.part);
       if (!geo) return [];
       const posicoes = posicoesDaGeometria(geo);
       geo.dispose();
       return [{ chave: l.chave, nome: l.nome, posicoes, contorno: l.part.contorno }];
     }),
-    ...m.objetos.map((o) => ({ chave: o.chave, nome: o.nome, posicoes: o.posicoes, contorno: o.contorno })),
+    ...m.objetos.filter((o) => !so || so.has(o.chave)).map((o) => ({ chave: o.chave, nome: o.nome, posicoes: o.posicoes, contorno: o.contorno })),
   ];
 }
 
@@ -228,4 +229,31 @@ export async function baixarTodasAsPlacas(m: Modelo): Promise<void> {
 /** Um objeto STL importado, de volta como veio (centrado, assentado em Z=0). */
 export function baixarObjeto(o: ObjetoModelo): void {
   baixar(`${seguro(o.nome)}.stl`, posicoesParaSTL(o.posicoes, o.nome), 'model/stl');
+}
+
+/* ------------------------------------------------------------- selecao / grupo */
+
+/**
+ * Onde cada peca da selecao sai no arquivo. Em Imprimir, com todas na placa que
+ * esta na tela, na posicao da placa; senao, na posicao do letreiro.
+ */
+function colocacoesDaSelecao(chaves: readonly string[]): Colocada[] {
+  const ui = useInterface.getState();
+  const placa = ui.placas[ui.placaVista];
+  if (ui.espaco === 'imprimir' && placa && chaves.every((k) => placa.has(k))) return chaves.map((k) => placa.get(k)!);
+  return chaves.map((k) => ({ nome: k, dx: 0, dy: 0, giro: 0 }));
+}
+
+/** A selecao num STL so: as pecas juntas, cada uma onde esta. */
+export function baixarSelecaoSTL(m: Modelo, chaves: readonly string[], nome: string): void {
+  const objs = montarPlaca(pecasDaPlaca(m, new Set(chaves)), colocacoesDaSelecao(chaves));
+  if (!objs.length) return;
+  baixar(`${seguro(m.nomeProjeto)}_${seguro(nome)}.stl`, posicoesParaSTL(juntar(objs), nome), 'model/stl');
+}
+
+/** A selecao em 3MF: cada peca um objeto separado, na posicao em que esta. */
+export async function baixarSelecao3MF(m: Modelo, chaves: readonly string[], nome: string): Promise<void> {
+  const objs = montarPlaca(pecasDaPlaca(m, new Set(chaves)), colocacoesDaSelecao(chaves));
+  if (!objs.length) return;
+  baixar(`${seguro(m.nomeProjeto)}_${seguro(nome)}.3mf`, await gerar3mf(objs));
 }

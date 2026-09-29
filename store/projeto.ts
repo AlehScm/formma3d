@@ -10,6 +10,7 @@ import type { ModoSeparacao, ModoTraco, TracoResolvido } from '@/lib/import/peca
 import type { Aviso, DesenhoBruto } from '@/lib/import/pdf-ops';
 import { IMPRESSORAS, acharImpressora } from '@/lib/print/impressoras';
 import { SEM_EDICAO, type Edicao } from '@/lib/geom/pecaEditada';
+import { agrupar, desagrupar, type Grupo } from '@/lib/cena/grupo';
 
 /**
  * Estado do PROJETO: tudo que define o letreiro e o que ele custa.
@@ -142,6 +143,8 @@ export interface EstadoProjeto {
   cfg: CustoCfg;
   /** Impressoes feitas fora do app que entram no orcamento. */
   avulsas: PlacaAvulsa[];
+  /** Grupos de pecas (continuam pecas separadas). Valem em Desenhar e Imprimir. */
+  grupos: Grupo[];
   /**
    * O dono da maquina recebe antes a maquina e a luz. Fora do `cfg` de proposito:
    * nao e salvo e volta desligado a cada abertura, para ser escolhido por orcamento.
@@ -162,11 +165,16 @@ export interface AcoesProjeto {
   aplicarPreset: (id: PresetId) => void;
   escolherImpressora: (id: string) => void;
   editarPeca: (chave: string, mudanca: Partial<Edicao>) => void;
+  /** O gizmo de varias pecas: soma o delta de cada uma numa atualizacao so. */
+  somarEdicoes: (deltas: ReadonlyMap<string, Edicao>) => void;
   resetarPeca: (chave: string) => void;
   /** Liga/desliga uma peca de arquivo, pela chave `arquivo:nome`. */
   alternarPecaImportada: (chave: string) => void;
   /** Exclui a peca: letra do texto, peca de arquivo ou objeto STL. */
-  removerPeca: (chave: string) => void;
+  removerPeca: (chaves: string | readonly string[]) => void;
+  agruparPecas: (chaves: readonly string[]) => void;
+  desagruparPecas: (chaves: readonly string[]) => void;
+  renomearGrupo: (id: string, nome: string) => void;
   /** Traz de volta tudo o que foi excluido (texto e arquivos). */
   restaurarPecas: () => void;
   /**
@@ -240,6 +248,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
   removidas: new Set(),
   cfg: PADRAO,
   avulsas: [],
+  grupos: [],
   pagarMaquina: false,
 
   definir: (k, v) => set({ [k]: v } as Partial<EstadoProjeto>),
@@ -284,6 +293,16 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
       return { edicoes: n };
     }),
 
+  somarEdicoes: (deltas) =>
+    set((s) => {
+      const n = new Map(s.edicoes);
+      for (const [chave, t] of deltas) {
+        const a = n.get(chave) ?? SEM_EDICAO;
+        n.set(chave, { dx: a.dx + t.dx, dy: a.dy + t.dy, giro: a.giro + t.giro, ex: a.ex * t.ex, ey: a.ey * t.ey });
+      }
+      return { edicoes: n };
+    }),
+
   resetarPeca: (chave) =>
     set((s) => {
       const n = new Map(s.edicoes);
@@ -291,24 +310,38 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
       return { edicoes: n };
     }),
 
-  removerPeca: (chave) =>
+  removerPeca: (chaves) =>
     set((s) => {
-      const c = lerChave(chave);
-      if (c.tipo === 'stl') return { objetos3d: s.objetos3d.filter((o) => o.id !== c.id) };
-      if (c.tipo === 'arquivo') {
+      const lista = typeof chaves === 'string' ? [chaves] : [...chaves];
+      let objetos3d = s.objetos3d;
+      let arquivos = s.arquivos;
+      const removidas = new Set(s.removidas);
+      for (const chave of lista) {
+        const c = lerChave(chave);
+        if (c.tipo === 'stl') objetos3d = objetos3d.filter((o) => o.id !== c.id);
         // Mesmo lugar dos quadradinhos de Origem: excluir aqui aparece desligado la.
-        return {
-          arquivos: s.arquivos.map((a) => (a.id === c.arquivo ? { ...a, desativadas: new Set(a.desativadas).add(c.nome) } : a)),
-        };
+        else if (c.tipo === 'arquivo')
+          arquivos = arquivos.map((a) => (a.id === c.arquivo ? { ...a, desativadas: new Set(a.desativadas).add(c.nome) } : a));
+        else removidas.add(chave);
       }
-      return { removidas: new Set(s.removidas).add(chave) };
+      // Quem saiu sai tambem do grupo; grupo que ficar com 1 se desfaz.
+      const grupos = s.grupos
+        .map((g) => ({ ...g, membros: g.membros.filter((k) => !lista.includes(k)) }))
+        .filter((g) => g.membros.length >= 2);
+      return { objetos3d, arquivos, removidas, grupos };
     }),
+
+  agruparPecas: (chaves) =>
+    set((s) => ({ grupos: agrupar(s.grupos, chaves, novoId(), `Grupo ${s.grupos.length + 1}`) })),
+  desagruparPecas: (chaves) => set((s) => ({ grupos: desagrupar(s.grupos, chaves) })),
+  renomearGrupo: (id, nome) =>
+    set((s) => ({ grupos: s.grupos.map((g) => (g.id === id ? { ...g, nome: nome.trim() || g.nome } : g)) })),
 
   restaurarPecas: () =>
     set((s) => ({ removidas: new Set(), arquivos: s.arquivos.map((a) => ({ ...a, desativadas: new Set<string>() })) })),
 
   definirTexto: (texto) =>
-    set((s) => (texto === s.texto ? {} : { texto, removidas: new Set(), edicoes: new Map() })),
+    set((s) => (texto === s.texto ? {} : { texto, removidas: new Set(), edicoes: new Map(), grupos: [] })),
 
   alternarPecaImportada: (chave) =>
     set((s) => {
@@ -341,7 +374,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
         arquivos: substituir ? [a] : [...s.arquivos, a],
         arquivoAtivo: a.id,
         // Substituir troca as pecas: edicao antiga apontaria para o nada.
-        ...(substituir ? { edicoes: new Map() } : {}),
+        ...(substituir ? { edicoes: new Map(), grupos: [] } : {}),
         erro: null,
       };
     }),
@@ -359,7 +392,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
 
   adicionarObjeto3d: (o) => set((s) => ({ objetos3d: [...s.objetos3d, { ...o, id: novoId() }], erro: null })),
 
-  fecharImport: () => set({ arquivos: [], arquivoAtivo: null, edicoes: new Map(), erro: null }),
+  fecharImport: () => set({ arquivos: [], arquivoAtivo: null, edicoes: new Map(), grupos: [], erro: null }),
 
   guardarFonteTexto: (chave, fonte) =>
     set((s) => {
@@ -370,6 +403,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
       return {
         fontesTexto: n,
         edicoes: new Map(),
+        grupos: [],
         arquivos: s.arquivos.map((a) => (a.desenho.textos?.length ? { ...a, desativadas: new Set<string>() } : a)),
       };
     }),

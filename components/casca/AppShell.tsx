@@ -11,6 +11,7 @@ import { PainelImprimir } from '@/features/impressao/PainelImprimir';
 import { FolhaOrcamento, PainelOrcamento } from '@/features/orcamento/Orcamento';
 import { cx } from '@/components/ui';
 import { BarraTopo } from './BarraTopo';
+import { PainelObjetos } from './PainelObjetos';
 import { BarraStatus } from './BarraStatus';
 import { Inspetor } from './Inspetor';
 import { EntradasArquivo } from './EntradasArquivo';
@@ -64,7 +65,13 @@ export function AppShell() {
             )}
           </main>
 
-          {!orcamento && <Inspetor />}
+          {/* Coluna da direita, como no Photoshop: camadas em cima, propriedades embaixo. */}
+          {!orcamento && (
+            <aside aria-label="Objetos e propriedades" className="flex w-[300px] shrink-0 flex-col border-l border-borda bg-superficie">
+              <PainelObjetos />
+              <Inspetor />
+            </aside>
+          )}
         </div>
 
         <BarraStatus />

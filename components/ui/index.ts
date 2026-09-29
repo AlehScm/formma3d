@@ -20,3 +20,4 @@ export { MaisOpcoes, CabecalhoPainel } from './Secao';
 export { Categorias, type Categoria } from './Categorias';
 export { Abas, type Aba } from './Abas';
 export { Alerta, Cartao, Selo, Metrica, ListaValores, Vazio, BarraFerramentas, Separador, corDoTom, type Tom } from './Exibicao';
+export { MenuContexto, ItemContexto, SubmenuContexto, SeparadorContexto, RotuloContexto } from './MenuContexto';

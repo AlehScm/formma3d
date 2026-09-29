@@ -20,6 +20,8 @@ import {
   IconeOriginal,
   IconeTravado,
   IconeExcluir,
+  IconeAgrupar,
+  IconeDesagrupar,
   Dica,
 } from '@/components/ui';
 import { brl } from '@/lib/cost/calc';
@@ -31,6 +33,7 @@ import { useProjeto } from '@/store/projeto';
 import { placaDe, useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type LetraComPeca } from '@/modelo/Modelo';
 import { baixarObjeto, baixarSTL } from '@/features/acoes/exportar';
+import { agruparSelecao, desagruparSelecao, excluirSelecao, exportarSelecao, grupoDaSelecao } from '@/features/acoes/selecao';
 
 /**
  * Inspetor: propriedades do que esta selecionado. Sem selecao, o resumo do
@@ -43,6 +46,7 @@ export function Inspetor() {
   const m = useModelo();
   const espaco = useInterface((s) => s.espaco);
   const selecionada = useInterface((s) => s.selecionada);
+  const varias = useInterface((s) => s.selecao.length > 1);
   const l = selecionada ? m.letras.find((x) => x.chave === selecionada) : undefined;
   const o = selecionada ? m.objetos.find((x) => x.chave === selecionada) : undefined;
 
@@ -54,9 +58,17 @@ export function Inspetor() {
       : undefined;
 
   return (
-    <aside aria-label="Inspetor" className="flex w-[300px] shrink-0 flex-col border-l border-borda bg-superficie">
-      {espaco === 'imprimir' && naPlaca ? <InspetorImpressao p={naPlaca} /> : l ? <InspetorPeca l={l} /> : <Resumo />}
-    </aside>
+    <section aria-label="Inspetor" className="flex min-h-0 flex-1 flex-col">
+      {varias ? (
+        <InspetorConjunto />
+      ) : espaco === 'imprimir' && naPlaca ? (
+        <InspetorImpressao p={naPlaca} />
+      ) : l ? (
+        <InspetorPeca l={l} />
+      ) : (
+        <Resumo />
+      )}
+    </section>
   );
 }
 
@@ -268,6 +280,82 @@ function InspetorImpressao({ p }: { p: PecaDePlaca }) {
 }
 
 /** Sem selecao: o letreiro inteiro de relance. */
+/**
+ * Varias pecas marcadas: as informacoes delas juntas (medida do conjunto, soma de
+ * filamento, tempo e preco) e o que da para fazer com elas.
+ */
+function InspetorConjunto() {
+  const m = useModelo();
+  const selecao = useInterface((s) => s.selecao);
+  const espaco = useInterface((s) => s.espaco);
+  const definirSelecao = useInterface((s) => s.definirSelecao);
+  const grupos = useProjeto((s) => s.grupos);
+  const custos = useCustos();
+
+  const itens = selecao.flatMap((k) => {
+    const l = m.letras.find((x) => x.chave === k);
+    if (l) return [{ chave: k, contorno: l.part.contorno }];
+    const o = m.objetos.find((x) => x.chave === k);
+    return o ? [{ chave: k, contorno: o.contorno }] : [];
+  });
+  const b = regionBounds(itens.flatMap((i) => i.contorno));
+  const soma = (f: (o: NonNullable<ReturnType<typeof custos.porPeca.get>>) => number) =>
+    itens.reduce((t, i) => t + (custos.porPeca.has(i.chave) ? f(custos.porPeca.get(i.chave)!) : 0), 0);
+  const naoCabem = itens.filter((i) => m.naoCabem.has(i.chave)).length;
+  const grupo = grupoDaSelecao();
+  const temGrupo = selecao.some((k) => grupos.some((g) => g.membros.includes(k)));
+
+  return (
+    <>
+      <CabecalhoPainel
+        titulo={grupo ? <>Grupo “{grupo.nome}”</> : `${itens.length} peças`}
+        subtitulo={`${formatarNumero(b.w)} × ${formatarNumero(b.h)} mm no letreiro`}
+        acao={<BotaoIcone icone={IconeFechar} rotulo="Desmarcar" atalho="Esc" tamanho="sm" onClick={() => definirSelecao([])} />}
+      />
+      <div className="flex-1 space-y-5 overflow-y-auto p-4">
+        <div className="grid grid-cols-2 gap-4">
+          <Metrica rotulo="Preço junto" valor={brl(soma((o) => o.preco))} tom="sucesso" />
+          <Metrica rotulo="Filamento" valor={formatarPeso(soma((o) => o.gramas))} />
+        </div>
+        <ListaValores
+          densa
+          itens={[
+            { rotulo: 'Peças', valor: String(itens.length) },
+            { rotulo: 'Tempo de máquina', valor: formatarTempo(soma((o) => o.horas)) },
+            { rotulo: 'Custo', valor: brl(soma((o) => o.custo)) },
+            ...(espaco === 'imprimir'
+              ? [{ rotulo: `Não cabem na ${m.mesa.nome.replace('Bambu Lab ', '')}`, valor: String(naoCabem), tom: naoCabem ? ('perigo' as const) : undefined }]
+              : []),
+          ]}
+        />
+        <p className="text-micro text-texto-3">Soma das peças, sem o preparo da máquina (que é por placa).</p>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          <Botao icone={IconeAgrupar} largura disabled={!!grupo} onClick={agruparSelecao}>
+            Agrupar
+          </Botao>
+          <Botao icone={IconeDesagrupar} largura disabled={!temGrupo} onClick={desagruparSelecao}>
+            Desagrupar
+          </Botao>
+          <Dica conteudo="Cada peça como objeto separado, na posição em que está">
+            <Botao icone={IconeBaixar} largura variante="primario" onClick={() => exportarSelecao(m, '3mf')}>
+              3MF
+            </Botao>
+          </Dica>
+          <Dica conteudo="Todas numa malha só">
+            <Botao icone={IconeBaixar} largura onClick={() => exportarSelecao(m, 'stl')}>
+              STL
+            </Botao>
+          </Dica>
+        </div>
+        <Botao variante="perigo" icone={IconeExcluir} largura onClick={excluirSelecao}>
+          Excluir {itens.length} peças
+        </Botao>
+      </div>
+    </>
+  );
+}
+
 function Resumo() {
   const m = useModelo();
   const o = useOrcamento();
