@@ -168,6 +168,7 @@ function Peca({
   selecao,
   travadas,
   onClicar,
+  relevo,
   registrar,
 }: {
   letras: LetraRender[];
@@ -181,6 +182,7 @@ function Peca({
   selecao: ReadonlySet<string>;
   travadas: ReadonlySet<string>;
   onClicar: (chave: string, mods: ModsClique, menu?: boolean) => void;
+  relevo: RelevoCena | null;
   registrar: (chave: string, o: THREE.Object3D | null) => void;
 }) {
   // As Regions ja carregam a posicao real de cada letra no letreiro (avanco + kerning
@@ -288,6 +290,11 @@ function Peca({
             sel={selecao.has(o.chave)}
             travada={travadas.has(o.chave)}
             onClicar={onClicar}
+            relevo={
+              relevo?.ativo === o.chave
+                ? { triangulos: relevo.objeto === o.chave ? relevo.triangulos : [], onClique: (t, p) => relevo.onClique(o.chave, t, p) }
+                : null
+            }
           />
         </PecaPosicionada>
       ))}
@@ -305,12 +312,15 @@ function MalhaObjeto({
   sel,
   travada,
   onClicar,
+  relevo,
 }: {
   o: ObjetoRender;
   fora: boolean;
   sel: boolean;
   travada: boolean;
   onClicar: (chave: string, mods: ModsClique, menu?: boolean) => void;
+  /** Ferramenta Suavizar relevo ligada neste objeto: o clique procura a marca. */
+  relevo?: { triangulos: readonly number[]; onClique: (tri: number, ponto: [number, number, number]) => void } | null;
 }) {
   const geo = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -319,6 +329,18 @@ function MalhaObjeto({
     return g;
   }, [o.posicoes]);
   useEffect(() => () => geo.dispose(), [geo]);
+  // O que o Suavizar vai tirar, em vermelho por cima da peca.
+  const previa = useMemo(() => {
+    const ts = relevo?.triangulos;
+    if (!ts?.length) return null;
+    const pos = new Float32Array(ts.length * 9);
+    ts.forEach((t, i) => pos.set(o.posicoes.subarray(t * 9, t * 9 + 9), i * 9));
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    return g;
+  }, [relevo?.triangulos, o.posicoes]);
+  useEffect(() => () => previa?.dispose(), [previa]);
   return (
     <>
       <mesh
@@ -328,6 +350,11 @@ function MalhaObjeto({
         onClick={(e) => {
           if (travada) return;
           e.stopPropagation();
+          if (relevo && e.faceIndex != null) {
+            // Geometria nao indexada: faceIndex e o proprio triangulo da sopa.
+            const p = e.object.worldToLocal(e.point.clone());
+            return relevo.onClique(e.faceIndex, [p.x, p.y, p.z]);
+          }
           onClicar(o.chave, modsDe(e));
         }}
         onContextMenu={(e) => {
@@ -344,6 +371,11 @@ function MalhaObjeto({
           emissiveIntensity={sel ? 0.35 : 0}
         />
       </mesh>
+      {previa && (
+        <mesh geometry={previa} renderOrder={2}>
+          <meshBasicMaterial color={COR_NAO_CABE} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
+        </mesh>
+      )}
       {(fora || sel) && <CaixaFootprint contorno={o.contorno} cor={sel ? COR_SELECAO : COR_NAO_CABE} />}
     </>
   );
@@ -395,6 +427,15 @@ function PecaPosicionada({
 }
 
 const SEM_SELECAO: readonly string[] = [];
+
+export interface RelevoCena {
+  /** Objeto com a ferramenta ligada. */
+  ativo: string;
+  /** Objeto e triangulos da ultima busca (a previa). */
+  objeto: string | null;
+  triangulos: readonly number[];
+  onClique: (chave: string, tri: number, ponto: [number, number, number]) => void;
+}
 const SEM_TRAVADAS: ReadonlySet<string> = new Set();
 
 interface MembroGizmo {
@@ -636,6 +677,8 @@ export interface Viewer3DProps {
   /** Soltou o gizmo com varias pecas: o delta de cada uma. */
   onTransformarVarios?: (d: Map<string, Transformacao>) => void;
   onArranjarVarios?: (cs: Colocada[]) => void;
+  /** Suavizar relevo: objeto com a ferramenta ligada, previa e o clique. */
+  relevo?: RelevoCena | null;
   /** Ferramenta do gizmo. 'nenhuma' desliga. */
   ferramenta?: 'nenhuma' | 'mover' | 'girar' | 'escalar';
   /**
@@ -670,6 +713,7 @@ export default function Viewer3D({
   onClicar = () => {},
   onTransformarVarios = () => {},
   onArranjarVarios = () => {},
+  relevo = null,
   ferramenta = 'nenhuma',
   onTransformar = () => {},
   onArranjar = () => {},
@@ -775,6 +819,7 @@ export default function Viewer3D({
         selecao={conjunto}
         travadas={travadas}
         onClicar={onClicar}
+        relevo={relevo}
         registrar={registrar}
       />
 

@@ -22,6 +22,7 @@ import {
   IconeExcluir,
   IconeAgrupar,
   IconeDesagrupar,
+  IconeSuavizar,
   Dica,
 } from '@/components/ui';
 import { brl } from '@/lib/cost/calc';
@@ -33,6 +34,7 @@ import { useProjeto } from '@/store/projeto';
 import { placaDe, useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type LetraComPeca } from '@/modelo/Modelo';
 import { DICA_3MF, DICA_STL, NOTA_FORMATOS, baixarObjeto, baixarSTL } from '@/features/acoes/exportar';
+import { aplicarRelevo, refazerRelevo } from '@/features/acoes/relevo';
 import { agruparSelecao, desagruparSelecao, excluirSelecao, exportarSelecao, grupoDaSelecao } from '@/features/acoes/selecao';
 
 /**
@@ -221,6 +223,85 @@ function TamanhoEixo({ rotulo, base, escala, set }: { rotulo: string; base: numb
   );
 }
 
+/**
+ * Tira marca d'agua em relevo (letras, logo) de uma face plana do STL: clique na
+ * marca ou do lado dela, confira o vermelho e aplique.
+ */
+function SuavizarRelevo({ chave }: { chave: string }) {
+  const ativo = useInterface((s) => s.ferramentaRelevo === chave);
+  const ligar = useInterface((s) => s.definirFerramentaRelevo);
+  const opcoes = useInterface((s) => s.opcoesRelevo);
+  const definirOpcoes = useInterface((s) => s.definirOpcoesRelevo);
+  const relevo = useInterface((s) => (s.relevo?.objeto === chave ? s.relevo.resultado : null));
+  const id = chave.slice(4);
+  const editado = useProjeto((s) => !!s.objetos3d.find((o) => o.id === id)?.original);
+  const restaurar = useProjeto((s) => s.restaurarObjeto);
+  const mudar = (o: Partial<typeof opcoes>) => {
+    definirOpcoes(o);
+    refazerRelevo();
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-micro font-semibold uppercase tracking-wider text-texto-3">Suavizar relevo</p>
+      {!ativo ? (
+        <Botao icone={IconeSuavizar} largura onClick={() => ligar(chave)}>
+          Tirar marca em relevo
+        </Botao>
+      ) : (
+        <>
+          <Alerta tom="acento">Clique na marca, ou na face lisa ao lado dela. O que vai sumir fica vermelho.</Alerta>
+          <CampoNumero
+            rotulo="Altura máx. da marca"
+            dica="Relevo (ou gravação) mais alto que isso não conta como marca"
+            valor={opcoes.alturaMax}
+            set={(v) => mudar({ alturaMax: v })}
+            min={0.2}
+            max={10}
+            passo={0.1}
+            layout="linha"
+          />
+          <CampoNumero
+            rotulo="Raio de busca"
+            dica="Até onde procurar em volta do clique"
+            valor={opcoes.raio}
+            set={(v) => mudar({ raio: v })}
+            min={2}
+            max={500}
+            passo={1}
+            layout="linha"
+          />
+          {relevo &&
+            (relevo.triangulos.length ? (
+              <p className="text-mini text-texto-2">
+                Achei {relevo.pedacos} {relevo.pedacos === 1 ? 'pedaço' : 'pedaços'} de marca,{' '}
+                <span className="tabular font-mono">{formatarNumero(relevo.area / 100, 1)} cm²</span>.
+              </p>
+            ) : (
+              <Alerta tom="atencao">{relevo.aviso}</Alerta>
+            ))}
+          <div className="grid grid-cols-2 gap-1.5">
+            <Botao variante="primario" largura disabled={!relevo?.triangulos.length} onClick={aplicarRelevo}>
+              Aplicar
+            </Botao>
+            <Botao variante="fantasma" largura onClick={() => ligar(null)}>
+              Fechar
+            </Botao>
+          </div>
+        </>
+      )}
+      {editado && (
+        <Botao variante="fantasma" icone={IconeOriginal} largura onClick={() => restaurar(id)}>
+          Restaurar original
+        </Botao>
+      )}
+      <p className="text-micro text-texto-3">
+        Use em modelos seus ou cuja licença permite alterar: a marca de outro designer costuma fazer parte da licença.
+      </p>
+    </div>
+  );
+}
+
 /** Imprimir: em qual maquina a peca cabe, e o STL dela. */
 interface PecaDePlaca {
   chave: string;
@@ -269,6 +350,8 @@ function InspetorImpressao({ p }: { p: PecaDePlaca }) {
         )}
 
         <CustoDaPeca chave={p.chave} />
+
+        {p.chave.startsWith('stl:') && <SuavizarRelevo chave={p.chave} />}
 
         <Botao icone={IconeBaixar} largura onClick={p.baixar}>
           Baixar STL desta peça

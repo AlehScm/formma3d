@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type { Colocada } from '@/lib/print/arranjo';
 import type { DadoReal } from '@/lib/cost/trabalho';
 import { clicar, type Modificadores } from '@/lib/cena/selecao';
+import type { Relevo } from '@/lib/mesh/relevo';
 import { useProjeto } from '@/store/projeto';
 
 /**
@@ -42,6 +43,11 @@ interface EstadoInterface {
   /** So da tela: ocultar e travar nao mudam produto, custo nem exportacao. */
   ocultas: Set<string>;
   travadas: Set<string>;
+  /** Suavizar relevo: objeto STL em que o clique procura a marca (null = desligado). */
+  ferramentaRelevo: string | null;
+  opcoesRelevo: { alturaMax: number; raio: number };
+  /** Ultimo clique e o que ele achou: a previa em vermelho. */
+  relevo: { objeto: string; tri: number; ponto: [number, number, number]; resultado: Relevo } | null;
   ferramenta: Ferramenta;
   explode: number;
   camadas: CamadasVisiveis;
@@ -85,6 +91,9 @@ interface EstadoInterface {
   /** Clique numa peca, no 3D ou no painel, com Ctrl/Shift. `ordem` e a do painel. */
   clicarObjeto: (chave: string, mods: Modificadores, ordem: readonly string[]) => void;
   alternarOcultas: (chaves: readonly string[]) => void;
+  definirFerramentaRelevo: (chave: string | null) => void;
+  definirOpcoesRelevo: (o: Partial<{ alturaMax: number; raio: number }>) => void;
+  definirRelevo: (r: EstadoInterface['relevo']) => void;
   alternarTravadas: (chaves: readonly string[]) => void;
   setFerramenta: (f: Ferramenta) => void;
   setExplode: (v: number) => void;
@@ -136,6 +145,9 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   selecionada: null,
   ocultas: new Set(),
   travadas: new Set(),
+  ferramentaRelevo: null,
+  opcoesRelevo: { alturaMax: 2, raio: 40 },
+  relevo: null,
   ferramenta: 'selecionar',
   explode: 0,
   camadas: { corpo: true, chapa: true, traseira: true },
@@ -166,6 +178,9 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   clicarObjeto: (chave, mods, ordem) =>
     set((s) => comSelecao(s, clicar(s.selecao, chave, mods, useProjeto.getState().grupos, ordem))),
   alternarOcultas: (chaves) => set((s) => ({ ocultas: alternar(s.ocultas, chaves) })),
+  definirFerramentaRelevo: (ferramentaRelevo) => set({ ferramentaRelevo, relevo: null }),
+  definirOpcoesRelevo: (o) => set((s) => ({ opcoesRelevo: { ...s.opcoesRelevo, ...o } })),
+  definirRelevo: (relevo) => set({ relevo }),
   alternarTravadas: (chaves) => set((s) => ({ travadas: alternar(s.travadas, chaves) })),
   setFerramenta: (ferramenta) => set({ ferramenta }),
   setExplode: (explode) => set({ explode }),

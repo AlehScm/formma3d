@@ -31,6 +31,7 @@ import { useInterface, type Ferramenta } from '@/store/interface';
 import { SEM_EDICAO } from '@/lib/geom/pecaEditada';
 import { MenuObjetos } from '@/components/casca/MenuObjetos';
 import { ordemObjetos } from '@/features/acoes/selecao';
+import { procurarRelevo } from '@/features/acoes/relevo';
 import type { Colocada } from '@/lib/print/arranjo';
 
 // O canvas WebGL nao pode ser renderizado no servidor.
@@ -64,6 +65,8 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   const clicarObjeto = useInterface((s) => s.clicarObjeto);
   const ocultas = useInterface((s) => s.ocultas);
   const travadas = useInterface((s) => s.travadas);
+  const ferramentaRelevo = useInterface((s) => s.ferramentaRelevo);
+  const relevo = useInterface((s) => s.relevo);
   const ferramenta = useInterface((s) => s.ferramenta);
   const setFerramenta = useInterface((s) => s.setFerramenta);
   const explode = useInterface((s) => s.explode);
@@ -155,7 +158,13 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
           if (menu && selecao.includes(chave)) return;
           clicarObjeto(chave, menu ? {} : mods, ordemObjetos(m));
         }}
-        ferramenta={selecao.length ? GIZMO[ferramenta] : 'nenhuma'}
+        // Com o Suavizar ligado, o clique e da ferramenta: o gizmo sai do caminho.
+        ferramenta={selecao.length && !ferramentaRelevo ? GIZMO[ferramenta] : 'nenhuma'}
+        relevo={
+          naPlaca && ferramentaRelevo
+            ? { ativo: ferramentaRelevo, objeto: relevo?.objeto ?? null, triangulos: relevo?.resultado.triangulos ?? [], onClique: procurarRelevo }
+            : null
+        }
         pedidoEnquadrar={pedidoEnquadrar}
         // Na placa a transformacao so acomoda: nao toca no produto.
         onArranjar={(_, c) => posicionarNoArranjo(c)}

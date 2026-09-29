@@ -58,11 +58,19 @@ export interface Objeto3d {
   /** Sopa de triangulos em mm, centrada em XY e assentada em Z=0. */
   posicoes: Float32Array;
   alturaZ: number;
+  /** A malha como veio do arquivo, guardada na primeira edicao (Suavizar relevo). */
+  original?: Float32Array;
 }
 
 /** Chave de peca: `arquivo:nome` (importada), `stl:id` (objeto 3D) ou `nome#pos` (texto). */
 export { chavePecaArquivo } from '@/lib/import/fila';
 export const chaveObjeto3d = (id: string) => `stl:${id}`;
+
+function alturaDe(pos: Float32Array): number {
+  let z = 0;
+  for (let i = 2; i < pos.length; i += 3) z = Math.max(z, pos[i]!);
+  return z;
+}
 export function lerChave(chave: string): { tipo: 'stl'; id: string } | { tipo: 'arquivo'; arquivo: string; nome: string } | { tipo: 'texto' } {
   if (chave.startsWith('stl:')) return { tipo: 'stl', id: chave.slice(4) };
   const i = chave.indexOf(':');
@@ -190,6 +198,9 @@ export interface AcoesProjeto {
   ajustarArquivo: (id: string, mudanca: Partial<Omit<ArquivoImportado, 'id'>>) => void;
   removerArquivo: (id: string) => void;
   adicionarObjeto3d: (o: Omit<Objeto3d, 'id'>) => void;
+  /** Troca a malha de um objeto STL (guardando a original para desfazer). */
+  editarMalhaObjeto: (id: string, posicoes: Float32Array) => void;
+  restaurarObjeto: (id: string) => void;
   guardarFonteTexto: (chave: string, fonte: Font) => void;
   /** Fecha todos os arquivos e volta para o texto. */
   fecharImport: () => void;
@@ -391,6 +402,18 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
     }),
 
   adicionarObjeto3d: (o) => set((s) => ({ objetos3d: [...s.objetos3d, { ...o, id: novoId() }], erro: null })),
+  editarMalhaObjeto: (id, posicoes) =>
+    set((s) => ({
+      objetos3d: s.objetos3d.map((o) =>
+        o.id === id ? { ...o, posicoes, alturaZ: alturaDe(posicoes), original: o.original ?? o.posicoes } : o
+      ),
+    })),
+  restaurarObjeto: (id) =>
+    set((s) => ({
+      objetos3d: s.objetos3d.map((o) =>
+        o.id === id && o.original ? { ...o, posicoes: o.original, alturaZ: alturaDe(o.original), original: undefined } : o
+      ),
+    })),
 
   fecharImport: () => set({ arquivos: [], arquivoAtivo: null, edicoes: new Map(), grupos: [], erro: null }),
 
