@@ -33,7 +33,16 @@ import { useModelo } from '@/modelo/Modelo';
 import { useCustos } from '@/features/orcamento/custos';
 import { brl } from '@/lib/cost/calc';
 import { arrumarNaPlaca } from '@/features/acoes/arranjo';
-import { baixarObjeto, baixarPlaca3MF, baixarPlacaSTL, baixarSTL, baixarTodasAsPlacas } from '@/features/acoes/exportar';
+import {
+  DICA_3MF,
+  DICA_STL,
+  NOTA_FORMATOS,
+  baixarObjeto,
+  baixarPlaca3MF,
+  baixarPlacaSTL,
+  baixarSTL,
+  baixarTodasAsPlacas,
+} from '@/features/acoes/exportar';
 
 /**
  * Area Imprimir: como o letreiro vai para a maquina. Nada aqui muda o produto --
@@ -184,17 +193,18 @@ function Arranjo() {
             Baixar a placa {placas.length > 1 ? `${vista + 1} de ${placas.length}` : ''} · {naVista} peça(s)
           </p>
           <div className="grid grid-cols-2 gap-1.5">
-            <Dica conteudo="Formato do Bambu Studio: cada peça continua um objeto separado, na posição do arranjo">
+            <Dica conteudo={DICA_3MF}>
               <Botao icone={IconeBaixar} largura variante="primario" onClick={() => void baixarPlaca3MF(m, vista)}>
                 3MF
               </Botao>
             </Dica>
-            <Dica conteudo="Todas as peças numa malha só, já posicionadas">
+            <Dica conteudo={DICA_STL}>
               <Botao icone={IconeBaixar} largura onClick={() => baixarPlacaSTL(m, vista)}>
                 STL
               </Botao>
             </Dica>
           </div>
+          <p className="text-micro text-texto-3">{NOTA_FORMATOS}</p>
           {placas.length > 1 && (
             <Botao icone={IconeBaixar} largura variante="fantasma" onClick={() => void baixarTodasAsPlacas(m)}>
               Todas as {placas.length} placas (.zip)

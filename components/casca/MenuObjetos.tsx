@@ -77,12 +77,12 @@ function ItensObjetos() {
       </ItemContexto>
       <SeparadorContexto />
       <SubmenuContexto rotulo="Exportar seleção" icone={IconeBaixar} disabled={!n}>
-        <ItemContexto atalho=".3mf" onSelect={() => exportarSelecao(m, '3mf')}>
-          Objetos separados
+        {/* Os dois saem num arquivo so: o que muda e como o Bambu enxerga as pecas. */}
+        <RotuloContexto>Um arquivo com todas as peças</RotuloContexto>
+        <ItemContexto atalho="recomendado" onSelect={() => exportarSelecao(m, '3mf')}>
+          3MF · peças soltas no Bambu
         </ItemContexto>
-        <ItemContexto atalho=".stl" onSelect={() => exportarSelecao(m, 'stl')}>
-          Uma malha só
-        </ItemContexto>
+        <ItemContexto onSelect={() => exportarSelecao(m, 'stl')}>STL · tudo grudado numa peça</ItemContexto>
       </SubmenuContexto>
       <SeparadorContexto />
       <ItemContexto icone={IconeExcluir} atalho="Del" disabled={!n} perigo onSelect={excluirSelecao}>

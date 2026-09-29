@@ -30,7 +30,16 @@ export function baixar(nome: string, data: BlobPart, tipo?: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-export const seguro = (s: string): string => (s || 'letra').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'letra';
+/**
+ * 3MF x STL em palavras de cliente. Os dois saem num arquivo SO: o que muda e como
+ * o Bambu enxerga as pecas la dentro. "Objetos separados" fazia parecer que o 3MF
+ * baixava um arquivo por peca.
+ */
+export const DICA_3MF = 'Um arquivo só. No Bambu, cada peça continua solta: dá para mover, girar ou apagar uma sem mexer nas outras.';
+export const DICA_STL = 'Um arquivo só. No Bambu, todas as peças viram um objeto único, grudadas na posição em que estão.';
+export const NOTA_FORMATOS = 'Os dois baixam um arquivo só. 3MF: peças soltas no Bambu. STL: tudo grudado numa peça.';
+
+export const seguro =(s: string): string => (s || 'letra').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'letra';
 
 const regioesDeCorte = (letras: LetraComPeca[]): Region =>
   letras.flatMap((l) => l.part.extras.flatMap((e) => (e.kind === 'cut' ? e.region : [])));

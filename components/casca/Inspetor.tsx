@@ -32,7 +32,7 @@ import { useCustos } from '@/features/orcamento/custos';
 import { useProjeto } from '@/store/projeto';
 import { placaDe, useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type LetraComPeca } from '@/modelo/Modelo';
-import { baixarObjeto, baixarSTL } from '@/features/acoes/exportar';
+import { DICA_3MF, DICA_STL, NOTA_FORMATOS, baixarObjeto, baixarSTL } from '@/features/acoes/exportar';
 import { agruparSelecao, desagruparSelecao, excluirSelecao, exportarSelecao, grupoDaSelecao } from '@/features/acoes/selecao';
 
 /**
@@ -337,17 +337,18 @@ function InspetorConjunto() {
           <Botao icone={IconeDesagrupar} largura disabled={!temGrupo} onClick={desagruparSelecao}>
             Desagrupar
           </Botao>
-          <Dica conteudo="Cada peça como objeto separado, na posição em que está">
+          <Dica conteudo={DICA_3MF}>
             <Botao icone={IconeBaixar} largura variante="primario" onClick={() => exportarSelecao(m, '3mf')}>
               3MF
             </Botao>
           </Dica>
-          <Dica conteudo="Todas numa malha só">
+          <Dica conteudo={DICA_STL}>
             <Botao icone={IconeBaixar} largura onClick={() => exportarSelecao(m, 'stl')}>
               STL
             </Botao>
           </Dica>
         </div>
+        <p className="text-micro text-texto-3">{NOTA_FORMATOS}</p>
         <Botao variante="perigo" icone={IconeExcluir} largura onClick={excluirSelecao}>
           Excluir {itens.length} peças
         </Botao>
