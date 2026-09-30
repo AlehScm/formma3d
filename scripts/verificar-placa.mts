@@ -22,6 +22,7 @@ import { parseFont, textToLetters, normalizeLetters } from '../lib/text/glyphs';
 import { enfileirarArquivos, type ArquivoNaFila } from '../lib/import/fila';
 import { PADRAO, calibrar, dividirEntreSocios, esquecerCalibracao, gramasEstimadas, orcar, type Insumos } from '../lib/cost/calc';
 import { custosDoTrabalho } from '../lib/cost/trabalho';
+import { lerSalvo, paraSalvar } from '../lib/cost/salvar';
 import { formatarTempoHM, lerTempo } from '../components/ui/formato';
 import { useProjeto, lerChave } from '../store/projeto';
 
@@ -377,6 +378,25 @@ async function main() {
     ok('ligado: dono recebe maquina + energia + a parte dele', perto(comMaq[1]!, me + (o.preco - me) / 3, 1e-9) && perto(comMaq[0]!, (o.preco - me) / 3, 1e-9));
     ok('a soma das partes e o preco', perto(comMaq.reduce((a, b) => a + b, 0), o.preco, 1e-9) && perto(iguais.reduce((a, b) => a + b, 0), o.preco, 1e-9));
     ok('um socio so recebe tudo', perto(dividirEntreSocios(o.preco, me, 1, 0, true)[0]!, o.preco, 1e-9));
+  }
+
+  console.log('\n== configuracoes de custo salvas no navegador ==');
+  {
+    // O caso real: configuracao inteira salva antes de mudar os padroes (rolo 110,
+    // falha 8%, mao de obra 30 com preparo 10 e acabamento 5) e o custo de maquina
+    // que o usuario mudou para 1,50.
+    const antigo = { ...PADRAO, precoRolo: 110, taxaFalha: 8, valorHora: 30, setupMin: 10, posMin: 5, custoMaquina: 1.5 };
+    const lido = lerSalvo(JSON.parse(JSON.stringify(antigo)));
+    const cfg = { ...PADRAO, ...lido };
+    ok('padrao antigo salvo volta a seguir o padrao novo', cfg.precoRolo === 100 && cfg.taxaFalha === 3 && cfg.valorHora === 0 && cfg.setupMin === 0 && cfg.posMin === 0, JSON.stringify(lido));
+    ok('o que o usuario personalizou fica', cfg.custoMaquina === 1.5);
+    const gravado = paraSalvar(cfg);
+    ok('grava so o que mudou', gravado.versao === 2 && JSON.stringify(gravado.cfg) === JSON.stringify({ custoMaquina: 1.5 }), JSON.stringify(gravado.cfg));
+    ok('ida e volta no formato novo', JSON.stringify({ ...PADRAO, ...lerSalvo(JSON.parse(JSON.stringify(gravado))) }) === JSON.stringify(cfg));
+    // No formato novo, valor igual a um padrao antigo foi escolha do usuario: fica.
+    ok('no formato novo, escolher 110 de proposito fica 110', lerSalvo({ versao: 2, cfg: { precoRolo: 110 } }).precoRolo === 110);
+    ok('lixo no navegador nao quebra', JSON.stringify(lerSalvo('x')) === '{}' && JSON.stringify(lerSalvo(null)) === '{}');
+    ok('amostras no formato antigo (so a contagem) recomecam', !('amostras' in lerSalvo({ ...antigo, amostras: 5, vazao: 418 })) && !('vazao' in lerSalvo({ ...antigo, amostras: 5, vazao: 418 })));
   }
 
   console.log('\n== aprender com o real ==');

@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type { Font } from 'opentype.js';
 import { PRESETS, type Apoio, type BatenteModo, type ChapaModo, type Fechamento, type PresetId } from '@/lib/geom/modes';
 import { PADRAO, type CustoCfg } from '@/lib/cost/calc';
+import { lerSalvo, paraSalvar } from '@/lib/cost/salvar';
 import type { PlacaAvulsa } from '@/lib/cost/trabalho';
 import type { ResultadoFontesSistema } from '@/lib/text/fontes';
 import type { ModoSeparacao, ModoTraco, TracoResolvido } from '@/lib/import/pecas';
@@ -505,22 +506,18 @@ const CHAVE_CUSTOS = 'formma3d:custos';
  */
 export function lembrarCustos(): () => void {
   try {
-    const salvo = JSON.parse(localStorage.getItem(CHAVE_CUSTOS) ?? 'null') as Partial<CustoCfg> | null;
-    if (salvo && typeof salvo === 'object') {
-      // Versao antiga guardava so a contagem: sem as amostras, recomeca o aprendizado.
-      const ok = Array.isArray(salvo.amostras);
-      if (!Array.isArray(salvo.socios) || !salvo.socios.length) delete salvo.socios;
-      useProjeto.setState((s) => ({
-        cfg: { ...s.cfg, ...salvo, ...(ok ? {} : { amostras: [], vazao: PADRAO.vazao, fatorGramas: 1 }) },
-      }));
-    }
+    const salvo = lerSalvo(JSON.parse(localStorage.getItem(CHAVE_CUSTOS) ?? 'null'));
+    // Por cima do padrao ATUAL: o que o usuario nao mudou acompanha o padrao.
+    useProjeto.setState({ cfg: { ...PADRAO, ...salvo } });
+    // Regrava ja no formato novo (so o que mudou), consertando o que foi salvo inteiro.
+    localStorage.setItem(CHAVE_CUSTOS, JSON.stringify(paraSalvar(useProjeto.getState().cfg)));
   } catch {
     // Sem armazenamento (aba anonima, bloqueado): segue com o padrao.
   }
   return useProjeto.subscribe((s, antes) => {
     if (s.cfg === antes.cfg) return;
     try {
-      localStorage.setItem(CHAVE_CUSTOS, JSON.stringify(s.cfg));
+      localStorage.setItem(CHAVE_CUSTOS, JSON.stringify(paraSalvar(s.cfg)));
     } catch {
       // Idem: nao salvar nao pode travar o app.
     }
