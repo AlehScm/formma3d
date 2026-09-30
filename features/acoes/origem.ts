@@ -74,26 +74,37 @@ export async function usarFonteDoPC(f: FonteSistema): Promise<void> {
 
 /**
  * Abre um arquivo. .ai/.pdf viram pecas do letreiro; .stl e .3mf viram objetos prontos na
- * placa. `substituir` (Abrir desenho) troca os arquivos do letreiro; sem ele
- * (Adicionar arquivo) o novo entra ao lado dos que ja estao.
+ * placa. Os quatro formatos passam por aqui, pelos dois caminhos: `substituir` (Abrir)
+ * comeca o projeto a partir do arquivo; sem ele (Adicionar) o novo entra ao lado.
+ * O projeto so e limpo DEPOIS que o arquivo foi lido: arquivo quebrado nao apaga nada.
  */
+/** O que "Abrir" e "Adicionar" aceitam: uma lista so, para seletor, menus e botoes. */
+export const FORMATOS = ['.ai', '.pdf', '.stl', '.3mf'] as const;
+export const FORMATOS_TEXTO = FORMATOS.join(' ');
+
+/** Abrir = projeto novo a partir do arquivo: letreiro, objetos, grupos, placas e selecao. */
+function comecarDoZero(): void {
+  S().limparProjeto();
+  const ui = useInterface.getState();
+  ui.limparArranjo();
+  ui.definirSelecao([]);
+}
+
 export async function abrirArquivo(file: File, substituir: boolean): Promise<void> {
   const s = S();
   s.definir('carregando', true);
   s.definir('erro', null);
   try {
-    if (/\.3mf$/i.test(file.name)) {
-      // Cada peca do 3MF (item do build) vira um objeto proprio na placa.
-      for (const o of await lerTresMf(await file.arrayBuffer(), file.name)) {
-        s.adicionarObjeto3d({ nome: o.nome, posicoes: o.malha.posicoes, alturaZ: o.malha.max[2] });
-      }
-      useInterface.getState().setEspaco('imprimir');
-      return;
-    }
-    if (/\.stl$/i.test(file.name)) {
-      const m = lerStl(await file.arrayBuffer());
-      s.adicionarObjeto3d({ nome: file.name.replace(/\.stl$/i, ''), posicoes: m.posicoes, alturaZ: m.max[2] });
-      // O STL so existe na placa: mostra la, senao ele "some" depois de importado.
+    // Objeto pronto (STL, 3MF): cada peca vira um objeto na placa.
+    const objetos = /\.3mf$/i.test(file.name)
+      ? (await lerTresMf(await file.arrayBuffer(), file.name)).map((o) => ({ nome: o.nome, malha: o.malha }))
+      : /\.stl$/i.test(file.name)
+        ? [{ nome: file.name.replace(/\.stl$/i, ''), malha: lerStl(await file.arrayBuffer()) }]
+        : null;
+    if (objetos) {
+      if (substituir) comecarDoZero();
+      for (const o of objetos) s.adicionarObjeto3d({ nome: o.nome, posicoes: o.malha.posicoes, alturaZ: o.malha.max[2] });
+      // Objeto pronto so existe na placa: mostra la, senao ele "some" depois de importado.
       useInterface.getState().setEspaco('imprimir');
       return;
     }
@@ -103,6 +114,7 @@ export async function abrirArquivo(file: File, substituir: boolean): Promise<voi
       s.definir('erro', r.avisos[0]?.msg ?? 'Não encontrei contornos neste arquivo.');
       return;
     }
+    if (substituir) comecarDoZero();
     s.adicionarArquivo(
       {
         desenho: r.desenho,

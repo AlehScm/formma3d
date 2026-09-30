@@ -21,6 +21,7 @@ import { brl } from '@/lib/cost/calc';
 import { useProjeto } from '@/store/projeto';
 import { useInterface, type Espaco } from '@/store/interface';
 import { useModelo, useOrcamento } from '@/modelo/Modelo';
+import { FORMATOS_TEXTO } from '@/features/acoes/origem';
 import {
   baixarChapaDXF,
   baixarChapaPDF,
@@ -89,11 +90,12 @@ export function BarraTopo() {
               </button>
             }
           >
-            <MenuItem icone={IconeAbrir} detalhe=".ai .pdf" onSelect={() => abrirDesenho(true)}>
-              Abrir desenho
+            {/* Mesmos formatos e mesmo caminho: Abrir comeca do zero, Adicionar poe ao lado. */}
+            <MenuItem icone={IconeAbrir} detalhe={FORMATOS_TEXTO} onSelect={() => abrirDesenho(true)}>
+              Abrir arquivo (projeto novo)
             </MenuItem>
-            <MenuItem icone={IconeNovo} detalhe=".ai .pdf .stl .3mf" onSelect={() => abrirDesenho(false)}>
-              Adicionar arquivo ao projeto
+            <MenuItem icone={IconeNovo} detalhe={FORMATOS_TEXTO} onSelect={() => abrirDesenho(false)}>
+              Adicionar ao projeto
             </MenuItem>
             <MenuItem icone={IconeNovo} onSelect={fecharImport} disabled={!imp}>
               Novo letreiro de texto

@@ -30,7 +30,7 @@ import type { ModoSeparacao, ModoTraco } from '@/lib/import/pecas';
 import { useProjeto, chavePecaArquivo } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
-import { buscarFonteDoTexto, listarFontesDoPC, trocarFonteWeb, trocarPagina, usarFonteDoPC } from '@/features/acoes/origem';
+import { FORMATOS_TEXTO, buscarFonteDoTexto, listarFontesDoPC, trocarFonteWeb, trocarPagina, usarFonteDoPC } from '@/features/acoes/origem';
 import { chaveFonte } from '@/lib/import/texto-em-curvas';
 
 /**
@@ -211,7 +211,7 @@ function Origem() {
             })}
           </ul>
           <Botao tamanho="sm" variante="fantasma" icone={IconeAbrir} onClick={() => abrirDesenho(false)} largura>
-            Adicionar arquivo (.ai, .pdf, .stl ou .3mf)
+            Adicionar ao projeto ({FORMATOS_TEXTO})
           </Botao>
 
           {ativo && <AjustesArquivo id={ativo.id} titulo={varios ? ativo.nomeArquivo : undefined} />}
@@ -267,7 +267,7 @@ function Origem() {
             <IconeTexto className="size-4 text-texto-3" aria-hidden />
             <span className="flex-1 text-mini text-texto-3">Tem o desenho pronto?</span>
             <Botao tamanho="sm" variante="fantasma" icone={IconeAbrir} onClick={() => abrirDesenho(true)}>
-              Abrir .ai / .pdf
+              Abrir arquivo
             </Botao>
           </div>
         </>

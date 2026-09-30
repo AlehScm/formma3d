@@ -9,6 +9,8 @@
  * Unidade assumida: mm (e o que Bambu Studio, Prusa e Cura usam).
  */
 
+import { ErroImport } from './erro';
+
 export interface MalhaStl {
   /** x,y,z de cada vertice, 3 vertices por triangulo. */
   posicoes: Float32Array;
@@ -72,7 +74,7 @@ function lerAscii(buf: ArrayBuffer): Float32Array {
  */
 export function lerStl(buf: ArrayBuffer): MalhaStl {
   const p = ehBinario(buf) ? lerBinario(buf) : lerAscii(buf);
-  if (!p.length || p.some((x) => !Number.isFinite(x))) throw new Error('STL vazio ou corrompido.');
+  if (!p.length || p.some((x) => !Number.isFinite(x))) throw new ErroImport('STL vazio ou corrompido.');
   return assentar(p);
 }
 

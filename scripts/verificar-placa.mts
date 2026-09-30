@@ -194,7 +194,7 @@ async function main() {
 
     let erro = '';
     try {
-      await lerTresMf(new TextEncoder().encode('isto nao e zip').buffer as ArrayBuffer);
+      await lerTresMf(new TextEncoder().encode('isto nao e zip').buffer as ArrayBuffer, 'x.3mf');
     } catch (e) {
       erro = (e as Error).message;
     }

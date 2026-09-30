@@ -1,3 +1,4 @@
+import { ErroImport } from './erro';
 import { opListToDrawing, type Aviso, type DesenhoBruto, type OpsMap } from './pdf-ops';
 import {
   desenhoParaPecas,
@@ -104,7 +105,6 @@ function temDadosPrivadosAI(buf: ArrayBuffer): boolean {
   return false;
 }
 
-class ErroImport extends Error {}
 
 /** Le a operator list de uma pagina e devolve o desenho bruto, em mm. */
 export async function lerDesenho(buf: ArrayBuffer, pagina = 1): Promise<{ desenho: DesenhoBruto; paginas: number }> {

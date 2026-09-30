@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { assentar, type MalhaStl } from './stl';
+import { ErroImport } from './erro';
 
 /**
  * Leitura de 3MF (o formato do Bambu Studio, Prusa, Orca) para objetos de placa.
@@ -97,7 +98,7 @@ export async function lerTresMf(buf: ArrayBuffer, nomeArquivo = 'objeto'): Promi
   try {
     zip = await JSZip.loadAsync(buf);
   } catch {
-    throw new Error('Este 3MF não abre: o arquivo parece corrompido.');
+    throw new ErroImport(`“${nomeArquivo}” não abre: o 3MF parece corrompido.`);
   }
   // O arquivo principal vem das relacoes do pacote; o padrao e 3D/3dmodel.model.
   const rels = (await zip.file('_rels/.rels')?.async('string')) ?? '';
@@ -113,7 +114,7 @@ export async function lerTresMf(buf: ArrayBuffer, nomeArquivo = 'objeto'): Promi
     return modelos.get(caminho);
   }
   const raiz = await modelo(principal);
-  if (!raiz) throw new Error('Este 3MF não tem o modelo 3D dentro.');
+  if (!raiz) throw new ErroImport(`“${nomeArquivo}” não tem o modelo 3D dentro.`);
 
   // Junta a malha do objeto (e dos componentes dele) ja transformada, em mm.
   async function malhaDe(caminho: string, id: string, M: Mat, out: number[], nivel = 0): Promise<string | undefined> {
@@ -152,6 +153,6 @@ export async function lerTresMf(buf: ArrayBuffer, nomeArquivo = 'objeto'): Promi
     const base = nomeArquivo.replace(/\.3mf$/i, '');
     saida.push({ nome: nome?.trim() || (itens.length > 1 ? `${base} ${i + 1}` : base), malha: assentar(new Float32Array(out)) });
   }
-  if (!saida.length) throw new Error('Não achei nenhum objeto com malha neste 3MF.');
+  if (!saida.length) throw new ErroImport(`Não achei nenhum objeto com malha em “${nomeArquivo}”.`);
   return saida;
 }

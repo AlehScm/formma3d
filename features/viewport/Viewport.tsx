@@ -32,6 +32,7 @@ import { SEM_EDICAO } from '@/lib/geom/pecaEditada';
 import { MenuObjetos } from '@/components/casca/MenuObjetos';
 import { ordemObjetos } from '@/features/acoes/selecao';
 import { procurarRelevo } from '@/features/acoes/relevo';
+import { FORMATOS_TEXTO } from '@/features/acoes/origem';
 import type { Colocada } from '@/lib/print/arranjo';
 
 // O canvas WebGL nao pode ser renderizado no servidor.
@@ -66,6 +67,7 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   const ocultas = useInterface((s) => s.ocultas);
   const travadas = useInterface((s) => s.travadas);
   const ferramentaRelevo = useInterface((s) => s.ferramentaRelevo);
+  const definirFerramentaRelevo = useInterface((s) => s.definirFerramentaRelevo);
   const relevo = useInterface((s) => s.relevo);
   const ferramenta = useInterface((s) => s.ferramenta);
   const setFerramenta = useInterface((s) => s.setFerramenta);
@@ -111,7 +113,7 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
           titulo="Nada para mostrar ainda"
           acao={
             <Botao icone={IconeAbrir} onClick={() => abrirDesenho(true)}>
-              Abrir desenho .ai ou .pdf
+              Abrir arquivo ({FORMATOS_TEXTO})
             </Botao>
           }
         >
@@ -222,6 +224,22 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
           </div>
         )}
       </div>
+
+      {/* Ferramenta ligada tem de estar sempre a vista, com a saida junto. */}
+      {naPlaca && ferramentaRelevo && (
+        <div
+          role="status"
+          className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-3 rounded-md border border-acento/60 bg-flutuante/95 py-1 pl-3 pr-1 text-mini text-texto shadow-flutuante backdrop-blur"
+        >
+          <span>
+            <span className="font-semibold">Suavizar relevo ligado</span>
+            <span className="text-texto-3"> · clique na marca · Ctrl+clique seleciona · Esc sai</span>
+          </span>
+          <Botao tamanho="sm" variante="fantasma" onClick={() => definirFerramentaRelevo(null)}>
+            Sair
+          </Botao>
+        </div>
+      )}
 
       {/* Zona 2: ferramentas. */}
       <div className="absolute bottom-3 left-1/2 z-[var(--z-barra)] -translate-x-1/2">

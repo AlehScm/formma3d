@@ -21,6 +21,17 @@ const igual = (a: readonly string[], b: readonly string[]) => a.length === b.len
 
 const ordem = ['a', 'b', 'c', 'd', 'e'];
 
+/** Cubo de lado `a` em sopa de triangulos, deslocado em x. */
+function cuboSopa(a: number, ox = 0): number[] {
+  const v = (x: number, y: number, z: number) => [ox + x * a, y * a, z * a];
+  const q = (p: number[], r: number[], s: number[], t: number[]) => [...p, ...r, ...s, ...p, ...s, ...t];
+  const P = [v(0, 0, 0), v(1, 0, 0), v(1, 1, 0), v(0, 1, 0), v(0, 0, 1), v(1, 0, 1), v(1, 1, 1), v(0, 1, 1)];
+  return [
+    ...q(P[0]!, P[3]!, P[2]!, P[1]!), ...q(P[4]!, P[5]!, P[6]!, P[7]!), ...q(P[0]!, P[1]!, P[5]!, P[4]!),
+    ...q(P[1]!, P[2]!, P[6]!, P[5]!), ...q(P[2]!, P[3]!, P[7]!, P[6]!), ...q(P[3]!, P[0]!, P[4]!, P[7]!),
+  ];
+}
+
 console.log('\n== clique ==');
 {
   ok('clique simples pega so a peca', igual(clicar(['a', 'b'], 'c', {}, [], ordem), ['c']));
@@ -78,6 +89,47 @@ console.log('\n== transformar varios como um corpo so ==');
   const d = transformarConjunto(tri, ct, { tx: 0, ty: 0, giro: 37, sx: 1, sy: 1 });
   const novo = centroDe([...tri].map(([k, p]) => ({ x: p.x + d.get(k)!.dx, y: p.y + d.get(k)!.dy })));
   ok('girar em volta do centro nao desloca o conjunto', perto(novo.x, ct.x, 1e-9) && perto(novo.y, ct.y, 1e-9));
+}
+
+console.log('\n== Suavizar relevo nao prende a tela ==');
+{
+  const { useInterface } = await import('../store/interface');
+  const ui = () => useInterface.getState();
+  const ligar = () => {
+    ui().setEspaco('imprimir');
+    ui().definirSelecao(['stl:1']);
+    ui().definirFerramentaRelevo('stl:1');
+  };
+  ligar();
+  ok('liga na peca selecionada', ui().ferramentaRelevo === 'stl:1');
+  ui().clicarObjeto('stl:2', { ctrl: true }, ['stl:1', 'stl:2']);
+  ok('Ctrl+clique em outra peca (para agrupar) desliga', ui().ferramentaRelevo === null && ui().selecao.length === 2);
+  ligar();
+  ui().selecionar(null);
+  ok('clicar no vazio desliga', ui().ferramentaRelevo === null);
+  ligar();
+  ui().setEspaco('desenhar');
+  ok('sair de Imprimir desliga', ui().ferramentaRelevo === null);
+  ligar();
+  ui().definirSelecao(['stl:1']);
+  ok('continuar na mesma peca mantem ligada', ui().ferramentaRelevo === 'stl:1');
+}
+
+console.log('\n== Abrir x Adicionar: mesmo caminho, mesmos formatos ==');
+{
+  const { useProjeto } = await import('../store/projeto');
+  const { abrirArquivo, FORMATOS } = await import('../features/acoes/origem');
+  const { posicoesParaSTL } = await import('../lib/export/stl');
+  const p = () => useProjeto.getState();
+  const cuboStl = (nome: string) => new File([posicoesParaSTL(new Float32Array(cuboSopa(10)), nome)], `${nome}.stl`);
+  ok('os dois aceitam .ai .pdf .stl .3mf', ['.ai', '.pdf', '.stl', '.3mf'].every((f) => (FORMATOS as readonly string[]).includes(f)));
+  await abrirArquivo(cuboStl('a'), false);
+  await abrirArquivo(cuboStl('b'), false);
+  ok('Adicionar poe ao lado', p().objetos3d.length === 2);
+  await abrirArquivo(cuboStl('c'), true);
+  ok('Abrir comeca do zero (vale para STL tambem)', p().objetos3d.length === 1 && p().objetos3d[0]!.nome === 'c');
+  await abrirArquivo(new File([new Uint8Array([1, 2, 3])], 'quebrado.3mf'), true);
+  ok('arquivo quebrado nao apaga o projeto', p().objetos3d.length === 1 && !!p().erro, p().erro ?? '');
 }
 
 console.log('\n== exportar a selecao ==');

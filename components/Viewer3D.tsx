@@ -350,7 +350,10 @@ function MalhaObjeto({
         onClick={(e) => {
           if (travada) return;
           e.stopPropagation();
-          if (relevo && e.faceIndex != null) {
+          // So o clique simples e da ferramenta: com Ctrl/Shift continua sendo selecao
+          // (somar outra peca, agrupar), e isso desliga o Suavizar.
+          const mods = modsDe(e);
+          if (relevo && e.faceIndex != null && !mods.ctrl && !mods.shift) {
             // Geometria nao indexada: faceIndex e o proprio triangulo da sopa.
             const p = e.object.worldToLocal(e.point.clone());
             return relevo.onClique(e.faceIndex, [p.x, p.y, p.z]);

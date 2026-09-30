@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useInterface } from '@/store/interface';
-import { abrirArquivo, usarFonteArquivo, usarTtfParaTexto } from '@/features/acoes/origem';
+import { FORMATOS, abrirArquivo, usarFonteArquivo, usarTtfParaTexto } from '@/features/acoes/origem';
 
 /**
  * Os seletores de arquivo nativos, escondidos (nao da para estilizar).
@@ -41,7 +41,7 @@ export function EntradasArquivo() {
         ref={desenho}
         type="file"
         multiple
-        accept=".ai,.pdf,.stl,.3mf,application/pdf,application/postscript,model/stl,model/3mf"
+        accept={[...FORMATOS, 'application/pdf', 'application/postscript', 'model/stl', 'model/3mf'].join(',')}
         className="hidden"
         onChange={async (e) => {
           const lista = [...(e.target.files ?? [])];

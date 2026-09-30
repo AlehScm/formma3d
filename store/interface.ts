@@ -121,7 +121,14 @@ interface EstadoInterface {
 function comSelecao(s: EstadoInterface, selecao: string[]): Partial<EstadoInterface> {
   const selecionada = selecao[selecao.length - 1] ?? null;
   const i = selecionada ? placaDe(s.placas, selecionada) : -1;
-  return i >= 0 ? { selecao, selecionada, placaVista: i } : { selecao, selecionada };
+  // O Suavizar vale para UMA peca: marcou outra coisa (ou nada), ele desliga sozinho.
+  const semRelevo = s.ferramentaRelevo && !(selecao.length === 1 && selecao[0] === s.ferramentaRelevo);
+  return {
+    selecao,
+    selecionada,
+    ...(i >= 0 ? { placaVista: i } : {}),
+    ...(semRelevo ? { ferramentaRelevo: null, relevo: null } : {}),
+  };
 }
 
 /** Liga todas se alguma estava desligada; senao desliga todas (como o olho do Photoshop). */
@@ -172,6 +179,8 @@ export const useInterface = create<EstadoInterface>()((set) => ({
       // "Tamanho" muda o produto e so existe em Desenhar. Em Imprimir o gizmo so
       // acomoda; cair para "mover" evita uma ferramenta ativa que nao faz nada.
       ferramenta: espaco !== 'desenhar' && s.ferramenta === 'tamanho' ? 'mover' : s.ferramenta,
+      // O Suavizar so existe em Imprimir: sair de la desliga.
+      ...(espaco !== 'imprimir' ? { ferramentaRelevo: null, relevo: null } : {}),
     })),
   selecionar: (chave) => set((s) => comSelecao(s, chave ? [chave] : [])),
   definirSelecao: (chaves) => set((s) => comSelecao(s, chaves)),

@@ -42,7 +42,8 @@ export function Atalhos({ onEnquadrar }: { onEnquadrar: () => void }) {
       }
       if (e.altKey) return;
 
-      if (k === 'escape') return ui.selecionar(null);
+      // Esc sai da ferramenta primeiro; so no segundo Esc desmarca.
+      if (k === 'escape') return ui.ferramentaRelevo ? ui.definirFerramentaRelevo(null) : ui.selecionar(null);
       // Delete/Backspace exclui o que esta selecionado (nunca com o foco num campo:
       // la apaga texto, e isso ja foi barrado acima).
       if ((k === 'delete' || k === 'backspace') && ui.selecao.length && objetos) {

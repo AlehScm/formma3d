@@ -204,6 +204,8 @@ export interface AcoesProjeto {
   guardarFonteTexto: (chave: string, fonte: Font) => void;
   /** Fecha todos os arquivos e volta para o texto. */
   fecharImport: () => void;
+  /** Abrir arquivo: tira letreiro importado, objetos STL/3MF, grupos, edicoes e avulsas. */
+  limparProjeto: () => void;
 }
 
 const MAQUINA = IMPRESSORAS[0]!;
@@ -416,6 +418,8 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
     })),
 
   fecharImport: () => set({ arquivos: [], arquivoAtivo: null, edicoes: new Map(), grupos: [], erro: null }),
+  limparProjeto: () =>
+    set({ arquivos: [], arquivoAtivo: null, objetos3d: [], edicoes: new Map(), grupos: [], removidas: new Set(), avulsas: [], erro: null }),
 
   guardarFonteTexto: (chave, fonte) =>
     set((s) => {
