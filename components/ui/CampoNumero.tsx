@@ -5,6 +5,8 @@ import { Slider } from 'radix-ui';
 import { cx } from './cx';
 import { Campo } from './Campo';
 import { casasDoPasso, formatarNumero, lerNumero } from './formato';
+import { BotaoIcone } from './BotaoIcone';
+import { IconeDesfazer } from './icones';
 
 /**
  * Numero com unidade: o controle mais usado do app.
@@ -29,6 +31,11 @@ export interface CampoNumeroProps {
   layout?: 'bloco' | 'linha';
   semDeslizante?: boolean;
   desabilitado?: boolean;
+  /**
+   * Valor padrao do app. Com ele, uma setinha aparece ao lado quando o valor esta
+   * diferente, e um clique volta ao padrao.
+   */
+  padrao?: number;
 }
 
 export function EntradaNumero({
@@ -127,13 +134,30 @@ export function CampoNumero({
   layout = 'bloco',
   semDeslizante,
   desabilitado,
+  padrao,
 }: CampoNumeroProps) {
   const id = useId();
+  const casas = casasDoPasso(passo);
+  // O espaco da setinha fica reservado: o campo nao pula quando ela aparece.
+  const voltar =
+    padrao === undefined ? null : Math.abs(valor - padrao) > 1e-9 && !desabilitado ? (
+      <BotaoIcone
+        icone={IconeDesfazer}
+        tamanho="sm"
+        rotulo={`Voltar ao padrão (${formatarNumero(padrao, casas)}${unidade ? ' ' + unidade : ''})`}
+        onClick={() => set(padrao)}
+      />
+    ) : (
+      <span className="size-6 shrink-0" aria-hidden />
+    );
 
   if (layout === 'linha' || semDeslizante) {
     return (
       <Campo rotulo={rotulo} dica={dica} layout="linha" htmlFor={id}>
-        <EntradaNumero id={id} valor={valor} set={set} min={min} max={max} passo={passo} unidade={unidade} desabilitado={desabilitado} />
+        <div className="flex items-center gap-0.5">
+          {voltar}
+          <EntradaNumero id={id} valor={valor} set={set} min={min} max={max} passo={passo} unidade={unidade} desabilitado={desabilitado} />
+        </div>
       </Campo>
     );
   }
@@ -156,6 +180,7 @@ export function CampoNumero({
           </Slider.Track>
           <Slider.Thumb className="block size-3.5 rounded-full border-2 border-superficie bg-acento shadow transition-colors hover:bg-acento-forte" />
         </Slider.Root>
+        {voltar}
         <EntradaNumero id={id} valor={valor} set={set} min={min} max={max} passo={passo} unidade={unidade} desabilitado={desabilitado} />
       </div>
     </Campo>

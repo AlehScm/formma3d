@@ -26,11 +26,12 @@ import {
   IconeOk,
   IconeOrcamento,
   IconeMais,
+  IconeDesfazer,
   Interruptor,
   Cartao,
   Dica,
 } from '@/components/ui';
-import { FILAMENTOS, brl, calibrar, dividirEntreSocios, esquecerCalibracao, orcar, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
+import { FILAMENTOS, PADRAO, brl, calibrar, dividirEntreSocios, esquecerCalibracao, orcar, type CustoCfg, type FilamentoId, type Orcamento } from '@/lib/cost/calc';
 import { useCustos, type CustoPlaca } from '@/features/orcamento/custos';
 import type { PlacaAvulsa } from '@/lib/cost/trabalho';
 import { useProjeto } from '@/store/projeto';
@@ -66,13 +67,13 @@ export function PainelOrcamento() {
             nome: `${FILAMENTOS[k].nome} — ${formatarNumero(FILAMENTOS[k].densidade, 2)} g/cm³`,
           }))}
         />
-        <CampoNumero rotulo="Preço do rolo" valor={cfg.precoRolo} set={c('precoRolo')} min={30} max={600} passo={5} unidade="R$" layout="linha" />
-        <CampoNumero rotulo="Gramas por rolo" valor={cfg.rendimento} set={c('rendimento')} min={250} max={5000} passo={50} unidade="g" layout="linha" />
+        <CampoNumero rotulo="Preço do rolo" valor={cfg.precoRolo} padrao={PADRAO.precoRolo} set={c('precoRolo')} min={30} max={600} passo={5} unidade="R$" layout="linha" />
+        <CampoNumero rotulo="Gramas por rolo" valor={cfg.rendimento} padrao={PADRAO.rendimento} set={c('rendimento')} min={250} max={5000} passo={50} unidade="g" layout="linha" />
         {m.temChapa && (
-          <CampoNumero rotulo="Preço do ACM" valor={cfg.precoAcmM2} set={c('precoAcmM2')} min={10} max={500} passo={5} unidade="R$/m²" layout="linha" />
+          <CampoNumero rotulo="Preço do ACM" valor={cfg.precoAcmM2} padrao={PADRAO.precoAcmM2} set={c('precoAcmM2')} min={10} max={500} passo={5} unidade="R$/m²" layout="linha" />
         )}
         {comLed && (
-          <CampoNumero rotulo="Fita de LED" valor={cfg.precoFitaLedM} set={c('precoFitaLedM')} min={2} max={200} passo={1} unidade="R$/m" layout="linha" />
+          <CampoNumero rotulo="Fita de LED" valor={cfg.precoFitaLedM} padrao={PADRAO.precoFitaLedM} set={c('precoFitaLedM')} min={2} max={200} passo={1} unidade="R$/m" layout="linha" />
         )}
         </>
       ),
@@ -107,10 +108,10 @@ export function PainelOrcamento() {
             <span className="mt-1 block text-texto-3">Até lá, o valor é estimado pelo volume das peças.</span>
           )}
         </p>
-        <CampoNumero rotulo="Custo de máquina" valor={cfg.custoMaquina} set={c('custoMaquina')} min={0} max={30} passo={0.5} unidade="R$/h" layout="linha" />
-        <CampoNumero rotulo="Mão de obra" valor={cfg.valorHora} set={c('valorHora')} min={0} max={200} passo={5} unidade="R$/h" layout="linha" />
-        <CampoNumero rotulo="Preparo do trabalho" valor={cfg.setupMin} set={c('setupMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
-        <CampoNumero rotulo="Acabamento por peça" valor={cfg.posMin} set={c('posMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
+        <CampoNumero rotulo="Custo de máquina" valor={cfg.custoMaquina} padrao={PADRAO.custoMaquina} set={c('custoMaquina')} min={0} max={30} passo={0.5} unidade="R$/h" layout="linha" />
+        <CampoNumero rotulo="Mão de obra" valor={cfg.valorHora} padrao={PADRAO.valorHora} set={c('valorHora')} min={0} max={200} passo={5} unidade="R$/h" layout="linha" />
+        <CampoNumero rotulo="Preparo do trabalho" valor={cfg.setupMin} padrao={PADRAO.setupMin} set={c('setupMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
+        <CampoNumero rotulo="Acabamento por peça" valor={cfg.posMin} padrao={PADRAO.posMin} set={c('posMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
         <MaisEnergia cfg={cfg} c={c} />
         </>
       ),
@@ -122,11 +123,11 @@ export function PainelOrcamento() {
       resumo: `${cfg.margem}% · falha ${cfg.taxaFalha}%`,
       conteudo: (
         <>
-        <CampoNumero rotulo="Margem" valor={cfg.margem} set={c('margem')} min={0} max={500} passo={5} unidade="%" />
+        <CampoNumero rotulo="Margem" valor={cfg.margem} padrao={PADRAO.margem} set={c('margem')} min={0} max={500} passo={5} unidade="%" />
         <CampoNumero
           rotulo="Taxa de falha"
           dica="Entra no custo: você paga pelos trabalhos perdidos"
-          valor={cfg.taxaFalha}
+          valor={cfg.taxaFalha} padrao={PADRAO.taxaFalha}
           set={c('taxaFalha')}
           min={0}
           max={50}
@@ -140,20 +141,50 @@ export function PainelOrcamento() {
   ];
 
   return (
-    <Categorias
-      rotulo="Configurações de Orçamento"
-      categorias={categorias}
-      ativa={categoria}
-      setAtiva={(id) => setCategoria('orcamento', id)}
-    />
+    <div className="flex h-full flex-col">
+      <div className="min-h-0 flex-1">
+        <Categorias
+          rotulo="Configurações de Orçamento"
+          categorias={categorias}
+          ativa={categoria}
+          setAtiva={(id) => setCategoria('orcamento', id)}
+        />
+      </div>
+      <VoltarTudoAoPadrao />
+    </div>
+  );
+}
+
+/** Campos de custo que a setinha volta ao padrao. Socios e o aprendido ficam. */
+const CAMPOS_COM_PADRAO = [
+  'filamento', 'precoRolo', 'rendimento', 'precoAcmM2', 'precoFitaLedM', 'custoMaquina', 'valorHora',
+  'setupMin', 'posMin', 'precoKwh', 'potencia', 'margem', 'taxaFalha',
+] as const satisfies readonly (keyof CustoCfg)[];
+
+function VoltarTudoAoPadrao() {
+  const cfg = useProjeto((x) => x.cfg);
+  const definir = useProjeto((x) => x.definirCusto);
+  const diferentes = CAMPOS_COM_PADRAO.filter((k) => cfg[k] !== PADRAO[k]);
+  if (!diferentes.length) return null;
+  return (
+    <div className="shrink-0 border-t border-borda p-3">
+      <Botao
+        variante="fantasma"
+        icone={IconeDesfazer}
+        largura
+        onClick={() => diferentes.forEach((k) => definir(k, PADRAO[k] as never))}
+      >
+        Voltar tudo ao padrão ({diferentes.length})
+      </Botao>
+    </div>
   );
 }
 
 function MaisEnergia({ cfg, c }: { cfg: CustoCfg; c: <K extends keyof CustoCfg>(k: K) => (v: CustoCfg[K]) => void }) {
   return (
     <div className="space-y-1 border-t border-borda pt-2">
-      <CampoNumero rotulo="Energia" valor={cfg.precoKwh} set={c('precoKwh')} min={0.2} max={3} passo={0.05} unidade="R$/kWh" layout="linha" />
-      <CampoNumero rotulo="Potência média" valor={cfg.potencia} set={c('potencia')} min={40} max={600} passo={10} unidade="W" layout="linha" />
+      <CampoNumero rotulo="Energia" valor={cfg.precoKwh} padrao={PADRAO.precoKwh} set={c('precoKwh')} min={0.2} max={3} passo={0.05} unidade="R$/kWh" layout="linha" />
+      <CampoNumero rotulo="Potência média" valor={cfg.potencia} padrao={PADRAO.potencia} set={c('potencia')} min={40} max={600} passo={10} unidade="W" layout="linha" />
     </div>
   );
 }
