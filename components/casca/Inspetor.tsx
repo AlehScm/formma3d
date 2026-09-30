@@ -224,7 +224,7 @@ function TamanhoEixo({ rotulo, base, escala, set }: { rotulo: string; base: numb
 }
 
 /**
- * Tira marca d'agua em relevo (letras, logo) de uma face plana do STL: clique na
+ * Tira marca d'agua em relevo (letras, logo) de uma face do STL (plana ou curva): clique na
  * marca ou do lado dela, confira o vermelho e aplique.
  */
 function SuavizarRelevo({ chave }: { chave: string }) {
@@ -250,7 +250,10 @@ function SuavizarRelevo({ chave }: { chave: string }) {
         </Botao>
       ) : (
         <>
-          <Alerta tom="acento">Clique na marca, ou na face lisa ao lado dela. O que vai sumir fica vermelho.</Alerta>
+          <Alerta tom="acento">
+            Clique na marca, ou na face lisa ao lado dela. O que vai sumir fica vermelho; clique num pedaço vermelho para
+            deixá-lo de fora.
+          </Alerta>
           <CampoNumero
             rotulo="Altura máx. da marca"
             dica="Relevo (ou gravação) mais alto que isso não conta como marca"

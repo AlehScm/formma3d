@@ -157,7 +157,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   travadas: new Set(),
   copiadas: [],
   ferramentaRelevo: null,
-  opcoesRelevo: { alturaMax: 2, raio: 40 },
+  opcoesRelevo: { alturaMax: 2, raio: 15 },
   relevo: null,
   ferramenta: 'selecionar',
   explode: 0,

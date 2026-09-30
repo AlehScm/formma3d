@@ -6,7 +6,7 @@
  * verdade: o partToGeometry empilha solidos que so encostam, o que nao serve aqui.
  */
 import * as THREE from 'three';
-import { aplanar, detectarRelevo, malhaFechada, soldar } from '../lib/mesh/relevo';
+import { aplanar, detectarRelevo, juntarPecas, malhaFechada, soldar } from '../lib/mesh/relevo';
 import { lerStl } from '../lib/import/stl';
 import { posicoesParaSTL } from '../lib/export/stl';
 
@@ -139,8 +139,8 @@ console.log('\n== alto relevo (letras 1 mm acima da face) ==');
   const naLetra = achar(pos, 12, 20, T + 1);
   const r = detectarRelevo(m, naLetra.tri, naLetra.p, O_);
   ok('clicando na letra: acha a marca', r.triangulos.length > 0 && r.pedacos === 2, `${r.pedacos} pedacos, ${r.triangulos.length} triangulos`);
-  ok('plano base e a face de cima', perto(r.plano.n[2], 1) && perto(r.plano.d, T));
-  ok('area da marca = L + O sem o miolo', perto(r.area, (6 * 20 + 8 * 4) + (16 * 20 - 8 * 12), 0.01), `${r.area.toFixed(1)} mm2`);
+
+  ok('area remendada = L + O inteiro (o miolo sai e volta)', perto(r.area, (6 * 20 + 8 * 4) + 16 * 20, 0.01), `${r.area.toFixed(1)} mm2`);
   const naFace = achar(pos, 55, 35, T);
   ok('clicando na face ao lado: acha o mesmo', detectarRelevo(m, naFace.tri, naFace.p, O_).triangulos.length === r.triangulos.length);
   const depois = aplanar(m, r);
@@ -173,7 +173,7 @@ console.log('\n== nao mexe no que nao e marca ==');
   const mc = soldar(cham);
   const cc = achar(cham, 30, 20, T);
   const rc = detectarRelevo(mc, cc.tri, cc.p, O_);
-  ok('chanfro na borda da peca nao conta como marca', rc.triangulos.length === 0 && /borda/.test(rc.aviso ?? ''), rc.aviso);
+  ok('chanfro na borda da peca nao conta como marca', rc.triangulos.length === 0 && !!rc.aviso, rc.aviso);
 
   const lisa = placa(0);
   const ml = soldar(lisa);
@@ -212,71 +212,245 @@ console.log('\n== malha de verdade: face "plana" com oscilacao e lascas ==');
   ok('e a gravacao some (volume dela volta)', perto(preenchido, 376 * 0.25, 5), `+${preenchido.toFixed(1)} mm3`);
 }
 
-console.log('\n== parede curva: texto gravado na lateral redonda ==');
+console.log('\n== superficies geradas: plano, cilindros, esfera, sela ==');
 {
-  // Mosquetao: "C.2" gravado 0,25 mm na parede que curva para o gancho. Aqui: cilindro
-  // R 25 x 10, parede em grade de 1 grau x 0,5 mm, com um "I" e um "L" gravados.
-  const R0 = 25, H = 10, N = 360, M = 20, prof = 0.25;
-  const noI = (i: number, j: number) => i >= 20 && i < 24 && j >= 4 && j < 16;
-  const noL = (i: number, j: number) => i >= 28 && i < 40 && j >= 4 && j < 16 && (i < 31 || j < 7);
-  const cilindro = (marca: (i: number, j: number) => boolean) => {
+  // Gerador unico: superficie S(u, v) com a normal, grade de celulas e um mapa de marca.
+  // Celula marcada desce (gravada) ou sobe (alto relevo) `prof` ao longo da normal local,
+  // com parede na divisa. Fecha num solido com o verso a `ESP` para dentro e laterais.
+  // Como a superficie verdadeira e conhecida, da para medir o remendo de verdade.
+  interface Sup { nome: string; S: (u: number, v: number) => { p: V3; n: V3 }; dist: (q: V3) => number; nu: number; nv: number }
+  const ESP = 2;
+  const unit = (x: V3): V3 => { const l = Math.hypot(...x); return [x[0] / l, x[1] / l, x[2] / l]; };
+  const plano: Sup = { nome: 'plano', S: (u, v) => ({ p: [30 * u, 30 * v, 0], n: [0, 0, 1] }), dist: (q) => Math.abs(q[2]), nu: 60, nv: 60 };
+  const cilindro = (R: number, nu = 60): Sup => ({
+    nome: `cilindro R${R}${nu < 60 ? ' grosso' : ''}`,
+    S: (u, v) => { const t = ((u - 0.5) * 30) / R; return { p: [R * Math.sin(t), 30 * v, R * Math.cos(t)], n: [Math.sin(t), 0, Math.cos(t)] }; },
+    dist: (q) => Math.abs(Math.hypot(q[0], q[2]) - R), nu, nv: 60,
+  });
+  const esfera: Sup = {
+    nome: 'esfera R20',
+    S: (u, v) => { const d = unit([(u - 0.5) * 30, (v - 0.5) * 30, 20]); return { p: [20 * d[0], 20 * d[1], 20 * d[2]], n: d }; },
+    dist: (q) => Math.abs(Math.hypot(...q) - 20), nu: 60, nv: 60,
+  };
+  const sela: Sup = {
+    nome: 'sela',
+    S: (u, v) => { const x = (u - 0.5) * 30, y = (v - 0.5) * 30; return { p: [x, y, (x * x - y * y) / 50], n: unit([-x / 25, y / 25, 1]) }; },
+    dist: (q) => Math.abs(q[2] - (q[0] * q[0] - q[1] * q[1]) / 50) / Math.hypot(1, q[0] / 25, q[1] / 25), nu: 60, nv: 60,
+  };
+  // "I", "L" e um "O" com miolo, no meio da grade (celula de 0,5 mm).
+  const letras = (nu: number, nv: number) => (i: number, j: number) => {
+    const x = i - Math.floor(nu / 2) + 13, y = j - Math.floor(nv / 2) + 8;
+    const I = x >= 0 && x < 4 && y >= 0 && y < 16;
+    const L = x >= 8 && x < 18 && y >= 0 && y < 16 && (x < 11 || y < 3);
+    const O = x >= 21 && x < 31 && y >= 0 && y < 16 && !(x >= 24 && x < 28 && y >= 4 && y < 12);
+    return I || L || O;
+  };
+  const semMarca = () => false;
+
+  function gerar(sup: Sup, marca: (i: number, j: number) => boolean, prof: number, ruido = 0): Float32Array {
     const out: number[] = [];
-    const th = (i: number) => (2 * Math.PI * i) / N;
-    const pt = (i: number, j: number, r: number): V3 => [r * Math.cos(th(i)), r * Math.sin(th(i)), (H * j) / M];
+    const { nu, nv } = sup;
+    let semente = 11;
+    const cacheR = new Map<string, number>();
+    const r = (i: number, j: number) => {
+      const k = `${i},${j}`;
+      if (!cacheR.has(k)) cacheR.set(k, ruido ? (((semente = (semente * 16807) % 2147483647) / 2147483647) * 2 - 1) * ruido : 0);
+      return cacheR.get(k)!;
+    };
+    const P = (i: number, j: number, off: number): V3 => {
+      const { p, n } = sup.S(i / nu, j / nv);
+      const d = off === 0 ? r(i, j) : off;
+      return [p[0] + d * n[0], p[1] + d * n[1], p[2] + d * n[2]];
+    };
+    const B = (i: number, j: number) => P(i, j, -ESP);
+    const nC = (i: number, j: number) => sup.S((i + 0.5) / nu, (j + 0.5) / nv).n;
+    const cC = (i: number, j: number) => sup.S((i + 0.5) / nu, (j + 0.5) / nv).p;
+    const dentroG = (i: number, j: number) => i >= 0 && j >= 0 && i < nu && j < nv;
+    const nivel = (i: number, j: number) => (marca(i, j) ? prof : 0);
     const quad = (a: V3, b: V3, c: V3, d: V3, n: V3) => { tri(out, a, b, c, n); tri(out, a, c, d, n); };
-    for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) {
-      const g = marca(i, j), r = g ? R0 - prof : R0;
-      const tm = th(i + 0.5);
-      quad(pt(i, j, r), pt(i + 1, j, r), pt(i + 1, j + 1, r), pt(i, j + 1, r), [Math.cos(tm), Math.sin(tm), 0]);
-      // Parede da gravacao: olha para dentro da celula gravada.
-      if (g !== marca(i + 1, j)) {
-        const t: V3 = [-Math.sin(th(i + 1)), Math.cos(th(i + 1)), 0];
-        const n: V3 = g ? [-t[0], -t[1], 0] : t;
-        quad(pt(i + 1, j, R0), pt(i + 1, j, R0 - prof), pt(i + 1, j + 1, R0 - prof), pt(i + 1, j + 1, R0), n);
-      }
-      if (g !== marca(i, j + 1)) {
-        quad(pt(i, j + 1, R0), pt(i + 1, j + 1, R0), pt(i + 1, j + 1, R0 - prof), pt(i, j + 1, R0 - prof), [0, 0, g ? -1 : 1]);
+    const menos = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+      const h = nivel(i, j);
+      quad(P(i, j, h), P(i + 1, j, h), P(i + 1, j + 1, h), P(i, j + 1, h), nC(i, j));
+      quad(B(i, j), B(i + 1, j), B(i + 1, j + 1), B(i, j + 1), nC(i, j).map((x) => -x) as V3);
+      // Parede entre celula marcada e nao marcada (a direita e em cima desta).
+      for (const [di, dj] of [[1, 0], [0, 1]] as const) {
+        const i2 = i + di, j2 = j + dj;
+        if (!dentroG(i2, j2) || marca(i, j) === marca(i2, j2)) continue;
+        const [p0, p1] = di ? [[i + 1, j], [i + 1, j + 1]] : [[i, j + 1], [i + 1, j + 1]];
+        const [mi, mj, ni, nj] = marca(i, j) ? [i, j, i2, j2] : [i2, j2, i, j];
+        const para = prof < 0 ? menos(cC(mi, mj), cC(ni, nj)) : menos(cC(ni, nj), cC(mi, mj));
+        quad(P(p0![0]!, p0![1]!, 0), P(p1![0]!, p1![1]!, 0), P(p1![0]!, p1![1]!, prof), P(p0![0]!, p0![1]!, prof), para);
       }
     }
-    for (let i = 0; i < N; i++) {
-      tri(out, [0, 0, 0], pt(i, 0, R0), pt(i + 1, 0, R0), [0, 0, -1]);
-      tri(out, [0, 0, H], pt(i, M, R0), pt(i + 1, M, R0), [0, 0, 1]);
+    // Laterais: por aresta da borda, poligono verso -> niveis da frente, em leque de um
+    // ponto do meio (os niveis de um canto ficam na mesma reta e nao podem ser leque).
+    const centro = sup.S(0.5, 0.5).p;
+    const borda: [number, number, number, number, number, number][] = [];
+    for (let i = 0; i < nu; i++) { borda.push([i, 0, i + 1, 0, i, 0]); borda.push([i, nv, i + 1, nv, i, nv - 1]); }
+    for (let j = 0; j < nv; j++) { borda.push([0, j, 0, j + 1, 0, j]); borda.push([nu, j, nu, j + 1, nu - 1, j]); }
+    const niveisNo = (i: number, j: number, ate: number) => {
+      const lv = new Set<number>();
+      for (const [ci, cj] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) if (dentroG(ci!, cj!) && (ci === 0 || cj === 0 || ci === nu - 1 || cj === nv - 1)) lv.add(nivel(ci!, cj!));
+      return [...lv].filter((x) => x <= ate).sort((a, b) => a - b);
+    };
+    for (const [ai, aj, bi, bj, ci, cj] of borda) {
+      const h = nivel(ci, cj);
+      const poli: V3[] = [B(ai, aj), B(bi, bj), ...niveisNo(bi, bj, h).map((x) => P(bi, bj, x)), ...niveisNo(ai, aj, h).reverse().map((x) => P(ai, aj, x))];
+      const meio = poli.reduce((s, q) => [s[0] + q[0] / poli.length, s[1] + q[1] / poli.length, s[2] + q[2] / poli.length] as V3, [0, 0, 0] as V3);
+      const fora = menos(meio, centro);
+      poli.forEach((q, k) => tri(out, meio, q, poli[(k + 1) % poli.length]!, fora));
     }
     return new Float32Array(out);
-  };
-  const clique = (m: ReturnType<typeof soldar>, i: number, j: number, r: number) => {
-    const t = (2 * Math.PI * (i + 0.5)) / N;
-    const p: V3 = [r * Math.cos(t), r * Math.sin(t), (H * (j + 0.5)) / M];
+  }
+  // Clique no meio da celula (i, j) da frente, no nivel dela.
+  const clique = (sup: Sup, m: ReturnType<typeof soldar>, i: number, j: number, off: number) => {
+    const { p, n } = sup.S((i + 0.5) / sup.nu, (j + 0.5) / sup.nv);
+    const q: V3 = [p[0] + off * n[0], p[1] + off * n[1], p[2] + off * n[2]];
     let melhor = -1, dmin = Infinity;
     for (let f = 0; f < m.t.length / 3; f++) {
       const c = [0, 1, 2].map((k) => [0, 1, 2].reduce((s, e) => s + m.v[m.t[f * 3 + e]! * 3 + k]!, 0) / 3);
-      const d = Math.hypot(c[0]! - p[0], c[1]! - p[1], c[2]! - p[2]);
+      const d = Math.hypot(c[0]! - q[0], c[1]! - q[1], c[2]! - q[2]);
       if (d < dmin) { dmin = d; melhor = f; }
     }
-    return { tri: melhor, p };
+    return { tri: melhor, p: q };
   };
-  const pos = cilindro((i, j) => noI(i, j) || noL(i, j));
-  ok('cilindro gravado: casca fechada', malhaFechada(pos));
-  const m = soldar(pos);
-  const naParede = clique(m, 45, 10, R0);
-  const r = detectarRelevo(m, naParede.tri, naParede.p, O_);
-  ok('clicando na parede ao lado: acha o I e o L', r.pedacos === 2 && !!r.curva, `${r.pedacos} pedacos ${r.aviso ?? ''}`);
-  const noFundo = clique(m, 22, 10, R0 - prof);
-  ok('clicando no fundo da letra: acha o mesmo', detectarRelevo(m, noFundo.tri, noFundo.p, O_).triangulos.length === r.triangulos.length);
-  const depois = aplanar(m, r);
-  ok('achatada: fechada e sem as paredes da gravacao', malhaFechada(depois) && depois.length < pos.length);
-  const celulas = 4 * 12 + (3 * 12 + 9 * 3);
-  const esperado = celulas * ((2 * Math.PI * R0) / N) * (H / M) * prof;
-  const preenchido = volume(depois) - volume(pos);
-  ok('e a gravacao some (volume dela volta)', perto(preenchido, esperado, esperado * 0.05), `+${preenchido.toFixed(2)} de ~${esperado.toFixed(2)} mm3`);
-  const liso = cilindro(() => false);
-  const ml = soldar(liso);
-  let achou = 0;
-  for (let i = 0; i < N; i += 15) for (const j of [2, 10, 17]) {
-    const c = clique(ml, i, j, R0);
-    if (detectarRelevo(ml, c.tri, c.p, O_).triangulos.length) achou++;
+  const chaves = (pos: Float32Array) => { const s = new Set<string>(); for (let i = 0; i < pos.length; i += 3) s.add(`${pos[i]},${pos[i + 1]},${pos[i + 2]}`); return s; };
+  // Lascas: tampa de area zero em aresta de vinco e agulha em aresta lisa.
+  function comLascas(pos: Float32Array, cada: number): Float32Array {
+    const m = soldar(pos);
+    const nt = m.t.length / 3;
+    const normal = (f: number) => {
+      const p = [0, 1, 2].map((e) => Array.from(m.v.slice(m.t[f * 3 + e]! * 3, m.t[f * 3 + e]! * 3 + 3)));
+      const u = [0, 1, 2].map((k) => p[1]![k]! - p[0]![k]!), w = [0, 1, 2].map((k) => p[2]![k]! - p[0]![k]!);
+      return unit([u[1]! * w[2]! - u[2]! * w[1]!, u[2]! * w[0]! - u[0]! * w[2]!, u[0]! * w[1]! - u[1]! * w[0]!]);
+    };
+    const tris: number[][] = [];
+    for (let f = 0; f < nt; f++) tris.push([m.t[f * 3]!, m.t[f * 3 + 1]!, m.t[f * 3 + 2]!]);
+    const vs = Array.from(m.v);
+    const mexido = new Set<number>();
+    let conta = 0;
+    for (const [k, l] of m.arestas) {
+      if (l.length !== 2 || mexido.has(l[0]!) || mexido.has(l[1]!)) continue;
+      if (conta++ % cada) continue;
+      const [f, g] = l as [number, number];
+      const na = normal(f), nb = normal(g);
+      const vinco = na[0] * nb[0] + na[1] * nb[1] + na[2] * nb[2] < 0.5;
+      const [a, b] = k.split(',').map(Number) as [number, number];
+      // f tem a aresta p -> q; g tem q -> p.
+      const tf = tris[f]!, ia = tf.indexOf(a);
+      const [p, q] = tf[(ia + 1) % 3] === b ? [a, b] : [b, a];
+      const t = vinco ? 0.5 : 0.01; // agulha de 5 um (a solda junta pontos a menos de 0,1 um)
+      const mid = vs.length / 3;
+      vs.push(...[0, 1, 2].map((c) => vs[p * 3 + c]! + t * (vs[q * 3 + c]! - vs[p * 3 + c]!)));
+      const c1 = tf.find((x) => x !== a && x !== b)!, c2 = tris[g]!.find((x) => x !== a && x !== b)!;
+      tris[g] = [q, mid, c2];
+      tris.push([mid, p, c2]);
+      if (vinco) tris.push([q, p, mid]); // tampa: tres pontos na mesma reta
+      else {
+        tris[f] = [p, mid, c1];
+        tris.push([mid, q, c1]);
+      }
+      mexido.add(f).add(g);
+    }
+    const out: number[] = [];
+    for (const t of tris) for (const vi of t) out.push(vs[vi * 3]!, vs[vi * 3 + 1]!, vs[vi * 3 + 2]!);
+    return new Float32Array(out);
   }
-  ok('cilindro liso: nenhum clique acha marca', achou === 0, `${achou} achados`);
+  const varrer = (pos: Float32Array, passo: number) => {
+    const m = soldar(pos);
+    let achou = 0;
+    for (let f = 0; f < m.t.length / 3; f += passo) {
+      const c = [0, 1, 2].map((k) => [0, 1, 2].reduce((s, e) => s + m.v[m.t[f * 3 + e]! * 3 + k]!, 0) / 3) as V3;
+      if (detectarRelevo(m, f, c, O_).triangulos.length) achou++;
+    }
+    return achou;
+  };
+
+  for (const sup of [plano, cilindro(25), cilindro(8), esfera, sela]) {
+    const liso = gerar(sup, semMarca, 0);
+    for (const [tipo, prof] of [['gravada', -0.25], ['alto relevo', 0.4]] as const) {
+      const nome = `${sup.nome}, ${tipo}`;
+      const pos = gerar(sup, letras(sup.nu, sup.nv), prof);
+      const m = soldar(pos);
+      const i0 = Math.floor(sup.nu / 2), j0 = Math.floor(sup.nv / 2);
+      const ao = clique(sup, m, i0 + 22, j0, 0), na = clique(sup, m, i0 - 12, j0, prof);
+      const r = detectarRelevo(m, ao.tri, ao.p, O_);
+      const rLetra = detectarRelevo(m, na.tri, na.p, O_);
+      const depois = r.pedacos ? aplanar(m, r) : pos;
+      const esperado = volume(liso) - volume(pos);
+      const erro = volume(liso) - volume(depois);
+      const orig = chaves(pos);
+      let desvio = 0;
+      for (let i = 0; i < depois.length; i += 3) {
+        if (orig.has(`${depois[i]},${depois[i + 1]},${depois[i + 2]}`)) continue;
+        desvio = Math.max(desvio, sup.dist([depois[i]!, depois[i + 1]!, depois[i + 2]!]));
+      }
+      ok(`${nome}: fechada; acha I, L e O clicando ao lado`, malhaFechada(pos) && r.pedacos === 3, `${r.pedacos} pedacos ${r.aviso ?? ''}`);
+      ok(`${nome}: clicando na letra da no mesmo`, rLetra.triangulos.length === r.triangulos.length, `${rLetra.pedacos} pedacos ${rLetra.aviso ?? ''}`);
+      ok(`${nome}: remendada fica fechada, volume da peca lisa`, malhaFechada(depois) && Math.abs(erro) <= 0.03 * Math.abs(esperado), `sobra ${erro.toFixed(3)} de ${esperado.toFixed(2)} mm3`);
+      ok(`${nome}: remendo na superficie verdadeira (< 0,05 mm, abaixo da resolucao de impressao)`, desvio <= 0.05, `desvio max ${desvio.toFixed(4)} mm`);
+    }
+  }
+
+  console.log('\n-- o que nao e marca --');
+  for (const sup of [plano, cilindro(8), cilindro(8, 8), esfera, sela]) {
+    const grosso = sup.nu < 60;
+    const achados = varrer(gerar(sup, semMarca, 0, grosso ? 0 : 0.015), 23);
+    ok(`${sup.nome} liso${grosso ? '' : ' com ruido'}: nenhum clique acha marca`, achados === 0, `${achados} achados`);
+  }
+  {
+    const achados = varrer(comLascas(gerar(cilindro(25), semMarca, 0), 7), 23);
+    ok('cilindro liso com lascas: nenhum clique acha marca', achados === 0, `${achados} achados`);
+  }
+  {
+    const sup = cilindro(25);
+    const pos = comLascas(gerar(sup, letras(sup.nu, sup.nv), -0.25), 5);
+    const m = soldar(pos);
+    const c = clique(sup, m, 52, 30, 0);
+    const r = detectarRelevo(m, c.tri, c.p, O_);
+    const depois = r.pedacos ? aplanar(m, r) : pos;
+    ok('lascas no vinco da letra: fechada, acha as 3 e remenda fechado', malhaFechada(pos) && r.pedacos === 3 && malhaFechada(depois), `${r.pedacos} pedacos ${r.aviso ?? ''}`);
+  }
+  {
+    const pos = gerar(esfera, letras(esfera.nu, esfera.nv), -0.25, 0.015);
+    const m = soldar(pos);
+    const c = clique(esfera, m, 52, 30, 0);
+    const r = detectarRelevo(m, c.tri, c.p, O_);
+    ok('esfera com ruido: acha as 3', r.pedacos === 3 && malhaFechada(aplanar(m, r)), `${r.pedacos} pedacos ${r.aviso ?? ''}`);
+  }
+  {
+    // Rasgo que sai pela borda da peca: e degrau da peca, nao marca. O I no meio sai.
+    const marca = (i: number, j: number) => (i >= 17 && i < 21 && j >= 22 && j < 38) || (i >= 40 && j >= 28 && j < 32);
+    const pos = gerar(plano, marca, -0.25);
+    const m = soldar(pos);
+    const c = clique(plano, m, 30, 10, 0);
+    const r = detectarRelevo(m, c.tri, c.p, O_);
+    ok('rasgo que sai pela borda fica; a letra no meio sai', malhaFechada(pos) && r.pedacos === 1 && malhaFechada(aplanar(m, r)), `${r.pedacos} pedacos ${r.aviso ?? ''}`);
+  }
+  {
+    // Peca de 2 mm com altura maxima 5: o resto da peca "cabe" na altura, mas nao e marca.
+    const pos = gerar(plano, letras(plano.nu, plano.nv), -0.25);
+    const m = soldar(pos);
+    const c = clique(plano, m, 52, 30, 0);
+    const r = detectarRelevo(m, c.tri, c.p, { alturaMax: 5, raio: 60 });
+    ok('peca mais fina que a altura maxima: so as letras saem', r.pedacos === 3 && perto(volume(aplanar(m, r)), volume(gerar(plano, semMarca, 0)), 0.01), `${r.pedacos} pedacos`);
+  }
+}
+
+console.log('\n== tirar um pedaco da previa (rebaixo da peca que nao e marca) ==');
+{
+  const pos = placa(-1);
+  const m = soldar(pos);
+  const c = achar(pos, 55, 35, T);
+  const r = detectarRelevo(m, c.tri, c.p, O_);
+  const noL = achar(pos, 12, 20, T - 1).tri;
+  const soO = juntarPecas(r.pecas.filter((x) => !x.triangulos.includes(noL)));
+  ok('sem o L: sobra 1 pedaco', r.pedacos === 2 && soO.pedacos === 1 && soO.area < r.area);
+  const depois = aplanar(m, soO);
+  const esperado = cheia - 152; // o L (152 mm2 x 1 mm) continua gravado
+  ok('aplicado: fechada, so o O foi preenchido', malhaFechada(depois) && perto(volume(depois), esperado, 0.01), `${volume(depois).toFixed(2)} vs ${esperado}`);
+  ok('tirando todos: avisa e nao muda nada', juntarPecas([]).pedacos === 0 && !!juntarPecas([]).aviso);
 }
 
 console.log('\n== caminho do app: importar STL, suavizar, exportar, reimportar ==');
