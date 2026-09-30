@@ -86,7 +86,7 @@ function geo(m: Malha, f: number) {
   };
 }
 
-const TOL_PLANO = 0.02; // mm
+const TOL_PLANO = 0.03; // mm (malha real: face "plana" oscila ~0,02)
 const RAIO_PLANO_MIN = 25; // mm
 const COS_PARALELO = Math.cos((10 * Math.PI) / 180);
 const COS_NO_PLANO = Math.cos((1 * Math.PI) / 180);
@@ -123,10 +123,14 @@ export function detectarRelevo(m: Malha, tri: number, p: [number, number, number
   if (!base) return vazio('Não achei uma face plana aqui.');
   const plano: Plano = { n: base.n, d: base.d };
   const dist = (vi: number) => plano.n[0] * m.v[vi * 3]! + plano.n[1] * m.v[vi * 3 + 1]! + plano.n[2] * m.v[vi * 3 + 2]! - plano.d;
+  // Todos os pontos no plano e virado para o mesmo lado. A direcao nao precisa bater
+  // fino: triangulo lasca (muito fino) no meio da face sai com a normal torta em ate
+  // ~20 graus so por arredondamento, e contava como "outra parede" -- a letra vizinha
+  // era recusada (mosquetao da Bambu: so metade do texto saia).
   const noPlano = (f: number) => {
     for (let e = 0; e < 3; e++) if (Math.abs(dist(m.t[f * 3 + e]!)) > TOL_PLANO) return false;
     const g = geo(m, f);
-    return g.n[0] * plano.n[0] + g.n[1] * plano.n[1] + g.n[2] * plano.n[2] > COS_NO_PLANO;
+    return g.n[0] * plano.n[0] + g.n[1] * plano.n[1] + g.n[2] * plano.n[2] > 0;
   };
   const candidato = (f: number) => {
     let fora = false;
@@ -207,15 +211,28 @@ export function aplanar(m: Malha, r: Relevo): Float32Array {
     v[vi * 3 + 1] = v[vi * 3 + 1]! - k * n[1];
     v[vi * 3 + 2] = v[vi * 3 + 2]! - k * n[2];
   }
+  // Solda de novo: o ponto do fundo da letra achatado cai em cima do ponto da face.
+  // Sai SO o triangulo com dois pontos iguais (a parede que colapsou). Lasca fina de
+  // area ~0 que liga faces fica: tirar ela abria furos numa malha de verdade.
+  const unico = new Map<string, number>();
+  const rep: number[] = [];
+  const id = new Int32Array(m.v.length / 3);
+  for (let i = 0; i < id.length; i++) {
+    const k = `${Math.round(v[i * 3]! * Q)},${Math.round(v[i * 3 + 1]! * Q)},${Math.round(v[i * 3 + 2]! * Q)}`;
+    let j = unico.get(k);
+    if (j === undefined) {
+      j = rep.length / 3;
+      unico.set(k, j);
+      rep.push(v[i * 3]!, v[i * 3 + 1]!, v[i * 3 + 2]!);
+    }
+    id[i] = j;
+  }
   const out: number[] = [];
   const nt = m.t.length / 3;
   for (let f = 0; f < nt; f++) {
-    const a = m.t[f * 3]! * 3, b = m.t[f * 3 + 1]! * 3, c = m.t[f * 3 + 2]! * 3;
-    const ux = v[b]! - v[a]!, uy = v[b + 1]! - v[a + 1]!, uz = v[b + 2]! - v[a + 2]!;
-    const wx = v[c]! - v[a]!, wy = v[c + 1]! - v[a + 1]!, wz = v[c + 2]! - v[a + 2]!;
-    const area2 = Math.hypot(uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx);
-    if (area2 < 1e-9) continue; // parede que colapsou
-    out.push(v[a]!, v[a + 1]!, v[a + 2]!, v[b]!, v[b + 1]!, v[b + 2]!, v[c]!, v[c + 1]!, v[c + 2]!);
+    const a = id[m.t[f * 3]!]!, b = id[m.t[f * 3 + 1]!]!, c = id[m.t[f * 3 + 2]!]!;
+    if (a === b || b === c || a === c) continue; // parede que colapsou
+    out.push(rep[a * 3]!, rep[a * 3 + 1]!, rep[a * 3 + 2]!, rep[b * 3]!, rep[b * 3 + 1]!, rep[b * 3 + 2]!, rep[c * 3]!, rep[c * 3 + 1]!, rep[c * 3 + 2]!);
   }
   return new Float32Array(out);
 }

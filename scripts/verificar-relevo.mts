@@ -110,12 +110,12 @@ const zMax = (pos: Float32Array) => { let z = -Infinity; for (let i = 2; i < pos
 const zMin = (pos: Float32Array) => { let z = Infinity; for (let i = 2; i < pos.length; i += 3) z = Math.min(z, pos[i]!); return z; };
 
 /** Triangulo cujo centro esta em (x, y), olhando para cima, na altura z. */
-function achar(pos: Float32Array, x: number, y: number, z: number): { tri: number; p: V3 } {
+function achar(pos: Float32Array, x: number, y: number, z: number, tol = 1e-3): { tri: number; p: V3 } {
   const m = soldar(pos);
   let melhor = -1, dmin = Infinity;
   for (let f = 0; f < m.t.length / 3; f++) {
     const vs = [0, 1, 2].map((e) => m.t[f * 3 + e]! * 3);
-    if (!vs.every((k) => perto(m.v[k + 2]!, z))) continue;
+    if (!vs.every((k) => perto(m.v[k + 2]!, z, tol))) continue;
     const cx = vs.reduce((s, k) => s + m.v[k]!, 0) / 3, cy = vs.reduce((s, k) => s + m.v[k + 1]!, 0) / 3;
     const d = Math.hypot(cx - x, cy - y);
     if (d < dmin) { dmin = d; melhor = f; }
@@ -183,6 +183,33 @@ console.log('\n== nao mexe no que nao e marca ==');
 
   const pouco = detectarRelevo(soldar(placa(1)), achar(placa(1), 12, 20, T + 1).tri, [12, 20, T + 1], { alturaMax: 2, raio: 3 });
   ok('raio pequeno ainda pega a letra inteira clicada', pouco.pedacos >= 1, `${pouco.pedacos} pedaco(s)`);
+}
+
+console.log('\n== malha de verdade: face "plana" com oscilacao e lascas ==');
+{
+  // Mosquetao da Bambu: a face tinha pontos a 0,01-0,02 mm do plano e triangulos lasca
+  // com a normal torta em ate 20 graus. Metade do texto era recusada e, ao aplicar,
+  // a malha abria. Aqui: gravacao rasa (0,25 mm) e ruido de ate 0,015 mm na face.
+  const pos = placa(-0.25);
+  let semente = 7;
+  const aleatorio = () => ((semente = (semente * 16807) % 2147483647) / 2147483647) * 2 - 1;
+  const ruido = new Map<string, number>();
+  for (let i = 0; i < pos.length; i += 3) {
+    if (!perto(pos[i + 2]!, T, 1e-6)) continue;
+    const k = `${pos[i]},${pos[i + 1]}`; // mesmo ponto, mesmo ruido: a malha continua fechada
+    if (!ruido.has(k)) ruido.set(k, aleatorio() * 0.015);
+    pos[i + 2] = T + ruido.get(k)!;
+  }
+  ok('malha com ruido continua fechada', malhaFechada(pos));
+  const m = soldar(pos);
+  const c = achar(pos, 55, 35, T, 0.02);
+  const r = detectarRelevo(m, c.tri, c.p, O_);
+  ok('acha a marca inteira mesmo com a face oscilando', r.pedacos === 2, `${r.pedacos} pedacos ${r.aviso ?? ''}`);
+  const depois = aplanar(m, r);
+  ok('achatada, a malha fica fechada', malhaFechada(depois));
+  // O ruido muda uns mm3 da placa; o que importa e a gravacao (376 mm2 x 0,25 mm) voltar.
+  const preenchido = volume(depois) - volume(pos);
+  ok('e a gravacao some (volume dela volta)', perto(preenchido, 376 * 0.25, 5), `+${preenchido.toFixed(1)} mm3`);
 }
 
 console.log('\n== caminho do app: importar STL, suavizar, exportar, reimportar ==');
