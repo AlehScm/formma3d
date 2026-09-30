@@ -211,7 +211,7 @@ function Origem() {
             })}
           </ul>
           <Botao tamanho="sm" variante="fantasma" icone={IconeAbrir} onClick={() => abrirDesenho(false)} largura>
-            Adicionar arquivo (.ai, .pdf ou .stl)
+            Adicionar arquivo (.ai, .pdf, .stl ou .3mf)
           </Botao>
 
           {ativo && <AjustesArquivo id={ativo.id} titulo={varios ? ativo.nomeArquivo : undefined} />}

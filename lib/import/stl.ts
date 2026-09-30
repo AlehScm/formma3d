@@ -73,6 +73,11 @@ function lerAscii(buf: ArrayBuffer): Float32Array {
 export function lerStl(buf: ArrayBuffer): MalhaStl {
   const p = ehBinario(buf) ? lerBinario(buf) : lerAscii(buf);
   if (!p.length || p.some((x) => !Number.isFinite(x))) throw new Error('STL vazio ou corrompido.');
+  return assentar(p);
+}
+
+/** Centro em XY na origem e menor Z em 0 (mexe em `p`). Vale para STL e 3MF. */
+export function assentar(p: Float32Array): MalhaStl {
   const { min, max } = limites(p);
   const cx = (min[0] + max[0]) / 2;
   const cy = (min[1] + max[1]) / 2;

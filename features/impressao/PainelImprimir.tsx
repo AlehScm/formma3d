@@ -252,7 +252,7 @@ function Pecas() {
       ))}
       <div className="space-y-1.5 border-t border-borda pt-3">
         <Botao icone={IconeAbrir} largura onClick={() => abrirDesenho(false)}>
-          Importar STL
+          Importar STL ou 3MF
         </Botao>
         <p className="text-mini text-texto-3">
           Objeto 3D pronto: divide a placa com o letreiro, mas não vira letra caixa e não entra no orçamento.

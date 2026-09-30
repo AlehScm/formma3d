@@ -92,7 +92,7 @@ export function BarraTopo() {
             <MenuItem icone={IconeAbrir} detalhe=".ai .pdf" onSelect={() => abrirDesenho(true)}>
               Abrir desenho
             </MenuItem>
-            <MenuItem icone={IconeNovo} detalhe=".ai .pdf .stl" onSelect={() => abrirDesenho(false)}>
+            <MenuItem icone={IconeNovo} detalhe=".ai .pdf .stl .3mf" onSelect={() => abrirDesenho(false)}>
               Adicionar arquivo ao projeto
             </MenuItem>
             <MenuItem icone={IconeNovo} onSelect={fecharImport} disabled={!imp}>

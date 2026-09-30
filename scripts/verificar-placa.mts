@@ -9,6 +9,7 @@
 import fs from 'fs';
 import JSZip from 'jszip';
 import { lerStl, volumeMalha } from '../lib/import/stl';
+import { lerTresMf } from '../lib/import/tresmf';
 import { posicoesParaSTL, posicoesDaGeometria } from '../lib/export/stl';
 import { gerar3mf, modelo3mf } from '../lib/export/tresmf';
 import { montarPlaca, juntar, type PecaPlaca } from '../lib/print/placa';
@@ -153,6 +154,52 @@ async function main() {
      `${(volumeMalha(junto) / 1000).toFixed(1)} vs ${(soma / 1000).toFixed(1)} cm3`);
   const releitura = lerStl(posicoesParaSTL(junto, 'placa'));
   ok('e o STL da placa relido tem os mesmos triangulos', releitura.triangulos === junto.length / 9);
+
+  console.log('\n== importar 3MF ==');
+  {
+    // Cubo de lado `a` (mm) em sopa de triangulos, deslocado.
+    const cubo = (a: number, ox = 0): number[] => {
+      const v = (x: number, y: number, z: number) => [ox + x * a, y * a, z * a];
+      const q = (p: number[], r: number[], s: number[], t: number[]) => [...p, ...r, ...s, ...p, ...s, ...t];
+      const P = [v(0, 0, 0), v(1, 0, 0), v(1, 1, 0), v(0, 1, 0), v(0, 0, 1), v(1, 0, 1), v(1, 1, 1), v(0, 1, 1)];
+      return [
+        ...q(P[0]!, P[3]!, P[2]!, P[1]!), ...q(P[4]!, P[5]!, P[6]!, P[7]!), ...q(P[0]!, P[1]!, P[5]!, P[4]!),
+        ...q(P[1]!, P[2]!, P[6]!, P[5]!), ...q(P[2]!, P[3]!, P[7]!, P[6]!), ...q(P[3]!, P[0]!, P[4]!, P[7]!),
+      ];
+    };
+    // Ida e volta pelo 3MF que o proprio app gera: dois objetos.
+    const gerado = await gerar3mf([
+      { nome: 'cubo 10', posicoes: new Float32Array(cubo(10)) },
+      { nome: 'cubo 20', posicoes: new Float32Array(cubo(20, 50)) },
+    ]);
+    const lidos = await lerTresMf(await gerado.arrayBuffer(), 'placa.3mf');
+    ok('3MF do app: um objeto por peca, com o nome', lidos.length === 2 && lidos[0]!.nome === 'cubo 10' && lidos[1]!.nome === 'cubo 20', lidos.map((o) => o.nome).join(', '));
+    ok('3MF do app: volumes certos', perto(volumeMalha(lidos[0]!.malha.posicoes), 1000, 1e-3) && perto(volumeMalha(lidos[1]!.malha.posicoes), 8000, 1e-3));
+    ok('cada objeto assentado na mesa e centrado', perto(lidos[1]!.malha.min[2], 0) && perto(lidos[1]!.malha.min[0], -10) && perto(lidos[1]!.malha.max[0], 10));
+
+    // Estilo Bambu: malha em 3D/Objects/*.model, principal com <component p:path>, em cm,
+    // com transformacao no componente (escala 2x) e no item (translacao).
+    const vs = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]];
+    const ts = [[0, 3, 2], [0, 2, 1], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7]];
+    const malhaXml = `<?xml version="1.0" encoding="UTF-8"?><model unit="centimeter" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources><object id="1" type="model"><mesh><vertices>${vs.map((v) => `<vertex x="${v[0]}" y="${v[1]}" z="${v[2]}"/>`).join('')}</vertices><triangles>${ts.map((t) => `<triangle v1="${t[0]}" v2="${t[1]}" v3="${t[2]}"/>`).join('')}</triangles></mesh></object></resources></model>`;
+    const principal = `<?xml version="1.0" encoding="UTF-8"?><model unit="centimeter" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"><resources><object id="2" name="Suporte" type="model"><components><component p:path="/3D/Objects/object_1.model" objectid="1" transform="2 0 0 0 2 0 0 0 2 0 0 0"/></components></object></resources><build><item objectid="2" transform="1 0 0 0 1 0 0 0 1 5 5 0"/></build></model>`;
+    const z = new JSZip();
+    z.file('_rels/.rels', '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>');
+    z.file('3D/3dmodel.model', principal);
+    z.file('3D/Objects/object_1.model', malhaXml);
+    const bambu = await lerTresMf(await z.generateAsync({ type: 'arraybuffer' }), 'suporte.3mf');
+    const b = bambu[0]!.malha;
+    ok('3MF estilo Bambu: segue a referencia para o arquivo da malha', bambu.length === 1 && bambu[0]!.nome === 'Suporte');
+    ok('aplica a escala do componente e a unidade (cm -> mm)', perto(b.max[0] - b.min[0], 20, 1e-3) && perto(b.max[2], 20, 1e-3) && perto(volumeMalha(b.posicoes), 8000, 1e-2), `${(b.max[0] - b.min[0]).toFixed(2)} mm`);
+
+    let erro = '';
+    try {
+      await lerTresMf(new TextEncoder().encode('isto nao e zip').buffer as ArrayBuffer);
+    } catch (e) {
+      erro = (e as Error).message;
+    }
+    ok('arquivo quebrado da erro claro', /corrompido/.test(erro), erro);
+  }
 
   console.log('\n== 3MF ==');
   {

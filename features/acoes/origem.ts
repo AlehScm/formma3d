@@ -5,6 +5,7 @@ import { FONTES_WEB, carregarFonteWeb, carregarFonteArquivo, listarFontesSistema
 import { importarArquivo, importarPdf, ErroImport } from '@/lib/import/pdf';
 import { chaveFonte } from '@/lib/import/texto-em-curvas';
 import { lerStl } from '@/lib/import/stl';
+import { lerTresMf } from '@/lib/import/tresmf';
 import { useInterface } from '@/store/interface';
 
 /**
@@ -72,7 +73,7 @@ export async function usarFonteDoPC(f: FonteSistema): Promise<void> {
 }
 
 /**
- * Abre um arquivo. .ai/.pdf viram pecas do letreiro; .stl vira objeto pronto na
+ * Abre um arquivo. .ai/.pdf viram pecas do letreiro; .stl e .3mf viram objetos prontos na
  * placa. `substituir` (Abrir desenho) troca os arquivos do letreiro; sem ele
  * (Adicionar arquivo) o novo entra ao lado dos que ja estao.
  */
@@ -81,6 +82,14 @@ export async function abrirArquivo(file: File, substituir: boolean): Promise<voi
   s.definir('carregando', true);
   s.definir('erro', null);
   try {
+    if (/\.3mf$/i.test(file.name)) {
+      // Cada peca do 3MF (item do build) vira um objeto proprio na placa.
+      for (const o of await lerTresMf(await file.arrayBuffer(), file.name)) {
+        s.adicionarObjeto3d({ nome: o.nome, posicoes: o.malha.posicoes, alturaZ: o.malha.max[2] });
+      }
+      useInterface.getState().setEspaco('imprimir');
+      return;
+    }
     if (/\.stl$/i.test(file.name)) {
       const m = lerStl(await file.arrayBuffer());
       s.adicionarObjeto3d({ nome: file.name.replace(/\.stl$/i, ''), posicoes: m.posicoes, alturaZ: m.max[2] });

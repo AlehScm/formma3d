@@ -41,7 +41,7 @@ export function EntradasArquivo() {
         ref={desenho}
         type="file"
         multiple
-        accept=".ai,.pdf,.stl,application/pdf,application/postscript,model/stl"
+        accept=".ai,.pdf,.stl,.3mf,application/pdf,application/postscript,model/stl,model/3mf"
         className="hidden"
         onChange={async (e) => {
           const lista = [...(e.target.files ?? [])];
