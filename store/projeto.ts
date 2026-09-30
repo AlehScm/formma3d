@@ -233,7 +233,9 @@ export interface AcoesProjeto {
 const MAQUINA = IMPRESSORAS[0]!;
 
 export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => ({
-  texto: 'LETRA',
+  // Comeca vazio: o letreiro de texto so existe quando o usuario digita. Um "LETRA" de
+  // exemplo aqui voltava sozinho a cada projeto novo e aparecia junto de todo import.
+  texto: '',
   fonte: null,
   fonteNome: 'Anton',
   fontesSistema: { suportado: true, fontes: [] },
@@ -478,9 +480,23 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
       ),
     })),
 
-  fecharImport: () => set({ arquivos: [], arquivoAtivo: null, edicoes: new Map(), grupos: [], copias: [], erro: null }),
+  // Letreiro de texto novo: vazio, pronto para digitar -- nao ressuscita texto antigo.
+  fecharImport: () =>
+    set({ arquivos: [], arquivoAtivo: null, texto: '', removidas: new Set(), edicoes: new Map(), grupos: [], copias: [], erro: null }),
   limparProjeto: () =>
-    set({ arquivos: [], arquivoAtivo: null, objetos3d: [], edicoes: new Map(), grupos: [], copias: [], removidas: new Set(), avulsas: [], erro: null }),
+    set({
+      arquivos: [],
+      arquivoAtivo: null,
+      texto: '',
+      nomeTrabalho: '',
+      objetos3d: [],
+      edicoes: new Map(),
+      grupos: [],
+      copias: [],
+      removidas: new Set(),
+      avulsas: [],
+      erro: null,
+    }),
 
   guardarFonteTexto: (chave, fonte) =>
     set((s) => {

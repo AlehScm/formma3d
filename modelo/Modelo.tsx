@@ -396,7 +396,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       // Nomeia STL, zip e orcamento: arquivo importado, nome dado a mao, ou o texto.
       nomeProjeto: primeiro
         ? primeiro.nomeArquivo.replace(/\.[^.]+$/, '') + (arquivos.length > 1 ? ` + ${arquivos.length - 1}` : '')
-        : origem.nomeTrabalho || texto,
+        : origem.nomeTrabalho || texto || (objetos[0]?.nome ?? ''),
       desc: origem.presetAtivo ?? descreverPeca(params),
       orientacao: orientar(params),
       temChapa: params.frente === 'chapa' || params.traseira === 'chapa',

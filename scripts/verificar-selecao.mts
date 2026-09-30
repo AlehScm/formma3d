@@ -115,6 +115,27 @@ console.log('\n== Suavizar relevo nao prende a tela ==');
   ok('continuar na mesma peca mantem ligada', ui().ferramentaRelevo === 'stl:1');
 }
 
+console.log('\n== o LETRA de exemplo nao volta sozinho ==');
+{
+  const { useProjeto } = await import('../store/projeto');
+  const { abrirArquivo } = await import('../features/acoes/origem');
+  const { posicoesParaSTL } = await import('../lib/export/stl');
+  const p = () => useProjeto.getState();
+  ok('o app abre sem texto', p().texto === '');
+  const cubo = () => new File([posicoesParaSTL(new Float32Array(cuboSopa(10)), 'cubo')], 'cubo.stl');
+  p().definirTexto('BARBEARIA');
+  await abrirArquivo(cubo(), false);
+  ok('Adicionar um STL mantem o texto digitado', p().texto === 'BARBEARIA' && p().objetos3d.length >= 1);
+  await abrirArquivo(cubo(), true);
+  ok('Abrir um STL (projeto novo) fica so com o objeto, sem texto', p().texto === '' && p().objetos3d.length === 1);
+  p().definirTexto('OI');
+  p().fecharImport();
+  ok('"Novo letreiro de texto" comeca vazio', p().texto === '');
+  p().definirTexto('OI');
+  p().limparProjeto();
+  ok('projeto novo limpa texto e nome', p().texto === '' && p().nomeTrabalho === '');
+}
+
 console.log('\n== copiar e colar (Ctrl+C / Ctrl+V / Ctrl+D) ==');
 {
   const { useProjeto, lerChave } = await import('../store/projeto');

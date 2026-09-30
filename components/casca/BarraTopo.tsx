@@ -97,7 +97,15 @@ export function BarraTopo() {
             <MenuItem icone={IconeNovo} detalhe={FORMATOS_TEXTO} onSelect={() => abrirDesenho(false)}>
               Adicionar ao projeto
             </MenuItem>
-            <MenuItem icone={IconeNovo} onSelect={fecharImport} disabled={!imp}>
+            <MenuItem
+              icone={IconeNovo}
+              onSelect={() => {
+                fecharImport();
+                // Leva direto ao campo de texto: o letreiro novo comeca vazio.
+                setEspaco('desenhar');
+                useInterface.getState().setCategoria('desenhar', 'origem');
+              }}
+            >
               Novo letreiro de texto
             </MenuItem>
             <MenuSeparador />
