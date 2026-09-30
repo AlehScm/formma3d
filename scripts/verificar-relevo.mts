@@ -212,6 +212,73 @@ console.log('\n== malha de verdade: face "plana" com oscilacao e lascas ==');
   ok('e a gravacao some (volume dela volta)', perto(preenchido, 376 * 0.25, 5), `+${preenchido.toFixed(1)} mm3`);
 }
 
+console.log('\n== parede curva: texto gravado na lateral redonda ==');
+{
+  // Mosquetao: "C.2" gravado 0,25 mm na parede que curva para o gancho. Aqui: cilindro
+  // R 25 x 10, parede em grade de 1 grau x 0,5 mm, com um "I" e um "L" gravados.
+  const R0 = 25, H = 10, N = 360, M = 20, prof = 0.25;
+  const noI = (i: number, j: number) => i >= 20 && i < 24 && j >= 4 && j < 16;
+  const noL = (i: number, j: number) => i >= 28 && i < 40 && j >= 4 && j < 16 && (i < 31 || j < 7);
+  const cilindro = (marca: (i: number, j: number) => boolean) => {
+    const out: number[] = [];
+    const th = (i: number) => (2 * Math.PI * i) / N;
+    const pt = (i: number, j: number, r: number): V3 => [r * Math.cos(th(i)), r * Math.sin(th(i)), (H * j) / M];
+    const quad = (a: V3, b: V3, c: V3, d: V3, n: V3) => { tri(out, a, b, c, n); tri(out, a, c, d, n); };
+    for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) {
+      const g = marca(i, j), r = g ? R0 - prof : R0;
+      const tm = th(i + 0.5);
+      quad(pt(i, j, r), pt(i + 1, j, r), pt(i + 1, j + 1, r), pt(i, j + 1, r), [Math.cos(tm), Math.sin(tm), 0]);
+      // Parede da gravacao: olha para dentro da celula gravada.
+      if (g !== marca(i + 1, j)) {
+        const t: V3 = [-Math.sin(th(i + 1)), Math.cos(th(i + 1)), 0];
+        const n: V3 = g ? [-t[0], -t[1], 0] : t;
+        quad(pt(i + 1, j, R0), pt(i + 1, j, R0 - prof), pt(i + 1, j + 1, R0 - prof), pt(i + 1, j + 1, R0), n);
+      }
+      if (g !== marca(i, j + 1)) {
+        quad(pt(i, j + 1, R0), pt(i + 1, j + 1, R0), pt(i + 1, j + 1, R0 - prof), pt(i, j + 1, R0 - prof), [0, 0, g ? -1 : 1]);
+      }
+    }
+    for (let i = 0; i < N; i++) {
+      tri(out, [0, 0, 0], pt(i, 0, R0), pt(i + 1, 0, R0), [0, 0, -1]);
+      tri(out, [0, 0, H], pt(i, M, R0), pt(i + 1, M, R0), [0, 0, 1]);
+    }
+    return new Float32Array(out);
+  };
+  const clique = (m: ReturnType<typeof soldar>, i: number, j: number, r: number) => {
+    const t = (2 * Math.PI * (i + 0.5)) / N;
+    const p: V3 = [r * Math.cos(t), r * Math.sin(t), (H * (j + 0.5)) / M];
+    let melhor = -1, dmin = Infinity;
+    for (let f = 0; f < m.t.length / 3; f++) {
+      const c = [0, 1, 2].map((k) => [0, 1, 2].reduce((s, e) => s + m.v[m.t[f * 3 + e]! * 3 + k]!, 0) / 3);
+      const d = Math.hypot(c[0]! - p[0], c[1]! - p[1], c[2]! - p[2]);
+      if (d < dmin) { dmin = d; melhor = f; }
+    }
+    return { tri: melhor, p };
+  };
+  const pos = cilindro((i, j) => noI(i, j) || noL(i, j));
+  ok('cilindro gravado: casca fechada', malhaFechada(pos));
+  const m = soldar(pos);
+  const naParede = clique(m, 45, 10, R0);
+  const r = detectarRelevo(m, naParede.tri, naParede.p, O_);
+  ok('clicando na parede ao lado: acha o I e o L', r.pedacos === 2 && !!r.curva, `${r.pedacos} pedacos ${r.aviso ?? ''}`);
+  const noFundo = clique(m, 22, 10, R0 - prof);
+  ok('clicando no fundo da letra: acha o mesmo', detectarRelevo(m, noFundo.tri, noFundo.p, O_).triangulos.length === r.triangulos.length);
+  const depois = aplanar(m, r);
+  ok('achatada: fechada e sem as paredes da gravacao', malhaFechada(depois) && depois.length < pos.length);
+  const celulas = 4 * 12 + (3 * 12 + 9 * 3);
+  const esperado = celulas * ((2 * Math.PI * R0) / N) * (H / M) * prof;
+  const preenchido = volume(depois) - volume(pos);
+  ok('e a gravacao some (volume dela volta)', perto(preenchido, esperado, esperado * 0.05), `+${preenchido.toFixed(2)} de ~${esperado.toFixed(2)} mm3`);
+  const liso = cilindro(() => false);
+  const ml = soldar(liso);
+  let achou = 0;
+  for (let i = 0; i < N; i += 15) for (const j of [2, 10, 17]) {
+    const c = clique(ml, i, j, R0);
+    if (detectarRelevo(ml, c.tri, c.p, O_).triangulos.length) achou++;
+  }
+  ok('cilindro liso: nenhum clique acha marca', achou === 0, `${achou} achados`);
+}
+
 console.log('\n== caminho do app: importar STL, suavizar, exportar, reimportar ==');
 {
   // Mesmos passos do app: lerStl centraliza em XY e assenta em Z=0, como o import faz.
