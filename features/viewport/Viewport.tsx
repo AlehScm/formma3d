@@ -98,8 +98,15 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
     return {
       letras: m.letras.filter((l) => visivel(l.chave)),
       objetos: m.objetos.filter((o) => visivel(o.chave)),
+      // Fila ao lado da mesa: o que sobrou, STL ainda nao arrumado e -- depois de
+      // arrumar -- qualquer peca nova (copia colada) que ainda nao tem placa.
       naFila: naPlaca
-        ? [...sobraram, ...m.objetos.map((o) => o.chave).filter((k) => !emPlaca(k) && !sobraram.includes(k))]
+        ? [
+            ...sobraram,
+            ...[...(placas.length ? m.letras.map((l) => l.chave) : []), ...m.objetos.map((o) => o.chave)].filter(
+              (k) => !emPlaca(k) && !sobraram.includes(k)
+            ),
+          ]
         : [],
     };
   }, [m.letras, m.objetos, placas, placaVista, sobraram, naPlaca, ocultas]);

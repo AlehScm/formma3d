@@ -16,6 +16,9 @@ import {
   IconeTravado,
   IconeVisivel,
   IconeDestravado,
+  IconeCopiar,
+  IconeColar,
+  IconeDuplicar,
 } from '@/components/ui';
 import { grupoDe } from '@/lib/cena/grupo';
 import { useInterface } from '@/store/interface';
@@ -30,6 +33,9 @@ import {
   ocultarSelecao,
   selecionarTudo,
   travarSelecao,
+  copiarSelecao,
+  colarCopiadas,
+  duplicarSelecao,
 } from '@/features/acoes/selecao';
 
 /**
@@ -51,6 +57,7 @@ function ItensObjetos() {
   const ocultas = useInterface((s) => s.ocultas);
   const travadas = useInterface((s) => s.travadas);
   const grupos = useProjeto((s) => s.grupos);
+  const copiadas = useInterface((s) => s.copiadas.length);
   const n = selecao.length;
   const temGrupo = selecao.some((k) => grupoDe(grupos, k));
   const todasOcultas = n > 0 && selecao.every((k) => ocultas.has(k));
@@ -67,6 +74,16 @@ function ItensObjetos() {
       </ItemContexto>
       <ItemContexto icone={IconeSelecionarTudo} atalho="Ctrl+A" onSelect={() => selecionarTudo(m)}>
         Selecionar tudo
+      </ItemContexto>
+      <SeparadorContexto />
+      <ItemContexto icone={IconeCopiar} atalho="Ctrl+C" disabled={!n} onSelect={copiarSelecao}>
+        Copiar
+      </ItemContexto>
+      <ItemContexto icone={IconeColar} atalho="Ctrl+V" disabled={!copiadas} onSelect={() => colarCopiadas(m)}>
+        Colar
+      </ItemContexto>
+      <ItemContexto icone={IconeDuplicar} atalho="Ctrl+D" disabled={!n} onSelect={() => duplicarSelecao(m)}>
+        Duplicar
       </ItemContexto>
       <SeparadorContexto />
       <ItemContexto icone={todasOcultas ? IconeVisivel : IconeOculto} atalho="H" disabled={!n} onSelect={ocultarSelecao}>

@@ -115,6 +115,34 @@ console.log('\n== Suavizar relevo nao prende a tela ==');
   ok('continuar na mesma peca mantem ligada', ui().ferramentaRelevo === 'stl:1');
 }
 
+console.log('\n== copiar e colar (Ctrl+C / Ctrl+V / Ctrl+D) ==');
+{
+  const { useProjeto, lerChave } = await import('../store/projeto');
+  const p = () => useProjeto.getState();
+  p().limparProjeto();
+  p().definirTexto('LETRA');
+  p().editarPeca('L#0', { dx: 5, giro: 30 });
+  const [c1] = p().colarPecas([{ chave: 'L#0', nome: 'L' }], 70);
+  ok('letra colada vira peca nova do letreiro', !!c1 && lerChave(c1).tipo === 'copia' && p().copias.length === 1);
+  ok('com o nome "L (2)"', p().copias[0]!.nome === 'L (2)', p().copias[0]!.nome);
+  const e = p().edicoes.get(c1!)!;
+  ok('nasce ao lado, com o mesmo giro do original', e.dx === 75 && e.giro === 30, `dx ${e.dx}, giro ${e.giro}`);
+  const [c2] = p().colarPecas([{ chave: c1!, nome: 'L (2)' }], 70);
+  ok('copia de copia aponta para o mesmo original', p().copias.find((x) => `copia:${x.id}` === c2)?.origem === 'L#0' && p().copias[1]!.nome === 'L (3)');
+  p().removerPeca('L#0');
+  ok('excluir o original nao leva as copias', p().copias.length === 2);
+  p().removerPeca(c2!);
+  ok('excluir uma copia tira so ela', p().copias.length === 1);
+  p().definirTexto('OUTRO');
+  ok('texto novo descarta as copias (as chaves mudaram)', p().copias.length === 0);
+
+  p().adicionarObjeto3d({ nome: 'suporte', posicoes: new Float32Array(cuboSopa(10)), alturaZ: 10 });
+  const orig = `stl:${p().objetos3d[0]!.id}`;
+  const [s1] = p().colarPecas([{ chave: orig, nome: 'suporte' }], 0);
+  ok('STL colado vira outro objeto igual', p().objetos3d.length === 2 && p().objetos3d[1]!.nome === 'suporte (2)' && s1 === `stl:${p().objetos3d[1]!.id}`);
+  ok('peca que nao existe nao cola nada', p().colarPecas([{ chave: 'stl:nao-existe', nome: 'x' }], 0).length === 0);
+}
+
 console.log('\n== Abrir x Adicionar: mesmo caminho, mesmos formatos ==');
 {
   const { useProjeto } = await import('../store/projeto');
@@ -123,6 +151,7 @@ console.log('\n== Abrir x Adicionar: mesmo caminho, mesmos formatos ==');
   const p = () => useProjeto.getState();
   const cuboStl = (nome: string) => new File([posicoesParaSTL(new Float32Array(cuboSopa(10)), nome)], `${nome}.stl`);
   ok('os dois aceitam .ai .pdf .stl .3mf', ['.ai', '.pdf', '.stl', '.3mf'].every((f) => (FORMATOS as readonly string[]).includes(f)));
+  p().limparProjeto();
   await abrirArquivo(cuboStl('a'), false);
   await abrirArquivo(cuboStl('b'), false);
   ok('Adicionar poe ao lado', p().objetos3d.length === 2);

@@ -65,14 +65,29 @@ export interface Objeto3d {
 /** Chave de peca: `arquivo:nome` (importada), `stl:id` (objeto 3D) ou `nome#pos` (texto). */
 export { chavePecaArquivo } from '@/lib/import/fila';
 export const chaveObjeto3d = (id: string) => `stl:${id}`;
+export const chaveCopia = (id: string) => `copia:${id}`;
+
+/**
+ * Peca do letreiro duplicada (Ctrl+V / Ctrl+D). Guarda de qual peca ORIGINAL (texto
+ * ou arquivo) ela vem: o modelo pega aquele contorno e aplica a edicao da propria
+ * copia. Excluir o original nao leva a copia junto.
+ */
+export interface Copia {
+  id: string;
+  origem: string;
+  nome: string;
+}
 
 function alturaDe(pos: Float32Array): number {
   let z = 0;
   for (let i = 2; i < pos.length; i += 3) z = Math.max(z, pos[i]!);
   return z;
 }
-export function lerChave(chave: string): { tipo: 'stl'; id: string } | { tipo: 'arquivo'; arquivo: string; nome: string } | { tipo: 'texto' } {
+export function lerChave(
+  chave: string
+): { tipo: 'stl'; id: string } | { tipo: 'copia'; id: string } | { tipo: 'arquivo'; arquivo: string; nome: string } | { tipo: 'texto' } {
   if (chave.startsWith('stl:')) return { tipo: 'stl', id: chave.slice(4) };
+  if (chave.startsWith('copia:')) return { tipo: 'copia', id: chave.slice(6) };
   const i = chave.indexOf(':');
   if (i > 0) return { tipo: 'arquivo', arquivo: chave.slice(0, i), nome: chave.slice(i + 1) };
   return { tipo: 'texto' };
@@ -153,6 +168,7 @@ export interface EstadoProjeto {
   avulsas: PlacaAvulsa[];
   /** Grupos de pecas (continuam pecas separadas). Valem em Desenhar e Imprimir. */
   grupos: Grupo[];
+  copias: Copia[];
   /**
    * O dono da maquina recebe antes a maquina e a luz. Fora do `cfg` de proposito:
    * nao e salvo e volta desligado a cada abertura, para ser escolhido por orcamento.
@@ -181,6 +197,11 @@ export interface AcoesProjeto {
   /** Exclui a peca: letra do texto, peca de arquivo ou objeto STL. */
   removerPeca: (chaves: string | readonly string[]) => void;
   agruparPecas: (chaves: readonly string[]) => void;
+  /**
+   * Cola copias das pecas (letreiro ou STL), `dx` mm para o lado, e devolve as chaves
+   * novas. Copia de copia volta para o mesmo original.
+   */
+  colarPecas: (itens: readonly { chave: string; nome: string }[], dx: number) => string[];
   desagruparPecas: (chaves: readonly string[]) => void;
   renomearGrupo: (id: string, nome: string) => void;
   /** Traz de volta tudo o que foi excluido (texto e arquivos). */
@@ -210,7 +231,7 @@ export interface AcoesProjeto {
 
 const MAQUINA = IMPRESSORAS[0]!;
 
-export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
+export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => ({
   texto: 'LETRA',
   fonte: null,
   fonteNome: 'Anton',
@@ -262,6 +283,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
   cfg: PADRAO,
   avulsas: [],
   grupos: [],
+  copias: [],
   pagarMaquina: false,
 
   definir: (k, v) => set({ [k]: v } as Partial<EstadoProjeto>),
@@ -327,6 +349,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
     set((s) => {
       const lista = typeof chaves === 'string' ? [chaves] : [...chaves];
       let objetos3d = s.objetos3d;
+      let copias = s.copias;
       let arquivos = s.arquivos;
       const removidas = new Set(s.removidas);
       for (const chave of lista) {
@@ -335,14 +358,51 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
         // Mesmo lugar dos quadradinhos de Origem: excluir aqui aparece desligado la.
         else if (c.tipo === 'arquivo')
           arquivos = arquivos.map((a) => (a.id === c.arquivo ? { ...a, desativadas: new Set(a.desativadas).add(c.nome) } : a));
+        else if (c.tipo === 'copia') copias = copias.filter((x) => x.id !== c.id);
         else removidas.add(chave);
       }
       // Quem saiu sai tambem do grupo; grupo que ficar com 1 se desfaz.
       const grupos = s.grupos
         .map((g) => ({ ...g, membros: g.membros.filter((k) => !lista.includes(k)) }))
         .filter((g) => g.membros.length >= 2);
-      return { objetos3d, arquivos, removidas, grupos };
+      return { objetos3d, arquivos, removidas, grupos, copias };
     }),
+
+  colarPecas: (itens, dx) => {
+    const s = get();
+    const novas: string[] = [];
+    const objetos3d = [...s.objetos3d];
+    const copias = [...s.copias];
+    const edicoes = new Map(s.edicoes);
+    // "L (2)", "L (3)"...: conta quantas pecas com aquele nome ja existem.
+    const nomeNovo = (nome: string, jaTem: (n: string) => boolean) => {
+      const base = nome.replace(/ \(\d+\)$/, '');
+      let n = 2;
+      while (jaTem(`${base} (${n})`)) n++;
+      return `${base} (${n})`;
+    };
+    for (const { chave, nome } of itens) {
+      const c = lerChave(chave);
+      if (c.tipo === 'stl') {
+        const o = objetos3d.find((x) => x.id === c.id);
+        if (!o) continue;
+        const id = novoId();
+        objetos3d.push({ ...o, id, nome: nomeNovo(o.nome, (n) => objetos3d.some((x) => x.nome === n)), original: undefined });
+        novas.push(chaveObjeto3d(id));
+        continue;
+      }
+      // Letreiro: copia de copia aponta para o mesmo original.
+      const origem = c.tipo === 'copia' ? copias.find((x) => x.id === c.id)?.origem : chave;
+      if (!origem) continue;
+      const id = novoId();
+      copias.push({ id, origem, nome: nomeNovo(nome, (n) => copias.some((x) => x.nome === n)) });
+      const e = edicoes.get(chave) ?? SEM_EDICAO;
+      edicoes.set(chaveCopia(id), { ...e, dx: e.dx + dx });
+      novas.push(chaveCopia(id));
+    }
+    set({ objetos3d, copias, edicoes });
+    return novas;
+  },
 
   agruparPecas: (chaves) =>
     set((s) => ({ grupos: agrupar(s.grupos, chaves, novoId(), `Grupo ${s.grupos.length + 1}`) })),
@@ -354,7 +414,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
     set((s) => ({ removidas: new Set(), arquivos: s.arquivos.map((a) => ({ ...a, desativadas: new Set<string>() })) })),
 
   definirTexto: (texto) =>
-    set((s) => (texto === s.texto ? {} : { texto, removidas: new Set(), edicoes: new Map(), grupos: [] })),
+    set((s) => (texto === s.texto ? {} : { texto, removidas: new Set(), edicoes: new Map(), grupos: [], copias: [] })),
 
   alternarPecaImportada: (chave) =>
     set((s) => {
@@ -387,7 +447,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
         arquivos: substituir ? [a] : [...s.arquivos, a],
         arquivoAtivo: a.id,
         // Substituir troca as pecas: edicao antiga apontaria para o nada.
-        ...(substituir ? { edicoes: new Map(), grupos: [] } : {}),
+        ...(substituir ? { edicoes: new Map(), grupos: [], copias: [] } : {}),
         erro: null,
       };
     }),
@@ -417,9 +477,9 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
       ),
     })),
 
-  fecharImport: () => set({ arquivos: [], arquivoAtivo: null, edicoes: new Map(), grupos: [], erro: null }),
+  fecharImport: () => set({ arquivos: [], arquivoAtivo: null, edicoes: new Map(), grupos: [], copias: [], erro: null }),
   limparProjeto: () =>
-    set({ arquivos: [], arquivoAtivo: null, objetos3d: [], edicoes: new Map(), grupos: [], removidas: new Set(), avulsas: [], erro: null }),
+    set({ arquivos: [], arquivoAtivo: null, objetos3d: [], edicoes: new Map(), grupos: [], copias: [], removidas: new Set(), avulsas: [], erro: null }),
 
   guardarFonteTexto: (chave, fonte) =>
     set((s) => {
@@ -431,6 +491,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set) => ({
         fontesTexto: n,
         edicoes: new Map(),
         grupos: [],
+        copias: [],
         arquivos: s.arquivos.map((a) => (a.desenho.textos?.length ? { ...a, desativadas: new Set<string>() } : a)),
       };
     }),

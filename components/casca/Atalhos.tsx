@@ -3,7 +3,16 @@
 import { useEffect, useRef } from 'react';
 import { useInterface, type Espaco, type Ferramenta } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
-import { agruparSelecao, desagruparSelecao, excluirSelecao, ocultarSelecao, selecionarTudo } from '@/features/acoes/selecao';
+import {
+  agruparSelecao,
+  colarCopiadas,
+  copiarSelecao,
+  desagruparSelecao,
+  duplicarSelecao,
+  excluirSelecao,
+  ocultarSelecao,
+  selecionarTudo,
+} from '@/features/acoes/selecao';
 
 const FERRAMENTAS: Record<string, Ferramenta> = { v: 'selecionar', g: 'mover', r: 'girar', s: 'tamanho' };
 const ESPACOS: Record<string, Espaco> = { '1': 'desenhar', '2': 'imprimir', '3': 'orcamento' };
@@ -37,6 +46,19 @@ export function Atalhos({ onEnquadrar }: { onEnquadrar: () => void }) {
         if (k === 'g') {
           e.preventDefault();
           return e.shiftKey ? desagruparSelecao() : agruparSelecao();
+        }
+        if (k === 'c' && ui.selecao.length) {
+          e.preventDefault();
+          return copiarSelecao();
+        }
+        if (k === 'v' && ui.copiadas.length) {
+          e.preventDefault();
+          return colarCopiadas(modelo.current);
+        }
+        // Ctrl+D e "favoritar" no navegador: aqui e duplicar, como no Photoshop e no Bambu.
+        if (k === 'd' && ui.selecao.length) {
+          e.preventDefault();
+          return duplicarSelecao(modelo.current);
         }
         return;
       }

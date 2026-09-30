@@ -28,6 +28,8 @@ export {
   LayoutGrid as IconeArrumar,
   Lock as IconeTravado,
   Plus as IconeMais,
+  ClipboardPaste as IconeColar,
+  CopyPlus as IconeDuplicar,
   Eraser as IconeSuavizar,
   Group as IconeAgrupar,
   Ungroup as IconeDesagrupar,

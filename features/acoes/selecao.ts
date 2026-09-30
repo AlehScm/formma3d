@@ -1,6 +1,7 @@
 'use client';
 
 import { grupoDe } from '@/lib/cena/grupo';
+import { regionBounds } from '@/lib/geom/region';
 import { useInterface } from '@/store/interface';
 import { useProjeto } from '@/store/projeto';
 import type { Modelo } from '@/modelo/Modelo';
@@ -92,4 +93,39 @@ export function exportarSelecao(m: Modelo, formato: 'stl' | '3mf'): void {
   const nome = nomeDaSelecao(m);
   if (formato === 'stl') baixarSelecaoSTL(m, sel, nome);
   else void baixarSelecao3MF(m, sel, nome);
+}
+
+/* ---------------------------------------------------------- copiar / colar */
+
+export function copiarSelecao(): void {
+  const sel = selecao();
+  if (sel.length) useInterface.getState().definirCopiadas([...sel]);
+}
+
+/**
+ * Duplica as pecas: cada uma vira peca nova (do letreiro ou objeto STL), ao lado da
+ * original, e a selecao passa para as copias. Grupo copiado inteiro sai agrupado.
+ */
+function duplicar(m: Modelo, chaves: readonly string[]): void {
+  const existem = chaves.filter((k) => m.letras.some((l) => l.chave === k) || m.objetos.some((o) => o.chave === k));
+  if (!existem.length) return;
+  // Depois do fim do letreiro, com um vao: ao lado do original ela nasceria em cima
+  // das letras vizinhas.
+  const contornos = existem.flatMap((k) => m.letras.find((l) => l.chave === k)?.part.contorno ?? []);
+  const tudo = m.letras.flatMap((l) => l.part.contorno);
+  const dx = contornos.length ? regionBounds(tudo).maxX + 20 - regionBounds(contornos).minX : 0;
+  const p = useProjeto.getState();
+  const g = grupoDe(p.grupos, existem[0]!);
+  const eraGrupo = !!g && g.membros.length === existem.length && existem.every((k) => g.membros.includes(k));
+  const novas = p.colarPecas(existem.map((k) => ({ chave: k, nome: nomeDe(m, k) })), dx);
+  if (eraGrupo && novas.length > 1) useProjeto.getState().agruparPecas(novas);
+  useInterface.getState().definirSelecao(novas);
+}
+
+export function colarCopiadas(m: Modelo): void {
+  duplicar(m, useInterface.getState().copiadas);
+}
+
+export function duplicarSelecao(m: Modelo): void {
+  duplicar(m, selecao());
 }

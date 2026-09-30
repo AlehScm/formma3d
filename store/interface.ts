@@ -43,6 +43,8 @@ interface EstadoInterface {
   /** So da tela: ocultar e travar nao mudam produto, custo nem exportacao. */
   ocultas: Set<string>;
   travadas: Set<string>;
+  /** Ctrl+C: o que Ctrl+V vai duplicar. */
+  copiadas: string[];
   /** Suavizar relevo: objeto STL em que o clique procura a marca (null = desligado). */
   ferramentaRelevo: string | null;
   opcoesRelevo: { alturaMax: number; raio: number };
@@ -91,6 +93,7 @@ interface EstadoInterface {
   /** Clique numa peca, no 3D ou no painel, com Ctrl/Shift. `ordem` e a do painel. */
   clicarObjeto: (chave: string, mods: Modificadores, ordem: readonly string[]) => void;
   alternarOcultas: (chaves: readonly string[]) => void;
+  definirCopiadas: (chaves: string[]) => void;
   definirFerramentaRelevo: (chave: string | null) => void;
   definirOpcoesRelevo: (o: Partial<{ alturaMax: number; raio: number }>) => void;
   definirRelevo: (r: EstadoInterface['relevo']) => void;
@@ -152,6 +155,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   selecionada: null,
   ocultas: new Set(),
   travadas: new Set(),
+  copiadas: [],
   ferramentaRelevo: null,
   opcoesRelevo: { alturaMax: 2, raio: 40 },
   relevo: null,
@@ -187,6 +191,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   clicarObjeto: (chave, mods, ordem) =>
     set((s) => comSelecao(s, clicar(s.selecao, chave, mods, useProjeto.getState().grupos, ordem))),
   alternarOcultas: (chaves) => set((s) => ({ ocultas: alternar(s.ocultas, chaves) })),
+  definirCopiadas: (copiadas) => set({ copiadas }),
   definirFerramentaRelevo: (ferramentaRelevo) => set({ ferramentaRelevo, relevo: null }),
   definirOpcoesRelevo: (o) => set((s) => ({ opcoesRelevo: { ...s.opcoesRelevo, ...o } })),
   definirRelevo: (relevo) => set({ relevo }),

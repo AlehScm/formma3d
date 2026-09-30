@@ -15,7 +15,7 @@ import { desenhoParaPecas, resolverTracos } from '@/lib/import/pecas';
 import { chaveFonte, textoEmObjetos } from '@/lib/import/texto-em-curvas';
 import { MANUAL, acharImpressora, caberNaMesa, cascoConvexo, descreverVeredito, type Impressora, type Veredito } from '@/lib/print/impressoras';
 import { aplicarEdicao, edicaoVazia, escalaUniforme } from '@/lib/geom/pecaEditada';
-import { useProjeto, chaveObjeto3d, type ArquivoImportado } from '@/store/projeto';
+import { useProjeto, chaveCopia, chaveObjeto3d, type ArquivoImportado } from '@/store/projeto';
 import { enfileirarArquivos } from '@/lib/import/fila';
 
 /**
@@ -173,6 +173,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       edicoes: s.edicoes,
       fontesTexto: s.fontesTexto,
       removidas: s.removidas,
+      copias: s.copias,
       nomeTrabalho: s.nomeTrabalho,
       presetAtivo: s.presetAtivo,
     }))
@@ -210,7 +211,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     [p]
   );
 
-  const { arquivos, objetos3d, fonte, texto, altura, tracking, edicoes, fontesTexto, removidas } = origem;
+  const { arquivos, objetos3d, fonte, texto, altura, tracking, edicoes, fontesTexto, removidas, copias } = origem;
   const { apoio, borda, bordaCompensa } = p;
 
   // Pecas de cada arquivo, na escala nativa (ver `nativasDoArquivo`).
@@ -259,25 +260,45 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       };
     };
 
+    // Todas as pecas de origem, inclusive as excluidas: a copia (Ctrl+V) guarda de qual
+    // original veio e continua existindo se ele for excluido.
+    type Crua = Omit<Base, 'ancora'>;
+    let todas: Crua[] = [];
+    let vivas: (chave: string) => boolean = () => true;
     if (pecasNativas) {
       const alvoDe = (a: ArquivoImportado) => alturaArte(a.altura, apoio, borda, bordaCompensa);
-      return enfileirarArquivos(pecasNativas.map(({ a, pecas }) => ({ id: a.id, alvo: alvoDe(a), desativadas: a.desativadas, pecas }))).map(
-        (x) => {
+      const fila = (comDesligadas: boolean) =>
+        enfileirarArquivos(
+          pecasNativas.map(({ a, pecas }) => ({ id: a.id, alvo: alvoDe(a), desativadas: comDesligadas ? new Set<string>() : a.desativadas, pecas }))
+        ).map((x) => {
           const bb = regionBounds(x.region);
-          return editar({ ...x, bounds: bb, baseW: bb.w, baseH: bb.h });
-        }
-      );
+          return { ...x, bounds: bb, baseW: bb.w, baseH: bb.h };
+        });
+      // As vivas na posicao de sempre (arquivo todo desligado nao ocupa espaco); a
+      // fila completa so serve de origem para copia de peca que foi excluida.
+      const vivasLista = fila(false);
+      const chavesVivas = new Set(vivasLista.map((x) => x.chave));
+      todas = [...vivasLista, ...fila(true).filter((x) => !chavesVivas.has(x.chave))];
+      vivas = (k) => chavesVivas.has(k);
+    } else if (fonte && texto.trim()) {
+      const alvo = alturaArte(altura, apoio, borda, bordaCompensa);
+      // A chave usa a posicao ANTES de filtrar: excluir uma letra nao pode renomear as outras.
+      todas = normalizeLetters(textToLetters(fonte, texto, { altura: alvo, tracking })).map((l, i) => ({
+        ...l,
+        chave: `${l.nome}#${i}`,
+        espessuraMin: minThickness(l.region),
+        baseW: l.bounds.w,
+        baseH: l.bounds.h,
+      }));
+      vivas = (k) => !removidas.has(k);
     }
-    if (!fonte || !texto.trim()) return [] as Base[];
-    const alvo = alturaArte(altura, apoio, borda, bordaCompensa);
-    // A chave usa a posicao ANTES de filtrar: excluir uma letra nao pode renomear as outras.
-    return normalizeLetters(textToLetters(fonte, texto, { altura: alvo, tracking }))
-      .map((l, i) => ({ l, chave: `${l.nome}#${i}` }))
-      .filter(({ chave }) => !removidas.has(chave))
-      .map(({ l, chave }) =>
-        editar({ ...l, chave, espessuraMin: minThickness(l.region), baseW: l.bounds.w, baseH: l.bounds.h })
-      );
-  }, [pecasNativas, fonte, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes, removidas]);
+    const porChave = new Map(todas.map((b) => [b.chave, b]));
+    const duplicadas = copias.flatMap((c) => {
+      const b = porChave.get(c.origem);
+      return b ? [{ ...b, chave: chaveCopia(c.id), nome: c.nome }] : [];
+    });
+    return [...todas.filter((b) => vivas(b.chave)), ...duplicadas].map(editar);
+  }, [pecasNativas, fonte, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes, removidas, copias]);
 
   // Enquanto o slider se move, o React mantem o quadro anterior em vez de travar.
   // So primitivos ou valores estaveis: objeto novo a cada render anularia o efeito.
