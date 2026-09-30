@@ -27,6 +27,8 @@ import {
   IconeOrcamento,
   IconeMais,
   IconeDesfazer,
+  IconeExcluir,
+  BotaoIcone,
   Interruptor,
   Cartao,
   Dica,
@@ -489,7 +491,10 @@ function LinhaPlaca({ p, nome }: { p: CustoPlaca; nome: string }) {
   const real = useInterface((x) => x.reais[p.indice] ?? null);
   const definirReal = useInterface((x) => x.definirReal);
   const alternarExcluida = useInterface((x) => x.alternarExcluida);
+  const definirSelecao = useInterface((x) => x.definirSelecao);
   const definirCusto = useProjeto((x) => x.definirCusto);
+  const removerPeca = useProjeto((x) => x.removerPeca);
+  const [apagando, setApagando] = useState(false);
   const [g, setG] = useState(real ? formatarNumero(real.gramas, 0) : '');
   const [t, setT] = useState(real ? formatarTempoHM(real.horas) : '');
   // Rearrumar ou mexer na placa apaga o dado real: os campos acompanham.
@@ -566,16 +571,36 @@ function LinhaPlaca({ p, nome }: { p: CustoPlaca; nome: string }) {
       </td>
       <td className="whitespace-nowrap py-1.5 text-right text-texto-2">{brl(p.orc.custo)}</td>
       <td className="whitespace-nowrap py-1.5 text-right font-semibold text-sucesso">
-        {brl(p.orc.preco)}
-        {!p.estimado && (
-          <button
-            type="button"
-            onClick={limpar}
-            className="ml-1 font-sans text-micro font-normal text-texto-3 hover:text-perigo"
-            title="Voltar para a estimativa"
-          >
-            ×
-          </button>
+        {apagando ? (
+          // Apaga varias pecas de uma vez: confirma na propria linha.
+          <span className="inline-flex items-center gap-1 font-sans text-micro font-normal">
+            <span className="text-perigo">Excluir {p.chaves.length} peça(s)?</span>
+            <Botao
+              tamanho="sm"
+              variante="perigo"
+              onClick={() => {
+                removerPeca(p.chaves);
+                definirSelecao([]);
+                setApagando(false);
+              }}
+            >
+              Sim
+            </Botao>
+            <Botao tamanho="sm" variante="fantasma" onClick={() => setApagando(false)}>
+              Não
+            </Botao>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-0.5">
+            {brl(p.orc.preco)}
+            {!p.estimado && <BotaoIcone icone={IconeDesfazer} tamanho="sm" rotulo="Voltar para a estimativa" onClick={limpar} />}
+            <BotaoIcone
+              icone={IconeExcluir}
+              tamanho="sm"
+              rotulo={`Excluir ${nome} (volta por Desenhar › Origem › Restaurar)`}
+              onClick={() => setApagando(true)}
+            />
+          </span>
         )}
       </td>
     </tr>
