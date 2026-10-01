@@ -21,8 +21,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'formma3d',
-  description: 'Letra caixa e peças para impressão 3D: modela, gera o corte da chapa e calcula o preço.',
+  title: 'Scarprint | Formma3D',
+  description: 'Catálogo de moldes Scarprint com editor 3D de letreiros e composição 2D de placas.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

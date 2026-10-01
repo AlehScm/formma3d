@@ -19,13 +19,13 @@ export function BarraStatus() {
   const z = m.letras[0]?.part.alturaZ ?? profundidade;
 
   return (
-    <footer className="flex h-8 shrink-0 items-center gap-4 border-t border-borda bg-superficie px-3 text-mini text-texto-3">
+    <footer className="flex h-8 shrink-0 items-center gap-2 overflow-hidden border-t border-borda bg-superficie px-2 text-micro text-texto-3 sm:gap-4 sm:px-3 sm:text-mini">
       {m.bounds ? (
-        <span className="tabular flex items-center gap-2.5 font-mono">
+        <span className="tabular flex shrink-0 items-center gap-1.5 font-mono sm:gap-2.5">
           <span className="text-eixo-x">X {formatarNumero(m.bounds.w, 1)}</span>
           <span className="text-eixo-y">Y {formatarNumero(m.bounds.h, 1)}</span>
           <span className="text-eixo-z">Z {formatarNumero(z, 1)}</span>
-          <span>mm</span>
+          <span className="hidden sm:inline">mm</span>
         </span>
       ) : (
         <span>Sem peças</span>
@@ -34,7 +34,7 @@ export function BarraStatus() {
       {m.letras.length > 0 && (
         <>
           <span aria-hidden>·</span>
-          <span>
+          <span className="hidden sm:inline">
             {m.letras.length} {m.letras.length === 1 ? 'peça' : 'peças'}
           </span>
         </>
@@ -63,7 +63,7 @@ export function BarraStatus() {
             gatilho={
               <button
                 type="button"
-                className={cx('flex h-6 items-center gap-1.5 rounded-sm px-2 font-medium text-atencao hover:bg-atencao/10')}
+                className={cx('flex h-6 items-center gap-1 rounded-sm px-1 font-medium text-atencao hover:bg-atencao/10 sm:gap-1.5 sm:px-2')}
               >
                 <IconeAtencao className="size-3.5" strokeWidth={2} aria-hidden />
                 {n} {n === 1 ? 'problema' : 'problemas'}

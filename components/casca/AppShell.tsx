@@ -29,6 +29,7 @@ import { Atalhos } from './Atalhos';
  */
 export function AppShell() {
   const espaco = useInterface((s) => s.espaco);
+  const [painelMobile, setPainelMobile] = useState<'configuracoes' | 'viewport' | 'objetos'>('viewport');
   const [pedidoEnquadrar, setPedido] = useState(0);
   const enquadrar = useCallback(() => setPedido((n) => n + 1), []);
 
@@ -37,6 +38,8 @@ export function AppShell() {
     return lembrarCustos();
   }, []);
 
+  useEffect(() => setPainelMobile('viewport'), [espaco]);
+
   const orcamento = espaco === 'orcamento';
 
   return (
@@ -44,17 +47,28 @@ export function AppShell() {
       <EntradasArquivo />
       <Atalhos onEnquadrar={enquadrar} />
 
-      <div className="flex h-screen flex-col overflow-hidden bg-fundo">
+      <div className="flex h-screen flex-col overflow-hidden bg-fundo max-xl:h-[100dvh]">
         <BarraTopo />
 
-        <div className="flex min-h-0 flex-1">
-          <aside aria-label="Configurações" className="w-[356px] shrink-0 overflow-hidden border-r border-borda bg-superficie">
+        <div className={cx('relative flex min-h-0 flex-1 xl:static', orcamento ? 'w-full' : 'mx-auto w-full max-w-[2400px]')}>
+          <aside
+            aria-label="Configurações"
+            className={cx(
+              'absolute inset-0 z-10 hidden overflow-hidden border-r border-borda bg-superficie xl:static xl:flex xl:w-[356px] xl:shrink-0',
+              painelMobile === 'configuracoes' && 'max-xl:flex'
+            )}
+          >
             {espaco === 'desenhar' && <PainelDesenhar />}
             {espaco === 'imprimir' && <PainelImprimir />}
             {orcamento && <PainelOrcamento />}
           </aside>
 
-          <main className="relative min-w-0 flex-1">
+          <main
+            className={cx(
+              'absolute inset-0 min-w-0 flex-1 xl:relative xl:inset-auto xl:block',
+              painelMobile === 'viewport' ? 'block' : 'hidden xl:block'
+            )}
+          >
             <div className={cx('absolute inset-0', orcamento && 'invisible')} aria-hidden={orcamento}>
               <Viewport pedidoEnquadrar={pedidoEnquadrar} onEnquadrar={enquadrar} />
             </div>
@@ -67,12 +81,39 @@ export function AppShell() {
 
           {/* Coluna da direita, como no Photoshop: camadas em cima, propriedades embaixo. */}
           {!orcamento && (
-            <aside aria-label="Objetos e propriedades" className="flex w-[300px] shrink-0 flex-col border-l border-borda bg-superficie">
+            <aside
+              aria-label="Objetos e propriedades"
+              className={cx(
+                'absolute inset-0 z-10 hidden flex-col border-l border-borda bg-superficie xl:static xl:flex xl:w-[300px] xl:shrink-0',
+                painelMobile === 'objetos' && 'max-xl:flex'
+              )}
+            >
               <PainelObjetos />
               <Inspetor />
             </aside>
           )}
         </div>
+
+        <nav aria-label="Painéis" className={cx('grid h-12 shrink-0 border-t border-borda bg-superficie xl:hidden', orcamento ? 'grid-cols-2' : 'grid-cols-3')}>
+          {([
+            ['configuracoes', 'Configurações'],
+            ['viewport', espaco === 'orcamento' ? 'Orçamento' : '3D'],
+            ...(!orcamento ? ([['objetos', 'Objetos']] as const) : []),
+          ] as const).map(([painel, nome]) => (
+            <button
+              key={painel}
+              type="button"
+              aria-current={painelMobile === painel ? 'page' : undefined}
+              onClick={() => setPainelMobile(painel)}
+              className={cx(
+                'border-t-2 px-2 text-mini font-medium',
+                painelMobile === painel ? 'border-acento text-texto' : 'border-transparent text-texto-3'
+              )}
+            >
+              {nome}
+            </button>
+          ))}
+        </nav>
 
         <BarraStatus />
       </div>

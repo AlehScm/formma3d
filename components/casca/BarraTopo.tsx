@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Abas,
   Botao,
@@ -53,15 +54,19 @@ export function BarraTopo() {
   const vista = useInterface((s) => (s.placas[s.placaVista]?.size ? s.placaVista : -1));
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-borda bg-superficie px-3">
-      <span className="select-none pl-1 text-medio font-semibold tracking-tight text-texto">
+    <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-borda bg-superficie px-2 py-1 xl:h-12 xl:flex-nowrap xl:gap-3 xl:px-3 xl:py-0">
+      <span className="select-none pl-1 text-medio font-semibold tracking-tight text-texto max-sm:hidden">
         formma<span className="text-acento">3d</span>
       </span>
 
-      <div className="h-5 w-px bg-borda" />
+      <Link href="/" className="flex h-8 shrink-0 items-center rounded-md px-2 text-mini font-medium text-texto-2 hover:bg-superficie-3">
+        ← Catálogo
+      </Link>
+
+      <div className="hidden h-5 w-px bg-borda sm:block" />
 
       {/* Projeto: o nome batiza STL, zip e orcamento. Vindo de arquivo, e o nome dele. */}
-      <div className="flex min-w-0 items-center">
+      <div className="flex min-w-0 flex-1 items-center md:flex-none">
         {editando && !imp ? (
           <input
             autoFocus
@@ -116,7 +121,7 @@ export function BarraTopo() {
         )}
       </div>
 
-      <div className="mx-auto">
+      <div className="order-last w-full xl:order-none xl:mx-auto xl:w-auto">
         <Abas<Espaco>
           rotulo="Área de trabalho"
           valor={espaco}
