@@ -1,5 +1,7 @@
 # Auditoria funcional do catálogo Mafagrafos
 
+> Substituído por `docs/mafagrafos-117.md` (117 modelos, opções por ficha, 2026-10-01). Mantido só como histórico.
+
 Consulta: 2026-09-30. Fonte: [catálogo público](https://www.mafagrafos.com/models). Este documento registra **116 entradas do índice**; 115 fichas públicas foram abertas. A ficha de “Carimbos de Massinha” não pôde ser acessada e está marcada abaixo. Não foram testadas as interfaces interativas nem as exportações de cada gerador.
 
 Objetivo: identificar capacidades e núcleos geométricos que podemos implementar de forma própria no Formma3D. Os nomes servem como referências de origem, não como especificação de cópia de marca, layout, código ou arquivos 3D. As famílias e sinais técnicos abaixo são uma triagem nossa, não categorias oficiais do site.

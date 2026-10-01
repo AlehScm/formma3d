@@ -77,7 +77,14 @@ export function textToLetters(font: Font, text: string, opts: LayoutOpts = {}): 
   const fontSize = (altura * font.unitsPerEm) / capHeight;
   const scale = fontSize / font.unitsPerEm;
 
-  const glyphs = font.stringToGlyphs(text);
+  // Algumas fontes (Segoe Script, por exemplo) tem ligaduras num formato que o
+  // opentype.js nao le e ele lanca erro: ai vai glifo por caractere, sem ligadura.
+  let glyphs;
+  try {
+    glyphs = font.stringToGlyphs(text);
+  } catch {
+    glyphs = [...text].map((c) => font.charToGlyph(c));
+  }
   const letters: Letra[] = [];
   let penX = 0;
 

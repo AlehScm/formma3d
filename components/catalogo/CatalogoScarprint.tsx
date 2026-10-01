@@ -2,21 +2,22 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { familias, moldes, type MoldeId } from '@/features/catalogo/catalogo';
+import { familias, geradores, moldes } from '@/features/catalogo/catalogo';
 import './catalogo.css';
 
 type Familia = keyof typeof familias;
 const categorias: (Familia | 'todos')[] = ['todos', ...Object.keys(familias) as Familia[]];
+const todos = [...geradores, ...moldes.map((m) => ({ ...m, gerador: false }))];
 
 export function CatalogoScarprint() {
   const [busca, setBusca] = useState('');
   const [familia, setFamilia] = useState<Familia | 'todos'>('todos');
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase('pt-BR');
-    return moldes.filter((item) => (familia === 'todos' || item.family === familia)
+    return todos.filter((item) => (familia === 'todos' || item.family === familia)
       && (!termo || `${item.title} ${item.summary} ${familias[item.family]}`.toLocaleLowerCase('pt-BR').includes(termo)));
   }, [busca, familia]);
-  const disponiveis = moldes.filter((item) => item.ativo).length;
+  const disponiveis = todos.filter((item) => item.ativo).length;
 
   return <div className="catalog-page">
     <header className="catalog-header">
@@ -46,7 +47,7 @@ export function CatalogoScarprint() {
         <div className="catalog-section-heading"><div><span className="catalog-kicker">ESCOLHA UM CAMINHO</span><h2 id="catalog-library-title">Biblioteca de modelos</h2><p>Modelos prontos para começar e famílias que estamos preparando.</p></div><div className="catalog-count">{visiveis.length} modelos</div></div>
         <div className="catalog-toolbar"><label className="catalog-search"><span aria-hidden="true">⌕</span><input type="search" value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Buscar modelo ou categoria" aria-label="Buscar modelos" /></label><div className="catalog-filters" aria-label="Filtrar por família">{categorias.map((item) => <button key={item} type="button" className={familia === item ? 'active' : ''} onClick={() => setFamilia(item)} aria-pressed={familia === item}>{item === 'todos' ? 'Todos' : familias[item]}</button>)}</div></div>
         {visiveis.length ? <div className="catalog-grid">{visiveis.map((item) => <article className="template-card" key={item.id}>
-          <div className={`template-visual visual-${item.id}`}><TemplateVisual id={item.id} /><span className={`template-status ${item.ativo ? 'is-ready' : 'is-planned'}`}>{item.ativo ? (item.family === 'placas' ? 'Gerador 3D inicial · SVG 2D' : 'Editor 3D') : 'Em desenvolvimento'}</span></div>
+          <div className={`template-visual visual-${item.id}`}><TemplateVisual id={item.id} family={item.family} /><span className={`template-status ${item.ativo ? 'is-ready' : 'is-planned'}`}>{item.gerador ? 'Gerador 3D · 3MF multicor' : item.ativo ? (item.family === 'placas' ? 'Gerador 3D inicial · SVG 2D' : 'Editor 3D') : 'Em desenvolvimento'}</span></div>
           <div className="template-card-body"><span className="template-family">{familias[item.family]}</span><h3>{item.title}</h3><p>{item.summary}</p><div className="template-card-footer"><Link href={`/moldes/${item.id}`}>{item.ativo ? 'Personalizar' : 'Ver modelo'} <span aria-hidden="true">↗</span></Link></div></div>
         </article>)}</div> : <div className="catalog-empty"><b>Nenhum modelo encontrado</b><p>Tente outra busca ou escolha “Todos”.</p><button type="button" onClick={() => { setBusca(''); setFamilia('todos'); }}>Limpar filtros</button></div>}
       </div></section>
@@ -55,7 +56,7 @@ export function CatalogoScarprint() {
   </div>;
 }
 
-function TemplateVisual({ id }: { id: MoldeId }) {
+function TemplateVisual({ id, family }: { id: string; family: Familia }) {
   switch (id) {
     case 'texto-livre': return <div className="preview-letters"><span>S</span><span>C</span><span>A</span><span>R</span></div>;
     case 'letreiro-nome': return <div className="preview-nameplate"><small>ESPAÇO</small><b>NOME</b><i /></div>;
@@ -68,5 +69,6 @@ function TemplateVisual({ id }: { id: MoldeId }) {
     case 'letra-grande': return <div className="preview-large-letter">A</div>;
     case 'placa-multicamadas': return <div className="preview-layers"><span>01</span><span>02</span><span>03</span></div>;
     case 'porta-canetas': return <div className="preview-parametric">{Array.from({ length: 12 }, (_, index) => <span key={index} />)}</div>;
+    default: return family === 'chaveiros' ? <div className="preview-keychain"><i /><b>{id === 'chaveiro-retangular' ? 'Ana' : 'A'}</b></div> : <div className="preview-layers"><span>01</span><span>02</span><span>03</span></div>;
   }
 }

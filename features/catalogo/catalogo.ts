@@ -1,3 +1,5 @@
+import { FICHAS } from '@/lib/gerador/receitas/fichas';
+
 export const familias = {
   texto: 'Texto e letras', placas: 'Placas e letreiros', chaveiros: 'Chaveiros', qr: 'QR e redes',
   cortadores: 'Cortadores', carimbos: 'Carimbos e ejetores', multicor: 'Camadas e cores', parametricos: 'Paramétricos',
@@ -18,3 +20,6 @@ export const moldes = [
 ] as const;
 
 export type MoldeId = (typeof moldes)[number]['id'];
+
+/** Geradores prontos da base comum (lib/gerador): cada um abre a tela unica do gerador. */
+export const geradores = FICHAS.map((f) => ({ id: f.id, title: f.nome, family: f.familia, summary: f.resumo, icon: '◆', ativo: true, gerador: true }));
