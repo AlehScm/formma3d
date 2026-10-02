@@ -71,4 +71,15 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - `lib/text/fontes.ts` (compartilhado): +18 Google Fonts (OFL) e `FONTE_EMOJI` (Noto Emoji, fora da
     lista selecionável). Formas `coracao`, `estrela`, `ajustarLargura` em `lib/gerador/formas.ts`.
   - verificar-gerador 89/89. SVG testado no navegador (Node não tem DOMParser).
+- 2026-10-01 Claude (a pedido do usuário, na área do ChatGPT): biblioteca refeita porque "tudo muito
+  igual, não mostra o que é cada coisa".
+  - Cada gerador mostra uma foto 3D real do seu exemplo (`features/catalogo/Miniaturas.tsx` +
+    `renderMiniatura.ts`: um WebGL só, em fila, cache no navegador por versão; three só carrega depois
+    da página aparecer). Exemplos e etiquetas na vitrine (`fichas.ts`: `destaques`, `exemplo`).
+  - Página em seções: Geradores prontos, Editores livres (`editoresLivres` em `catalogo.ts`: "Texto
+    editável" + "Letreiro de nome" viram um card "Editor de letra caixa" → `/editor`; as rotas antigas
+    continuam), Em breve (lista compacta, `emBreve`). Largura total, grade `auto-fill`.
+  - Hero com vitrine de fotos reais no lugar da arte genérica. O `moldes` e o `familias` não mudaram.
+  - Para um gerador novo aparecer com foto: ficha com `destaques` e `exemplo`. O teste
+    `verificar-gerador` confere que o exemplo só usa campos do gerador e gera sem aviso.
 

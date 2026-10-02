@@ -1,5 +1,3 @@
-import { FICHAS } from '@/lib/gerador/receitas/fichas';
-
 export const familias = {
   texto: 'Texto e letras', placas: 'Placas e letreiros', chaveiros: 'Chaveiros', qr: 'QR e redes',
   cortadores: 'Cortadores', carimbos: 'Carimbos e ejetores', multicor: 'Camadas e cores', parametricos: 'Paramétricos',
@@ -21,5 +19,28 @@ export const moldes = [
 
 export type MoldeId = (typeof moldes)[number]['id'];
 
-/** Geradores prontos da base comum (lib/gerador): cada um abre a tela unica do gerador. */
-export const geradores = FICHAS.map((f) => ({ id: f.id, title: f.nome, family: f.familia, summary: f.resumo, icon: '◆', ativo: true, gerador: true }));
+
+/**
+ * Editores livres (montar do zero, peca por peca), com o que cada um entrega. "Texto
+ * editavel" e "Letreiro de nome" abrem o mesmo editor: no catalogo viram um card so.
+ */
+export const editoresLivres = [
+  {
+    id: 'editor', title: 'Editor de letra caixa', family: 'texto', href: '/editor', visual: 'texto-livre',
+    summary: 'Monte do zero, letra por letra: letra caixa com chapa de ACM, peças para imprimir e orçamento.',
+    destaques: ['Letra caixa com chapa', 'Importa AI, PDF, STL e 3MF', 'Orçamento pronto'],
+  },
+  {
+    id: 'placa-personalizada', title: 'Placa personalizada', family: 'placas', href: '/moldes/placa-personalizada', visual: 'placa-personalizada',
+    summary: 'Uma base com as medidas que você quiser e o texto em letras soltas para colar.',
+    destaques: ['Medidas livres', 'Letras soltas em STL', 'Composição em 2D'],
+  },
+  {
+    id: 'placa-profissional', title: 'Placa profissional', family: 'placas', href: '/moldes/placa-profissional', visual: 'placa-profissional',
+    summary: 'Placa de nome para empresa ou consultório, já no formato largo de fachada.',
+    destaques: ['Formato de fachada', 'Letras soltas em STL', 'Composição em 2D'],
+  },
+] as const;
+
+/** Moldes ainda sem gerador. */
+export const emBreve = moldes.filter((m) => !m.ativo);

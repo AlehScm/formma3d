@@ -11,8 +11,11 @@ export function nomesDoLote(texto: string): string[] {
   return texto.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
-/** Itens lado a lado em `colunas`, com `folga` mm entre eles; o primeiro em cima a esquerda. */
-export function emGrade(itens: Item[], colunas = 3, folga = 5): Item[] {
+/**
+ * Itens em grade quase quadrada (cabe melhor na mesa), com `folga` mm entre eles; o
+ * primeiro em cima a esquerda.
+ */
+export function emGrade(itens: Item[], colunas = Math.ceil(Math.sqrt(itens.length)), folga = 5): Item[] {
   const caixas = itens.map(caixaDoItem);
   const largura = Math.max(...caixas.map((c) => c.maxX - c.minX));
   const altura = Math.max(...caixas.map((c) => c.maxY - c.minY));

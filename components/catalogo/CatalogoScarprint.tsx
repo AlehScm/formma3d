@@ -1,74 +1,186 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { familias, geradores, moldes } from '@/features/catalogo/catalogo';
+import { useState } from 'react';
+import { editoresLivres, emBreve, familias } from '@/features/catalogo/catalogo';
+import { FICHAS, type Ficha } from '@/lib/gerador/receitas/fichas';
+import { Miniatura } from '@/features/catalogo/Miniaturas';
 import './catalogo.css';
 
 type Familia = keyof typeof familias;
-const categorias: (Familia | 'todos')[] = ['todos', ...Object.keys(familias) as Familia[]];
-const todos = [...geradores, ...moldes.map((m) => ({ ...m, gerador: false }))];
+
+/** Etiqueta do card: o que a coisa e, no singular. */
+const tipoDe: Record<Familia, string> = {
+  multicor: 'Letreiro em camadas', chaveiros: 'Chaveiro', texto: 'Letra caixa', placas: 'Placa',
+  qr: 'QR code', cortadores: 'Cortador', carimbos: 'Carimbo', parametricos: 'Peça paramétrica',
+};
+
+/** Modelos da vitrine do topo (fotos reais dos geradores). */
+const VITRINE = ['palavra-camadas', 'chaveiro-nome', 'social-camadas'];
 
 export function CatalogoScarprint() {
   const [busca, setBusca] = useState('');
   const [familia, setFamilia] = useState<Familia | 'todos'>('todos');
-  const visiveis = useMemo(() => {
-    const termo = busca.trim().toLocaleLowerCase('pt-BR');
-    return todos.filter((item) => (familia === 'todos' || item.family === familia)
-      && (!termo || `${item.title} ${item.summary} ${familias[item.family]}`.toLocaleLowerCase('pt-BR').includes(termo)));
-  }, [busca, familia]);
-  const disponiveis = todos.filter((item) => item.ativo).length;
+  const termo = busca.trim().toLocaleLowerCase('pt-BR');
+  const passa = (fam: Familia, ...textos: string[]) =>
+    (familia === 'todos' || fam === familia) && (!termo || [...textos, familias[fam]].join(' ').toLocaleLowerCase('pt-BR').includes(termo));
 
-  return <div className="catalog-page">
-    <header className="catalog-header">
-      <Link href="/" className="catalog-brand" aria-label="Scarprint, início"><span className="catalog-wordmark">SCAR<span>PRINT</span></span><small>DESIGN STUDIO</small></Link>
-      <nav aria-label="Navegação principal"><a href="#modelos">Biblioteca</a><Link href="/editor" className="catalog-editor-link">Editor livre <span aria-hidden="true">↗</span></Link></nav>
-    </header>
+  const prontos = FICHAS.filter((f) => passa(f.familia, f.nome, f.resumo, ...f.destaques));
+  const editores = editoresLivres.filter((e) => passa(e.family, e.title, e.summary, ...e.destaques));
+  const breve = emBreve.filter((m) => passa(m.family, m.title, m.summary));
+  const comAlgo = new Set<Familia>([...FICHAS.map((f) => f.familia), ...editoresLivres.map((e) => e.family), ...emBreve.map((m) => m.family)]);
+  const filtros: (Familia | 'todos')[] = ['todos', ...(Object.keys(familias) as Familia[]).filter((f) => comAlgo.has(f))];
+  const nada = !prontos.length && !editores.length && !breve.length;
 
-    <main>
-      <section className="catalog-hero" aria-labelledby="catalog-title">
-        <div className="catalog-hero-inner">
-          <div className="catalog-hero-copy">
-            <div className="catalog-eyebrow"><span aria-hidden="true" /> BIBLIOTECA DE MODELOS</div>
-            <h1 id="catalog-title">CRIE SEU MOLDE.<br /><em>DO SEU JEITO.</em></h1>
-            <p>Escolha um modelo, personalize o texto e continue criando no editor. Cada molde tem seu próprio espaço para você ajustar os detalhes.</p>
-            <div className="catalog-hero-actions"><a href="#modelos">Explorar modelos <span aria-hidden="true">↘</span></a><Link href="/editor">Começar do zero</Link></div>
-            <div className="catalog-hero-meta"><span><b>{String(disponiveis).padStart(2, '0')}</b> modelos editáveis</span><span><b>{String(Object.keys(familias).length).padStart(2, '0')}</b> famílias organizadas</span></div>
+  return (
+    <div className="catalog-page">
+      <header className="catalog-header">
+        <Link href="/" className="catalog-brand" aria-label="Scarprint, início">
+          <span className="catalog-wordmark">SCAR<span>PRINT</span></span>
+          <small>DESIGN STUDIO</small>
+        </Link>
+        <nav aria-label="Navegação principal">
+          <a href="#modelos">Modelos</a>
+          <Link href="/editor" className="catalog-editor-link">Editor livre <span aria-hidden="true">↗</span></Link>
+        </nav>
+      </header>
+
+      <main>
+        <section className="catalog-hero" aria-labelledby="catalog-title">
+          <div className="catalog-hero-inner">
+            <div className="catalog-hero-copy">
+              <div className="catalog-eyebrow"><span aria-hidden="true" /> MODELOS 3D PERSONALIZADOS</div>
+              <h1 id="catalog-title">Escolha. Personalize.<br /><em>Imprima.</em></h1>
+              <p>Letreiros, chaveiros e placas que você ajusta com o seu texto, as suas cores e o seu tamanho, e baixa pronto para a impressora: 3MF multicor ou STL.</p>
+              <div className="catalog-hero-actions">
+                <a href="#modelos">Ver os modelos <span aria-hidden="true">↓</span></a>
+                <Link href="/editor">Montar do zero</Link>
+              </div>
+              <div className="catalog-hero-meta">
+                <span><b>{FICHAS.length}</b> geradores prontos</span>
+                <span><b>{editoresLivres.length}</b> editores livres</span>
+                <span><b>{emBreve.length}</b> chegando</span>
+              </div>
+            </div>
+            <div className="hero-vitrine" aria-hidden="true">
+              {VITRINE.map((id, i) => {
+                const f = FICHAS.find((x) => x.id === id)!;
+                return (
+                  <Link key={id} href={`/moldes/${id}`} className={`hero-peca hero-peca-${i + 1}`} tabIndex={-1}>
+                    <Miniatura id={id} alt={f.nome} reserva={<VisualReserva id={id} family={f.familia} />} />
+                    <span>{f.nome}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-          <div className="catalog-hero-art" aria-hidden="true">
-            <div className="hero-art-label">ÁREA DE CRIAÇÃO <span>MM / 2D + 3D</span></div>
-            <div className="hero-art-board"><div className="hero-art-handle" /><span>CRIE<br />SEU<br />MOLDE<i className="hero-art-cursor" /></span></div>
-            <div className="hero-art-chip chip-a">TEXTO EDITÁVEL</div><div className="hero-art-chip chip-b">PLACA 400 × 160</div><div className="hero-art-guides" />
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="catalog-library" id="modelos" aria-labelledby="catalog-library-title"><div className="catalog-library-inner">
-        <div className="catalog-section-heading"><div><span className="catalog-kicker">ESCOLHA UM CAMINHO</span><h2 id="catalog-library-title">Biblioteca de modelos</h2><p>Modelos prontos para começar e famílias que estamos preparando.</p></div><div className="catalog-count">{visiveis.length} modelos</div></div>
-        <div className="catalog-toolbar"><label className="catalog-search"><span aria-hidden="true">⌕</span><input type="search" value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Buscar modelo ou categoria" aria-label="Buscar modelos" /></label><div className="catalog-filters" aria-label="Filtrar por família">{categorias.map((item) => <button key={item} type="button" className={familia === item ? 'active' : ''} onClick={() => setFamilia(item)} aria-pressed={familia === item}>{item === 'todos' ? 'Todos' : familias[item]}</button>)}</div></div>
-        {visiveis.length ? <div className="catalog-grid">{visiveis.map((item) => <article className="template-card" key={item.id}>
-          <div className={`template-visual visual-${item.id}`}><TemplateVisual id={item.id} family={item.family} /><span className={`template-status ${item.ativo ? 'is-ready' : 'is-planned'}`}>{item.gerador ? 'Gerador 3D · 3MF multicor' : item.ativo ? (item.family === 'placas' ? 'Gerador 3D inicial · SVG 2D' : 'Editor 3D') : 'Em desenvolvimento'}</span></div>
-          <div className="template-card-body"><span className="template-family">{familias[item.family]}</span><h3>{item.title}</h3><p>{item.summary}</p><div className="template-card-footer"><Link href={`/moldes/${item.id}`}>{item.ativo ? 'Personalizar' : 'Ver modelo'} <span aria-hidden="true">↗</span></Link></div></div>
-        </article>)}</div> : <div className="catalog-empty"><b>Nenhum modelo encontrado</b><p>Tente outra busca ou escolha “Todos”.</p><button type="button" onClick={() => { setBusca(''); setFamilia('todos'); }}>Limpar filtros</button></div>}
-      </div></section>
-    </main>
-    <footer className="catalog-footer"><span>SCARPRINT DESIGN STUDIO</span><span>Um editor para cada ideia.</span><span>CATÁLOGO / V 0.5</span></footer>
-  </div>;
+        <section className="catalog-library" id="modelos" aria-label="Modelos">
+          <div className="catalog-toolbar">
+            <label className="catalog-search">
+              <span aria-hidden="true">⌕</span>
+              <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar: chaveiro, @, placa, emoji…" aria-label="Buscar modelos" />
+            </label>
+            <div className="catalog-filters" aria-label="Filtrar por tipo">
+              {filtros.map((f) => (
+                <button key={f} type="button" className={familia === f ? 'active' : ''} onClick={() => setFamilia(f)} aria-pressed={familia === f}>
+                  {f === 'todos' ? 'Todos' : familias[f]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {prontos.length > 0 && (
+            <Secao titulo="Geradores prontos" texto="Escolha um modelo, troque o texto, as cores e o tamanho, e baixe pronto para imprimir.">
+              <div className="catalog-grid">
+                {prontos.map((f) => <CardGerador key={f.id} f={f} />)}
+              </div>
+            </Secao>
+          )}
+
+          {editores.length > 0 && (
+            <Secao titulo="Editores livres" texto="Para montar do zero, peça por peça, quando nenhum modelo pronto serve.">
+              <div className="catalog-grid">
+                {editores.map((e) => (
+                  <Link key={e.id} href={e.href} className="card">
+                    <div className={`card-foto foto-${e.family}`}><VisualReserva id={e.visual} family={e.family} /></div>
+                    <div className="card-corpo">
+                      <span className="card-tag">Editor · {tipoDe[e.family]}</span>
+                      <h3>{e.title}</h3>
+                      <p>{e.summary}</p>
+                      <Destaques itens={e.destaques} />
+                      <div className="card-rodape"><span>Montagem livre</span><span className="card-cta">Abrir <span aria-hidden="true">→</span></span></div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </Secao>
+          )}
+
+          {breve.length > 0 && (
+            <Secao titulo="Em breve" texto="Modelos que estamos preparando.">
+              <ul className="em-breve">
+                {breve.map((m) => (
+                  <li key={m.id}>
+                    <span className="em-breve-icone" aria-hidden="true">{m.icon}</span>
+                    <span><b>{m.title}</b><small>{m.summary}</small></span>
+                  </li>
+                ))}
+              </ul>
+            </Secao>
+          )}
+
+          {nada && (
+            <div className="catalog-empty">
+              <b>Nenhum modelo encontrado</b>
+              <p>Tente outra busca ou escolha “Todos”.</p>
+              <button type="button" onClick={() => { setBusca(''); setFamilia('todos'); }}>Limpar filtros</button>
+            </div>
+          )}
+        </section>
+      </main>
+      <footer className="catalog-footer"><span>SCARPRINT DESIGN STUDIO</span><span>Modelos 3D sob medida, prontos para imprimir.</span></footer>
+    </div>
+  );
 }
 
-function TemplateVisual({ id, family }: { id: string; family: Familia }) {
+function Secao({ titulo, texto, children }: { titulo: string; texto: string; children: React.ReactNode }) {
+  return (
+    <section className="catalog-secao">
+      <div className="catalog-secao-titulo"><h2>{titulo}</h2><p>{texto}</p></div>
+      {children}
+    </section>
+  );
+}
+
+function Destaques({ itens }: { itens: readonly string[] }) {
+  return <ul className="card-destaques">{itens.map((d) => <li key={d}>{d}</li>)}</ul>;
+}
+
+function CardGerador({ f }: { f: Ficha }) {
+  return (
+    <Link href={`/moldes/${f.id}`} className="card">
+      <div className={`card-foto foto-${f.familia}`}>
+        <Miniatura id={f.id} alt={`Exemplo: ${f.nome}`} reserva={<VisualReserva id={f.id} family={f.familia} />} />
+      </div>
+      <div className="card-corpo">
+        <span className="card-tag">{tipoDe[f.familia]}</span>
+        <h3>{f.nome}</h3>
+        <p>{f.resumo}</p>
+        <Destaques itens={f.destaques} />
+        <div className="card-rodape"><span>3MF multicor · STL</span><span className="card-cta">Criar <span aria-hidden="true">→</span></span></div>
+      </div>
+    </Link>
+  );
+}
+
+/** Desenho de reserva (sem WebGL) e ilustracao dos editores. */
+function VisualReserva({ id, family }: { id: string; family: Familia }) {
   switch (id) {
     case 'texto-livre': return <div className="preview-letters"><span>S</span><span>C</span><span>A</span><span>R</span></div>;
-    case 'letreiro-nome': return <div className="preview-nameplate"><small>ESPAÇO</small><b>NOME</b><i /></div>;
     case 'placa-personalizada': return <div className="preview-sign"><span>STUDIO</span><small>DESIGN · CRIAÇÃO</small></div>;
     case 'placa-profissional': return <div className="preview-nameplate"><small>SEU NEGÓCIO</small><b>MARCA</b><i /></div>;
-    case 'chaveiro-logo': return <div className="preview-keychain"><i /><b>S</b></div>;
-    case 'placa-qr': return <div className="preview-qr"><span>▦</span><small>SCAN ME</small></div>;
-    case 'cortador-svg': return <div className="preview-cutter"><span>✦</span><i /></div>;
-    case 'carimbo-personalizado': return <div className="preview-stamp"><span>FEITO<br />À MÃO</span></div>;
-    case 'letra-grande': return <div className="preview-large-letter">A</div>;
-    case 'placa-multicamadas': return <div className="preview-layers"><span>01</span><span>02</span><span>03</span></div>;
-    case 'porta-canetas': return <div className="preview-parametric">{Array.from({ length: 12 }, (_, index) => <span key={index} />)}</div>;
-    default: return family === 'chaveiros' ? <div className="preview-keychain"><i /><b>{id === 'chaveiro-retangular' ? 'Ana' : 'A'}</b></div> : <div className="preview-layers"><span>01</span><span>02</span><span>03</span></div>;
+    default: return family === 'chaveiros' ? <div className="preview-keychain"><i /><b>A</b></div> : <div className="preview-letters"><span>A</span><span>b</span><span>c</span></div>;
   }
 }

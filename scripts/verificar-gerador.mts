@@ -12,6 +12,7 @@ import { diffRegion, intersectRegion, regionArea, regionBounds, type Region } fr
 import { malhaFechada } from '../lib/mesh/relevo';
 import { lerTresMf } from '../lib/import/tresmf';
 import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
+import { FICHAS } from '../lib/gerador/receitas/fichas';
 import { valoresPadrao, type Receita, type Resultado, type Valores } from '../lib/gerador/tipos';
 import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
@@ -77,6 +78,18 @@ for (const r of RECEITAS) {
   ok(`${r.id}: 3MF de pecas soltas reabre com uma peca por objeto`, soltas.length === pecas.length);
   const zip = await JSZip.loadAsync(await (await zipStl(res)).arrayBuffer());
   ok(`${r.id}: ZIP com um STL por peca`, Object.keys(zip.files).filter((f) => f.endsWith('.stl')).length === pecas.length);
+}
+
+console.log('\n== vitrine do catalogo ==');
+for (const f of FICHAS) {
+  const r = receitaPorId(f.id);
+  ok(`${f.id}: tem receita e destaques`, !!r && f.destaques.length >= 2);
+  if (!r || !f.exemplo) continue;
+  const ids = new Set(r.parametros.map((p) => p.id));
+  const estranhos = Object.keys(f.exemplo).filter((k) => !ids.has(k));
+  ok(`${f.id}: o exemplo da miniatura so usa campos do gerador`, !estranhos.length, estranhos.join(', '));
+  const res = gerar(r, f.exemplo);
+  ok(`${f.id}: o exemplo gera sem aviso`, res.itens.length > 0 && !res.avisos.length, res.avisos.join(' | '));
 }
 
 console.log('\n== texto em camadas ==');
