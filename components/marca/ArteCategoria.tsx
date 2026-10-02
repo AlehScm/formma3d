@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Arte de reserva por categoria (desenho nosso, em SVG), para o card ou a pagina do
  * produto enquanto nao ha foto. Decorativa: aria-hidden.
@@ -21,9 +23,11 @@ function Desenho({ categoria, grad }: { categoria: Categoria; grad: string }) {
     case 'letreiros':
       return (
         <g>
-          <path d="M70 150 L100 60 L130 150 M82 118 H118" fill="none" stroke={s} strokeOpacity=".18" strokeWidth="22" strokeLinejoin="round" transform="translate(6 8)" />
-          <path d="M70 150 L100 60 L130 150 M82 118 H118" fill="none" stroke={a} strokeWidth="22" strokeLinejoin="round" />
-          <rect x="138" y="70" width="44" height="80" rx="6" fill="none" stroke={a} strokeWidth="18" />
+          <rect x="54" y="44" width="132" height="116" rx="10" fill="#fff" stroke={s} strokeOpacity=".1" strokeWidth="2" />
+          <path d="M84 146 L120 58 L156 146 M97 116 H143" fill="none" stroke={s} strokeOpacity=".22" strokeWidth="24" strokeLinejoin="round" transform="translate(7 7)" />
+          <path d="M84 146 L120 58 L156 146 M97 116 H143" fill="none" stroke={a} strokeWidth="24" strokeLinejoin="round" />
+          <circle cx="66" cy="56" r="3.5" fill={s} fillOpacity=".25" />
+          <circle cx="174" cy="56" r="3.5" fill={s} fillOpacity=".25" />
         </g>
       );
     case 'placas':
