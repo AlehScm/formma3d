@@ -1,15 +1,15 @@
 /**
  * Foto 3D do exemplo de um gerador para o card do catalogo. Um renderizador so para a
  * pagina toda (o navegador limita os contextos WebGL); cada chamada monta a cena,
- * fotografa em 3/4 e devolve a imagem. Carregado sob demanda: e o que puxa three,
- * clipper e as receitas para a pagina inicial.
+ * fotografa em 3/4 e devolve a imagem. Carregado sob demanda: e o que puxa three e
+ * as receitas para a pagina inicial. A geracao e a malha rodam no worker.
  */
 import * as THREE from 'three';
 import { receitaPorId } from '@/lib/gerador/receitas';
 import { ficha } from '@/lib/gerador/receitas/fichas';
 import { valoresPadrao } from '@/lib/gerador/tipos';
-import { corDe, posicoesDaPeca } from '@/lib/gerador/malha';
-import { carregarFonteWeb } from '@/lib/text/fontes';
+import { corDe } from '@/lib/gerador/malha';
+import { gerarNoWorker } from '@/features/gerador/clienteWorker';
 
 const LARGURA = 720, ALTURA = 540, FOV = 28;
 /** Fracao do quadro (do centro a borda) que a peca ocupa. */
@@ -24,8 +24,8 @@ export async function renderizarMiniatura(id: string): Promise<string> {
     ...receita.parametros.filter((p) => p.tipo === 'fonte' && (!p.visivel || p.visivel(v))).map((p) => String(v[p.id])),
     ...(receita.fontes?.(v) ?? []),
   ]);
-  const fontes = new Map(await Promise.all([...ids].map(async (f) => [f, await carregarFonteWeb(f)] as const)));
-  const res = receita.gerar(v, { fonte: (f) => fontes.get(f) ?? fontes.values().next().value! });
+  // Geracao e malha no worker: a pagina do catalogo nao engasga enquanto as fotos saem.
+  const { resultado: res, malhas } = await gerarNoWorker(id, v, [...ids]);
 
   const cena = new THREE.Scene();
   cena.add(new THREE.AmbientLight(0xffffff, 0.6));
@@ -35,11 +35,11 @@ export async function renderizarMiniatura(id: string): Promise<string> {
   contra.position.set(-2, 1, 1);
   cena.add(sol, contra);
   const descartar: { dispose(): void }[] = [];
-  for (const it of res.itens) {
-    for (const p of it.pecas) {
+  for (const [i, it] of res.itens.entries()) {
+    for (const [j, p] of it.pecas.entries()) {
       const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(posicoesDaPeca(p), 3));
-      g.computeVertexNormals();
+      g.setAttribute('position', new THREE.BufferAttribute(malhas[i]![j]!.posicoes, 3));
+      g.setAttribute('normal', new THREE.BufferAttribute(malhas[i]![j]!.normais, 3));
       const m = new THREE.MeshStandardMaterial({ color: corDe(res, p.cor), roughness: 0.5, metalness: 0.02 });
       cena.add(new THREE.Mesh(g, m));
       descartar.push(g, m);

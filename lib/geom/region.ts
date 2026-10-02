@@ -122,7 +122,13 @@ export function offsetRegion(region: Region, d: number, joinType: JoinStyle = 'r
   if (!region.length) return [];
   if (Math.abs(d) < 1e-6) return region;
   const co = new ClipperLib.ClipperOffset(MITER, ARC_TOL);
-  co.AddPaths(regionToClipper(region), joinType === 'miter' ? JT.jtMiter : JT.jtRound, ET.etClosedPolygon);
+  // Contorno largo (1 mm ou mais): tira antes os pontos a menos de 0,005 mm da reta
+  // vizinha. Curva de letra vem com milhares de pontos e o offset cresce com eles
+  // (texto de 7 mil pontos: 1,3 s); 5 microns nao mudam nada num contorno desses.
+  const caminhos = regionToClipper(region);
+  const limpar = (ClipperLib.Clipper as unknown as { CleanPolygons(p: ClipperPath[], dist: number): ClipperPath[] }).CleanPolygons;
+  const entrada = Math.abs(d) >= 1 ? limpar(caminhos, 0.005 * SCALE) : caminhos;
+  co.AddPaths(entrada, joinType === 'miter' ? JT.jtMiter : JT.jtRound, ET.etClosedPolygon);
   const sol: ClipperPath[] = [];
   co.Execute(sol, -d * SCALE);
   if (!sol.length) return [];

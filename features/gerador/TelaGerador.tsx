@@ -7,8 +7,7 @@
  */
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import type { Font } from 'opentype.js';
+import { useEffect, useState } from 'react';
 import {
   Alerta,
   Botao,
@@ -20,9 +19,9 @@ import {
   Segmentado,
   Selecao,
 } from '@/components/ui';
-import { carregarFonteWeb, FONTES_WEB } from '@/lib/text/fontes';
+import { FONTES_WEB } from '@/lib/text/fontes';
 import { receitaPorId } from '@/lib/gerador/receitas';
-import { desenho, valoresPadrao, valoresValidos, type Parametro, type Receita, type Resultado, type Valores } from '@/lib/gerador/tipos';
+import { desenho, valoresPadrao, type Parametro, type Receita, type Valores } from '@/lib/gerador/tipos';
 import { centrada, corDe, nomeComCor, pecasSoltas } from '@/lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, nomeSeguro, zipStl } from '@/lib/gerador/exportar';
 import { baixar } from '@/features/acoes/exportar';
@@ -32,6 +31,7 @@ import type { Region } from '@/lib/geom/region';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { PreviaGerador } from './PreviaGerador';
+import { useGeracao } from './useGeracao';
 
 const CHAVE = (id: string) => `formma3d:gerador:${id}`;
 
@@ -52,40 +52,23 @@ export function TelaGerador({ id }: { id: string }) {
   const router = useRouter();
   const [valores, setValores] = useState<Valores>(() => valoresPadrao(receita));
   useEffect(() => setValores(valoresIniciais(receita)), [receita]);
+  // Lembra os valores depois de uma pausa (com imagem, o JSON pode ser grande).
   useEffect(() => {
-    try {
-      localStorage.setItem(CHAVE(receita.id), JSON.stringify(valores));
-    } catch {
-      // sem armazenamento: so nao lembra
-    }
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(CHAVE(receita.id), JSON.stringify(valores));
+      } catch {
+        // sem armazenamento (ou cheio): so nao lembra
+      }
+    }, 600);
+    return () => clearTimeout(t);
   }, [receita.id, valores]);
 
   const visiveis = receita.parametros.filter((p) => !p.visivel || p.visivel(valores));
   const idsFonte = [...new Set([...visiveis.filter((p) => p.tipo === 'fonte').map((p) => String(valores[p.id])), ...(receita.fontes?.(valores) ?? [])])];
-  const [fontes, setFontes] = useState<Map<string, Font>>(new Map());
-  const [erroFonte, setErroFonte] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
-  const faltam = idsFonte.filter((f) => !fontes.has(f));
-  useEffect(() => {
-    if (!faltam.length) return;
-    let vivo = true;
-    Promise.all(faltam.map(async (f) => [f, await carregarFonteWeb(f)] as const))
-      .then((novas) => vivo && setFontes((m) => new Map([...m, ...novas])))
-      .catch((e: Error) => vivo && setErroFonte(e.message));
-    return () => {
-      vivo = false;
-    };
-  }, [faltam.join(), tentativa]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const adiados = useDeferredValue(valores);
-  const { resultado, erro } = useMemo((): { resultado: Resultado | null; erro: string | null } => {
-    if (faltam.length) return { resultado: null, erro: null };
-    try {
-      return { resultado: receita.gerar(valoresValidos(receita, adiados), { fonte: (f) => fontes.get(f) ?? fontes.values().next().value! }), erro: null };
-    } catch (e) {
-      return { resultado: null, erro: (e as Error).message };
-    }
-  }, [receita, adiados, fontes, faltam.length]);
+  // A geracao (e a malha da previa) roda num worker: a tela nao trava em receita pesada.
+  const { resultado, malhas, erro, erroFonte, gerando } = useGeracao(receita.id, valores, idsFonte, tentativa);
 
   const mudar = (id: string, v: Valores[string]) => setValores((s) => ({ ...s, [id]: v }));
   const nomeArquivo = nomeSeguro(`${receita.id}-${resultado?.itens[0]?.nome ?? ''}`);
@@ -156,9 +139,14 @@ export function TelaGerador({ id }: { id: string }) {
         <main className="relative flex min-h-[60vh] flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
             {resultado && temPecas ? (
-              <PreviaGerador resultado={resultado} />
+              <PreviaGerador resultado={resultado} malhas={malhas} />
             ) : (
-              <div className="grid h-full place-items-center p-6 text-texto-3">{faltam.length ? 'Carregando a fonte…' : 'Nada para mostrar ainda.'}</div>
+              <div className="grid h-full place-items-center p-6 text-texto-3">{gerando ? 'Gerando…' : 'Nada para mostrar ainda.'}</div>
+            )}
+            {gerando && resultado && (
+              <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-superficie/90 px-2 py-1 text-micro text-texto-2 shadow" role="status">
+                Atualizando…
+              </div>
             )}
           </div>
           <div className="space-y-2 border-t border-borda bg-superficie px-4 py-3">
@@ -178,7 +166,7 @@ export function TelaGerador({ id }: { id: string }) {
             {erroFonte && (
               <Alerta
                 tom="perigo"
-                acao={<Botao tamanho="sm" onClick={() => { setErroFonte(null); setTentativa((n) => n + 1); }}>Tentar de novo</Botao>}
+                acao={<Botao tamanho="sm" onClick={() => setTentativa((n) => n + 1)}>Tentar de novo</Botao>}
               >
                 Não consegui carregar a fonte: {erroFonte}
               </Alerta>

@@ -8,17 +8,23 @@ import * as THREE from 'three';
 import { caixaDoItem, corDe, posicoesDaPeca } from '@/lib/gerador/malha';
 import type { Resultado } from '@/lib/gerador/tipos';
 
-export function PreviaGerador({ resultado }: { resultado: Resultado }) {
+/**
+ * `prontas`: posicoes e normais ja calculadas (no worker), na ordem itens/pecas; sem
+ * elas, a malha e montada aqui.
+ */
+export function PreviaGerador({ resultado, malhas: prontas }: { resultado: Resultado; malhas?: { posicoes: Float32Array; normais: Float32Array }[][] | null }) {
   const malhas = useMemo(() => {
-    return resultado.itens.flatMap((it) =>
-      it.pecas.map((p) => {
+    return resultado.itens.flatMap((it, i) =>
+      it.pecas.map((p, j) => {
         const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.BufferAttribute(posicoesDaPeca(p), 3));
-        g.computeVertexNormals();
-        return { chave: `${it.nome}/${p.nome}`, g, cor: corDe(resultado, p.cor) };
+        const pronta = prontas?.[i]?.[j];
+        g.setAttribute('position', new THREE.BufferAttribute(pronta ? pronta.posicoes : posicoesDaPeca(p), 3));
+        if (pronta) g.setAttribute('normal', new THREE.BufferAttribute(pronta.normais, 3));
+        else g.computeVertexNormals();
+        return { chave: `${i}/${j}/${it.nome}/${p.nome}`, g, cor: corDe(resultado, p.cor) };
       })
     );
-  }, [resultado]);
+  }, [resultado, prontas]);
   useEffect(() => () => malhas.forEach((m) => m.g.dispose()), [malhas]);
 
   const caixa = useMemo(() => {

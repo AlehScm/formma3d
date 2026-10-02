@@ -222,3 +222,13 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Letra grande: o nome saía em pedaços com a fonte real e, onde passava da letra, ficaria no ar.
   - Agora uma faixa por trás une o contorno do nome (`placaDoNome`), e o nome é peça própria, deitada, que encaixa no rebaixo.
   - Os demais geradores conferidos no 3D estão certos.
+- 2026-10-02 Claude: desempenho (o usuário relatou o navegador travando ao mexer nos controles).
+  - A geração e a malha da prévia rodavam na linha da tela; receita pesada (0,5 a 1,8 s) congelava a página a cada mudança.
+  - Agora rodam num worker (`features/gerador/gerador.worker.ts`), que também carrega as fontes.
+  - `useGeracao` mantém só um pedido em andamento e manda o mais recente depois; a prévia mostra "Atualizando…".
+  - Fotos do catálogo: `renderMiniatura` usa o worker (`clienteWorker.ts`). Com o cache limpo, as 59 fotos saem sem nenhuma tarefa longa.
+  - `offsetRegion`: para contorno de 1 mm ou mais, tira antes os pontos a menos de 5 µm da reta (CleanPolygons). Carimbo de molde: 1,8 s → 0,15 s.
+  - Valores salvos no navegador 600 ms depois da última mudança (com imagem, o JSON é grande).
+  - Medido no navegador: arrastando o controle do contador raspadinha, nenhuma tarefa longa, 99 quadros/s.
+  - Build de produção testado, também com o caminho /formma3d/ do Pages: worker e fontes carregam.
+  - `scripts/medir-geradores.mts` lista os geradores mais lentos.
