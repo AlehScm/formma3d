@@ -195,3 +195,11 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Colorir: até 4 desenhos por vez.
   - Critério no quadro: quando só falta o editor de arte da referência (aqui o desenho vem de texto ou imagem), o modelo conta como pronto, com a falta anotada.
   - verificar-gerador 767/767 com a placa-qr junto.
+- 2026-10-02 Claude: imagem colorida.
+  - `pixelsParaCores` (lib/import/imagem.ts) separa um PNG/JPG em até 4 cores (k-médias com sementes determinísticas, sem o fundo).
+  - `svgParaCores` (lib/import/svg.ts) agrupa um SVG pela cor do fill e do stroke; o que vem depois cobre o que veio antes.
+  - O campo de desenho guarda `Desenho.cores` quando há mais de uma cor; `coresNoTamanho` (desenho.ts) aplica a mesma escala do desenho.
+  - O quebra-cabeça usa as cores da imagem no topo (testado no navegador com PNG de 3 cores).
+  - Janela do topo de bolo com glitter: círculo, coração, estrela ou desenho.
+  - Letra grande: textura rente ou em relevo; nome por imagem (fonte que não está na lista).
+  - verificar-gerador 774/774 com a placa-qr junto.

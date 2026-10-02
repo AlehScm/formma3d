@@ -31,6 +31,20 @@ export function desenhoNoTamanho(v: Valores, id: string, tamanho: number, eixo: 
   return { regiao: scaleRegion(translateRegion(bruto, -(b.minX + b.maxX) / 2, -(b.minY + b.maxY) / 2), k), exemplo: !d };
 }
 
+/**
+ * As cores de uma imagem colorida (se houver mais de uma), com a mesma escala e o mesmo
+ * centro que `desenhoNoTamanho` da ao desenho inteiro.
+ */
+export function coresNoTamanho(v: Valores, id: string, tamanho: number, eixo: 'largura' | 'altura' = 'largura'): { regiao: Region; hex: string }[] {
+  const d = desenho(v, id);
+  if (!d?.cores || d.cores.length < 2) return [];
+  const b = regionBounds(d.regiao);
+  const medida = eixo === 'altura' ? b.h : b.w;
+  if (!(medida > 0)) return [];
+  const k = tamanho / medida;
+  return d.cores.map((c) => ({ hex: c.hex, regiao: scaleRegion(translateRegion(c.regiao, -(b.minX + b.maxX) / 2, -(b.minY + b.maxY) / 2), k) }));
+}
+
 /** Nome do arquivo do desenho, sem extensao ('' sem desenho). */
 export const nomeDoDesenho = (v: Valores, id: string) => desenho(v, id)?.nome.replace(/\.(svg|png|jpe?g|webp)$/i, '') ?? '';
 

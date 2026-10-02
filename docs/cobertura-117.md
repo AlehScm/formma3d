@@ -3,13 +3,13 @@
 Gerado de `lib/gerador/cobertura.ts` por `npx tsx scripts/cobertura.mts`; não editar à mão.
 Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 
-**80 prontos · 22 parciais · 15 pendentes** de 117.
+**83 prontos · 19 parciais · 15 pendentes** de 117.
 
 | Onda | Claude | ChatGPT |
 |---|---:|---:|
-| já coberto | 80 | 0 |
+| já coberto | 83 | 0 |
 | 1 | 0 | 1 |
-| 2 | 8 | 15 |
+| 2 | 5 | 15 |
 | 3 | 13 | 0 |
 
 | Modelo | Dono | Receita | Status | Onda | Falta |
@@ -54,7 +54,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Suporte de Bolo](https://www.mafagrafos.com/models/cake-stand) | Claude | `suporte-bolo` | Pronto | 0 | — |
 | [Caixa de Figurinhas](https://www.mafagrafos.com/models/stickers-box) | Claude | `caixa-figurinhas` | Pronto | 0 | — |
 | [Suporte de Foto com Texto](https://www.mafagrafos.com/models/photo-holder) | Claude | `suporte-foto` | Pronto | 0 | — |
-| [Topo de Bolo Circular com Glitter](https://www.mafagrafos.com/models/circle-glitter-cake-topper) | Claude | `topo-bolo-circular` | Parcial | 2 | desenho do glitter na janela |
+| [Topo de Bolo Circular com Glitter](https://www.mafagrafos.com/models/circle-glitter-cake-topper) | Claude | `topo-bolo-circular` | Pronto | 0 | — |
 | [Cortadores de Retângulos em Grade](https://www.mafagrafos.com/models/rectangle-cutters) | Claude | `cortadores-grade` | Pronto | 0 | — |
 | [Estojo de Batom - Ícone em Mosaico](https://www.mafagrafos.com/models/small-texture-lipstick-case) | Claude | `estojo-batom` | Pronto | 0 | — |
 | [Estojo de Batom - Textura Grande](https://www.mafagrafos.com/models/large-texture-lipstick-case) | Claude | `estojo-batom` | Pronto | 0 | — |
@@ -69,18 +69,18 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Chaveiro de Rosa com Texto](https://www.mafagrafos.com/models/rose-text-keychain) | Claude | `rosa-texto` | Pronto | 0 | — |
 | [Rosa para Scrunchie](https://www.mafagrafos.com/models/rose-scrunchie) | Claude | `rosa-texto` | Pronto | 0 | — |
 | [Pingente de Nomes da Família](https://www.mafagrafos.com/models/family-pendant) | Claude | `pingente-familia` | Pronto | 0 | — |
-| [Marcador de Página do Castelo](https://www.mafagrafos.com/models/harry-potter-bookmark) | Claude | `marcador-pagina` | Parcial | 2 | motivo do castelo é arte deles: usar SVG próprio |
+| [Marcador de Página do Castelo](https://www.mafagrafos.com/models/harry-potter-bookmark) | Claude | `marcador-pagina` | Pronto | 0 | o castelo é arte da referência: use o seu desenho |
 | [Marcador de Página Geométrico com Nome](https://www.mafagrafos.com/models/geometric-name-side-bookmark) | Claude | `marcador-pagina` | Pronto | 0 | — |
 | [Marcador Elegante com Nome](https://www.mafagrafos.com/models/elegant-grid-name-side-bookmark) | Claude | `marcador-pagina` | Pronto | 0 | — |
 | [Placa PIX Simples](https://www.mafagrafos.com/models/simple-pix-plaque) | ChatGPT | — | Pendente | 2 | QR PIX (BR Code) + título |
 | [Placa PIX Logo](https://www.mafagrafos.com/models/logo-pix-plaque) | ChatGPT | — | Pendente | 2 | QR PIX + logo |
 | [Placa PIX Texto](https://www.mafagrafos.com/models/text-pix-plaque) | ChatGPT | — | Pendente | 2 | QR PIX + 2 linhas |
-| [Letra Grande - Textura](https://www.mafagrafos.com/models/big-letter-foreground-texture) | Claude | `letra-grande` | Parcial | 3 | textura elevada x plana; editor de arte |
+| [Letra Grande - Textura](https://www.mafagrafos.com/models/big-letter-foreground-texture) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Nome Rebaixado](https://www.mafagrafos.com/models/big-letter-sunken-name) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Borda para Resina](https://www.mafagrafos.com/models/big-letter-resin-casting) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Fundo Texturizado](https://www.mafagrafos.com/models/big-letter-textured-background) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Colorir com Bordas em Relevo](https://www.mafagrafos.com/models/raised-borders-coloring) | Claude | `colorir` | Pronto | 0 | editor de arte (o desenho vem de imagem) |
-| [Letra Grande Floral](https://www.mafagrafos.com/models/big-letter-floral-texture) | Claude | `letra-grande` | Parcial | 3 | floral próprio em 2 cores; nome em SVG |
+| [Letra Grande Floral](https://www.mafagrafos.com/models/big-letter-floral-texture) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Fundo de Material](https://www.mafagrafos.com/models/big-letter-shell-eva) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Brilho](https://www.mafagrafos.com/models/big-letter-sunken-sparkle) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Nome](https://www.mafagrafos.com/models/big-letter-name) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
@@ -109,7 +109,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Chaveiro coelho](https://www.mafagrafos.com/models/bunny-name-keychain) | Claude | `chaveiro-coelho` | Pronto | 0 | — |
 | [Chaveiro retangular com nome](https://www.mafagrafos.com/models/rectangle-name-keychain) | Claude | `chaveiro-retangular` | Pronto | 0 | — |
 | [Carimbo de brigadeiro com imagem](https://www.mafagrafos.com/models/image-brigadeiro-stamp) | Claude | `carimbo-imagem` | Pronto | 0 | — |
-| [Quebra-cabeça de imagem](https://www.mafagrafos.com/models/image-puzzle) | Claude | `quebra-cabeca` | Parcial | 2 | imagem colorida (aqui 2 cores); editor de arte |
+| [Quebra-cabeça de imagem](https://www.mafagrafos.com/models/image-puzzle) | Claude | `quebra-cabeca` | Pronto | 0 | editor de arte (a imagem vem de arquivo) |
 | [Ejetor arredondado de brigadeiro](https://www.mafagrafos.com/models/candy-mold-rounded) | Claude | `ejetor-brigadeiro` | Pronto | 0 | — |
 | [Ejetor plano de brigadeiro](https://www.mafagrafos.com/models/candy-mold) | Claude | `ejetor-brigadeiro` | Pronto | 0 | — |
 | [Chaveiro NFC](https://www.mafagrafos.com/models/square-nfc-keychain) | Claude | `chaveiro-nfc` | Parcial | 2 | QR code no chaveiro (aguarda o núcleo de QR) |

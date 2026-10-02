@@ -12,10 +12,10 @@ import { espelharX } from '../figuras';
 import { argolaNaDirecao, emGrade } from '../lote';
 import { comVazios } from '../solidos';
 import { formaPadrao } from './cortadores';
-import { AVISO_EXEMPLO, campoDesenho, campoEixo, desenhoNoTamanho, nomeDoDesenho } from './desenho';
+import { AVISO_EXEMPLO, campoDesenho, campoEixo, coresNoTamanho, desenhoNoTamanho, nomeDoDesenho } from './desenho';
 import { ficha } from './fichas';
 import type { Item, Parametro, Peca, Receita, Resultado, Valores } from '../tipos';
-import { desenho, liga, num, txt } from '../tipos';
+import { desenho, liga, num, soCoresUsadas, txt } from '../tipos';
 
 const cor = (id: string, rotulo: string, padrao: string, visivel?: (v: Valores) => boolean): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao, visivel });
 const mm = (id: string, rotulo: string, grupo: string, padrao: number, min: number, max: number, passo = 0.1, dica?: string, visivel?: (v: Valores) => boolean): Parametro =>
@@ -299,7 +299,10 @@ export const quebraCabeca: Receita = {
     const s = L / n;
     if (s < 10) avisos.push(`Peças de ${s.toFixed(1)} mm ficam frágeis: aumente o lado ou diminua as peças.`);
     let { regiao: D, exemplo } = desenhoNoTamanho(v, 'desenho', L * 0.9, 'largura');
-    if (regionBounds(D).h > L * 0.9) D = desenhoNoTamanho(v, 'desenho', L * 0.9, 'altura').regiao;
+    let eixo: 'largura' | 'altura' = 'largura';
+    if (regionBounds(D).h > L * 0.9) { D = desenhoNoTamanho(v, 'desenho', L * 0.9, 'altura').regiao; eixo = 'altura'; }
+    // Imagem colorida: cada cor dela vira uma cor do topo (no lugar do "Desenho" unico).
+    const coresImg = coresNoTamanho(v, 'desenho', L * 0.9, eixo);
     if (exemplo) avisos.push(AVISO_EXEMPLO);
     const pecas = pecasDeQuebraCabeca(n, L, num(v, 'folga'), num(v, 'semente'));
     const todas = pecas.flat();
@@ -307,16 +310,25 @@ export const quebraCabeca: Receita = {
     const lista: Peca[] = [
       { nome: 'Verso', cor: 0, camadas: [{ region: todas, z0: 0, z1: T - p }] },
       { nome: 'Fundo', cor: 1, camadas: camadasTopo(diffRegion(todas, D), T - p, T) },
-      { nome: 'Desenho', cor: 2, camadas: camadasTopo(intersectRegion(todas, D), T - p, T) },
     ];
+    if (coresImg.length) {
+      const usadas: Region[] = [];
+      coresImg.forEach((c, i) => {
+        lista.push({ nome: `Cor ${i + 1}`, cor: 3 + i, camadas: camadasTopo(intersectRegion(todas, c.regiao), T - p, T) });
+        usadas.push(c.regiao);
+      });
+      lista[1] = { nome: 'Fundo', cor: 1, camadas: camadasTopo(diffRegion(todas, unir(usadas)), T - p, T) };
+      cores.push(...coresImg.map((_, i) => `Cor ${i + 1}`));
+      hex.push(...coresImg.map((c) => c.hex));
+    } else lista.push({ nome: 'Desenho', cor: 2, camadas: camadasTopo(intersectRegion(todas, D), T - p, T) });
     if (liga(v, 'moldura')) {
       const w = num(v, 'largMoldura'), g = num(v, 'folga');
       const fora = retanguloArredondado(0, 0, L + 2 * g + 2 * w, L + 2 * g + 2 * w, num(v, 'raioMoldura'));
       lista.push({ nome: 'Moldura', cor: 0, camadas: [{ region: diffRegion(fora, retanguloArredondado(0, 0, L + 2 * g, L + 2 * g, 0)), z0: 0, z1: T }] });
     }
-    return {
+    return soCoresUsadas({
       itens: [{ nome: `Quebra-cabeça ${n}x${n}`, pecas: lista.filter((pc) => pc.camadas.length) }], cores, hex, avisos,
-      notas: [`${n * n} peças, já montadas na mesa com folga entre elas.`],
-    };
+      notas: [`${n * n} peças, já montadas na mesa com folga entre elas.`, ...(coresImg.length ? [`A imagem tem ${coresImg.length} cores: cada uma sai num filamento.`] : [])],
+    });
   },
 };

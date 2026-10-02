@@ -2,12 +2,12 @@
  * Letreiro de duas palavras sobrepostas (palavra grande + nome encaixado num rebaixo) e
  * topo de bolo circular com janela para glitter entre duas laminas de acetato.
  */
-import { diffRegion, regionBounds, translateRegion, type Region } from '../../geom/region';
-import { circulo, contornar, coracao, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, textoNaCaixa, unir, comporLinhas } from '../formas';
+import { diffRegion, intersectRegion, regionBounds, scaleRegion, translateRegion, type Region } from '../../geom/region';
+import { circulo, contornar, coracao, estrela, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, textoNaCaixa, unir, comporLinhas } from '../formas';
 import { arabesco } from '../figuras';
 import { ficha } from './fichas';
 import type { Parametro, Receita, Resultado } from '../tipos';
-import { num, txt } from '../tipos';
+import { desenho, num, txt } from '../tipos';
 
 const cor = (id: string, rotulo: string, padrao: string): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao });
 const centrar = (r: Region): Region => {
@@ -103,6 +103,11 @@ export const topoBoloCircular: Receita = {
     { tipo: 'numero', id: 'tamanhoNumero', rotulo: 'Altura do número', grupo: 'Texto', padrao: 40, min: 15, max: 100, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'diametro', rotulo: 'Diâmetro do círculo', grupo: 'Círculo', padrao: 140, min: 80, max: 220, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'borda', rotulo: 'Largura do aro', grupo: 'Círculo', padrao: 9, min: 5, max: 15, passo: 0.5, unidade: 'mm' },
+    {
+      tipo: 'escolha', id: 'janela', rotulo: 'Formato da janela do glitter', grupo: 'Círculo', padrao: 'circulo',
+      opcoes: [{ valor: 'circulo', rotulo: 'Círculo' }, { valor: 'coracao', rotulo: 'Coração' }, { valor: 'estrela', rotulo: 'Estrela' }, { valor: 'desenho', rotulo: 'Meu desenho' }],
+    },
+    { tipo: 'svg', id: 'desenhoJanela', rotulo: 'Desenho da janela', grupo: 'Círculo', padrao: '', visivel: (v) => v.janela === 'desenho', dica: 'A silhueta vira a janela' },
     { tipo: 'numero', id: 'aba', rotulo: 'Aba de apoio do acetato', grupo: 'Círculo', padrao: 4, min: 2, max: 8, passo: 0.5, unidade: 'mm' },
     { tipo: 'numero', id: 'altura', rotulo: 'Altura do aro', grupo: 'Círculo', padrao: 5, min: 3, max: 10, passo: 0.5, unidade: 'mm', dica: 'Espaço para as laminas e o glitter' },
     { tipo: 'numero', id: 'espBase', rotulo: 'Espessura da aba e da tampa', grupo: 'Círculo', padrao: 1, min: 0.6, max: 3, passo: 0.1, unidade: 'mm' },
@@ -115,8 +120,17 @@ export const topoBoloCircular: Receita = {
     const cores = ['Aro', 'Nome e número'], hex = [txt(v, 'corAro'), txt(v, 'corTexto')];
     const D = num(v, 'diametro'), b = num(v, 'borda'), aba = num(v, 'aba'), H = num(v, 'altura'), e = num(v, 'espBase'), ct = num(v, 'contornoTexto');
     const R = D / 2;
-    const aro = diffRegion(circulo(0, 0, R, 160), circulo(0, 0, R - b, 160));
-    const abaR = diffRegion(circulo(0, 0, R - b + 0.01, 160), circulo(0, 0, R - b - aba, 160));
+    // Janela do glitter: circulo, coracao, estrela ou a silhueta de um desenho, dentro do aro.
+    const lado = 2 * (R - b);
+    let janela = circulo(0, 0, R - b, 160);
+    const tipo = txt(v, 'janela');
+    const dj = desenho(v, 'desenhoJanela');
+    if (tipo === 'coracao') janela = centrar(coracao(lado * 0.95));
+    else if (tipo === 'estrela') janela = centrar(estrela(lado));
+    else if (tipo === 'desenho' && dj) { const s = semBuracos(dj.regiao), sb = regionBounds(s); janela = centrar(scaleRegion(s, (lado * 0.95) / Math.max(sb.w, sb.h))); }
+    janela = intersectRegion(janela, circulo(0, 0, R - b, 160));
+    const aro = diffRegion(circulo(0, 0, R, 160), janela);
+    const abaR = diffRegion(contornar(janela, 0.01), contornar(janela, -aba));
     const haste = num(v, 'haste') > 0 ? retanguloArredondado(0, -R - num(v, 'haste') / 2 + b / 2, 6, num(v, 'haste') + b, 1) : [];
     // Nome atravessando o circulo um pouco abaixo do centro, encostando no aro dos dois lados.
     const nomeTxt = textoNaCaixa([txt(v, 'nome')], { fonte: ctx.fonte(txt(v, 'fonteNome')), maxW: (D - b) * 0.98, maxH: D * 0.32 });

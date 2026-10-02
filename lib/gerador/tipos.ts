@@ -59,6 +59,8 @@ export interface Item {
 export interface Desenho {
   nome: string;
   regiao: Region;
+  /** Imagem colorida: uma regiao por cor (nas mesmas unidades de `regiao`), sem o fundo. */
+  cores?: { regiao: Region; hex: string }[];
 }
 
 export interface Resultado {

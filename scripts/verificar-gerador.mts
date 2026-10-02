@@ -22,7 +22,7 @@ import { circulo, contornar, retanguloArredondado, textoEmArco, unir } from '../
 import JSZip from 'jszip';
 import { poteRosqueado } from '../lib/gerador/receitas/potes';
 import { cilindroComRelevo } from '../lib/gerador/cilindro';
-import { pixelsParaRegiao } from '../lib/import/imagem';
+import { pixelsParaCores, pixelsParaRegiao } from '../lib/import/imagem';
 import { pecasDeQuebraCabeca } from '../lib/gerador/receitas/imagens';
 import { textura } from '../lib/gerador/figuras';
 
@@ -684,6 +684,39 @@ console.log('\n== parciais fechados (onda 3) ==');
   ok('porta-retrato: face para baixo, desenho embutido rente', baixo.pecas.some((p) => p.nome === 'Desenho' && p.camadas[0]!.z0 === 0 && p.camadas[0]!.z1 === 0.6) && !pr.itens.some((it) => it.nome === 'Desenho'));
   const co = gerar(receitaPorId('colorir')!, { desenho: sq, desenho2: sq, desenho3: sq, tamanho: 40 });
   ok('colorir: 3 desenhos = 3 paginas', co.itens.length === 3);
+}
+
+console.log('\n== imagem colorida e ultimos parciais ==');
+{
+  // Dois quadrados de cores diferentes em fundo branco: duas regioes, cada uma na sua cor.
+  const W = 120, H = 60, dados = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4;
+    const verm = x >= 10 && x < 50 && y >= 10 && y < 50, azul = x >= 70 && x < 110 && y >= 10 && y < 50;
+    dados.set(verm ? [220, 30, 30, 255] : azul ? [30, 60, 220, 255] : [255, 255, 255, 255], i);
+  }
+  const cs = pixelsParaCores({ largura: W, altura: H, dados }, 4);
+  ok('cores: 2 regioes sem o fundo branco', cs.length === 2, cs.map((c) => c.hex).join(' '));
+  const vermelha = cs.find((c) => parseInt(c.hex.slice(1, 3), 16) > 150);
+  ok('cores: o quadrado vermelho com 40 x 40 px e cor certa', !!vermelha && perto(regionArea(vermelha.regiao), 1600, 80) && perto(regionBounds(vermelha.regiao).minX, 10, 1), vermelha ? `${regionArea(vermelha.regiao).toFixed(0)} px2` : '');
+  // Quebra-cabeca com imagem colorida: uma cor de topo por cor da imagem.
+  const regiao: Region = [...cs[0]!.regiao, ...cs[1]!.regiao];
+  const des = JSON.stringify({ nome: 'c.png', regiao, cores: cs });
+  const qc = gerar(receitaPorId('quebra-cabeca')!, { desenho: des, lado: 100, pecas: 4 });
+  ok('quebra-cabeca: imagem de 2 cores vira 2 cores no topo', qc.itens[0]!.pecas.filter((p) => p.nome.startsWith('Cor')).length === 2 && qc.cores.length === 4, qc.cores.join(', '));
+  ok('quebra-cabeca: as cores do topo vem da imagem', !!qc.hex && cs.every((c) => qc.hex!.includes(c.hex)));
+
+  const tc = gerar(receitaPorId('topo-bolo-circular')!, { janela: 'coracao', diametro: 140, borda: 9, nome: '', numero: '' });
+  const aro = tc.itens[0]!.pecas[0]!.camadas.at(-1)!.region;
+  ok('topo circular: janela em coracao (o furo nao e redondo)', aro.some((q) => q.holes.some((h) => { const b = regionBounds([{ outer: h, holes: [] }]); return Math.abs(b.w - b.h) > 3; })));
+
+  const lg0 = gerar(receitaPorId('letra-grande')!, { estilo: 'textura', engrossar: 6, texturaElevada: false, nome: '' });
+  const lg1 = gerar(receitaPorId('letra-grande')!, { estilo: 'textura', engrossar: 6, texturaElevada: true, nome: '' });
+  const topo = (r: Resultado) => Math.max(...r.itens[0]!.pecas.find((p) => p.nome === 'Textura')!.camadas.map((c) => c.z1));
+  ok('letra grande: textura rente (22) ou em relevo (22,6)', perto(topo(lg0), 22, 1e-9) && perto(topo(lg1), 22.6, 1e-9));
+  const sqN = JSON.stringify({ nome: 'n.svg', regiao: [{ outer: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 10 }, { x: 0, y: 10 }], holes: [] }] });
+  const lgN = gerar(receitaPorId('letra-grande')!, { nome: '', desenhoNome: sqN });
+  ok('letra grande: nome por imagem', lgN.itens[0]!.pecas.some((p) => p.nome === 'Nome'));
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

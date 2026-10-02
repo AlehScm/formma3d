@@ -173,17 +173,95 @@ const areaDe = (p: Pt[]) => {
 
 /** Pixels -> Region (unidade pixel, Y para cima, origem no canto de baixo). */
 export function pixelsParaRegiao(px: Pixels, o: OpcoesImagem = {}): Region {
-  const m = mascaraDaImagem(px, o);
-  const tol = o.tolerancia ?? 0.6, min = o.areaMinima ?? Math.max(4, px.largura * px.altura * 2e-5);
-  const lacos = contornosDaMascara(m, px.largura, px.altura)
+  return regiaoDaMascara(mascaraDaImagem(px, o), px.largura, px.altura, o);
+}
+
+/** Mascara (1 = cheio) -> Region: contorno, simplificacao, sem sujeira, Y para cima. */
+function regiaoDaMascara(m: Uint8Array, W: number, H: number, o: OpcoesImagem = {}): Region {
+  const tol = o.tolerancia ?? 0.6, min = o.areaMinima ?? Math.max(4, W * H * 2e-5);
+  const lacos = contornosDaMascara(m, W, H)
     .map((l) => simplificar(l, tol))
     .filter((l) => l.length >= 3 && areaDe(l) >= min)
-    .map((l) => l.map((p) => ({ x: p.x, y: px.altura - p.y })));
+    .map((l) => l.map((p) => ({ x: p.x, y: H - p.y })));
   return buildRegion(lacos, 'evenodd');
 }
 
-/** Arquivo de imagem -> Region, no navegador. Reduz a `LADO_MAX` antes de contornar. */
-export async function imagemParaRegiao(arquivo: Blob, o: OpcoesImagem = {}): Promise<Region> {
+export interface RegiaoDeCor {
+  regiao: Region;
+  /** Cor media do grupo, '#rrggbb'. */
+  hex: string;
+}
+
+/**
+ * Imagem colorida -> uma regiao por cor (ate `k`), sem o fundo. Agrupa os pixels por cor
+ * (k-medias com sementes deterministicas, a mais distante a cada passo); o fundo e o
+ * transparente ou, sem transparencia, o grupo que domina a moldura da imagem. Grupos
+ * com menos de 0,5% da imagem somem.
+ */
+export function pixelsParaCores({ largura: W, altura: H, dados }: Pixels, k = 4, o: OpcoesImagem = {}): RegiaoDeCor[] {
+  const n = W * H;
+  let transparentes = 0;
+  for (let i = 0; i < n; i++) if (dados[i * 4 + 3]! < 128) transparentes++;
+  const porAlfa = transparentes > n * 0.02;
+  const usa = (i: number) => !porAlfa || dados[i * 4 + 3]! >= 128;
+  const kk = porAlfa ? k : k + 1;
+  // Amostra (ate ~20 mil pixels) para as sementes e as medias.
+  const passo = Math.max(1, Math.floor(n / 20000));
+  const amostra: number[] = [];
+  for (let i = 0; i < n; i += passo) if (usa(i)) amostra.push(i);
+  if (!amostra.length) return [];
+  const rgb = (i: number): number[] => [dados[i * 4]!, dados[i * 4 + 1]!, dados[i * 4 + 2]!];
+  const d2 = (a: number[], b: number[]) => (a[0]! - b[0]!) ** 2 + (a[1]! - b[1]!) ** 2 + (a[2]! - b[2]!) ** 2;
+  const maisPerto = (c: number[], centros: number[][]) => {
+    let j = 0, dm = Infinity;
+    centros.forEach((x, t) => { const d = d2(c, x); if (d < dm) { dm = d; j = t; } });
+    return j;
+  };
+  const centros: number[][] = [rgb(amostra[0]!)];
+  while (centros.length < kk) {
+    let melhor = amostra[0]!, dmax = -1;
+    for (const i of amostra) { const c = rgb(i); const d = Math.min(...centros.map((x) => d2(c, x))); if (d > dmax) { dmax = d; melhor = i; } }
+    if (dmax < 400) break; // as cores que sobram ja estao cobertas (diferenca < ~20 por canal)
+    centros.push(rgb(melhor));
+  }
+  for (let it = 0; it < 12; it++) {
+    const soma = centros.map(() => [0, 0, 0, 0]);
+    for (const i of amostra) {
+      const c = rgb(i), s = soma[maisPerto(c, centros)]!;
+      s[0]! += c[0]!; s[1]! += c[1]!; s[2]! += c[2]!; s[3]! += 1;
+    }
+    soma.forEach((x, t) => { if (x[3]) centros[t] = [x[0]! / x[3]!, x[1]! / x[3]!, x[2]! / x[3]!]; });
+  }
+  const grupo = new Int8Array(n).fill(-1);
+  const conta = new Array<number>(centros.length).fill(0);
+  for (let i = 0; i < n; i++) {
+    if (!usa(i)) continue;
+    const j = maisPerto(rgb(i), centros);
+    grupo[i] = j;
+    conta[j]!++;
+  }
+  // Fundo: sem transparencia, o grupo que mais aparece na moldura.
+  let fundo = -1;
+  if (!porAlfa) {
+    const borda = new Array<number>(centros.length).fill(0);
+    for (let x = 0; x < W; x++) for (const y of [0, H - 1]) { const g = grupo[y * W + x]!; if (g >= 0) borda[g]!++; }
+    for (let y = 0; y < H; y++) for (const x of [0, W - 1]) { const g = grupo[y * W + x]!; if (g >= 0) borda[g]!++; }
+    fundo = borda.indexOf(Math.max(...borda));
+  }
+  const hex = (c: number[]) => '#' + c.map((x) => Math.round(x).toString(16).padStart(2, '0')).join('');
+  const out: (RegiaoDeCor & { area: number })[] = [];
+  centros.forEach((c, j) => {
+    if (j === fundo || conta[j]! < n * 0.005) return;
+    const m = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (grupo[i] === j) m[i] = 1;
+    const regiao = regiaoDaMascara(m, W, H, o);
+    if (regiao.length) out.push({ regiao, hex: hex(c), area: conta[j]! });
+  });
+  return out.sort((a, b) => b.area - a.area).map(({ regiao, hex: h }) => ({ regiao, hex: h }));
+}
+
+/** Arquivo de imagem -> Region e as regioes de cada cor, no navegador. Reduz a `LADO_MAX` antes de contornar. */
+export async function imagemParaRegiao(arquivo: Blob, o: OpcoesImagem = {}): Promise<{ regiao: Region; cores: RegiaoDeCor[] }> {
   let bmp: ImageBitmap;
   try {
     bmp = await createImageBitmap(arquivo);
@@ -198,7 +276,8 @@ export async function imagemParaRegiao(arquivo: Blob, o: OpcoesImagem = {}): Pro
   const g = tela.getContext('2d', { willReadFrequently: true })!;
   g.drawImage(bmp, 0, 0, W, H);
   bmp.close();
-  const regiao = pixelsParaRegiao({ largura: W, altura: H, dados: g.getImageData(0, 0, W, H).data }, o);
+  const px = { largura: W, altura: H, dados: g.getImageData(0, 0, W, H).data };
+  const regiao = pixelsParaRegiao(px, o);
   if (!regiao.length) throw new ErroImport('Não achei nenhum desenho nesta imagem (ela parece lisa).');
-  return regiao;
+  return { regiao, cores: pixelsParaCores(px, 4, o) };
 }

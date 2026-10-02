@@ -26,8 +26,9 @@ import { desenho, valoresPadrao, valoresValidos, type Parametro, type Receita, t
 import { centrada, corDe, nomeComCor, pecasSoltas } from '@/lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, nomeSeguro, zipStl } from '@/lib/gerador/exportar';
 import { baixar } from '@/features/acoes/exportar';
-import { svgParaRegiao } from '@/lib/import/svg';
+import { svgParaCores, svgParaRegiao } from '@/lib/import/svg';
 import { imagemParaRegiao } from '@/lib/import/imagem';
+import type { Region } from '@/lib/geom/region';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { PreviaGerador } from './PreviaGerador';
@@ -246,9 +247,14 @@ function CampoDesenho({ p, valor, set }: { p: Parametro; valor: string; set: (v:
     if (!arquivo) return;
     try {
       const ehSvg = arquivo.type === 'image/svg+xml' || /\.svg$/i.test(arquivo.name);
-      const regiao = ehSvg ? svgParaRegiao(await arquivo.text()) : await imagemParaRegiao(arquivo);
+      let lido: { regiao: Region; cores: { regiao: Region; hex: string }[] };
+      if (ehSvg) {
+        const texto = await arquivo.text();
+        lido = { regiao: svgParaRegiao(texto), cores: svgParaCores(texto) };
+      } else lido = await imagemParaRegiao(arquivo);
       setErro(null);
-      set(JSON.stringify({ nome: arquivo.name, regiao }));
+      // As cores so vao junto quando ha mais de uma (imagem colorida).
+      set(JSON.stringify({ nome: arquivo.name, regiao: lido.regiao, ...(lido.cores.length > 1 ? { cores: lido.cores } : {}) }));
     } catch (e) {
       setErro((e as Error).message);
     }

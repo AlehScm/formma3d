@@ -50,13 +50,21 @@ function letraGrandeRegiao(v: Valores, ctx: Contexto): Region {
 /** O nome (com enfeite opcional) posicionado sobre a letra. */
 function nomeNaLetra(v: Valores, ctx: Contexto, L: Region): Region {
   const nome = txt(v, 'nome').trim();
-  if (!nome) return [];
+  const proprio = desenho(v, 'desenhoNome');
+  if (!nome && !proprio) return [];
   const b = regionBounds(L);
-  const t = textoNaCaixa(nome.split('+'), {
-    fonte: ctx.fonte(txt(v, 'fonteNome')), reserva: temEmoji(nome) ? ctx.fonte('noto-emoji') : undefined,
-    maxW: b.w * (num(v, 'escalaNome') / 100), maxH: b.h * 0.45, entrelinha: 1, espacamento: num(v, 'espacamentoNome') / 100,
-  });
-  let n = num(v, 'engrossarNome') > 0 ? contornar(t.regiao, num(v, 'engrossarNome')) : t.regiao;
+  let base: Region;
+  if (proprio) {
+    const db = regionBounds(proprio.regiao);
+    const k = Math.min((b.w * (num(v, 'escalaNome') / 100)) / db.w, (b.h * 0.45) / db.h);
+    base = proprio.regiao.map((p) => ({ outer: p.outer.map((q) => ({ x: q.x * k, y: q.y * k })), holes: p.holes.map((h) => h.map((q) => ({ x: q.x * k, y: q.y * k }))) }));
+  } else {
+    base = textoNaCaixa(nome.split('+'), {
+      fonte: ctx.fonte(txt(v, 'fonteNome')), reserva: temEmoji(nome) ? ctx.fonte('noto-emoji') : undefined,
+      maxW: b.w * (num(v, 'escalaNome') / 100), maxH: b.h * 0.45, entrelinha: 1, espacamento: num(v, 'espacamentoNome') / 100,
+    }).regiao;
+  }
+  let n = num(v, 'engrossarNome') > 0 ? contornar(base, num(v, 'engrossarNome')) : base;
   const nb = regionBounds(n);
   if (txt(v, 'enfeite') === 'coracao') {
     const c = coracao(nb.h * 0.6);
@@ -98,6 +106,7 @@ export const letraGrande: Receita = {
     mm('espLetra', 'Espessura da letra', 'Letra', 22, 6, 60, 0.5),
     { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Nome', padrao: 'Mom', maxCaracteres: 30, dica: '"+" quebra a linha; vazio = sem nome' },
     { tipo: 'fonte', id: 'fonteNome', rotulo: 'Fonte do nome', grupo: 'Nome', padrao: 'dancing-script-700' },
+    { tipo: 'svg', id: 'desenhoNome', rotulo: 'Ou o nome em imagem', grupo: 'Nome', padrao: '', dica: 'SVG/PNG do nome já desenhado (uma fonte que não está na lista)' },
     { tipo: 'escolha', id: 'enfeite', rotulo: 'Enfeite do nome', grupo: 'Nome', padrao: 'nenhum', opcoes: [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'coracao', rotulo: 'Coração' }, { valor: 'espiral', rotulo: 'Arabesco' }] },
     { tipo: 'numero', id: 'escalaNome', rotulo: 'Largura do nome', grupo: 'Nome', padrao: 90, min: 30, max: 160, passo: 1, unidade: '%', dica: 'Em % da largura da letra' },
     { tipo: 'numero', id: 'xNome', rotulo: 'Posição X do nome', grupo: 'Nome', padrao: 0, min: -100, max: 100, passo: 1, unidade: '%' },
@@ -114,6 +123,7 @@ export const letraGrande: Receita = {
     { tipo: 'escolha', id: 'textura', rotulo: 'Textura', grupo: 'Moldura', padrao: 'pontos', opcoes: [{ valor: 'pontos', rotulo: 'Pontos' }, { valor: 'listras', rotulo: 'Listras' }, { valor: 'hilbert', rotulo: 'Curva de Hilbert' }], visivel: (v) => v.estilo === 'textura' },
     { tipo: 'svg', id: 'desenhoTextura', rotulo: 'Ou um desenho repetido', grupo: 'Moldura', padrao: '', visivel: (v) => v.estilo === 'textura' },
     mm('relevoTextura', 'Relevo da textura', 'Moldura', 0.6, 0.2, 3, 0.1, undefined, (v) => v.estilo === 'textura' || v.estilo === 'floral'),
+    { tipo: 'liga', id: 'texturaElevada', rotulo: 'Textura em relevo', grupo: 'Moldura', padrao: false, dica: 'Desligado: a textura fica rente à moldura (boa para imprimir com a face na mesa)', visivel: (v) => v.estilo === 'textura' || v.estilo === 'floral' },
     mm('material', 'Espessura do EVA/feltro', 'Moldura', 2, 0.5, 6, 0.1, undefined, (v) => v.estilo === 'material'),
     mm('frente', 'Largura da moldura da frente', 'Moldura', 3, 1.5, 10, 0.5, 'Segura o acetato', (v) => v.estilo === 'brilho'),
     mm('espFrente', 'Espessura da moldura da frente', 'Moldura', 2, 1, 5, 0.5, undefined, (v) => v.estilo === 'brilho'),
@@ -171,13 +181,16 @@ export const letraGrande: Receita = {
       }
     } else if (estilo === 'textura' || estilo === 'floral') {
       // Moldura: fundo e parede em volta; dentro, o fundo de outra cor e a textura em cima.
-      const h = num(v, 'relevoTextura');
+      // Textura rente (plana): o fundo de dentro vai ate E - h e a textura completa ate E,
+      // embutida nele. Em relevo: o fundo vai ate E e a textura sobe h acima.
+      const h = num(v, 'relevoTextura'), elevada = liga(v, 'texturaElevada');
+      const topoFundo = elevada ? E : E - h;
       const dentro = contornar(I, -folga);
-      const vazios = p > 0 && vao.length ? [{ regiao: vao, z0: E - p, z1: E + 1 }] : [];
+      const vazios = p > 0 && vao.length ? [{ regiao: vao, z0: E - p, z1: E + h + 1 }] : [];
       pecas.push({ nome: 'Letra', cor: 0, camadas: [{ region: L, z0: 0, z1: fundo }, ...comVazios(diffRegion(L, I), fundo, E, vazios)] });
-      pecas.push({ nome: 'Fundo de dentro', cor: 2, camadas: comVazios(dentro, fundo, E - h, vazios) });
       const tex = diffRegion(texturaDentro(v, I, estilo === 'floral'), p > 0 ? vao : []);
-      if (regionArea(tex) > 0.5) pecas.push({ nome: 'Textura', cor: 3, camadas: [{ region: tex, z0: E - h, z1: E }] });
+      pecas.push({ nome: 'Fundo de dentro', cor: 2, camadas: [...comVazios(dentro, fundo, topoFundo, vazios), ...(elevada ? [] : comVazios(diffRegion(dentro, tex), E - h, E, vazios))] });
+      if (regionArea(tex) > 0.5) pecas.push({ nome: 'Textura', cor: 3, camadas: [{ region: tex, z0: topoFundo, z1: topoFundo + h }] });
       if (placaNome.length) pecas.push({ nome: 'Nome', cor: 1, camadas: [{ region: placaNome, z0: E - p, z1: E - p + num(v, 'espNome') }] });
     } else if (estilo === 'material') {
       // Moldura aberta na frente: fundo, parede, e o EVA/feltro cortado no molde deita no fundo.
