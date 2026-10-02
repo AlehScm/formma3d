@@ -13,6 +13,7 @@ import { malhaFechada } from '../lib/mesh/relevo';
 import { lerTresMf } from '../lib/import/tresmf';
 import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
 import { FICHAS } from '../lib/gerador/receitas/fichas';
+import { COBERTURA, markdownCobertura } from '../lib/gerador/cobertura';
 import { valoresPadrao, type Receita, type Resultado, type Valores } from '../lib/gerador/tipos';
 import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
@@ -80,6 +81,19 @@ for (const r of RECEITAS) {
   ok(`${r.id}: ZIP com um STL por peca`, Object.keys(zip.files).filter((f) => f.endsWith('.stl')).length === pecas.length);
 }
 
+console.log('\n== cobertura dos 117 modelos ==');
+{
+  const auditoria = [...new Set([...fs.readFileSync('docs/mafagrafos-117.md', 'utf8').matchAll(/mafagrafos\.com\/models\/([a-z0-9-]+)\)/g)].map((m) => m[1]!))];
+  const slugs = COBERTURA.map((c) => c.slug);
+  const faltam = auditoria.filter((x) => !slugs.includes(x)), sobram = slugs.filter((x) => !auditoria.includes(x));
+  ok('cobertura tem os 117 da auditoria, cada um uma vez', auditoria.length === 117 && slugs.length === 117 && new Set(slugs).size === 117 && !faltam.length && !sobram.length, [...faltam, ...sobram].join(', '));
+  const semReceita = COBERTURA.filter((c) => c.receita && !receitaPorId(c.receita)).map((c) => c.slug);
+  ok('toda receita citada existe', !semReceita.length, semReceita.join(', '));
+  const prontoSem = COBERTURA.filter((c) => c.status === 'pronto' && (!c.receita || c.onda !== 0)).map((c) => c.slug);
+  ok('pronto = tem receita e esta na onda 0', !prontoSem.length, prontoSem.join(', '));
+  ok('docs/cobertura-117.md atualizado (npx tsx scripts/cobertura.mts)', fs.readFileSync('docs/cobertura-117.md', 'utf8') === markdownCobertura());
+}
+
 console.log('\n== vitrine do catalogo ==');
 for (const f of FICHAS) {
   const r = receitaPorId(f.id);
@@ -126,7 +140,7 @@ console.log('\n== texto em camadas ==');
   const alem = area(intersectRegion(pb!.camadas[1]!.region, contornar(pm!.camadas[0]!.region, 0.25)));
   ok('encaixe: folga de 0,2 mm em volta (nem menos, nem mais)', folga < 0.01 && alem > 0.1, `${folga.toFixed(3)} mm2 a menos de 0,19 mm; ${alem.toFixed(2)} mm2 ate 0,25 mm`);
   ok('encaixe raso: sem aviso; fundo demais: avisa e limita', enc.avisos.length === 0 && gerar(r, { montagem: 'encaixe', profEncaixe: 3, ...fino }).avisos.some((a) => a.includes('Encaixe')));
-  ok('contorno da base pequeno: avisa que a base partiu', gerar(r, { linha1: 'I I', contornoBase: 1, tracking: 10 }).avisos.some((a) => a.includes('mais de um pedaço')));
+  ok('contorno da base pequeno: avisa que a base partiu', gerar(r, { linha1: 'I I', contornoBase: 1, espacamento: 200 }).avisos.some((a) => a.includes('mais de um pedaço')));
   ok('sem texto: avisa e nao gera', gerar(r, { linha1: '  ' }).itens.length === 0);
 
   // Opcoes que o gerador de referencia tem: base em retangulo, engrossar o topo, miolo da base.
@@ -210,6 +224,9 @@ console.log('\n== chaveiros ==');
   ok('"+" quebra a linha dentro do nome', regionBounds(regiaoDe(duasLinhas, 0, 'Topo')).h > regionBounds(regiaoDe(gerar(r, { nomes: 'Ana' }), 0, 'Topo')).h * 1.6);
   ok('prefixo entra no nome', regionBounds(regiaoDe(gerar(r, { nomes: 'Ana', prefixo: 'Tia ' }), 0, 'Topo')).w > regionBounds(regiaoDe(gerar(r, { nomes: 'Ana' }), 0, 'Topo')).w);
   const sem = gerar(r, { nomes: 'Ana', argola: 'nenhuma' });
+  const larg = (e: number) => regionBounds(regiaoDe(gerar(r, { nomes: 'Banana', espacamento: e, argola: 'nenhuma' }), 0, 'Topo')).w;
+  const w100 = larg(100), w150 = larg(150), w80 = larg(80);
+  ok('espacamento em %: 150% abre, 80% fecha, mesma altura', w150 > w100 * 1.25 && w80 < w100 * 0.95, `${w80.toFixed(1)} / ${w100.toFixed(1)} / ${w150.toFixed(1)} mm`);
   ok('sem argola: base sem furo', regiaoDe(sem, 0, 'Base').every((p) => p.holes.length === 0));
 }
 {
@@ -232,8 +249,12 @@ console.log('\n== chaveiros ==');
   const ret = retanguloArredondado(0, 0, 75, 30, 5);
   const furoFora = furos.length === 1 && area(intersectRegion([{ outer: furos[0]!, holes: [] }], ret)) < 0.05;
   ok('argola em aba: um furo de 2,5 mm, todo fora da placa', furoFora && perto(regionBounds([{ outer: furos[0]!, holes: [] }]).w, 2.5, 0.05) && pa.length === 1);
-  const longo = gerar(r, { nomes: 'Maria Eduarda dos Santos Albuquerque Ferreira', largura: 40, altura: 14 });
-  ok('nome longo numa placa pequena: avisa que ficou pequeno', longo.avisos.some((a) => a.includes('pequeno')));
+  const longo = gerar(r, { nomes: 'Maria Eduarda dos Santos Albuquerque Ferreira', largura: 60, altura: 20 });
+  ok('nome longo numa placa pequena: avisa que ficou pequeno', longo.itens.length === 1 && longo.avisos.some((a) => a.includes('pequeno')), longo.avisos.join(' | '));
+  const minusculo = gerar(r, { nomes: 'Maria Eduarda dos Santos Albuquerque Ferreira da Silva Souza', largura: 25, altura: 20, margemH: 2 });
+  ok('letra abaixo de 1 mm: nao gera, explica', minusculo.itens.length === 0 && minusculo.avisos.some((a) => a.includes('pequeno demais')), minusculo.avisos.join(' | '));
+  const semEspaco = gerar(r, { nomes: 'Ana', largura: 20, margemH: 30 });
+  ok('margem maior que a placa: nao gera, explica', semEspaco.itens.length === 0 && semEspaco.avisos.some((a) => a.includes('margens')));
   ok('sem contorno do nome: 2 cores', gerar(r, { contornoNome: 0 }).cores.join() === 'Placa,Nome');
 }
 

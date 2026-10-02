@@ -14,7 +14,7 @@ const tamanho = (padrao: number): Parametro => ({
   tipo: 'numero', id: 'largura', rotulo: 'Largura total', grupo: 'Tamanho', padrao, min: 20, max: 500, passo: 1, unidade: 'mm',
   dica: 'Largura da peça pronta, com a base e o adorno',
 });
-const espacamento: Parametro = { tipo: 'numero', id: 'tracking', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 0, min: -5, max: 20, passo: 0.1, unidade: 'mm' };
+const espacamento: Parametro = { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%', dica: '100% é o espaço da própria fonte' };
 
 const comAdorno = (v: Valores) => v.adorno !== 'nenhum';
 const parametrosAdorno = (): Parametro[] => [
@@ -56,8 +56,8 @@ function linhasDe(v: Valores, ctx: Contexto, k: number): Linha[] {
   const razao = num(v, 'razaoLinha2') / 100;
   const reserva = temEmoji(textos(v)) ? ctx.fonte('noto-emoji') : undefined;
   return [
-    { texto: txt(v, 'linha1'), fonte: ctx.fonte(txt(v, 'fonte1')), altura: ALTURA_REF * k, tracking: num(v, 'tracking'), reserva },
-    { texto: txt(v, 'linha2'), fonte: ctx.fonte(txt(v, 'fonte2') || txt(v, 'fonte1')), altura: ALTURA_REF * k * (razao || 1), tracking: num(v, 'tracking'), reserva },
+    { texto: txt(v, 'linha1'), fonte: ctx.fonte(txt(v, 'fonte1')), altura: ALTURA_REF * k, espacamento: num(v, 'espacamento') / 100, reserva },
+    { texto: txt(v, 'linha2'), fonte: ctx.fonte(txt(v, 'fonte2') || txt(v, 'fonte1')), altura: ALTURA_REF * k * (razao || 1), espacamento: num(v, 'espacamento') / 100, reserva },
   ];
 }
 
@@ -131,7 +131,7 @@ export const letrasSeparadas: Receita = {
   parametros: [
     { tipo: 'texto', id: 'linha1', rotulo: 'Texto', grupo: 'Texto', padrao: 'CASA', maxCaracteres: 20 },
     { tipo: 'fonte', id: 'fonte1', rotulo: 'Fonte', grupo: 'Texto', padrao: 'archivo-black' },
-    { ...espacamento, padrao: 6 },
+    { ...espacamento, padrao: 115 },
     tamanho(450),
     ...parametrosCamadas({ contornoBase: 6, contornoMeio: 4, contornoTopo: 0.2, espBase: 10, folga: 0.24 }),
   ],

@@ -1,6 +1,6 @@
 /**
- * SVG -> Region: as areas preenchidas viram area; os tracos sem preenchimento viram
- * faixa da largura do traco (como o "Expandir" do Illustrator). Y vira para cima.
+ * SVG -> Region: as areas preenchidas viram area; os tracos (com ou sem preenchimento)
+ * viram faixa da largura do traco (como o "Expandir" do Illustrator). Y vira para cima.
  * Usa o SVGLoader do three, que precisa de DOMParser (navegador).
  */
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
@@ -29,9 +29,11 @@ export function svgParaRegiao(texto: string): Region {
         const furos = holes.length ? buildRegion(holes.map((h) => h.map(virar))) : [];
         parte = unionRegion(parte, furos.length ? diffRegion(fora, furos) : fora);
       }
-    } else if (estilo.stroke && estilo.stroke !== 'none') {
+    }
+    // Traco conta tambem quando ha preenchimento (contorno grosso em volta da forma).
+    if (estilo.stroke && estilo.stroke !== 'none' && estilo.stroke !== 'transparent') {
       const contornos = path.subPaths.map((s) => ({ pts: s.getPoints(PONTOS_POR_CURVA).map(virar), closed: s.autoClose }));
-      parte = strokeToRegion(contornos, Number(estilo.strokeWidth) || 1, estilo.strokeLineCap === 'round');
+      parte = unionRegion(parte, strokeToRegion(contornos, Number(estilo.strokeWidth) || 1, estilo.strokeLineCap === 'round'));
     }
     regiao = unionRegion(regiao, parte);
   }

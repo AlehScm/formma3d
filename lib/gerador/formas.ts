@@ -56,6 +56,8 @@ export interface Linha {
   altura: number;
   /** Espaco extra entre letras, mm. */
   tracking?: number;
+  /** Espacamento como fracao do avanco da fonte (1 = normal, 1,05 = 5% mais aberto). */
+  espacamento?: number;
   /** Fonte para o que `fonte` nao tem (emoji). */
   reserva?: Font;
 }
@@ -69,36 +71,30 @@ const INVISIVEL = /[\u200d\ufe0e\ufe0f]/u;
 const escalaDe = (f: Font, altura: number) => altura / (f.tables?.os2?.sCapHeight || f.unitsPerEm * 0.7);
 
 /**
- * As letras de uma linha. Com `reserva`, cada caractere que a fonte nao tem vai na
- * reserva, na mesma altura de maiuscula, emendando trecho a trecho pelo avanco.
+ * As letras de uma linha. Sem reserva e com espacamento normal, e o `textToLetters` (com
+ * ligaduras). Senao, caractere a caractere: o que a fonte nao tem vai na reserva (na
+ * mesma altura de maiuscula) e o avanco de cada glifo e multiplicado pelo espacamento.
  */
 function letrasDaLinha(l: Linha): Letra[] {
-  const tracking = l.tracking ?? 0;
-  if (!l.reserva) return textToLetters(l.fonte, l.texto, { altura: l.altura, tracking });
-  const trechos: { fonte: Font; texto: string }[] = [];
-  for (const c of l.texto) {
-    if (INVISIVEL.test(c)) continue;
-    const fonte = l.fonte.charToGlyph(c).index === 0 && l.reserva.charToGlyph(c).index !== 0 ? l.reserva : l.fonte;
-    const ultimo = trechos[trechos.length - 1];
-    if (ultimo && ultimo.fonte === fonte) ultimo.texto += c;
-    else trechos.push({ fonte, texto: c });
-  }
+  const tracking = l.tracking ?? 0, fator = l.espacamento ?? 1;
+  if (!l.reserva && fator === 1) return textToLetters(l.fonte, l.texto, { altura: l.altura, tracking });
+  const chars = [...l.texto].filter((c) => !INVISIVEL.test(c)).map((c) => ({
+    c,
+    fonte: l.reserva && l.fonte.charToGlyph(c).index === 0 && l.reserva.charToGlyph(c).index !== 0 ? l.reserva : l.fonte,
+  }));
   const out: Letra[] = [];
   let x = 0;
-  for (const t of trechos) {
-    for (const letra of textToLetters(t.fonte, t.texto, { altura: l.altura, tracking })) {
+  chars.forEach(({ c, fonte }, i) => {
+    for (const letra of textToLetters(fonte, c, { altura: l.altura })) {
       const region = translateRegion(letra.region, x, 0);
       out.push({ nome: letra.nome, region, bounds: regionBounds(region) });
     }
-    // Avanco do trecho como o textToLetters conta: largura de cada glifo, kerning e tracking.
-    const k = escalaDe(t.fonte, l.altura);
-    const glifos = [...t.texto].map((c) => t.fonte.charToGlyph(c));
-    glifos.forEach((g, i) => {
-      x += (g.advanceWidth ?? 0) * k + tracking;
-      const prox = glifos[i + 1];
-      if (prox) x += t.fonte.getKerningValue(g, prox) * k;
-    });
-  }
+    const k = escalaDe(fonte, l.altura);
+    const g = fonte.charToGlyph(c);
+    x += (g.advanceWidth ?? 0) * k * fator + tracking;
+    const prox = chars[i + 1];
+    if (prox && prox.fonte === fonte) x += fonte.getKerningValue(g, fonte.charToGlyph(prox.c)) * k;
+  });
   return out;
 }
 

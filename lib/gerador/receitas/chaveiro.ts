@@ -11,6 +11,8 @@ const nomes = (padrao: string): Parametro => ({
   tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao, maxCaracteres: 300,
   dica: `Até ${LOTE_MAX} nomes separados por vírgula; "+" quebra a linha dentro de um nome; aceita emoji (♥ 🐾)`,
 });
+/** Altura de letra abaixo da qual a impressora nao reproduz, mm. */
+const LETRA_MIN = 1;
 const comEmoji = (v: Valores) => temEmoji(txt(v, 'nomes') + txt(v, 'prefixo') + txt(v, 'sufixo'));
 const fontesEmoji = (v: Valores) => (comEmoji(v) ? ['noto-emoji'] : []);
 const furo: Parametro[] = [
@@ -37,7 +39,7 @@ function lote(v: Valores, fazer: (linhas: string[], nome: string) => { item: Ite
     r.avisos.forEach((a) => avisos.add(a));
     if (r.item) itens.push(r.item);
   }
-  if (!itens.length) avisos.add('Digite ao menos um nome.');
+  if (!lista.length) avisos.add('Digite ao menos um nome.');
   return { itens: itens.length > 1 ? emGrade(itens) : itens, avisos: [...avisos] };
 }
 
@@ -60,7 +62,7 @@ export const chaveiroNome: Receita = {
     nomes('Ana, Pedro, Lu'),
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'lobster' },
     { tipo: 'numero', id: 'altura', rotulo: 'Altura das letras', grupo: 'Texto', padrao: 14, min: 5, max: 60, passo: 0.5, unidade: 'mm' },
-    { tipo: 'numero', id: 'tracking', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 0, min: -3, max: 10, passo: 0.1, unidade: 'mm' },
+    { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%', dica: '100% é o espaço da própria fonte' },
     { tipo: 'numero', id: 'entrelinha', rotulo: 'Espaço entre linhas', grupo: 'Texto', padrao: 1, min: -10, max: 20, passo: 0.5, unidade: 'mm' },
     { tipo: 'texto', id: 'prefixo', rotulo: 'Antes do nome', grupo: 'Texto', padrao: '', maxCaracteres: 15 },
     { tipo: 'texto', id: 'sufixo', rotulo: 'Depois do nome', grupo: 'Texto', padrao: '', maxCaracteres: 15 },
@@ -73,7 +75,7 @@ export const chaveiroNome: Receita = {
     const fonte = ctx.fonte(txt(v, 'fonte'));
     const reserva = comEmoji(v) ? ctx.fonte('noto-emoji') : undefined;
     const r = lote(v, (linhas, nome) => {
-      const t = comporLinhas(linhas.map((texto) => ({ texto, fonte, reserva, altura: num(v, 'altura'), tracking: num(v, 'tracking') })), num(v, 'entrelinha'));
+      const t = comporLinhas(linhas.map((texto) => ({ texto, fonte, reserva, altura: num(v, 'altura'), espacamento: num(v, 'espacamento') / 100 })), num(v, 'entrelinha'));
       if (!t.letras.length) return { item: null, avisos: [] };
       const e = empilhar(t.regiao, o, (b) => comArgola(b, txt(v, 'argola'), num(v, 'furo'), num(v, 'aro')));
       return { item: { nome, pecas: e.pecas }, avisos: e.avisos };
@@ -100,7 +102,7 @@ export const chaveiroRetangular: Receita = {
   parametros: [
     nomes('Aline+Borges, Ana+Silva da Mata'),
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'archivo-black' },
-    { tipo: 'numero', id: 'tracking', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 0, min: -3, max: 10, passo: 0.1, unidade: 'mm' },
+    { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%', dica: '100% é o espaço da própria fonte' },
     { tipo: 'numero', id: 'entrelinha', rotulo: 'Espaço entre linhas', grupo: 'Texto', padrao: 1.5, min: -5, max: 20, passo: 0.5, unidade: 'mm' },
     { tipo: 'texto', id: 'prefixo', rotulo: 'Antes do nome', grupo: 'Texto', padrao: '', maxCaracteres: 15 },
     { tipo: 'texto', id: 'sufixo', rotulo: 'Depois do nome', grupo: 'Texto', padrao: '', maxCaracteres: 15 },
@@ -133,9 +135,9 @@ export const chaveiroRetangular: Receita = {
     const reserva = comEmoji(v) ? ctx.fonte('noto-emoji') : undefined;
     const r = lote(v, (linhas, nome) => {
       // Cada linha do tamanho que enche a largura; se nao couber na altura, todas encolhem juntas.
-      const larguraDe = (texto: string, altura: number) => comporLinhas([{ texto, fonte, reserva, altura, tracking: num(v, 'tracking') }], 0).bounds.w;
+      const larguraDe = (texto: string, altura: number) => comporLinhas([{ texto, fonte, reserva, altura, espacamento: num(v, 'espacamento') / 100 }], 0).bounds.w;
       const alturas = linhas.map((texto) => 10 * escalaParaLargura((k) => larguraDe(texto, 10 * k) + 2 * cn, W));
-      const compor = (f: number) => comporLinhas(linhas.map((texto, i) => ({ texto, fonte, reserva, altura: alturas[i]! * f, tracking: num(v, 'tracking') })), num(v, 'entrelinha'));
+      const compor = (f: number) => comporLinhas(linhas.map((texto, i) => ({ texto, fonte, reserva, altura: alturas[i]! * f, espacamento: num(v, 'espacamento') / 100 })), num(v, 'entrelinha'));
       let t = compor(1);
       if (!t.letras.length) return { item: null, avisos: [] };
       let escalaFinal = 1;
@@ -144,9 +146,11 @@ export const chaveiroRetangular: Receita = {
         t = compor(escalaFinal);
       }
       const avisos: string[] = [];
-      if (W <= 0 || Hd <= 0) avisos.push('As margens e a borda não deixam espaço para o nome.');
+      if (W < 5 || Hd < 2) return { item: null, avisos: ['As margens e a borda não deixam espaço para o nome: diminua as margens ou aumente a placa.'] };
       // Altura das maiusculas da menor linha (a minuscula e menor, mas e a maiuscula que se escolhe).
       const menor = Math.min(...alturas) * escalaFinal;
+      // Abaixo de 1 mm a letra nem sai na impressora: nao gera.
+      if (menor < LETRA_MIN) return { item: null, avisos: [`"${nome}" ficaria com letras de ${menor.toFixed(1)} mm, pequeno demais para imprimir: aumente a placa.`] };
       if (menor < 2.5) avisos.push(`"${nome}" ficou com letras de ${menor.toFixed(1)} mm: pequeno para imprimir bem.`);
 
       let placa = retanguloArredondado(0, 0, L, H, raio);

@@ -50,7 +50,15 @@ export async function carregarFonteWeb(id: string): Promise<Font> {
   if (emCache) return emCache;
   const def = [...FONTES_WEB, FONTE_EMOJI].find((f) => f.id === id);
   if (!def) throw new Error('Fonte desconhecida: ' + id);
-  const res = await fetch(def.url);
+  // Primeiro a copia do proprio site (public/fontes, scripts/baixar-fontes.mts); o CDN
+  // so se ela faltar.
+  let res: Response | null = null;
+  try {
+    res = await fetch(`${process.env.NEXT_PUBLIC_BASE ?? ''}/fontes/${def.id}.ttf`);
+  } catch {
+    res = null;
+  }
+  if (!res?.ok) res = await fetch(def.url);
   if (!res.ok) throw new Error(`Falha ao baixar ${def.nome} (${res.status})`);
   const font = opentype.parse(await res.arrayBuffer());
   cache.set(id, font);

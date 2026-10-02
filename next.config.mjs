@@ -10,6 +10,8 @@ const base = '/formma3d';
 const nextConfig = {
   output: 'export',
   ...(paraPages ? { basePath: base, assetPrefix: `${base}/` } : {}),
+  // Caminho de arquivos de public/ (fontes) no navegador.
+  env: { NEXT_PUBLIC_BASE: paraPages ? base : '' },
   images: { unoptimized: true },
 };
 

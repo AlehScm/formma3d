@@ -22,7 +22,7 @@ import {
 } from '@/components/ui';
 import { carregarFonteWeb, FONTES_WEB } from '@/lib/text/fontes';
 import { receitaPorId } from '@/lib/gerador/receitas';
-import { desenho, valoresPadrao, type Parametro, type Receita, type Resultado, type Valores } from '@/lib/gerador/tipos';
+import { desenho, valoresPadrao, valoresValidos, type Parametro, type Receita, type Resultado, type Valores } from '@/lib/gerador/tipos';
 import { centrada, corDe, nomeComCor, pecasSoltas } from '@/lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, nomeSeguro, zipStl } from '@/lib/gerador/exportar';
 import { baixar } from '@/features/acoes/exportar';
@@ -62,6 +62,7 @@ export function TelaGerador({ id }: { id: string }) {
   const idsFonte = [...new Set([...visiveis.filter((p) => p.tipo === 'fonte').map((p) => String(valores[p.id])), ...(receita.fontes?.(valores) ?? [])])];
   const [fontes, setFontes] = useState<Map<string, Font>>(new Map());
   const [erroFonte, setErroFonte] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
   const faltam = idsFonte.filter((f) => !fontes.has(f));
   useEffect(() => {
     if (!faltam.length) return;
@@ -72,13 +73,13 @@ export function TelaGerador({ id }: { id: string }) {
     return () => {
       vivo = false;
     };
-  }, [faltam.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [faltam.join(), tentativa]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const adiados = useDeferredValue(valores);
   const { resultado, erro } = useMemo((): { resultado: Resultado | null; erro: string | null } => {
     if (faltam.length) return { resultado: null, erro: null };
     try {
-      return { resultado: receita.gerar(adiados, { fonte: (f) => fontes.get(f) ?? fontes.values().next().value! }), erro: null };
+      return { resultado: receita.gerar(valoresValidos(receita, adiados), { fonte: (f) => fontes.get(f) ?? fontes.values().next().value! }), erro: null };
     } catch (e) {
       return { resultado: null, erro: (e as Error).message };
     }
@@ -172,7 +173,14 @@ export function TelaGerador({ id }: { id: string }) {
                 </span>
               </div>
             )}
-            {erroFonte && <Alerta tom="perigo">Não consegui baixar a fonte: {erroFonte}</Alerta>}
+            {erroFonte && (
+              <Alerta
+                tom="perigo"
+                acao={<Botao tamanho="sm" onClick={() => { setErroFonte(null); setTentativa((n) => n + 1); }}>Tentar de novo</Botao>}
+              >
+                Não consegui carregar a fonte: {erroFonte}
+              </Alerta>
+            )}
             {erro && <Alerta tom="perigo">{erro}</Alerta>}
             {resultado?.avisos.map((a) => (
               <Alerta key={a} tom="atencao">
@@ -189,7 +197,7 @@ export function TelaGerador({ id }: { id: string }) {
 function CampoDoParametro({ p, valor, set }: { p: Parametro; valor: Valores[string]; set: (v: Valores[string]) => void }) {
   switch (p.tipo) {
     case 'numero':
-      return <CampoNumero rotulo={p.rotulo} dica={p.dica} valor={Number(valor)} set={set} min={p.min} max={p.max} passo={p.passo} unidade={p.unidade} padrao={p.padrao} />;
+      return <CampoNumero rotulo={p.rotulo} dica={p.dica} valor={Number(valor)} set={set} min={p.min} max={p.max} passo={p.passo} unidade={p.unidade} padrao={p.padrao} tetoFixo />;
     case 'texto':
       return (
         <Campo rotulo={p.rotulo} dica={p.dica} htmlFor={`g-${p.id}`}>

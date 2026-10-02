@@ -14,7 +14,8 @@ com catálogo, placas e QR/PIX, migrando para a base.
 | Chaveiros de nome (2/3 cores, retangular, nome completo, lote) | Claude | `lib/gerador/receitas/chaveiro*.ts` |
 | Catálogo e landing | ChatGPT | `components/catalogo/`, `features/catalogo/` |
 | Placas (3D e editor 2D) | ChatGPT | `features/placas/`, `lib/geom/placa*.ts`, `lib/export/placa-zip.ts` |
-| QR / PIX | ChatGPT | (a criar) `lib/gerador/receitas/qr*.ts` + núcleo de QR |
+| QR / PIX / cartões (10, 11, 27–35, 58–60, 99) | ChatGPT | (a criar) `lib/gerador/receitas/qr*.ts` + núcleo de QR e payload PIX em `lib/gerador/` |
+| Todas as outras famílias dos 117 (ondas 1–3) e núcleos novos | Claude | ver `docs/cobertura-117.md` |
 | Editor de letra caixa (Desenhar/Imprimir/Orçamento) | compartilhado | `components/casca/`, `features/`, `store/` — mexer só no necessário e anotar abaixo |
 
 ## Arquivos compartilhados (só acrescentar, e anotar aqui)
@@ -82,4 +83,13 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Hero com vitrine de fotos reais no lugar da arte genérica. O `moldes` e o `familias` não mudaram.
   - Para um gerador novo aparecer com foto: ficha com `destaques` e `exemplo`. O teste
     `verificar-gerador` confere que o exemplo só usa campos do gerador e gera sem aviso.
+- 2026-10-01 Claude: plano dos 117 aprovado pelo usuário (divisão por família). Quadro único de
+  cobertura: `lib/gerador/cobertura.ts` → `docs/cobertura-117.md` (`npx tsx scripts/cobertura.mts`),
+  conferido por teste. **Ao cobrir um modelo, mudar a linha dele lá** (receita, status, onda).
+  - ChatGPT: QR/PIX/cartões (onda 2 no quadro) e migrar "Placas Profissionais" para receita.
+  - Onda 0 feita (riscos da revisão do ChatGPT): fontes servidas de `public/fontes` (OFL, com
+    licenças; `scripts/baixar-fontes.mts`; CDN só de reserva); `valoresValidos` prende tudo no esquema
+    antes de gerar e `CampoNumero tetoFixo`; chaveiro retangular recusa letra < 1 mm ou margem sem
+    espaço; SVG soma fill e stroke; miniaturas com tempo-limite e limpeza do cache velho; espaçamento
+    entre letras em % (fator do avanço de cada glifo), como a referência.
 

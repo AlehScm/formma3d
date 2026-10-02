@@ -90,6 +90,39 @@ export function valoresPadrao(r: Receita): Valores {
   return Object.fromEntries(r.parametros.map((p) => [p.id, p.padrao]));
 }
 
+/**
+ * Os valores dentro do esquema: numero entre min e max, texto no tamanho maximo, escolha
+ * entre as opcoes, tipo errado volta ao padrao. A receita sempre recebe isto.
+ */
+export function valoresValidos(r: Receita, v: Valores): Valores {
+  const out: Valores = { ...v };
+  for (const p of r.parametros) {
+    const x = v[p.id];
+    switch (p.tipo) {
+      case 'numero': {
+        const n = typeof x === 'number' && Number.isFinite(x) ? x : p.padrao;
+        out[p.id] = Math.min(p.max, Math.max(p.min, n));
+        break;
+      }
+      case 'texto':
+        out[p.id] = typeof x === 'string' ? (p.maxCaracteres ? [...x].slice(0, p.maxCaracteres).join('') : x) : p.padrao;
+        break;
+      case 'escolha':
+        out[p.id] = p.opcoes.some((o) => o.valor === x) ? x! : p.padrao;
+        break;
+      case 'liga':
+        out[p.id] = typeof x === 'boolean' ? x : p.padrao;
+        break;
+      case 'cor':
+        out[p.id] = typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x) ? x : p.padrao;
+        break;
+      default:
+        out[p.id] = typeof x === 'string' ? x : p.padrao;
+    }
+  }
+  return out;
+}
+
 /** Leitores tipados (a tela sempre passa todos os valores do esquema). */
 export const num = (v: Valores, id: string) => Number(v[id]);
 export const txt = (v: Valores, id: string) => String(v[id] ?? '');

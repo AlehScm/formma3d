@@ -36,6 +36,8 @@ export interface CampoNumeroProps {
    * diferente, e um clique volta ao padrao.
    */
   padrao?: number;
+  /** Trava tambem o teto ao digitar (gerador: o maximo e limite da peca, nao do deslizante). */
+  tetoFixo?: boolean;
 }
 
 export function EntradaNumero({
@@ -49,6 +51,7 @@ export function EntradaNumero({
   desabilitado,
   largura,
   rotuloAcessivel,
+  tetoFixo,
 }: {
   valor: number;
   set: (v: number) => void;
@@ -60,6 +63,7 @@ export function EntradaNumero({
   desabilitado?: boolean;
   largura?: string;
   rotuloAcessivel?: string;
+  tetoFixo?: boolean;
 }) {
   const casas = casasDoPasso(passo);
   // Unidade longa ("R$/kWh") come o espaco do numero: o campo cresce com ela.
@@ -70,8 +74,9 @@ export function EntradaNumero({
     const v = lerNumero(texto);
     setRascunho(null);
     if (v === null) return;
-    // So o piso e travado ao digitar: o teto do deslizante nao vale aqui.
-    set(Math.max(min, v));
+    // So o piso e travado ao digitar: o teto do deslizante nao vale aqui (a nao ser
+    // que o campo peca `tetoFixo`).
+    set(tetoFixo ? Math.min(max, Math.max(min, v)) : Math.max(min, v));
   };
 
   const teclado = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -135,6 +140,7 @@ export function CampoNumero({
   semDeslizante,
   desabilitado,
   padrao,
+  tetoFixo,
 }: CampoNumeroProps) {
   const id = useId();
   const casas = casasDoPasso(passo);
@@ -156,7 +162,7 @@ export function CampoNumero({
       <Campo rotulo={rotulo} dica={dica} layout="linha" htmlFor={id}>
         <div className="flex items-center gap-0.5">
           {voltar}
-          <EntradaNumero id={id} valor={valor} set={set} min={min} max={max} passo={passo} unidade={unidade} desabilitado={desabilitado} />
+          <EntradaNumero id={id} valor={valor} set={set} min={min} max={max} passo={passo} unidade={unidade} desabilitado={desabilitado} tetoFixo={tetoFixo} />
         </div>
       </Campo>
     );
@@ -181,7 +187,7 @@ export function CampoNumero({
           <Slider.Thumb className="block size-3.5 rounded-full border-2 border-superficie bg-acento shadow transition-colors hover:bg-acento-forte" />
         </Slider.Root>
         {voltar}
-        <EntradaNumero id={id} valor={valor} set={set} min={min} max={max} passo={passo} unidade={unidade} desabilitado={desabilitado} />
+        <EntradaNumero id={id} valor={valor} set={set} min={min} max={max} passo={passo} unidade={unidade} desabilitado={desabilitado} tetoFixo={tetoFixo} />
       </div>
     </Campo>
   );

@@ -6,10 +6,12 @@
  * navegador para a proxima visita. Sem WebGL, o card fica com o desenho de reserva.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { ficha } from '@/lib/gerador/receitas/fichas';
+import { ficha, FICHAS } from '@/lib/gerador/receitas/fichas';
 
 /** Mudou a geometria das receitas de um jeito que muda a foto: suba o numero. */
 const VERSAO = 3;
+/** Foto que demora mais que isto (fonte que nao chega, WebGL travado) fica no desenho de reserva. */
+const TEMPO_MAX = 20000; // ms
 const memoria = new Map<string, string>();
 let fila: Promise<unknown> = Promise.resolve();
 
@@ -21,13 +23,13 @@ function chave(id: string): string {
 }
 
 let limpo = false;
-/** Tira do navegador as fotos de versoes antigas (uma vez por pagina). */
+/** Tira do navegador as fotos que nao valem mais (outra versao ou ficha mudada), uma vez por pagina. */
 function limparAntigas(): void {
   if (limpo) return;
   limpo = true;
   try {
-    const atuais = `formma3d:miniatura:v${VERSAO}:`;
-    for (const k of Object.keys(localStorage)) if (k.startsWith('formma3d:miniatura:') && !k.startsWith(atuais)) localStorage.removeItem(k);
+    const atuais = new Set(FICHAS.map((f) => chave(f.id)));
+    for (const k of Object.keys(localStorage)) if (k.startsWith('formma3d:miniatura:') && !atuais.has(k)) localStorage.removeItem(k);
   } catch {
     // sem armazenamento: nada a limpar
   }
@@ -52,7 +54,10 @@ function pedir(id: string): Promise<string> {
     const pronta = guardada(id);
     if (pronta) return pronta;
     const { renderizarMiniatura } = await import('./renderMiniatura');
-    const url = await renderizarMiniatura(id);
+    const url = await Promise.race([
+      renderizarMiniatura(id),
+      new Promise<never>((_, falha) => setTimeout(() => falha(new Error('Miniatura demorou demais')), TEMPO_MAX)),
+    ]);
     memoria.set(k, url);
     try {
       localStorage.setItem(k, url);
