@@ -314,3 +314,45 @@ Padrão (faixa). Sem download.
   - Texto; tamanho total 700 (100–3000) por largura/altura; base (mesa) 230 (150–360).
   - Espelhar na exportação; texto 16; base 1,8; espaçamento 105%.
   - Folga de espaçamento 0,3; tolerância do encaixe 0,2.
+
+### Onda 2: cortadores, carimbos e ejetores (sessão logada, 2026-10-02, Claude)
+
+Faixas lidas dos formulários (padrão entre parênteses). Sem gerar prévia paga nem baixar nada.
+
+- **Cortador de biscoito (100):**
+  - Desenho SVG/PNG/JPG ou banco de ícones; distância desenho → cortador 0–20 (5).
+  - Forma pronta opcional: círculo, quadrado, hexágono, 12 lados, estrela.
+  - Tamanho 30–260 (70) por largura ou altura; lâmina fina (ligada).
+  - Reforço opcional na base (5–30 mm).
+  - Carimbo: espelhar (ligado), tirar borda 0–10, escala 1–150%.
+  - Pegador: furo (ligado), diâmetro 10–20 (10), altura 10–40 (15), posição X/Y.
+  - Espessuras: relevo 4–10 (5), altura do cortador 10–20 (12), parede 0,5–3 (1,6),
+    folga 0,5–3 (0,5), aba 2–6 (3,4) × 1–3 (2).
+  - Forma personalizada opcional; marca (texto + ângulo, ou logo com altura e posição); 2 cores.
+- **Cortadores de retângulos em grade (41):**
+  - Retângulo 10–200 (66 × 33); linhas e colunas 1–10 (4 × 3); cantos 0–6 (0,4).
+  - Altura 10–30 (17); parede interna 0,1–2 (1,2); base 1–3 (2); saia 0,1–10 (4).
+  - Abas laterais 40–100 × 10–20 (40 × 12) com a marca; fonte; 2 cores.
+- **Carimbo de molde, texto e imagem (76, 77):**
+  - Texto + fonte, ou imagem; lado maior 50–300 (90; imagem 40–300).
+  - Offset para unir formas 0–10 (2 no texto, 0 na imagem); inverter.
+  - Polegar: posição X/Y, diâmetro 8–20 (10); base 1, borda 7, desenho 2,5.
+- **Carimbo circular de imagem (20):**
+  - Imagem 2–60 (46), posição X/Y; borda opcional 0–10 (1,2); furo de chaveiro.
+  - Desenho 2–10 (3), espelhar; corpo 10–42 (28), diâmetro na mesa 10–60 (40),
+    diâmetro do topo 10–60 (60).
+  - Embaixo: letra da marca (fonte, 2–30) ou logo (colorido ou não); 3 cores.
+- **Carimbos de doce:**
+  - Letras/números (22): até 9 separados por vírgula; fonte; tamanho 2–40 (18);
+    profundidade 2–10 (4); topo 18–30 (22); corpo 25; base 18; haste 10; marca embaixo.
+  - Com imagem (94): até 6 imagens, cada uma com tamanho 2–40 (16), "preencher" e
+    posição; topo 10–60 (22), cabo 5–20 (10), base 10–60 (18), corpo 10–42 (40).
+- **Ejetores de brigadeiro, plano e arredondado (97, 96):**
+  - Tamanho 25–150 (33) por altura; offset da borda 0–10 (0); folga 0,2–3 (0,28).
+  - Arredondamento 2–6 (3,3), só no arredondado.
+  - Relevo 1–10 (3), espelhar; altura 10–30 (30); parede 0,5–3 (1,6); base 2–6 (4) × 1–3 (2).
+  - Tirar borda; logo da marca embaixo ou na lateral.
+- **Ejetores de cúpula (25, 26):**
+  - Molde + ejetor com o fundo em cúpula: tamanho 10–50, profundidade 5–30, folga 0,2–3.
+  - Suavização do ápice; casca externa com suavização e espessura; pegador.
+  - Ficam para a onda 3, que traz os sólidos que não são prismas.

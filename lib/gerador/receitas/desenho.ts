@@ -11,16 +11,16 @@ import { ficha } from './fichas';
 import type { Parametro, Receita, Resultado, Valores } from '../tipos';
 import { desenho, liga, num, txt } from '../tipos';
 
-const AVISO_EXEMPLO = 'Usando um desenho de exemplo: escolha o seu arquivo SVG.';
+export const AVISO_EXEMPLO = 'Usando um desenho de exemplo: escolha o seu SVG, PNG ou JPG.';
 
 /** Selo de exemplo (anel + estrela), para quando nao ha arquivo. */
-function selo(w: number): Region {
+export function selo(w: number): Region {
   const anel = diffRegion(circulo(0, 0, w / 2, 96), circulo(0, 0, w / 2 - w * 0.08, 96));
   return unir([anel, estrela(w * 0.62)]);
 }
 
 /** O desenho do campo `id`, centrado e com `tamanho` na direcao pedida; ou o exemplo. */
-function desenhoNoTamanho(v: Valores, id: string, tamanho: number, eixo: 'largura' | 'altura' = 'largura'): { regiao: Region; exemplo: boolean } {
+export function desenhoNoTamanho(v: Valores, id: string, tamanho: number, eixo: 'largura' | 'altura' = 'largura'): { regiao: Region; exemplo: boolean } {
   const d = desenho(v, id);
   const bruto = d ? d.regiao : selo(100);
   const b = regionBounds(bruto);
@@ -30,8 +30,11 @@ function desenhoNoTamanho(v: Valores, id: string, tamanho: number, eixo: 'largur
   return { regiao: scaleRegion(translateRegion(bruto, -(b.minX + b.maxX) / 2, -(b.minY + b.maxY) / 2), k), exemplo: !d };
 }
 
-const campoDesenho = (rotulo = 'Desenho (SVG)'): Parametro => ({ tipo: 'svg', id: 'desenho', rotulo, grupo: 'Desenho', padrao: '', dica: 'SVG com áreas preenchidas ou traços' });
-const campoEixo: Parametro = {
+/** Nome do arquivo do desenho, sem extensao ('' sem desenho). */
+export const nomeDoDesenho = (v: Valores, id: string) => desenho(v, id)?.nome.replace(/\.(svg|png|jpe?g|webp)$/i, '') ?? '';
+
+export const campoDesenho = (rotulo = 'Desenho'): Parametro => ({ tipo: 'svg', id: 'desenho', rotulo, grupo: 'Desenho', padrao: '', dica: 'SVG, PNG ou JPG; numa imagem, o desenho é o que se destaca do fundo' });
+export const campoEixo: Parametro = {
   tipo: 'escolha', id: 'eixo', rotulo: 'O tamanho vale para', grupo: 'Desenho', padrao: 'largura',
   opcoes: [{ valor: 'largura', rotulo: 'Largura' }, { valor: 'altura', rotulo: 'Altura' }],
 };
@@ -41,7 +44,7 @@ const cor = (id: string, rotulo: string, padrao: string, visivel?: (v: Valores) 
 export const logoCamadas: Receita = {
   ...ficha('logo-camadas'),
   parametros: [
-    campoDesenho('Imagem (SVG)'),
+    campoDesenho('Imagem'),
     { tipo: 'numero', id: 'tamanho', rotulo: 'Tamanho do desenho', grupo: 'Desenho', padrao: 180, min: 40, max: 320, passo: 1, unidade: 'mm' },
     campoEixo,
     ...parametrosCamadas({ espBase: 18, contornoBase: 6, contornoMeio: 3, preencherBase: true, preencherMiolo: false, folga: 0.16 }),
@@ -51,7 +54,7 @@ export const logoCamadas: Receita = {
     const { regiao, exemplo } = desenhoNoTamanho(v, 'desenho', num(v, 'tamanho'), txt(v, 'eixo') === 'altura' ? 'altura' : 'largura');
     if (!regiao.length) return { itens: [], cores: coresDe(o), hex: hexDe(v, o), avisos: ['O desenho não tem área.'] };
     const { pecas, avisos } = empilhar(regiao, o);
-    return { itens: [{ nome: desenho(v, 'desenho')?.nome.replace(/\.svg$/i, '') || 'Desenho', pecas }], cores: coresDe(o), hex: hexDe(v, o), avisos: exemplo ? [AVISO_EXEMPLO, ...avisos] : avisos };
+    return { itens: [{ nome: nomeDoDesenho(v, 'desenho') || 'Desenho', pecas }], cores: coresDe(o), hex: hexDe(v, o), avisos: exemplo ? [AVISO_EXEMPLO, ...avisos] : avisos };
   },
 };
 
@@ -114,7 +117,7 @@ export const chaveiroDesenho: Receita = {
       const anel = diffRegion(contorno, contornar(contorno, -w));
       pecas.push({ nome: 'Borda', cor: 2, camadas: [{ region: anel, z0: eb, z1: eb + ed }] });
     }
-    return { itens: [{ nome: desenho(v, 'desenho')?.nome.replace(/\.svg$/i, '') || 'Chaveiro', pecas }], cores, hex, avisos };
+    return { itens: [{ nome: nomeDoDesenho(v, 'desenho') || 'Chaveiro', pecas }], cores, hex, avisos };
   },
 };
 
@@ -128,7 +131,7 @@ export const chaveiroLogoNome: Receita = {
     },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'luckiest-guy' },
     { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%' },
-    campoDesenho('Logo (SVG, opcional)'),
+    campoDesenho('Logo (opcional)'),
     { tipo: 'liga', id: 'comLogo', rotulo: 'Usar logo', grupo: 'Desenho', padrao: true },
     { tipo: 'numero', id: 'alturaLogo', rotulo: 'Altura do logo', grupo: 'Desenho', padrao: 13, min: 5, max: 50, passo: 0.5, unidade: 'mm', visivel: (v) => v.comLogo === true },
     { tipo: 'escolha', id: 'ladoLogo', rotulo: 'Logo', grupo: 'Desenho', padrao: 'esquerda', opcoes: [{ valor: 'esquerda', rotulo: 'À esquerda' }, { valor: 'direita', rotulo: 'À direita' }], visivel: (v) => v.comLogo === true },

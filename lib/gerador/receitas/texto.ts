@@ -22,7 +22,7 @@ const parametrosAdorno = (): Parametro[] => [
     tipo: 'escolha', id: 'adorno', rotulo: 'Adorno ao lado', grupo: 'Adorno', padrao: 'nenhum',
     opcoes: [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'coracao', rotulo: 'Coração' }, { valor: 'estrela', rotulo: 'Estrela' }, { valor: 'desenho', rotulo: 'Desenho' }],
   },
-  { tipo: 'svg', id: 'desenho', rotulo: 'Desenho (SVG)', grupo: 'Adorno', padrao: '', visivel: (v) => v.adorno === 'desenho', dica: 'Arquivo SVG com áreas preenchidas (logo, ícone)' },
+  { tipo: 'svg', id: 'desenho', rotulo: 'Desenho', grupo: 'Adorno', padrao: '', visivel: (v) => v.adorno === 'desenho', dica: 'Arquivo SVG com áreas preenchidas (logo, ícone)' },
   { tipo: 'numero', id: 'larguraAdorno', rotulo: 'Largura do adorno', grupo: 'Adorno', padrao: 40, min: 5, max: 200, passo: 1, unidade: 'mm', visivel: comAdorno },
   { tipo: 'escolha', id: 'ladoAdorno', rotulo: 'Lado', grupo: 'Adorno', padrao: 'direita', opcoes: [{ valor: 'esquerda', rotulo: 'Esquerda' }, { valor: 'direita', rotulo: 'Direita' }], visivel: comAdorno },
   { tipo: 'numero', id: 'adornoX', rotulo: 'Afastar do texto', grupo: 'Adorno', padrao: 0, min: -100, max: 100, passo: 0.5, unidade: 'mm', visivel: comAdorno, dica: 'Negativo encosta ou sobrepõe' },
@@ -72,7 +72,7 @@ function textoNaLargura(v: Valores, ctx: Contexto) {
   const compor = (k: number) => comporLinhas(linhasDe(v, ctx, k), num(v, 'entrelinha') || 0);
   const k = escalaParaLargura((k) => compor(k).bounds.w + extra + 2 * cb, num(v, 'largura'));
   const t = compor(k);
-  const avisos = v.adorno === 'desenho' && !adorno.length ? ['Escolha um arquivo SVG para o adorno.'] : [];
+  const avisos = v.adorno === 'desenho' && !adorno.length ? ['Escolha uma imagem para o adorno.'] : [];
   if (!adorno.length || !t.letras.length) return { ...t, avisos };
   const a = regionBounds(adorno);
   const direita = txt(v, 'ladoAdorno') !== 'esquerda';

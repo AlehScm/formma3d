@@ -51,15 +51,17 @@ function Enquadrar({ caixa }: { caixa: { minX: number; maxX: number; minY: numbe
   const { camera } = useThree();
   const controles = useRef<React.ComponentRef<typeof OrbitControls>>(null);
   const ultimo = useRef(0);
-  const cx = (caixa.minX + caixa.maxX) / 2, cy = (caixa.minY + caixa.maxY) / 2;
-  const raio = Math.max(caixa.maxX - caixa.minX, caixa.maxY - caixa.minY, caixa.z1) / 2;
+  const cx = (caixa.minX + caixa.maxX) / 2, cy = (caixa.minY + caixa.maxY) / 2, cz = caixa.z1 / 2;
+  // Esfera que envolve a caixa inteira (pecas altas, como carimbos, tambem cabem).
+  const raio = Math.hypot(caixa.maxX - caixa.minX, caixa.maxY - caixa.minY, caixa.z1) / 2;
   useEffect(() => {
     if (!(raio > 0) || (ultimo.current && Math.abs(raio / ultimo.current - 1) < 0.3)) return;
     ultimo.current = raio;
-    const d = raio / Math.tan((20 * Math.PI) / 180);
-    camera.position.set(cx + d * 0.25, cy - d * 0.75, d * 0.75);
-    controles.current?.target.set(cx, cy, 0);
+    const d = raio / Math.sin((20 * Math.PI) / 180);
+    const dir = [0.25, -0.75, 0.75], n = Math.hypot(...dir);
+    camera.position.set(cx + (d * dir[0]!) / n, cy + (d * dir[1]!) / n, cz + (d * dir[2]!) / n);
+    controles.current?.target.set(cx, cy, cz);
     controles.current?.update();
-  }, [camera, cx, cy, raio]);
-  return <OrbitControls ref={controles} makeDefault target={[cx, cy, 0]} />;
+  }, [camera, cx, cy, cz, raio]);
+  return <OrbitControls ref={controles} makeDefault target={[cx, cy, cz]} />;
 }

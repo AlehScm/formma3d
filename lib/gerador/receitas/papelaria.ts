@@ -54,7 +54,7 @@ export const marcadorPagina: Receita = {
       tipo: 'escolha', id: 'padrao', rotulo: 'Padrão da aba', grupo: 'Aba', padrao: 'grade',
       opcoes: [{ valor: 'grade', rotulo: 'Grade' }, { valor: 'geometrico', rotulo: 'Geométrico' }, { valor: 'floral', rotulo: 'Floral' }, { valor: 'liso', rotulo: 'Liso' }, { valor: 'desenho', rotulo: 'Meu desenho' }],
     },
-    { tipo: 'svg', id: 'desenho', rotulo: 'Desenho (SVG)', grupo: 'Aba', padrao: '', visivel: (v) => v.padrao === 'desenho', dica: 'Fica em relevo na aba, na cor do nome' },
+    { tipo: 'svg', id: 'desenho', rotulo: 'Desenho', grupo: 'Aba', padrao: '', visivel: (v) => v.padrao === 'desenho', dica: 'Fica em relevo na aba, na cor do nome' },
     cor('corAba', 'Aba', '#3f1d38'),
     cor('corNome', 'Nome', '#f5d0a9'),
   ],
@@ -83,7 +83,7 @@ export const marcadorPagina: Receita = {
     ];
     if (tipo === 'desenho') {
       const d = desenho(v, 'desenho');
-      if (!d) avisos.push('Escolha o desenho SVG da aba.');
+      if (!d) avisos.push('Escolha o desenho da aba.');
       else {
         const ab = regionBounds(contornar(aba0, -3));
         const arte = translateRegion(ajustarLargura(d.regiao, Math.min(ab.w, ab.h * 0.9)), (ab.minX + ab.maxX) / 2, (ab.minY + ab.maxY) / 2);

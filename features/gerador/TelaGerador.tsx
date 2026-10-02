@@ -27,6 +27,7 @@ import { centrada, corDe, nomeComCor, pecasSoltas } from '@/lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, nomeSeguro, zipStl } from '@/lib/gerador/exportar';
 import { baixar } from '@/features/acoes/exportar';
 import { svgParaRegiao } from '@/lib/import/svg';
+import { imagemParaRegiao } from '@/lib/import/imagem';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { PreviaGerador } from './PreviaGerador';
@@ -237,14 +238,15 @@ function CampoDoParametro({ p, valor, set }: { p: Parametro; valor: Valores[stri
   }
 }
 
-/** Arquivo SVG -> desenho (area preenchida) guardado como JSON no valor do campo. */
+/** SVG ou imagem (PNG/JPG/WebP) -> desenho (area preenchida) guardado como JSON no valor do campo. */
 function CampoDesenho({ p, valor, set }: { p: Parametro; valor: string; set: (v: string) => void }) {
   const [erro, setErro] = useState<string | null>(null);
   const atual = desenho({ d: valor }, 'd');
   const ler = async (arquivo: File | undefined) => {
     if (!arquivo) return;
     try {
-      const regiao = svgParaRegiao(await arquivo.text());
+      const ehSvg = arquivo.type === 'image/svg+xml' || /\.svg$/i.test(arquivo.name);
+      const regiao = ehSvg ? svgParaRegiao(await arquivo.text()) : await imagemParaRegiao(arquivo);
       setErro(null);
       set(JSON.stringify({ nome: arquivo.name, regiao }));
     } catch (e) {
@@ -255,8 +257,8 @@ function CampoDesenho({ p, valor, set }: { p: Parametro; valor: string; set: (v:
     <Campo rotulo={p.rotulo} dica={p.dica} erro={erro} valor={atual?.nome}>
       <div className="flex items-center gap-2">
         <label className="flex h-8 flex-1 cursor-pointer items-center justify-center rounded-md border border-dashed border-borda-forte bg-superficie-2 px-2.5 text-mini text-texto-2 hover:border-acento">
-          {atual ? 'Trocar SVG' : 'Escolher SVG…'}
-          <input type="file" accept=".svg,image/svg+xml" className="sr-only" onChange={(e) => ler(e.target.files?.[0])} />
+          {atual ? 'Trocar imagem' : 'Escolher SVG, PNG ou JPG…'}
+          <input type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => ler(e.target.files?.[0])} />
         </label>
         {atual && (
           <Botao variante="fantasma" onClick={() => set('')}>

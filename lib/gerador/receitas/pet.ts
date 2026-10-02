@@ -22,7 +22,7 @@ function formaDaPlaquinha(v: Valores, w: number): { regiao: Region; aviso?: stri
     case 'osso': return { regiao: osso(w) };
     case 'desenho': {
       const d = desenho(v, 'desenho');
-      if (!d) return { regiao: elipse(w, w * 0.66), aviso: 'Escolha o arquivo SVG do formato (usando oval).' };
+      if (!d) return { regiao: elipse(w, w * 0.66), aviso: 'Escolha a imagem do formato (usando oval).' };
       const b = regionBounds(d.regiao);
       const r = translateRegion(d.regiao, -(b.minX + b.maxX) / 2, -(b.minY + b.maxY) / 2);
       return { regiao: txt(v, 'eixo') === 'altura' ? scaleRegion(r, w / b.h) : ajustarLargura(r, w) };
@@ -38,7 +38,7 @@ export const plaquinhaPet: Receita = {
       tipo: 'escolha', id: 'forma', rotulo: 'Formato', grupo: 'Formato', padrao: 'oval',
       opcoes: [{ valor: 'oval', rotulo: 'Oval' }, { valor: 'ondulada', rotulo: 'Ondulada' }, { valor: 'peixe', rotulo: 'Peixe' }, { valor: 'osso', rotulo: 'Osso' }, { valor: 'desenho', rotulo: 'Do meu SVG' }],
     },
-    { tipo: 'svg', id: 'desenho', rotulo: 'Formato (SVG)', grupo: 'Formato', padrao: '', visivel: (v) => v.forma === 'desenho' },
+    { tipo: 'svg', id: 'desenho', rotulo: 'Formato (imagem)', grupo: 'Formato', padrao: '', visivel: (v) => v.forma === 'desenho' },
     { tipo: 'escolha', id: 'eixo', rotulo: 'O tamanho vale para', grupo: 'Formato', padrao: 'largura', opcoes: [{ valor: 'largura', rotulo: 'Largura' }, { valor: 'altura', rotulo: 'Altura' }], visivel: (v) => v.forma === 'desenho' },
     { tipo: 'numero', id: 'tamanho', rotulo: 'Tamanho', grupo: 'Formato', padrao: 53, min: 20, max: 200, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'espessura', rotulo: 'Espessura', grupo: 'Formato', padrao: 5, min: 1, max: 10, passo: 0.2, unidade: 'mm' },

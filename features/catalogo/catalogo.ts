@@ -42,5 +42,8 @@ export const editoresLivres = [
   },
 ] as const;
 
+/** Moldes do "Em breve" que ja viraram gerador pronto (o card do gerador ocupa o lugar). */
+const VIRARAM_GERADOR: readonly string[] = ['chaveiro-logo', 'cortador-svg', 'carimbo-personalizado', 'placa-multicamadas', 'porta-canetas'];
+
 /** Moldes ainda sem gerador. */
-export const emBreve = moldes.filter((m) => !m.ativo);
+export const emBreve = moldes.filter((m) => !m.ativo && !VIRARAM_GERADOR.includes(m.id));

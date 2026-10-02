@@ -23,7 +23,7 @@ export const FICHAS: Ficha[] = [
   {
     id: 'palavra-camadas', nome: 'Palavra em camadas', familia: 'multicor',
     resumo: 'Uma ou duas linhas de texto em 2 ou 3 cores: base com contorno, meio e letras.',
-    destaques: ['2 ou 3 cores', '1 ou 2 linhas', 'Emoji, coração ou SVG ao lado', 'Peça única ou encaixe'],
+    destaques: ['2 ou 3 cores', '1 ou 2 linhas', 'Emoji, coração ou imagem ao lado', 'Peça única ou encaixe'],
     exemplo: { linha1: 'Bolos', linha2: 'da Vovó', fonte1: 'luckiest-guy', fonte2: 'pacifico', razaoLinha2: 70, largura: 170, corBase: '#3a2338', corMeio: '#f6e7cf', corTopo: '#e2557a' },
   },
   {
@@ -52,14 +52,14 @@ export const FICHAS: Ficha[] = [
   },
   {
     id: 'logo-camadas', nome: 'Placa a partir de imagem', familia: 'multicor', tipo: 'Placa',
-    resumo: 'Seu logo ou desenho (SVG) em 2 ou 3 camadas de cor, com base para ficar em pé.',
-    destaques: ['Do seu SVG', '2 ou 3 cores', 'Base em contorno ou retângulo', 'Peça única ou encaixe'],
+    resumo: 'Seu logo ou desenho (SVG, PNG ou JPG) em 2 ou 3 camadas de cor, com base para ficar em pé.',
+    destaques: ['Do seu SVG, PNG ou JPG', '2 ou 3 cores', 'Base em contorno ou retângulo', 'Peça única ou encaixe'],
     exemplo: { corBase: '#0f172a', corMeio: '#fde68a', corTopo: '#2563eb', espBase: 8 },
   },
   {
     id: 'chaveiro-desenho', nome: 'Chaveiro a partir de desenho', familia: 'chaveiros',
-    resumo: 'Qualquer desenho (SVG) vira chaveiro: em relevo ou encaixado na base, com borda e argola.',
-    destaques: ['Do seu SVG', 'Relevo ou encaixado', 'Borda e argola'],
+    resumo: 'Qualquer desenho (SVG, PNG ou JPG) vira chaveiro: em relevo ou encaixado na base, com borda e argola.',
+    destaques: ['Do seu SVG, PNG ou JPG', 'Relevo ou encaixado', 'Borda e argola'],
     exemplo: { corBase: '#7c3aed', corDesenho: '#fde047', corBorda: '#ffffff' },
   },
   {
@@ -71,7 +71,7 @@ export const FICHAS: Ficha[] = [
   {
     id: 'plaquinha-pet', nome: 'Plaquinha de pet', familia: 'chaveiros', tipo: 'Pet',
     resumo: 'Nome na frente e contato no verso; oval, ondulada, peixe, osso ou o seu formato.',
-    destaques: ['5 formatos ou o seu SVG', 'Frente e verso', 'Argola, furo ou NFC', 'Até 9 por vez'],
+    destaques: ['5 formatos ou a sua imagem', 'Frente e verso', 'Argola, furo ou NFC', 'Até 9 por vez'],
     exemplo: { nomes: 'Luna, Thor, Mel, Bob', forma: 'osso', corPlaca: '#f97316', corDetalhe: '#ffffff' },
   },
   {
@@ -88,7 +88,7 @@ export const FICHAS: Ficha[] = [
   {
     id: 'topo-bolo', nome: 'Topo de bolo', familia: 'multicor', tipo: 'Festa',
     resumo: 'Texto em 2 ou 3 cores com hastes para espetar no bolo.',
-    destaques: ['1 ou 2 linhas', 'Hastes ajustáveis', 'Coração, estrela ou SVG'],
+    destaques: ['1 ou 2 linhas', 'Hastes ajustáveis', 'Coração, estrela ou imagem'],
   },
   {
     id: 'topo-bolo-circular', nome: 'Topo de bolo com glitter', familia: 'multicor', tipo: 'Festa',
@@ -133,6 +133,48 @@ export const FICHAS: Ficha[] = [
     resumo: 'Floco de neve com nome no centro e argola; até 9 nomes.',
     destaques: ['Desenho próprio', 'Nome no centro', 'Até 9 por vez'],
     exemplo: { nomes: 'Ana' },
+  },
+  {
+    id: 'cortador-biscoito', nome: 'Cortador de biscoito', familia: 'cortadores', tipo: 'Cortador',
+    resumo: 'Cortador no contorno do seu desenho, ou em forma pronta, com carimbo que marca o desenho e pegador.',
+    destaques: ['Do seu SVG, PNG ou JPG', 'Cortador + carimbo', 'Lâmina fina', 'Marca atrás'],
+    exemplo: { tamanho: 70, corBase: '#e2557a', corTopo: '#ffffff' },
+  },
+  {
+    id: 'ejetor-brigadeiro', nome: 'Ejetor de brigadeiro', familia: 'cortadores', tipo: 'Confeitaria',
+    resumo: 'Cortador alto com êmbolo: marca o desenho no doce e empurra para fora. Cantos retos ou arredondados.',
+    destaques: ['Do seu desenho', 'Cortador + êmbolo', 'Cantos arredondados'],
+    exemplo: { arredondar: 2, corBase: '#7c3aed', corTopo: '#fef3c7' },
+  },
+  {
+    id: 'cortadores-grade', nome: 'Cortadores de retângulos em grade', familia: 'cortadores', tipo: 'Cortador',
+    resumo: 'Vários retângulos de uma vez, com a sua marca nas abas laterais.',
+    destaques: ['Linhas e colunas', 'Saia para firmar', 'Marca nas abas'],
+    exemplo: { largura: 40, altura: 25, linhas: 3, colunas: 3, corBase: '#0f766e', corTopo: '#ffffff' },
+  },
+  {
+    id: 'carimbo-molde', nome: 'Carimbo de molde', familia: 'carimbos', tipo: 'Carimbo',
+    resumo: 'Texto ou imagem em relevo num bloco com apoio para o polegar, para massa, argila e biscuit.',
+    destaques: ['Texto ou imagem', 'Normal ou invertido', 'Apoio do polegar'],
+    exemplo: { texto: 'Doces da Lu', fonte: 'pacifico', tamanho: 80, deslocamento: 5, corBase: '#1d4ed8', corTopo: '#ffffff' },
+  },
+  {
+    id: 'carimbo-circular', nome: 'Carimbo circular de imagem', familia: 'carimbos', tipo: 'Carimbo',
+    resumo: 'Carimbo redondo com a sua imagem em cima, borda e a marca embutida embaixo.',
+    destaques: ['Do seu desenho', 'Borda opcional', 'Marca embaixo', '3 cores'],
+    exemplo: { corBase: '#e2557a', corTopo: '#ffffff' },
+  },
+  {
+    id: 'carimbo-letras', nome: 'Carimbo de letras e números', familia: 'carimbos', tipo: 'Confeitaria',
+    resumo: 'Carimbos de doce, um por letra ou número; até 9 numa impressão.',
+    destaques: ['Até 9 por vez', 'Fontes à escolha', 'Marca embaixo'],
+    exemplo: { textos: 'L, U, 2, 5', corBase: '#be185d', corTopo: '#fde68a' },
+  },
+  {
+    id: 'carimbo-imagem', nome: 'Carimbo de doce com imagem', familia: 'carimbos', tipo: 'Confeitaria',
+    resumo: 'Carimbos de brigadeiro com as suas imagens: até 4 desenhos diferentes por vez.',
+    destaques: ['Até 4 imagens', 'Só a silhueta, se quiser', 'Marca embaixo'],
+    exemplo: { corBase: '#92400e', corTopo: '#fef3c7' },
   },
 ];
 

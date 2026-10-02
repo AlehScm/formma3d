@@ -20,6 +20,7 @@ import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/ger
 import { corDe } from '../lib/gerador/malha';
 import { contornar, retanguloArredondado } from '../lib/gerador/formas';
 import JSZip from 'jszip';
+import { pixelsParaRegiao } from '../lib/import/imagem';
 
 let falhas = 0;
 let total = 0;
@@ -192,7 +193,7 @@ console.log('\n== emoji, adornos e cores ==');
   const des = gerar(r, { linha1: 'Mom', adorno: 'desenho', desenho: JSON.stringify({ nome: 'q.svg', regiao: quadrado }), larguraAdorno: 30 });
   const ilhaQuadrada = regiaoDe(des, 0, 'Topo').some((p) => { const b = regionBounds([p]); return perto(b.w, 30, 0.01) && perto(b.h, 30, 0.01); });
   ok('desenho SVG: entra na largura pedida (30 mm)', ilhaQuadrada);
-  ok('desenho sem arquivo: avisa', gerar(r, { adorno: 'desenho', desenho: '' }).avisos.some((a) => a.includes('SVG')));
+  ok('desenho sem arquivo: avisa', gerar(r, { adorno: 'desenho', desenho: '' }).avisos.some((a) => a.includes('imagem')));
 
   const pint = gerar(r, { corBase: '#112233', corMeio: '#445566', corTopo: '#778899' });
   ok('cores escolhidas vao para o resultado', pint.hex!.join() === '#112233,#445566,#778899');
@@ -334,6 +335,84 @@ console.log('\n== onda 1: medidas de cada familia ==');
   // Floco: argola e nome no centro.
   const fl = gerar(receitaPorId('floco-neve')!, { nomes: 'Ana, Leo' });
   ok('floco: um enfeite por nome, corpo inteiro', fl.itens.length === 2 && fl.itens.every((it) => it.pecas[0]!.camadas[0]!.region.length === 1));
+}
+
+console.log('\n== onda 2: imagem, cortadores e carimbos ==');
+{
+  const largura = (r: Region) => regionBounds(r).w;
+  const furos = (r: Region) => r.reduce((n, q) => n + q.holes.length, 0);
+  const pecaDe = (res: Resultado, item: string, peca: string) => res.itens.find((it) => it.nome.startsWith(item))!.pecas.find((p) => p.nome === peca)!;
+  // Imagem -> contorno: anel escuro em fundo claro, claro em fundo escuro e por transparencia.
+  const px = (f: (x: number, y: number) => [number, number, number, number]) => {
+    const d = new Uint8ClampedArray(200 * 200 * 4);
+    for (let y = 0; y < 200; y++) for (let x = 0; x < 200; x++) d.set(f(x + 0.5, y + 0.5), (y * 200 + x) * 4);
+    return { largura: 200, altura: 200, dados: d };
+  };
+  const noAnel = (x: number, y: number) => { const r = Math.hypot(x - 100, y - 100); return r < 80 && r > 40; };
+  const esperado = Math.PI * (80 ** 2 - 40 ** 2);
+  const escuro = pixelsParaRegiao(px((x, y) => (noAnel(x, y) ? [20, 20, 20, 255] : [250, 250, 250, 255])));
+  ok('imagem: anel escuro vira 1 ilha com 1 furo, area a 1%', escuro.length === 1 && escuro[0]!.holes.length === 1 && perto(regionArea(escuro), esperado, esperado * 0.01), `${regionArea(escuro).toFixed(0)} de ${esperado.toFixed(0)} px2`);
+  const claro = pixelsParaRegiao(px((x, y) => (noAnel(x, y) ? [250, 250, 250, 255] : [10, 10, 10, 255])));
+  ok('imagem: fundo escuro detectado (o desenho e o claro)', perto(regionArea(claro), esperado, esperado * 0.01));
+  const alfa = pixelsParaRegiao(px((x, y) => (noAnel(x, y) ? [200, 30, 30, 255] : [0, 0, 0, 0])));
+  ok('imagem: PNG transparente usa o alfa', perto(regionArea(alfa), esperado, esperado * 0.01));
+  ok('imagem: contorno simplificado (poucos pontos)', alfa[0]!.outer.length < 150, `${alfa[0]!.outer.length} pontos`);
+
+  // Cortador de biscoito em circulo: medidas da parede, aba, lamina e carimbo.
+  const cb = gerar(receitaPorId('cortador-biscoito')!, { forma: 'circulo', tamanho: 60, deslocamento: 5, espessura: 1.6, aba: 3.4, folga: 0.5, lamina: true, marca: 'LU' });
+  const cort = pecaDe(cb, 'Cortador', 'Cortador').camadas;
+  ok('cortador: aba de 80 mm (70 + 2 x (1,6 + 3,4))', perto(largura(cort[0]!.region), 80, 0.1), largura(cort[0]!.region).toFixed(2));
+  ok('cortador: parede por fora de 73,2 mm', perto(largura(cort[1]!.region), 73.2, 0.1));
+  ok('cortador: lamina afina ate 0,5 mm no topo', perto(largura(cort.at(-1)!.region), 71, 0.1) && cort.at(-1)!.z1 === 12);
+  const placa = pecaDe(cb, 'Carimbo', 'Placa').camadas;
+  ok('carimbo: placa de 69 mm (70 - 2 x folga 0,5)', perto(largura(placa.at(-1)!.region), 69, 0.1));
+  ok('carimbo: furo cego do pegador (10,3 mm) so embaixo', placa[0]!.region.some((q) => q.holes.some((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 10.3, 0.05))) && furos(placa.at(-1)!.region) === 0);
+  const marca = pecaDe(cb, 'Carimbo', 'Marca').camadas[0]!;
+  ok('carimbo: marca embutida 0 a 0,6 mm, fora do vazio da placa', marca.z0 === 0 && marca.z1 === 0.6 && regionArea(intersectRegion(marca.region, placa[0]!.region)) < 0.01);
+  ok('carimbo: pegador separado', cb.itens.some((it) => it.nome.startsWith('Pegador')) && !!cb.notas?.some((n) => n.includes('folga')));
+  const semCarimbo = gerar(receitaPorId('cortador-biscoito')!, { carimbo: false });
+  ok('cortador: sem carimbo sai so o cortador', semCarimbo.itens.length === 1);
+
+  // Ejetor: arredondar tira as pontas do contorno (quadrado vira cantos redondos).
+  const quadrado: Region = [{ outer: [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }, { x: 0, y: 30 }], holes: [] }];
+  const sq = JSON.stringify({ nome: 'q.svg', regiao: quadrado });
+  const reto = gerar(receitaPorId('ejetor-brigadeiro')!, { desenho: sq, tamanho: 30, arredondar: 0 });
+  const redondo = gerar(receitaPorId('ejetor-brigadeiro')!, { desenho: sq, tamanho: 30, arredondar: 4 });
+  const aParede = (r: Resultado) => regionArea(pecaDe(r, 'Cortador', 'Cortador').camadas[1]!.region);
+  ok('ejetor: cantos arredondados encurtam a parede (raio 4)', aParede(redondo) < aParede(reto) - 1, `${aParede(reto).toFixed(1)} -> ${aParede(redondo).toFixed(1)} mm2`);
+  ok('ejetor: quadrado de 30 mm, parede a partir do desenho', perto(largura(pecaDe(reto, 'Cortador', 'Cortador').camadas[1]!.region), 33.2, 0.05));
+
+  // Grade: medidas externas, celulas e saia.
+  const gr = gerar(receitaPorId('cortadores-grade')!, { largura: 40, altura: 25, linhas: 2, colunas: 3, parede: 1.2, saia: 4, raio: 0, marca: '' });
+  const [baseG, paredeG] = gr.itens[0]!.pecas[0]!.camadas;
+  ok('grade: 3 x 40 + 4 x 1,2 = 124,8 mm', perto(largura(paredeG!.region), 124.8, 0.01) && perto(regionBounds(paredeG!.region).h, 2 * 25 + 3 * 1.2, 0.01));
+  ok('grade: 6 retangulos, saia de 4 mm na base', furos(paredeG!.region) === 6 && paredeG!.region[0]!.holes.every((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 40, 0.01)) && baseG!.region[0]!.holes.every((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 32, 0.01)));
+  const grm = gerar(receitaPorId('cortadores-grade')!, { largura: 40, altura: 25, linhas: 2, colunas: 3, marca: '@ana' });
+  ok('grade: marca em relevo nas duas abas', grm.itens[0]!.pecas[1]!.nome === 'Marca' && largura(grm.itens[0]!.pecas[0]!.camadas[0]!.region) > 124.8 + 20);
+
+  // Carimbo de molde: invertido = vazio no lugar do desenho; polegar atras.
+  const mo = gerar(receitaPorId('carimbo-molde')!, { texto: 'OI', tamanho: 60, deslocamento: 3, inverter: false });
+  const mi = gerar(receitaPorId('carimbo-molde')!, { texto: 'OI', tamanho: 60, deslocamento: 3, inverter: true });
+  const bloco = pecaDe(mo, 'OI', 'Bloco').camadas, aBloco = regionArea(bloco.at(-1)!.region);
+  const aDes = regionArea(pecaDe(mo, 'OI', 'Desenho').camadas[0]!.region), aInv = regionArea(pecaDe(mi, 'OI', 'Desenho').camadas[0]!.region);
+  ok('molde: invertido = bloco menos o desenho', perto(aInv, aBloco - aDes, 0.5), `${aInv.toFixed(1)} vs ${(aBloco - aDes).toFixed(1)}`);
+  ok('molde: rebaixo do polegar so na face de baixo', furos(bloco[0]!.region) >= furos(bloco.at(-1)!.region) + 1 && bloco[0]!.z0 === 0);
+  ok('molde: lado maior 60 mm + margens', perto(Math.max(largura(bloco.at(-1)!.region), regionBounds(bloco.at(-1)!.region).h), 66, 0.3));
+
+  // Carimbo circular: corpo abre de 40 para 60 mm.
+  const cc = gerar(receitaPorId('carimbo-circular')!, { dBase: 40, dTopo: 60, alturaCorpo: 28 });
+  const corpo = cc.itens[0]!.pecas[0]!.camadas;
+  ok('circular: corpo de 40 mm embaixo a 60 mm em cima, 28 de altura', largura(corpo[0]!.region) < 41 && perto(largura(corpo.at(-1)!.region), 60, 0.4) && corpo.at(-1)!.z1 === 28);
+  ok('circular: degraus subindo sem balanco (cada um <= 0,3 mm para fora)', corpo.every((c, i) => !i || largura(c.region) - largura(corpo[i - 1]!.region) <= 0.6 + 1e-6));
+
+  // Doces: um por letra, desenho em cima do corpo.
+  const cl = gerar(receitaPorId('carimbo-letras')!, { textos: 'A, 7, B', alturaCorpo: 25, profundidade: 4 });
+  ok('letras: 3 carimbos, letra de 25 a 29 mm', cl.itens.length === 3 && cl.itens.every((it) => it.pecas.find((p) => p.nome === 'Desenho')!.camadas[0]!.z1 === 29));
+  const ci = gerar(receitaPorId('carimbo-imagem')!, { desenho: sq, desenho2: sq, tamanho: 14, preencher: true });
+  ok('doce com imagem: 2 imagens = 2 carimbos', ci.itens.length === 2 && !ci.avisos.length, ci.avisos.join(' | '));
+  const corpoDoce = cl.itens[0]!.pecas[0]!.camadas;
+  const passos = corpoDoce.map((c, i) => (i ? (largura(c.region) - largura(corpoDoce[i - 1]!.region)) / 2 / (c.z0 - corpoDoce[i - 1]!.z0) : 0));
+  ok('doce: o topo abre no maximo ~40 graus', Math.max(...passos) <= Math.tan((41 * Math.PI) / 180) * 1.5, Math.max(...passos).toFixed(2));
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

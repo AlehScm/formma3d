@@ -101,3 +101,20 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - `Ficha.tipo` (opcional): etiqueta do card no catálogo; sem ela vale a da família.
   - `posicoesDaPeca` aplica um jitter determinístico ≤ 1e-5 mm: o earcut errava com pontos colineares.
   - verificar-gerador 273/273, com testes de medida por família.
+- 2026-10-02 Claude: onda 2, parte 1 (imagem, cortadores e carimbos). Quadro: 36 prontos · 14 parciais.
+  - Núcleo `lib/import/imagem.ts`: PNG/JPG/WebP → Region.
+    - O desenho sai do alfa ou do Otsu, com fundo escuro detectado.
+    - Contorno por marching squares, simplificado por Douglas-Peucker.
+    - O campo `svg` da tela aceita imagem. Todo gerador com desenho ganhou PNG/JPG.
+  - `lib/gerador/solidos.ts`:
+    - `torneado`: corpo redondo em degraus;
+    - `comVazios`: furo cego, bolsão e marca embutida em faixas de Z.
+  - Receitas novas:
+    - `receitas/cortadores.ts`: cortador-biscoito, ejetor-brigadeiro, cortadores-grade;
+    - `receitas/carimbos.ts`: carimbo-molde, carimbo-circular, carimbo-letras, carimbo-imagem.
+  - `desenho.ts` exporta `desenhoNoTamanho`, `campoDesenho`, `campoEixo`, `nomeDoDesenho`, `AVISO_EXEMPLO`.
+  - Prévia enquadra pela esfera da caixa toda; antes, peça alta (carimbo) saía cortada.
+  - Catálogo (área do ChatGPT, mudança mínima): `VIRARAM_GERADOR` em `catalogo.ts` tira do
+    "Em breve" os moldes que já têm gerador (chaveiro com logo, cortador, carimbo, placa em
+    camadas, porta-canetas).
+  - Cúpulas (25, 26) foram para a onda 3. verificar-gerador 368/368; 17 suítes ok.
