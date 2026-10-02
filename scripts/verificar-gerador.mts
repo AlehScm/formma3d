@@ -22,6 +22,7 @@ import { contornar, retanguloArredondado, textoEmArco, unir } from '../lib/gerad
 import JSZip from 'jszip';
 import { pixelsParaRegiao } from '../lib/import/imagem';
 import { pecasDeQuebraCabeca } from '../lib/gerador/receitas/imagens';
+import { textura } from '../lib/gerador/figuras';
 
 let falhas = 0;
 let total = 0;
@@ -409,7 +410,7 @@ console.log('\n== onda 2: imagem, cortadores e carimbos ==');
   // Doces: um por letra, desenho em cima do corpo.
   const cl = gerar(receitaPorId('carimbo-letras')!, { textos: 'A, 7, B', alturaCorpo: 25, profundidade: 4 });
   ok('letras: 3 carimbos, letra de 25 a 29 mm', cl.itens.length === 3 && cl.itens.every((it) => it.pecas.find((p) => p.nome === 'Desenho')!.camadas[0]!.z1 === 29));
-  const ci = gerar(receitaPorId('carimbo-imagem')!, { desenho: sq, desenho2: sq, tamanho: 14, preencher: true });
+  const ci = gerar(receitaPorId('carimbo-imagem')!, { desenho: sq, desenho2: sq, tamanho: 14, tamanho2: 14, preencher: true });
   ok('doce com imagem: 2 imagens = 2 carimbos', ci.itens.length === 2 && !ci.avisos.length, ci.avisos.join(' | '));
   const corpoDoce = cl.itens[0]!.pecas[0]!.camadas;
   const passos = corpoDoce.map((c, i) => (i ? (largura(c.region) - largura(corpoDoce[i - 1]!.region)) / 2 / (c.z0 - corpoDoce[i - 1]!.z0) : 0));
@@ -505,6 +506,70 @@ console.log('\n== onda 2: colorir, resina, multipartes, quebra-cabeca, NFC, arco
   ok('base: chanfro em degraus ate a frente', cb2.at(-1)!.z1 === 26 && regionBounds(cb2.at(-1)!.region).h < 30 - 7);
   const tf = gerar(receitaPorId('trofeu')!, { fundoImagem: true });
   ok('trofeu: base, imagem, palavra e placa', tf.itens.length === 4);
+}
+
+console.log('\n== lacunas dos parciais ==');
+{
+  const largura = (r: Region) => regionBounds(r).w;
+  const furos = (r: Region) => r.reduce((n, q) => n + q.holes.length, 0);
+  const pecaDe = (res: Resultado, item: number, peca: string) => res.itens[item]!.pecas.find((p) => p.nome === peca)!;
+  const centroX = (r: Region) => (regionBounds(r).minX + regionBounds(r).maxX) / 2;
+  const sq = JSON.stringify({ nome: 'q.svg', regiao: [{ outer: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], holes: [] }] });
+
+  const pet = receitaPorId('plaquinha-pet')!;
+  const p0 = gerar(pet, { nomes: 'Bob', versos: '', forma: 'oval', tamanho: 60 }), p1 = gerar(pet, { nomes: 'Bob', versos: '', forma: 'oval', tamanho: 60, xNome: 4, escala: 60 });
+  const nomeDe = (r: Resultado) => pecaDe(r, 0, 'Detalhes').camadas.at(-1)!.region;
+  ok('pet: mover o nome 4 mm para a direita', centroX(nomeDe(p1)) - centroX(gerar(pet, { nomes: 'Bob', versos: '', forma: 'oval', tamanho: 60, escala: 60 }).itens[0]!.pecas[1]!.camadas.at(-1)!.region) > 3.9 && !!p0);
+  const pv = gerar(pet, { nomes: 'Luna', versos: 'Ana+41 99999-1111+Rua das Flores 123', forma: 'osso' });
+  ok('pet: verso encolhe ate caber no osso', !pv.avisos.some((a) => a.includes('verso')), pv.avisos.join(' | '));
+
+  const mk = gerar(receitaPorId('marcador-pagina')!, { padrao: 'floral', acabamento: 'cor', espAba: 1.4 });
+  const pad = mk.itens[0]!.pecas.find((p) => p.nome === 'Padrão')!.camadas;
+  ok('marcador: padrao em cor nas duas faces (0-0,4 e 1-1,4)', pad.length === 2 && pad[0]!.z0 === 0 && perto(pad[0]!.z1, 0.4, 1e-9) && perto(pad[1]!.z0, 1, 1e-9) && perto(pad[1]!.z1, 1.4, 1e-9));
+  ok('marcador: miolo da aba inteiro (sem vazado)', furos(pecaDe(mk, 0, 'Aba').camadas[1]!.region) <= 1);
+
+  const gg = gerar(receitaPorId('texto-com-guia')!, { texto: 'A', tamanho: 500, mesa: 230 });
+  const letras = gg.itens.filter((it) => !it.nome.startsWith('Guia'));
+  ok('guia: letra de 500 mm sai em pedacos que cabem na mesa', letras.length > 1 && letras.every((it) => { const b = regionBounds(it.pecas[0]!.camadas[0]!.region); return b.w <= 230 && b.h <= 230; }), `${letras.length} pedaços`);
+  const guiasG = gg.itens.filter((it) => it.nome.startsWith('Guia'));
+  ok('guia: a guia alta tambem e cortada na horizontal', guiasG.every((it) => { const b = regionBounds(it.pecas[0]!.camadas[0]!.region); return b.w <= 230 && b.h <= 230; }));
+
+  const fl = gerar(receitaPorId('floco-neve')!, { nomes: 'Ana', desenho: sq, tamanho: 60 });
+  ok('floco: desenho proprio no lugar do floco', perto(largura(fl.itens[0]!.pecas[0]!.camadas[0]!.region), 60, 1));
+
+  const pg = gerar(receitaPorId('pingente-familia')!, { titulo: '', nomes: 'Ana', cachorros: '', gatos: '', outros: '', formaPeca: 'desenho', desenhoPeca: JSON.stringify({ nome: 'r.svg', regiao: [{ outer: [{ x: 0, y: 0 }, { x: 60, y: 0 }, { x: 60, y: 20 }, { x: 0, y: 20 }], holes: [] }] }), borda: 1 });
+  ok('pingente: formato do desenho, 2 furos e borda (3 cores)', pg.itens[0]!.pecas[0]!.camadas[0]!.region[0]!.holes.length === 2 && pg.cores.length === 3);
+
+  const sp = gerar(receitaPorId('suporte-palitos')!, { base: 'espessa', espBaseGrossa: 8 });
+  ok('palitos: base espessa com cavidade fechada e nota de pausa', sp.itens[0]!.pecas[0]!.camadas.some((c) => c.z0 === 1.2 && furos(c.region) >= 1) && !!sp.notas?.length);
+  const al = sp.itens[0]!.pecas[0]!.camadas.filter((c) => c.z0 >= 8 && c.region.length > 1);
+  ok('palitos: aletas curvas encolhem para dentro (sem balanco)', al.every((c, i) => !i || largura(c.region) <= largura(al[i - 1]!.region) + 1e-6) && largura(al[0]!.region) > largura(al.at(-1)!.region) + 20);
+
+  const pc = receitaPorId('palavra-camadas')!;
+  const l0 = gerar(pc, { linha1: 'Bolos', linha2: 'Vovo', moverLinha2: 0, cores: '2' }), l1 = gerar(pc, { linha1: 'Bolos', linha2: 'Vovo', moverLinha2: 20, cores: '2' });
+  ok('palavra: mover a segunda linha muda o desenho', Math.abs(regionArea(l0.itens[0]!.pecas[1]!.camadas[0]!.region) - regionArea(l1.itens[0]!.pecas[1]!.camadas[0]!.region)) > 1 || largura(l1.itens[0]!.pecas[1]!.camadas[0]!.region) !== largura(l0.itens[0]!.pecas[1]!.camadas[0]!.region));
+
+  const cd = gerar(receitaPorId('chaveiro-desenho')!, { desenho: sq, face: 'baixo', espBase: 2.6, espDesenho: 1 });
+  ok('chaveiro: face para baixo, desenho embutido de 0 a 1 mm', pecaDe(cd, 0, 'Desenho').camadas[0]!.z0 === 0 && pecaDe(cd, 0, 'Desenho').camadas[0]!.z1 === 1);
+  const ct = gerar(receitaPorId('chaveiro-desenho')!, { origem: 'texto', texto: 'Ana', tamanho: 40 });
+  ok('chaveiro: texto no lugar do desenho', perto(largura(pecaDe(ct, 0, 'Desenho').camadas[0]!.region), 40, 0.5) && ct.itens[0]!.nome === 'Ana');
+
+  const cc = gerar(receitaPorId('carimbo-circular')!, { desenho: sq, desenho2: sq, tamanho: 20, dBase: 30, dTopo: 30, argola: true });
+  ok('circular: 2 imagens = 2 carimbos, argola na base', cc.itens.length === 2 && cc.itens.every((it) => furos(it.pecas[0]!.camadas[0]!.region) === 1));
+  const ci = gerar(receitaPorId('carimbo-imagem')!, { desenho: sq, desenho2: sq, desenho3: sq, tamanho: 12, tamanho2: 12, tamanho3: 8, x3: 3 });
+  ok('doce: 3 imagens com tamanho proprio', ci.itens.length === 3 && !ci.avisos.length, ci.avisos.join(' | '));
+  const cm = gerar(receitaPorId('carimbo-letras')!, { textos: 'A', marcaDesenho: sq, tamanhoMarca: 8 });
+  ok('marca: logo em imagem embutido embaixo', cm.itens[0]!.pecas.some((p) => p.nome === 'Marca' && p.camadas[0]!.z0 === 0));
+
+  const so = gerar(receitaPorId('social-camadas')!, { formaBase: 'retangulo', textura: 'hilbert', relevoTextura: 0.4, cores: '2' });
+  const baseSo = so.itens[0]!.pecas[0]!.camadas;
+  ok('social: textura de Hilbert em relevo na base retangular', baseSo.length === 2 && perto(baseSo[1]!.z1 - baseSo[1]!.z0, 0.4, 1e-9) && regionArea(baseSo[1]!.region) > 100);
+  const hb = textura('hilbert', { minX: 0, minY: 0, maxX: 60, maxY: 60 }, 4, 1);
+  ok('textura: curva de Hilbert e uma linha so', hb.length === 1, `${hb.length} ilhas`);
+
+  const ls0 = gerar(receitaPorId('letreiro-sobreposto')!, {}), ls1 = gerar(receitaPorId('letreiro-sobreposto')!, { adornoNome: 'coracao' });
+  const nomeLs = (r: Resultado) => r.itens[0]!.pecas.find((p) => p.nome === 'Nome')!.camadas[0]!.region;
+  ok('letreiro: coracoes nas pontas alargam o nome, ainda uma peca', largura(nomeLs(ls1)) > largura(nomeLs(ls0)) + 10 && nomeLs(ls1).length === 1);
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

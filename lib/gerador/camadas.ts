@@ -4,7 +4,8 @@
  * Serve a palavra, @social, letras separadas e chaveiros (a receita so muda o que
  * entra e o que vai na base).
  */
-import { diffRegion, regionArea, regionBounds, type Region } from '../geom/region';
+import { diffRegion, intersectRegion, regionArea, regionBounds, type Region } from '../geom/region';
+import { textura } from './figuras';
 import { contornar, retanguloArredondado, semBuracos } from './formas';
 import type { Parametro, Peca, Valores } from './tipos';
 import { liga, num, txt } from './tipos';
@@ -33,6 +34,9 @@ export interface OpcoesCamadas {
   encaixe: boolean;
   folga: number;
   profEncaixe: number;
+  /** Textura em relevo na parte da base retangular que fica a mostra. */
+  textura?: 'nenhuma' | 'listras' | 'pontos' | 'hilbert';
+  relevoTextura?: number;
 }
 
 /** Parede minima entre o rebaixo do encaixe e a borda da peca de baixo, mm. */
@@ -83,6 +87,13 @@ export function empilhar(texto: Region, o: OpcoesCamadas, ajustarBase: (b: Regio
     }
     z = z1 - p;
   });
+  // Textura na base retangular, so onde ela fica a mostra.
+  if (o.formaBase === 'retangulo' && o.textura && o.textura !== 'nenhuma' && regioes[1]) {
+    const aMostra = diffRegion(contornar(regioes[0]!.r, -2), contornar(regioes[1].r, 1.2));
+    const t = intersectRegion(textura(o.textura, regionBounds(regioes[0]!.r)), aMostra);
+    const topo = Math.max(...pecas[0]!.camadas.map((c) => c.z1));
+    if (regionArea(t) > 0.5) pecas[0]!.camadas.push({ region: t, z0: topo, z1: topo + (o.relevoTextura ?? 0.4) });
+  }
   return { pecas, avisos };
 }
 
@@ -119,6 +130,11 @@ export function parametrosCamadas(padrao: Padroes = {}): Parametro[] {
     { tipo: 'numero', id: 'margemLateral', rotulo: 'Margem nas laterais', grupo: 'Base', padrao: 12, min: 0, max: 40, passo: 0.5, unidade: 'mm', visivel: retangulo },
     { tipo: 'numero', id: 'margemVertical', rotulo: 'Margem em cima e embaixo', grupo: 'Base', padrao: 8, min: 0, max: 40, passo: 0.5, unidade: 'mm', visivel: retangulo },
     { tipo: 'numero', id: 'raioBase', rotulo: 'Raio dos cantos', grupo: 'Base', padrao: 8, min: 0, max: 40, passo: 0.5, unidade: 'mm', visivel: retangulo },
+    {
+      tipo: 'escolha', id: 'textura', rotulo: 'Textura da base', grupo: 'Base', padrao: 'nenhuma', visivel: retangulo,
+      opcoes: [{ valor: 'nenhuma', rotulo: 'Lisa' }, { valor: 'listras', rotulo: 'Listras' }, { valor: 'pontos', rotulo: 'Pontos' }, { valor: 'hilbert', rotulo: 'Curva de Hilbert' }],
+    },
+    { tipo: 'numero', id: 'relevoTextura', rotulo: 'Relevo da textura', grupo: 'Base', padrao: 0.4, min: 0.2, max: 2, passo: 0.1, unidade: 'mm', visivel: (v) => retangulo(v) && v.textura !== 'nenhuma' },
     { tipo: 'numero', id: 'espBase', rotulo: 'Espessura da base', grupo: 'Base', padrao: padrao.espBase ?? 16, min: 0.6, max: 30, passo: 0.2, unidade: 'mm' },
     { tipo: 'numero', id: 'contornoMeio', rotulo: 'Contorno do meio', grupo: 'Camadas', padrao: padrao.contornoMeio ?? 4, min: 0.5, max: 20, passo: 0.1, unidade: 'mm', visivel: tres },
     { tipo: 'liga', id: 'preencherMiolo', rotulo: 'Tapar o miolo das letras no meio', grupo: 'Camadas', padrao: padrao.preencherMiolo ?? true, visivel: tres },
@@ -155,5 +171,7 @@ export function lerCamadas(v: Valores): OpcoesCamadas {
     encaixe: txt(v, 'montagem') === 'encaixe',
     folga: num(v, 'folga'),
     profEncaixe: num(v, 'profEncaixe'),
+    textura: (['listras', 'pontos', 'hilbert'].includes(txt(v, 'textura')) ? txt(v, 'textura') : 'nenhuma') as OpcoesCamadas['textura'],
+    relevoTextura: num(v, 'relevoTextura') || 0.4,
   };
 }

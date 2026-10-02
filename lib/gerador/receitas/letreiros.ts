@@ -3,7 +3,8 @@
  * topo de bolo circular com janela para glitter entre duas laminas de acetato.
  */
 import { diffRegion, regionBounds, translateRegion, type Region } from '../../geom/region';
-import { circulo, contornar, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, textoNaCaixa, unir, comporLinhas } from '../formas';
+import { circulo, contornar, coracao, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, textoNaCaixa, unir, comporLinhas } from '../formas';
+import { arabesco } from '../figuras';
 import { ficha } from './fichas';
 import type { Parametro, Receita, Resultado } from '../tipos';
 import { num, txt } from '../tipos';
@@ -22,6 +23,10 @@ export const letreiroSobreposto: Receita = {
     { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre as letras grandes', grupo: 'Palavras', padrao: 82, min: 50, max: 150, passo: 1, unidade: '%', dica: 'Abaixo de 100% as letras se encostam e viram uma peça só' },
     { tipo: 'texto', id: 'nome', rotulo: 'Nome por cima', grupo: 'Palavras', padrao: 'Ana & João', maxCaracteres: 40, dica: 'Aceita emoji' },
     { tipo: 'fonte', id: 'fonteNome', rotulo: 'Fonte do nome', grupo: 'Palavras', padrao: 'great-vibes' },
+    {
+      tipo: 'escolha', id: 'adornoNome', rotulo: 'Enfeite no nome', grupo: 'Palavras', padrao: 'nenhum',
+      opcoes: [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'coracao', rotulo: 'Corações nas pontas' }, { valor: 'arabesco', rotulo: 'Arabesco embaixo' }],
+    },
     { tipo: 'numero', id: 'largura', rotulo: 'Largura da palavra grande', grupo: 'Tamanho', padrao: 250, min: 60, max: 600, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'escalaNome', rotulo: 'Largura do nome', grupo: 'Tamanho', padrao: 85, min: 30, max: 120, passo: 1, unidade: '%', dica: 'Em relação à palavra grande' },
     { tipo: 'numero', id: 'subirNome', rotulo: 'Subir/descer o nome', grupo: 'Tamanho', padrao: 0, min: -50, max: 50, passo: 1, unidade: '%' },
@@ -49,7 +54,18 @@ export const letreiroSobreposto: Receita = {
     const avisos: string[] = [];
     if (grande.regiao.length > 1) avisos.push('As letras da palavra grande ficam soltas: cada uma vira uma peça (ou use uma fonte que encoste).');
     if (nomeTxt.letras.length) {
-      let contorno = semBuracos(contornar(nomeTxt.regiao, num(v, 'contornoNome')));
+      // Enfeite: coracoes nas pontas ou arabesco embaixo, unidos ao nome antes do contorno.
+      let nomeR = nomeTxt.regiao;
+      const nb0 = nomeTxt.bounds, adorno = txt(v, 'adornoNome');
+      if (adorno === 'coracao') {
+        const c = coracao(nb0.h * 0.55);
+        const cb = regionBounds(c);
+        nomeR = unir([nomeR, translateRegion(c, nb0.minX - cb.w * 0.7, (nb0.minY + nb0.maxY) / 2), translateRegion(c, nb0.maxX + cb.w * 0.7, (nb0.minY + nb0.maxY) / 2)]);
+      } else if (adorno === 'arabesco') {
+        const a = arabesco(nb0.w * 0.8, Math.max(1, nb0.h * 0.05));
+        nomeR = unir([nomeR, translateRegion(a, (nb0.minX + nb0.maxX) / 2, nb0.minY - regionBounds(a).h / 2 + nb0.h * 0.08)]);
+      }
+      let contorno = semBuracos(contornar(nomeR, num(v, 'contornoNome')));
       if (contorno.length > 1) {
         // Palavras separadas (espaco): uma faixa atras do texto une tudo numa peca so.
         const nb = regionBounds(contorno);

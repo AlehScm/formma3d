@@ -60,6 +60,8 @@ export interface Linha {
   espacamento?: number;
   /** Fonte para o que `fonte` nao tem (emoji). */
   reserva?: Font;
+  /** Deslocamento horizontal da linha depois de centralizada, mm. */
+  dx?: number;
 }
 
 /** Tem emoji/simbolo que fonte de texto costuma nao ter? */
@@ -114,13 +116,13 @@ export function comporLinhas(linhas: Linha[], entrelinha: number): TextoComposto
     .map((l) => {
       const letras = letrasDaLinha(l);
       const b = letras.length ? regionBounds(letras.flatMap((x) => x.region)) : null;
-      return { letras, b };
+      return { letras, b, desloc: l.dx ?? 0 };
     })
     .filter((x) => x.b);
   const letras: Letra[] = [];
   let topo = 0;
-  for (const { letras: ls, b } of porLinha) {
-    const dx = -(b!.minX + b!.maxX) / 2, dy = topo - b!.maxY;
+  for (const { letras: ls, b, desloc } of porLinha) {
+    const dx = -(b!.minX + b!.maxX) / 2 + desloc, dy = topo - b!.maxY;
     for (const l of ls) {
       const region = translateRegion(l.region, dx, dy);
       letras.push({ nome: l.nome, region, bounds: regionBounds(region) });

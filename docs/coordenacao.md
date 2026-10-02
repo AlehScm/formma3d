@@ -42,6 +42,7 @@ com catálogo, placas e QR/PIX, migrando para a base.
 - Copiamos capacidades, descritas com nossas palavras; nunca código, JS, arte, STL/3MF ou fontes do site.
 
 ## Registro
+- 2026-10-02 ChatGPT: assumiu QR/PIX/cartoes (area atribuida acima). Instalou `qrcode@1.5.4` + `@types/qrcode@1.5.6`; smith dev cria `lib/gerador/{qr,payloads,pix}.ts`, `lib/gerador/receitas/qr.ts` e `scripts/verificar-qr.mts`. Nao editar esses arquivos em paralelo. Integracao em `index.ts`, `fichas.ts`, `cobertura.ts` e `package.json` sera minima depois dos testes. Sem commit/push/publicacao.
 - 2026-10-02 ChatGPT: revisao continua autorizada pelo usuario. Corrigiu reserva visual imediata, deduplicacao/timeout de miniaturas em `features/catalogo/Miniaturas.tsx`; rotulos e ilustracoes proprias em `components/catalogo/CatalogoScarprint.tsx` + `catalogo.css`; dois textos inexatos em `lib/gerador/receitas/fichas.ts`. Areas liberadas para Claude; preservar essas alteracoes ainda nao commitadas ao continuar as ondas.
 - 2026-10-01 Claude: commit `08ab58b` com o trabalho pendente do ChatGPT (sem alterações, testes ok).
   Criou este arquivo e `docs/mafagrafos-117.md`. Começando `lib/gerador/`.
@@ -137,3 +138,30 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Os dois textos que o ChatGPT corrigiu em `fichas.ts` (placa SVG sem "pé", floco sem "desenho próprio")
     entraram neste commit junto com as fichas novas.
   - As mudanças dele em `Miniaturas.tsx`, `CatalogoScarprint.tsx` e `catalogo.css` ficaram fora do commit, para ele commitar.
+- 2026-10-02 Claude: lacunas dos parciais fechadas. Quadro: 58 prontos · 10 parciais · 49 pendentes.
+  - Plaquinha pet:
+    - posição do nome e do verso (x/y);
+    - o verso agora encolhe até caber no formato. Antes passava da borda em formato curvo: era bug.
+  - Marcador:
+    - padrão "em cor nas duas faces" (embutido 0,4 mm em cima e embaixo), além do vazado;
+    - desenho do verso embutido embaixo.
+  - Guia: `cortarParaMesa` (papelaria.ts) corta nos dois eixos.
+    - O dente de encaixe vai no maior trecho de material da linha de corte.
+    - Letra maior que a mesa sai em pedaços.
+  - Floco com desenho próprio.
+  - Pingente: formato pílula, retângulo, oval ou desenho; borda em 3ª cor.
+  - Palitos: base espessa com cavidade fechada para peso (nota de pausa); aletas de perfil curvo.
+  - Palavra: "mover a segunda linha" (`Linha.dx` em `comporLinhas`).
+  - Chaveiro de desenho: texto no lugar da imagem; face para baixo (desenho embutido rente à mesa).
+  - Carimbos:
+    - circular com até 6 imagens e argola na base;
+    - de doce com 6 imagens, cada uma com tamanho, posição e silhueta;
+    - marca embaixo em texto ou logo (imagem).
+  - Base retangular (`empilhar`) com textura em relevo onde fica à mostra: listras, pontos ou Hilbert (`figuras.textura`).
+  - Letreiro sobreposto: corações nas pontas ou arabesco (`figuras.arabesco`) no nome.
+  - `argolaNaDirecao`: numa borda reta, o furo vai para o centro e não para um canto.
+    - Achado com o floco quadrado.
+    - Só vale quando ali é borda de verdade; no osso continua numa das pontas.
+  - Não mexi nos arquivos de QR/PIX nem em package.json; ficaram fora do commit.
+  - verificar-gerador 524/524.
+

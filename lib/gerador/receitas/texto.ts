@@ -57,7 +57,7 @@ function linhasDe(v: Valores, ctx: Contexto, k: number): Linha[] {
   const reserva = temEmoji(textos(v)) ? ctx.fonte('noto-emoji') : undefined;
   return [
     { texto: txt(v, 'linha1'), fonte: ctx.fonte(txt(v, 'fonte1')), altura: ALTURA_REF * k, espacamento: num(v, 'espacamento') / 100, reserva },
-    { texto: txt(v, 'linha2'), fonte: ctx.fonte(txt(v, 'fonte2') || txt(v, 'fonte1')), altura: ALTURA_REF * k * (razao || 1), espacamento: num(v, 'espacamento') / 100, reserva },
+    { texto: txt(v, 'linha2'), fonte: ctx.fonte(txt(v, 'fonte2') || txt(v, 'fonte1')), altura: ALTURA_REF * k * (razao || 1), espacamento: num(v, 'espacamento') / 100, reserva, dx: num(v, 'moverLinha2') || 0 },
   ];
 }
 
@@ -93,6 +93,7 @@ export const palavraCamadas: Receita = {
     { tipo: 'fonte', id: 'fonte2', rotulo: 'Fonte da segunda linha', grupo: 'Texto', padrao: 'pacifico', visivel: (v) => !!txt(v, 'linha2').trim() },
     { tipo: 'numero', id: 'razaoLinha2', rotulo: 'Tamanho da segunda linha', grupo: 'Texto', padrao: 60, min: 20, max: 150, passo: 5, unidade: '%', visivel: (v) => !!txt(v, 'linha2').trim() },
     { tipo: 'numero', id: 'entrelinha', rotulo: 'Espaço entre as linhas', grupo: 'Texto', padrao: 2, min: -10, max: 30, passo: 0.5, unidade: 'mm', visivel: (v) => !!txt(v, 'linha2').trim() },
+    { tipo: 'numero', id: 'moverLinha2', rotulo: 'Mover a segunda linha', grupo: 'Texto', padrao: 0, min: -150, max: 150, passo: 1, unidade: 'mm', dica: 'Para a direita (+) ou a esquerda (−)', visivel: (v) => !!txt(v, 'linha2').trim() },
     espacamento,
     tamanho(166),
     ...parametrosAdorno(),

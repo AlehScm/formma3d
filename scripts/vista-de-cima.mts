@@ -2,7 +2,7 @@
  * Vista de cima dos exemplos do catalogo, em PNG, sem navegador (para conferir geometria
  * quando nao ha WebGL): cada camada pintada na cor da peca, da mais baixa para a mais
  * alta, escurecida pela altura.
- *   npx tsx scripts/vista-de-cima.mts <pasta> [id ...]
+ *   npx tsx scripts/vista-de-cima.mts <pasta> [id | id={json com valores} ...]
  */
 import fs from 'fs';
 import path from 'path';
@@ -70,10 +70,12 @@ function pintar(rgb: Uint8Array, W: number, H: number, r: Region, map: (x: numbe
 
 const hexRgb = (h: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
 
-for (const f of FICHAS) {
-  if (ids.length && !ids.includes(f.id)) continue;
+// Cada id pode vir com valores proprios: "id" ou "id={json}" (o PNG sai como id-N.png).
+const pedidos = ids.length ? ids.map((x, n) => { const i = x.indexOf('='); return i < 0 ? { id: x, extra: {}, arq: x } : { id: x.slice(0, i), extra: JSON.parse(x.slice(i + 1)), arq: `${x.slice(0, i)}-${n}` }; }) : FICHAS.map((f) => ({ id: f.id, extra: {}, arq: f.id }));
+for (const { id, extra, arq } of pedidos) {
+  const f = FICHAS.find((x) => x.id === id)!;
   const rec = RECEITAS.find((r) => r.id === f.id)!;
-  const res = rec.gerar(valoresValidos(rec, { ...valoresPadrao(rec), ...(f.exemplo ?? {}) }), ctx);
+  const res = rec.gerar(valoresValidos(rec, { ...valoresPadrao(rec), ...(f.exemplo ?? {}), ...extra }), ctx);
   const camadas = res.itens.flatMap((it) => it.pecas.flatMap((p) => p.camadas.map((c) => ({ ...c, cor: p.cor }))));
   if (!camadas.length) { console.log(f.id, 'vazio', res.avisos); continue; }
   const pts = camadas.flatMap((c) => c.region.flatMap((p) => p.outer));
@@ -88,6 +90,6 @@ for (const f of FICHAS) {
     const luz = 0.55 + 0.45 * (c.z1 / zMax);
     pintar(rgb, W, H, c.region, map, base.map((x) => Math.round(x * luz)) as [number, number, number]);
   }
-  fs.writeFileSync(path.join(pasta, `${f.id}.png`), png(W, H, rgb));
-  console.log(f.id, `${(maxX - minX).toFixed(0)} x ${(maxY - minY).toFixed(0)} x ${zMax.toFixed(1)} mm`, res.avisos.join(' | '));
+  fs.writeFileSync(path.join(pasta, `${arq}.png`), png(W, H, rgb));
+  console.log(arq, `${(maxX - minX).toFixed(0)} x ${(maxY - minY).toFixed(0)} x ${zMax.toFixed(1)} mm`, res.avisos.join(' | '));
 }

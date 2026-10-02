@@ -3,12 +3,12 @@
  * fora, na borda das paginas), contador raspadinha e texto grande com guia de
  * posicionamento cortada em placas que cabem na mesa.
  */
-import { diffRegion, intersectRegion, regionBounds, rotateRegion, translateRegion, type Region } from '../../geom/region';
+import { diffRegion, intersectRegion, regionArea, regionBounds, rotateRegion, translateRegion, type Region } from '../../geom/region';
 import { ajustarLargura, circulo, comporLinhas, contornar, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, textoNaCaixa, unir } from '../formas';
 import { espelharX, regular, trapezio } from '../figuras';
 import { ficha } from './fichas';
 import type { Item, Parametro, Peca, Receita, Resultado } from '../tipos';
-import { desenho, liga, num, txt } from '../tipos';
+import { desenho, liga, num, soCoresUsadas, txt } from '../tipos';
 
 const cor = (id: string, rotulo: string, padrao: string): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao });
 const espacamento: Parametro = { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%' };
@@ -54,13 +54,20 @@ export const marcadorPagina: Receita = {
       tipo: 'escolha', id: 'padrao', rotulo: 'Padrão da aba', grupo: 'Aba', padrao: 'grade',
       opcoes: [{ valor: 'grade', rotulo: 'Grade' }, { valor: 'geometrico', rotulo: 'Geométrico' }, { valor: 'floral', rotulo: 'Floral' }, { valor: 'liso', rotulo: 'Liso' }, { valor: 'desenho', rotulo: 'Meu desenho' }],
     },
+    {
+      tipo: 'escolha', id: 'acabamento', rotulo: 'O padrão sai', grupo: 'Aba', padrao: 'vazado',
+      opcoes: [{ valor: 'vazado', rotulo: 'Vazado' }, { valor: 'cor', rotulo: 'Em cor, nas duas faces' }],
+      visivel: (v) => v.padrao === 'grade' || v.padrao === 'geometrico' || v.padrao === 'floral',
+    },
     { tipo: 'svg', id: 'desenho', rotulo: 'Desenho', grupo: 'Aba', padrao: '', visivel: (v) => v.padrao === 'desenho', dica: 'Fica em relevo na aba, na cor do nome' },
+    { tipo: 'svg', id: 'desenhoVerso', rotulo: 'Desenho do verso', grupo: 'Aba', padrao: '', visivel: (v) => v.padrao === 'desenho', dica: 'Opcional: embutido na face de baixo' },
     cor('corAba', 'Aba', '#3f1d38'),
     cor('corNome', 'Nome', '#f5d0a9'),
+    cor('corPadrao', 'Padrão', '#f5d0a9'),
   ],
   fontes: (v) => (temEmoji(txt(v, 'texto')) ? ['noto-emoji'] : []),
   gerar(v, ctx): Resultado {
-    const cores = ['Aba', 'Nome'], hex = [txt(v, 'corAba'), txt(v, 'corNome')];
+    const cores = ['Aba', 'Nome', 'Padrão'], hex = [txt(v, 'corAba'), txt(v, 'corNome'), txt(v, 'corPadrao')];
     const reserva = temEmoji(txt(v, 'texto')) ? ctx.fonte('noto-emoji') : undefined;
     const t = textoNaCaixa([txt(v, 'texto')], { fonte: ctx.fonte(txt(v, 'fonte')), reserva, maxW: num(v, 'maxW'), maxH: num(v, 'maxH'), espacamento: num(v, 'espacamento') / 100 });
     if (!t.letras.length) return { itens: [], cores, hex, avisos: ['Digite o nome ou a frase.'] };
@@ -72,15 +79,29 @@ export const marcadorPagina: Receita = {
     let aba = aba0;
     const avisos: string[] = [];
     const tipo = txt(v, 'padrao');
+    const ea = num(v, 'espAba');
+    // Padrao em cor: embutido 0,4 mm em cada face (o meio da aba fica inteiro).
+    let padraoCor: Region = [];
     if (tipo === 'grade' || tipo === 'geometrico' || tipo === 'floral') {
       const dentro = contornar(aba0, -2.2);
-      aba = diffRegion(aba0, intersectRegion(padraoVazado(tipo, regionBounds(dentro), 1.2), dentro));
+      const desenhoPadrao = diffRegion(intersectRegion(padraoVazado(tipo, regionBounds(dentro), 1.2), dentro), contornar(nome, 0.4));
+      if (txt(v, 'acabamento') === 'cor') {
+        if (ea < 1.2) avisos.push('A aba é fina demais para o padrão nas duas faces: use 1,2 mm ou mais.');
+        else padraoCor = desenhoPadrao;
+      } else aba = diffRegion(aba0, desenhoPadrao);
     }
     aba = diffRegion(aba, nome);
-    const pecas: Peca[] = [
-      { nome: 'Aba', cor: 0, camadas: [{ region: aba, z0: 0, z1: num(v, 'espAba') }] },
-      { nome: 'Nome', cor: 1, camadas: [{ region: nome, z0: 0, z1: num(v, 'espNome') }] },
-    ];
+    const ep = 0.4;
+    const pecas: Peca[] = padraoCor.length
+      ? [
+        { nome: 'Aba', cor: 0, camadas: [{ region: diffRegion(aba, padraoCor), z0: 0, z1: ep }, { region: aba, z0: ep, z1: ea - ep }, { region: diffRegion(aba, padraoCor), z0: ea - ep, z1: ea }] },
+        { nome: 'Nome', cor: 1, camadas: [{ region: nome, z0: 0, z1: num(v, 'espNome') }] },
+        { nome: 'Padrão', cor: 2, camadas: [{ region: padraoCor, z0: 0, z1: ep }, { region: padraoCor, z0: ea - ep, z1: ea }] },
+      ]
+      : [
+        { nome: 'Aba', cor: 0, camadas: [{ region: aba, z0: 0, z1: ea }] },
+        { nome: 'Nome', cor: 1, camadas: [{ region: nome, z0: 0, z1: num(v, 'espNome') }] },
+      ];
     if (tipo === 'desenho') {
       const d = desenho(v, 'desenho');
       if (!d) avisos.push('Escolha o desenho da aba.');
@@ -89,8 +110,19 @@ export const marcadorPagina: Receita = {
         const arte = translateRegion(ajustarLargura(d.regiao, Math.min(ab.w, ab.h * 0.9)), (ab.minX + ab.maxX) / 2, (ab.minY + ab.maxY) / 2);
         pecas.push({ nome: 'Desenho', cor: 1, camadas: [{ region: intersectRegion(arte, aba0), z0: num(v, 'espAba'), z1: num(v, 'espAba') + 0.6 }] });
       }
+      const dv = desenho(v, 'desenhoVerso');
+      if (dv) {
+        const ab = regionBounds(contornar(aba0, -3));
+        // Espelhado: le-se olhando a face de baixo.
+        const arte = translateRegion(espelharX(ajustarLargura(dv.regiao, Math.min(ab.w, ab.h * 0.9))), (ab.minX + ab.maxX) / 2, (ab.minY + ab.maxY) / 2);
+        const verso = intersectRegion(arte, contornar(aba, -0.6));
+        if (regionArea(verso) > 0.1) {
+          pecas[0] = { ...pecas[0]!, camadas: [{ region: diffRegion(aba, verso), z0: 0, z1: ep }, ...pecas[0]!.camadas.map((c) => (c.z0 === 0 ? { ...c, z0: ep } : c))] };
+          pecas.push({ nome: 'Padrão', cor: 2, camadas: [{ region: verso, z0: 0, z1: ep }] });
+        }
+      }
     }
-    return { itens: [{ nome: txt(v, 'texto'), pecas }], cores, hex, avisos };
+    return soCoresUsadas({ itens: [{ nome: txt(v, 'texto'), pecas }], cores, hex, avisos });
   },
 };
 
@@ -171,11 +203,15 @@ export const textoComGuia: Receita = {
     const t = compor(escalaParaLargura((k) => compor(k).bounds.w, num(v, 'tamanho')));
     if (!t.letras.length) return { itens: [], cores, hex, avisos: ['Digite o texto.'] };
     const mesa = num(v, 'mesa'), avisos: string[] = [];
-    const itens: Item[] = t.letras.map((l, i) => {
+    const notas: string[] = [];
+    const itens: Item[] = t.letras.flatMap((l, i) => {
       const lb = regionBounds(l.region);
-      if (Math.max(lb.w, lb.h) > mesa) avisos.push(`A letra "${l.nome}" (${lb.w.toFixed(0)} × ${lb.h.toFixed(0)} mm) é maior que a mesa.`);
       const r = liga(v, 'espelhar') ? translateRegion(espelharX(translateRegion(l.region, -(lb.minX + lb.maxX) / 2, 0)), (lb.minX + lb.maxX) / 2, 0) : l.region;
-      return { nome: `${String(i + 1).padStart(2, '0')} ${l.nome}`, pecas: [{ nome: 'Letra', cor: 0, camadas: [{ region: r, z0: 0, z1: num(v, 'espTexto') }] }] };
+      const nome = `${String(i + 1).padStart(2, '0')} ${l.nome}`;
+      // Letra maior que a mesa: sai em pedacos com dente de encaixe.
+      const partes = Math.max(lb.w, lb.h) > mesa ? cortarParaMesa(r, mesa, num(v, 'folga')) : [r];
+      if (partes.length > 1) notas.push(`A letra "${l.nome}" sai em ${partes.length} pedaços: cole pelos dentes de encaixe.`);
+      return partes.map((p, k) => ({ nome: partes.length > 1 ? `${nome} (${k + 1}/${partes.length})` : nome, pecas: [{ nome: 'Letra', cor: 0, camadas: [{ region: p, z0: 0, z1: num(v, 'espTexto') }] }] }));
     });
     // Guia: retangulo em volta do texto, com o vazado das letras.
     const b = t.bounds, m = 15;
@@ -183,23 +219,53 @@ export const textoComGuia: Receita = {
     const guia = diffRegion(retanguloArredondado((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, b.w + 2 * m, b.h + 2 * m, 6), vazado);
     const gb = regionBounds(guia);
     if (gb.h > mesa) avisos.push('A guia é mais alta que a mesa: use um texto mais largo e baixo, ou uma mesa maior.');
-    // Cortes verticais com um "dente" redondo de encaixe no meio da altura.
-    const nCortes = Math.ceil(gb.w / (mesa - 12)) - 1;
-    const larguraPedaco = gb.w / (nCortes + 1);
-    const yDente = (gb.minY + gb.maxY) / 2, rDente = Math.min(8, gb.h / 5);
-    let resto = guia;
-    const pedacos: Region[] = [];
-    for (let c = 1; c <= nCortes; c++) {
-      const x = gb.minX + c * larguraPedaco;
-      const dente = unir([circulo(x + rDente * 0.8, yDente, rDente, 40), retanguloArredondado(x, yDente, rDente * 1.2, rDente, 0)]);
-      const esquerda = unir([retanguloArredondado((gb.minX - 1 + x) / 2, yDente, x - gb.minX + 2, gb.h + 4, 0), dente]);
-      pedacos.push(intersectRegion(resto, esquerda));
-      resto = diffRegion(resto, contornar(esquerda, num(v, 'folga')));
-    }
-    pedacos.push(resto);
+    if (gb.h > mesa) notas.push('A guia é mais alta que a mesa: ela sai cortada também na horizontal.');
+    const pedacos = cortarParaMesa(guia, mesa, num(v, 'folga'));
     pedacos.forEach((p, i) => {
       if (p.length) itens.push({ nome: `Guia ${i + 1}`, pecas: [{ nome: 'Guia', cor: 1, camadas: [{ region: p, z0: 0, z1: num(v, 'espGuia') }] }] });
     });
-    return { itens, cores, hex, avisos, notas: ['Monte a guia na parede, encaixe as letras nos vazados, cole e tire a guia.'] };
+    return { itens, cores, hex, avisos, notas: ['Monte a guia na parede, encaixe as letras nos vazados, cole e tire a guia.', ...notas] };
   },
 };
+
+/**
+ * Corta `r` em pedacos que cabem num quadrado `mesa` (primeiro na vertical, depois na
+ * horizontal). Cada corte tem um dente redondo de encaixe no meio do maior trecho de
+ * material da linha de corte; o lado de la ganha o vao do dente com `folga`.
+ */
+export function cortarParaMesa(r: Region, mesa: number, folga: number): Region[] {
+  return cortarNoEixo(r, mesa, folga, 'x').flatMap((p) => cortarNoEixo(p, mesa, folga, 'y'));
+}
+
+function cortarNoEixo(r: Region, mesa: number, folga: number, eixo: 'x' | 'y'): Region[] {
+  const b = regionBounds(r);
+  const tam = eixo === 'x' ? b.w : b.h, ini = eixo === 'x' ? b.minX : b.minY;
+  if (tam <= mesa) return [r];
+  const n = Math.ceil(tam / (mesa - 12)) - 1, passo = tam / (n + 1);
+  const caixa = (a0: number, a1: number, o0: number, o1: number): Region =>
+    eixo === 'x' ? retanguloArredondado((a0 + a1) / 2, (o0 + o1) / 2, a1 - a0, o1 - o0, 0) : retanguloArredondado((o0 + o1) / 2, (a0 + a1) / 2, o1 - o0, a1 - a0, 0);
+  const [o0, o1] = eixo === 'x' ? [b.minY - 2, b.maxY + 2] : [b.minX - 2, b.maxX + 2];
+  let resto = r;
+  const pedacos: Region[] = [];
+  for (let c = 1; c <= n; c++) {
+    const pos = ini + c * passo;
+    // Maior trecho de material na linha de corte: o dente vai no meio dele.
+    const linha = intersectRegion(resto, caixa(pos - 0.25, pos + 0.25, o0, o1));
+    const maior = linha.reduce<{ a: number; b: ReturnType<typeof regionBounds> } | null>((m, p) => {
+      const bb = regionBounds([p]), comp = eixo === 'x' ? bb.h : bb.w;
+      return !m || comp > m.a ? { a: comp, b: bb } : m;
+    }, null);
+    let lado = caixa(ini - 2, pos, o0, o1);
+    if (maior && maior.a > 6) {
+      const meio = eixo === 'x' ? (maior.b.minY + maior.b.maxY) / 2 : (maior.b.minX + maior.b.maxX) / 2;
+      const rd = Math.min(8, maior.a / 5);
+      const centro = eixo === 'x' ? { x: pos + rd * 0.8, y: meio } : { x: meio, y: pos + rd * 0.8 };
+      const pescoco = eixo === 'x' ? retanguloArredondado(pos, meio, rd * 1.2, rd, 0) : retanguloArredondado(meio, pos, rd, rd * 1.2, 0);
+      lado = unir([lado, circulo(centro.x, centro.y, rd, 40), pescoco]);
+    }
+    pedacos.push(intersectRegion(resto, lado));
+    resto = diffRegion(resto, contornar(lado, folga));
+  }
+  pedacos.push(resto);
+  return pedacos.filter((p) => regionArea(p) > 0.5);
+}

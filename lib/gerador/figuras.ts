@@ -126,3 +126,62 @@ export const espelharX = (r: Region): Region => scaleRegion(r, -1, 1);
 
 /** Furo redondo em (x, y). */
 export const furo = (r: Region, x: number, y: number, d: number): Region => diffRegion(r, circulo(x, y, d / 2, 40));
+
+/**
+ * Textura que cobre a caixa `b`: listras diagonais, pontos alternados ou curva de
+ * Hilbert (linha continua que enche o plano), com passo ~`passo` mm.
+ */
+export function textura(tipo: string, b: { minX: number; minY: number; maxX: number; maxY: number }, passo = 3, linha = 1): Region {
+  const w = b.maxX - b.minX, h = b.maxY - b.minY, L = Math.max(w, h);
+  if (tipo === 'pontos') {
+    const pts: Region[] = [];
+    for (let j = 0, y = b.minY; y <= b.maxY + passo; y += passo * 0.87, j++) {
+      for (let x = b.minX + (j % 2 ? passo / 2 : 0); x <= b.maxX + passo; x += passo) pts.push(circulo(x, y, linha * 0.8, 16));
+    }
+    return unir(pts);
+  }
+  if (tipo === 'hilbert') {
+    // Ordem que deixa o passo da curva perto de `passo`.
+    const ordem = Math.max(1, Math.min(7, Math.round(Math.log2(L / passo))));
+    const n = 2 ** ordem, d = L / n;
+    const pts: Pt[] = [];
+    for (let i = 0; i < n * n; i++) {
+      let [x, y] = [0, 0], t = i;
+      for (let s = 1; s < n; s *= 2) {
+        const rx = 1 & (t / 2), ry = 1 & (t ^ rx);
+        if (!ry) { if (rx) { x = s - 1 - x; y = s - 1 - y; } [x, y] = [y, x]; }
+        x += s * rx; y += s * ry; t = Math.floor(t / 4);
+      }
+      pts.push({ x: b.minX + (x + 0.5) * d, y: b.minY + (y + 0.5) * d });
+    }
+    return strokeToRegion([{ pts, closed: false }], Math.min(linha, d * 0.45), false, 'miter');
+  }
+  // Listras diagonais.
+  const faixas: { pts: Pt[]; closed: boolean }[] = [];
+  for (let c = -h; c <= w + h; c += passo) faixas.push({ pts: [{ x: b.minX + c, y: b.minY }, { x: b.minX + c + h, y: b.maxY }], closed: false });
+  return strokeToRegion(faixas, linha, false);
+}
+
+/**
+ * Arabesco (desenho nosso): onda suave de largura `w` com uma espiral enrolada em cada
+ * ponta, traco de espessura `e`. Centrado.
+ */
+export function arabesco(w: number, e: number): Region {
+  const h = w * 0.16, pts: Pt[] = [];
+  for (let i = 0; i <= 120; i++) {
+    const t = i / 120, x = -w * 0.36 + w * 0.72 * t;
+    pts.push({ x, y: h * 0.5 * Math.sin(2 * Math.PI * t) });
+  }
+  const espiral = (cx: number, lado: number): Pt[] => {
+    const r0 = w * 0.045, q: Pt[] = [];
+    for (let i = 0; i <= 80; i++) {
+      const t = i / 80, a = Math.PI * 1.75 * t * 2, r = r0 * (1 - 0.78 * t);
+      q.push({ x: cx + lado * (r0 - r * Math.cos(a)), y: r * Math.sin(a) * -lado });
+    }
+    return q;
+  };
+  const curvas = [{ pts, closed: false }, { pts: espiral(w * 0.36, 1), closed: false }, { pts: espiral(-w * 0.36, -1), closed: false }];
+  const r = strokeToRegion(curvas, e, true);
+  const b = regionBounds(r);
+  return translateRegion(r, -(b.minX + b.maxX) / 2, -(b.minY + b.maxY) / 2);
+}

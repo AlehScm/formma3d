@@ -131,7 +131,7 @@ export const FICHAS: Ficha[] = [
   {
     id: 'floco-neve', nome: 'Enfeite floco de neve', familia: 'multicor', tipo: 'Enfeite',
     resumo: 'Floco de neve com nome no centro e argola; até 9 nomes.',
-    destaques: ['Floco paramétrico', 'Nome no centro', 'Até 9 por vez'],
+    destaques: ['Floco ou o seu desenho', 'Nome no centro', 'Até 9 por vez'],
     exemplo: { nomes: 'Ana' },
   },
   {

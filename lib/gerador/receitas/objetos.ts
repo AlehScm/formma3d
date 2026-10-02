@@ -3,12 +3,13 @@
  * grade e enfeite floco de neve com nome.
  */
 import { diffRegion, regionBounds, rotateRegion, type Region } from '../../geom/region';
-import { circulo, contornar, comporLinhas, retanguloArredondado, semBuracos, temEmoji, textoNaCaixa, unir } from '../formas';
+import { ajustarLargura, circulo, contornar, comporLinhas, retanguloArredondado, semBuracos, temEmoji, textoNaCaixa, unir } from '../formas';
 import { floco } from '../figuras';
 import { comArgola, emGrade, LOTE_MAX, nomesDoLote } from '../lote';
+import { comVazios, type Vazio } from '../solidos';
 import { ficha } from './fichas';
 import type { Camada, Item, Parametro, Receita, Resultado } from '../tipos';
-import { liga, num, txt } from '../tipos';
+import { desenho, liga, num, txt } from '../tipos';
 
 const cor = (id: string, rotulo: string, padrao: string): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao });
 
@@ -69,27 +70,46 @@ export const suportePalitos: Receita = {
     { tipo: 'numero', id: 'palito', rotulo: 'Diâmetro do palito', grupo: 'Suporte', padrao: 6, min: 2, max: 10, passo: 0.1, unidade: 'mm' },
     { tipo: 'numero', id: 'folga', rotulo: 'Folga do furo', grupo: 'Suporte', padrao: 0.3, min: 0, max: 1, passo: 0.05, unidade: 'mm' },
     { tipo: 'numero', id: 'diametro', rotulo: 'Diâmetro da base', grupo: 'Suporte', padrao: 80, min: 30, max: 150, passo: 1, unidade: 'mm' },
-    { tipo: 'numero', id: 'espBase', rotulo: 'Espessura da base', grupo: 'Suporte', padrao: 2, min: 1, max: 10, passo: 0.2, unidade: 'mm' },
+    { tipo: 'escolha', id: 'base', rotulo: 'Base', grupo: 'Suporte', padrao: 'fina', opcoes: [{ valor: 'fina', rotulo: 'Fina' }, { valor: 'espessa', rotulo: 'Espessa, com cavidade para peso' }] },
+    { tipo: 'numero', id: 'espBase', rotulo: 'Espessura da base', grupo: 'Suporte', padrao: 2, min: 1, max: 10, passo: 0.2, unidade: 'mm', visivel: (v) => v.base !== 'espessa' },
+    { tipo: 'numero', id: 'espBaseGrossa', rotulo: 'Espessura da base', grupo: 'Suporte', padrao: 8, min: 5, max: 20, passo: 0.2, unidade: 'mm', visivel: (v) => v.base === 'espessa', dica: 'A cavidade fecha por dentro: pause para pôr areia, chumbo ou moedas' },
     { tipo: 'numero', id: 'altura', rotulo: 'Altura do tubo', grupo: 'Suporte', padrao: 40, min: 10, max: 120, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'parede', rotulo: 'Parede do tubo', grupo: 'Suporte', padrao: 1.6, min: 0.8, max: 10, passo: 0.1, unidade: 'mm' },
     { tipo: 'numero', id: 'aletas', rotulo: 'Quantidade de aletas', grupo: 'Aletas', padrao: 4, min: 3, max: 10, passo: 1, unidade: '' },
+    { tipo: 'escolha', id: 'perfil', rotulo: 'Perfil das aletas', grupo: 'Aletas', padrao: 'curvo', opcoes: [{ valor: 'curvo', rotulo: 'Curvo' }, { valor: 'reto', rotulo: 'Rampa reta' }] },
+    { tipo: 'numero', id: 'alcance', rotulo: 'Alcance das aletas', grupo: 'Aletas', padrao: 75, min: 30, max: 100, passo: 1, unidade: '%', dica: 'Até onde vão, em % do raio da base' },
     { tipo: 'numero', id: 'alturaAleta', rotulo: 'Altura das aletas', grupo: 'Aletas', padrao: 30, min: 5, max: 100, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'espAleta', rotulo: 'Espessura das aletas', grupo: 'Aletas', padrao: 2, min: 1, max: 8, passo: 0.2, unidade: 'mm' },
     cor('cor', 'Suporte', '#22c55e'),
   ],
   gerar(v): Resultado {
-    const r0 = num(v, 'palito') / 2 + num(v, 'folga'), r1 = r0 + num(v, 'parede'), R = num(v, 'diametro') / 2, eb = num(v, 'espBase');
+    const r0 = num(v, 'palito') / 2 + num(v, 'folga'), r1 = r0 + num(v, 'parede'), R = num(v, 'diametro') / 2;
+    const espessa = txt(v, 'base') === 'espessa', eb = espessa ? num(v, 'espBaseGrossa') : num(v, 'espBase');
     const furo = circulo(0, 0, r0, 48);
-    const camadas: Camada[] = [{ region: diffRegion(circulo(0, 0, R, 128), furo), z0: 0, z1: eb }];
+    const disco = diffRegion(circulo(0, 0, R, 128), furo);
+    const notas: string[] = [];
+    const vazios: Vazio[] = [];
+    if (espessa) {
+      // Cavidade em anel, fechada por 1,2 mm em cima e embaixo.
+      const cav = diffRegion(circulo(0, 0, R - 2, 128), circulo(0, 0, r1 + 2, 64));
+      vazios.push({ regiao: cav, z0: 1.2, z1: eb - 1.2 });
+      notas.push(`Pause em ${(eb - 1.2).toFixed(1).replace('.', ',')} mm para encher a cavidade com o peso e continue.`);
+    }
+    const camadas: Camada[] = comVazios(disco, 0, eb, vazios);
     camadas.push({ region: diffRegion(circulo(0, 0, r1, 48), furo), z0: eb, z1: eb + num(v, 'altura') });
-    // Aletas: degraus que encurtam para fora (perfil de rampa sem precisar de suporte).
-    const n = num(v, 'aletas'), H = num(v, 'alturaAleta'), alcance = R * 0.75 - r1, degraus = 6;
+    // Aletas: o alcance diminui com a altura (perfil curvo como um filete, ou rampa reta),
+    // sempre para dentro: nada fica no ar.
+    const n = num(v, 'aletas'), H = num(v, 'alturaAleta'), alcance = (R * num(v, 'alcance')) / 100 - r1;
+    const curvo = txt(v, 'perfil') !== 'reto';
+    const degraus = Math.max(6, Math.round(H / 0.4));
     for (let d = 0; d < degraus; d++) {
-      const ate = r1 + alcance * (1 - d / degraus);
+      const t = (d + 0.5) / degraus;
+      const f = curvo ? 1 - Math.sqrt(1 - (1 - t) ** 2) : 1 - t;
+      const ate = r1 + Math.max(0.6, alcance * f);
       const aletas = unir(Array.from({ length: n }, (_, k) => rotateRegion(retanguloArredondado((r1 + ate) / 2 - 0.2, 0, ate - r1 + 0.4, num(v, 'espAleta'), 0), (360 * k) / n)));
       camadas.push({ region: diffRegion(aletas, circulo(0, 0, r1 - 0.01, 48)), z0: eb + (H * d) / degraus, z1: eb + (H * (d + 1)) / degraus });
     }
-    return { itens: [{ nome: 'Suporte', pecas: [{ nome: 'Suporte', cor: 0, camadas }] }], cores: ['Suporte'], hex: [txt(v, 'cor')], avisos: [] };
+    return { itens: [{ nome: 'Suporte', pecas: [{ nome: 'Suporte', cor: 0, camadas }] }], cores: ['Suporte'], hex: [txt(v, 'cor')], avisos: [], notas };
   },
 };
 
@@ -135,6 +155,7 @@ export const flocoNeve: Receita = {
     { tipo: 'numero', id: 'tamanho', rotulo: 'Tamanho', grupo: 'Floco', padrao: 80, min: 40, max: 200, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'traco', rotulo: 'Espessura das linhas', grupo: 'Floco', padrao: 3.2, min: 1.5, max: 8, passo: 0.1, unidade: 'mm' },
     { tipo: 'numero', id: 'ramos', rotulo: 'Ramos por braço', grupo: 'Floco', padrao: 2, min: 1, max: 3, passo: 1, unidade: '' },
+    { tipo: 'svg', id: 'desenho', rotulo: 'Desenho próprio (opcional)', grupo: 'Floco', padrao: '', dica: 'SVG, PNG ou JPG no lugar do floco: o nome vai no meio dele' },
     { tipo: 'numero', id: 'espessura', rotulo: 'Espessura', grupo: 'Floco', padrao: 3, min: 1.5, max: 6, passo: 0.1, unidade: 'mm' },
     { tipo: 'numero', id: 'espNome', rotulo: 'Altura do nome', grupo: 'Floco', padrao: 1, min: 0.4, max: 3, passo: 0.1, unidade: 'mm' },
     cor('corFloco', 'Floco', '#bae6fd'),
@@ -146,13 +167,14 @@ export const flocoNeve: Receita = {
     const fonte = ctx.fonte(txt(v, 'fonte'));
     const reserva = temEmoji(txt(v, 'nomes')) ? ctx.fonte('noto-emoji') : undefined;
     const w = num(v, 'tamanho'), E = num(v, 'espessura');
-    const desenho = floco(w, num(v, 'traco'), num(v, 'ramos'));
+    const proprio = desenho(v, 'desenho');
+    const figura = proprio ? ajustarLargura(proprio.regiao, w) : floco(w, num(v, 'traco'), num(v, 'ramos'));
     const lista = nomesDoLote(txt(v, 'nomes'));
     const nomes = lista.length ? lista.slice(0, LOTE_MAX) : [''];
     const itens: Item[] = nomes.map((nome) => {
       const t = nome ? textoNaCaixa([nome], { fonte, reserva, maxW: w * 0.62, maxH: w * 0.2 }) : null;
       const placaNome = t?.letras.length ? semBuracos(contornar(t.regiao, Math.max(2, num(v, 'traco') * 0.7))) : [];
-      const corpo = comArgola(unir([desenho, placaNome]), 'topo', 4, 2);
+      const corpo = comArgola(unir([figura, placaNome]), 'topo', 4, 2);
       const pecas = [{ nome: 'Floco', cor: 0, camadas: [{ region: corpo, z0: 0, z1: E }] }];
       if (t?.letras.length) pecas.push({ nome: 'Nome', cor: 1, camadas: [{ region: t.regiao, z0: E, z1: E + num(v, 'espNome') }] });
       return { nome: nome || 'Floco', pecas };

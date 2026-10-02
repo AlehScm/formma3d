@@ -10,14 +10,16 @@ import type { Font } from 'opentype.js';
 import { diffRegion, intersectRegion, regionArea, regionBounds, scaleRegion, translateRegion, type Region } from '../../geom/region';
 import { circulo, contornar, semBuracos, temEmoji, textoNaCaixa, unir } from '../formas';
 import { espelharX } from '../figuras';
-import { emGrade, LOTE_MAX } from '../lote';
+import { argolaNaDirecao, emGrade, LOTE_MAX } from '../lote';
 import { comVazios, torneado, type Vazio } from '../solidos';
 import { AVISO_EXEMPLO, campoDesenho, desenhoNoTamanho, nomeDoDesenho } from './desenho';
 import { ficha } from './fichas';
 import type { Camada, Contexto, Item, Parametro, Peca, Receita, Resultado, Valores } from '../tipos';
-import { desenho, liga, num, txt } from '../tipos';
+import { desenho, liga, num, soCoresUsadas, txt } from '../tipos';
 
 const cor = (id: string, rotulo: string, padrao: string): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao });
+/** Id da imagem i: 'desenho', 'desenho2', 'desenho3'... */
+const sufixo = (i: number) => (i ? String(i + 1) : '');
 const mm = (id: string, rotulo: string, grupo: string, padrao: number, min: number, max: number, passo = 0.1, dica?: string, visivel?: (v: Valores) => boolean): Parametro =>
   ({ tipo: 'numero', id, rotulo, grupo, padrao, min, max, passo, unidade: 'mm', dica, visivel });
 
@@ -37,14 +39,22 @@ function marcaEmbaixo(texto: string, fonte: Font, area: Region, tamanho: number)
 const camposMarca = (padraoTamanho: number, max: number): Parametro[] => [
   { tipo: 'texto', id: 'marca', rotulo: 'Marca embaixo', grupo: 'Marca', padrao: '', maxCaracteres: 12, dica: 'Uma letra ou palavra curta, embutida na face de baixo' },
   { tipo: 'fonte', id: 'fonteMarca', rotulo: 'Fonte da marca', grupo: 'Marca', padrao: 'bebas-neue', visivel: (v) => !!v.marca },
-  mm('tamanhoMarca', 'Tamanho da marca', 'Marca', padraoTamanho, 2, max, 0.5, undefined, (v) => !!v.marca),
+  { ...campoDesenho('Ou o logo da marca'), id: 'marcaDesenho', grupo: 'Marca', visivel: (v: Valores) => !v.marca },
+  mm('tamanhoMarca', 'Tamanho da marca', 'Marca', padraoTamanho, 2, max, 0.5, undefined, (v) => !!v.marca || !!v.marcaDesenho),
 ];
 
 /** Placa (ou corpo) com a marca embutida embaixo: devolve as pecas da base e da marca. */
 function comMarca(v: Valores, ctx: Contexto, area: Region, corpo: (vazios: Vazio[]) => Peca, corMarca: number): { pecas: Peca[]; avisos: string[] } {
   const texto = txt(v, 'marca').trim();
-  if (!texto) return { pecas: [corpo([])], avisos: [] };
-  const m = marcaEmbaixo(texto, ctx.fonte(txt(v, 'fonteMarca')), area, num(v, 'tamanhoMarca'));
+  const logo = desenho(v, 'marcaDesenho');
+  if (!texto && !logo) return { pecas: [corpo([])], avisos: [] };
+  let m: Region;
+  if (texto) m = marcaEmbaixo(texto, ctx.fonte(txt(v, 'fonteMarca')), area, num(v, 'tamanhoMarca'));
+  else {
+    const b = regionBounds(area), lb = regionBounds(logo!.regiao);
+    const k = Math.min(num(v, 'tamanhoMarca'), b.w * 0.7, b.h * 0.7) / Math.max(lb.w, lb.h);
+    m = intersectRegion(espelharX(translateRegion(scaleRegion(translateRegion(logo!.regiao, -(lb.minX + lb.maxX) / 2, -(lb.minY + lb.maxY) / 2), k), -(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2)), contornar(area, -0.8));
+  }
   if (regionArea(m) < 0.3) return { pecas: [corpo([])], avisos: ['A marca não coube embaixo do carimbo.'] };
   return { pecas: [corpo([{ regiao: m, z0: 0, z1: 0.6 }]), { nome: 'Marca', cor: corMarca, camadas: [{ region: m, z0: 0, z1: 0.6 }] }], avisos: [] };
 }
@@ -128,7 +138,7 @@ export const carimboMolde: Receita = {
 export const carimboCircular: Receita = {
   ...ficha('carimbo-circular'),
   parametros: [
-    campoDesenho('Imagem'),
+    ...camposImagens(6, 'Imagem'),
     mm('tamanho', 'Tamanho da imagem', 'Imagem', 46, 2, 60, 0.5),
     mm('xImagem', 'Posição X', 'Imagem', 0, -30, 30, 0.5),
     mm('yImagem', 'Posição Y', 'Imagem', 0, -30, 30, 0.5),
@@ -139,6 +149,8 @@ export const carimboCircular: Receita = {
     mm('alturaCorpo', 'Altura do corpo', 'Carimbo', 28, 10, 42, 1),
     mm('dBase', 'Diâmetro embaixo', 'Carimbo', 40, 10, 60, 0.5, 'Na mesa'),
     mm('dTopo', 'Diâmetro em cima', 'Carimbo', 60, 10, 60, 0.5, 'Onde fica o desenho'),
+    { tipo: 'liga', id: 'argola', rotulo: 'Argola de chaveiro', grupo: 'Carimbo', padrao: false, dica: 'Aba com furo na base, rente à mesa' },
+    mm('furoArgola', 'Furo da argola', 'Carimbo', 3.4, 2, 8, 0.1, undefined, (v) => v.argola === true),
     ...camposMarca(20, 30),
     cor('corBase', 'Corpo', '#e2557a'),
     cor('corTopo', 'Desenho', '#ffffff'),
@@ -152,18 +164,31 @@ export const carimboCircular: Receita = {
     // Abrir mais que 45 graus vira balanco: limita o quanto o corpo abre.
     if (rt - rb > Hc) avisos.push('O corpo abre mais que 45°: aumente a altura ou aproxime os diâmetros.');
     const topo = circulo(0, 0, rt, 128);
-    const { regiao, exemplo } = desenhoNoTamanho(v, 'desenho', num(v, 'tamanho'));
-    if (exemplo) avisos.push(AVISO_EXEMPLO);
-    let D = translateRegion(regiao, num(v, 'xImagem'), num(v, 'yImagem'));
-    if (liga(v, 'espelhar')) D = espelharX(D);
-    if (liga(v, 'borda')) D = unir([D, diffRegion(topo, contornar(topo, -num(v, 'espBorda')))]);
-    if (regionArea(diffRegion(D, topo)) > 0.5) avisos.push('A imagem passa da borda do carimbo: diminua o tamanho ou mude a posição.');
-    D = intersectRegion(D, topo);
     const base = circulo(0, 0, rb, 128);
-    const corpo = (vazios: Vazio[]): Peca => ({ nome: 'Corpo', cor: 0, camadas: furarFundo(torneado((z) => rb + (rt - rb) * Math.min(1, z / Hc), 0, Hc, 0.3, 128), vazios) });
-    const m = comMarca(v, ctx, base, corpo, 2);
-    const pecas = [m.pecas[0]!, { nome: 'Desenho', cor: 1, camadas: [{ region: D, z0: Hc, z1: Hc + num(v, 'relevo') }] }, ...m.pecas.slice(1)];
-    return { itens: [{ nome: nomeDoDesenho(v, 'desenho') || 'Carimbo', pecas }], cores, hex, avisos: [...avisos, ...m.avisos] };
+    const argola = liga(v, 'argola') ? argolaNaDirecao(base, 0, 1, num(v, 'furoArgola'), 1.8) : null;
+    if (argola && rt > rb + 0.5) avisos.push('A argola fica embaixo da borda do topo: para chaveiro, use o topo do tamanho da base.');
+    const itens: Item[] = [];
+    for (const id of idsComImagem(v, 6)) {
+      const { regiao, exemplo } = desenhoNoTamanho(v, id, num(v, 'tamanho'));
+      if (exemplo) avisos.push(AVISO_EXEMPLO);
+      let D = translateRegion(regiao, num(v, 'xImagem'), num(v, 'yImagem'));
+      if (liga(v, 'espelhar')) D = espelharX(D);
+      if (liga(v, 'borda')) D = unir([D, diffRegion(topo, contornar(topo, -num(v, 'espBorda')))]);
+      if (regionArea(diffRegion(D, topo)) > 0.5) avisos.push('A imagem passa da borda do carimbo: diminua o tamanho ou mude a posição.');
+      D = intersectRegion(D, topo);
+      const corpo = (vazios: Vazio[]): Peca => {
+        const camadas = furarFundo(torneado((z) => rb + (rt - rb) * Math.min(1, z / Hc), 0, Hc, 0.3, 128), vazios);
+        if (!argola) return { nome: 'Corpo', cor: 0, camadas };
+        // A aba da argola so nos primeiros 2,4 mm.
+        const ea = Math.min(2.4, Hc);
+        const comAba = camadas.flatMap((c) => (c.z0 >= ea ? [c] : c.z1 <= ea ? [{ ...c, region: diffRegion(unir([c.region, argola.disco]), argola.furo) }] : [{ ...c, z1: ea, region: diffRegion(unir([c.region, argola.disco]), argola.furo) }, { ...c, z0: ea }]));
+        return { nome: 'Corpo', cor: 0, camadas: comAba };
+      };
+      const m = comMarca(v, ctx, base, corpo, 2);
+      avisos.push(...m.avisos);
+      itens.push({ nome: nomeDoDesenho(v, id) || 'Carimbo', pecas: [m.pecas[0]!, { nome: 'Desenho', cor: 1, camadas: [{ region: D, z0: Hc, z1: Hc + num(v, 'relevo') }] }, ...m.pecas.slice(1)] });
+    }
+    return soCoresUsadas({ itens: itens.length > 1 ? emGrade(itens) : itens, cores, hex, avisos: [...new Set(avisos)] });
   },
 };
 
@@ -244,18 +269,23 @@ export const carimboLetras: Receita = {
   },
 };
 
-const IMAGENS = 4;
+const IMAGENS = 6;
 
-/** Carimbos de doce com imagem: ate 4 imagens, um carimbo para cada. */
+/** Carimbos de doce com imagem: ate 6 imagens, cada uma com tamanho e posicao proprios. */
 export const carimboImagem: Receita = {
   ...ficha('carimbo-imagem'),
   parametros: [
-    ...Array.from({ length: IMAGENS }, (_, i): Parametro => ({
-      ...campoDesenho(`Imagem ${i + 1}`), id: i ? `desenho${i + 1}` : 'desenho', grupo: 'Imagens',
-      ...(i ? { visivel: (v: Valores) => !!v[i === 1 ? 'desenho' : `desenho${i}`] } : {}),
-    })),
-    mm('tamanho', 'Tamanho da imagem', 'Imagens', 16, 2, 40, 0.5, 'Lado maior'),
-    { tipo: 'liga', id: 'preencher', rotulo: 'Só a silhueta', grupo: 'Imagens', padrao: false, dica: 'Preenche os vazios do desenho: marca só a forma de fora' },
+    ...Array.from({ length: IMAGENS }, (_, i): Parametro[] => {
+      const s = sufixo(i), g = `Imagem ${i + 1}`;
+      const tem = (v: Valores) => !!v[`desenho${s}`];
+      return [
+        { ...campoDesenho(`Imagem ${i + 1}`), id: `desenho${s}`, grupo: g, ...(i ? { visivel: (v: Valores) => !!v[`desenho${sufixo(i - 1)}`] } : {}) },
+        mm(`tamanho${s}`, 'Tamanho (lado maior)', g, 16, 2, 40, 0.5, undefined, i ? tem : undefined),
+        mm(`x${s}`, 'Posição X', g, 0, -20, 20, 0.5, undefined, i ? tem : undefined),
+        mm(`y${s}`, 'Posição Y', g, 0, -20, 20, 0.5, undefined, i ? tem : undefined),
+        { tipo: 'liga', id: `preencher${s}`, rotulo: 'Só a silhueta', grupo: g, padrao: false, dica: 'Preenche os vazios do desenho: marca só a forma de fora', ...(i ? { visivel: tem } : {}) },
+      ];
+    }).flat(),
     ...camposCorpoDoce(22, 40),
     ...camposMarca(8, 10),
     cor('corBase', 'Corpo', '#e2557a'),
@@ -264,19 +294,33 @@ export const carimboImagem: Receita = {
   fontes: (v) => (String(v.marca ?? '').trim() ? [String(v.fonteMarca)] : []),
   gerar(v, ctx): Resultado {
     const cores = ['Corpo', 'Desenho'], hex = [txt(v, 'corBase'), txt(v, 'corTopo')];
-    const ids = ['desenho', ...Array.from({ length: IMAGENS - 1 }, (_, i) => `desenho${i + 2}`)].filter((id, i) => i === 0 || desenho(v, id));
     const avisos: string[] = [];
     const itens: Item[] = [];
-    for (const id of ids) {
+    for (let i = 0; i < IMAGENS; i++) {
+      const s = sufixo(i), id = `desenho${s}`;
+      if (i && !desenho(v, id)) continue;
       const { regiao, exemplo } = desenhoNoTamanho(v, id, 100);
       if (exemplo) avisos.push(AVISO_EXEMPLO);
       if (!regionArea(regiao)) continue;
-      let D = noTamanho(regiao, num(v, 'tamanho'));
-      if (liga(v, 'preencher')) D = semBuracos(D);
-      const r = carimboDoce(nomeDoDesenho(v, id) || 'Carimbo', D, v, ctx);
+      let D = translateRegion(noTamanho(regiao, num(v, `tamanho${s}`)), num(v, `x${s}`), num(v, `y${s}`));
+      if (liga(v, `preencher${s}`)) D = semBuracos(D);
+      const r = carimboDoce(nomeDoDesenho(v, id) || `Carimbo ${i + 1}`, D, v, ctx);
       itens.push(r.item);
       avisos.push(...r.avisos);
     }
     return { itens: emGrade(itens), cores, hex, avisos: [...new Set(avisos)] };
   },
 };
+
+/** Campos de ate `n` imagens: a seguinte aparece quando a anterior foi escolhida. */
+function camposImagens(n: number, rotulo: string): Parametro[] {
+  return Array.from({ length: n }, (_, i): Parametro => ({
+    ...campoDesenho(n > 1 ? `${rotulo} ${i + 1}` : rotulo), id: `desenho${sufixo(i)}`, grupo: rotulo,
+    ...(i ? { visivel: (v: Valores) => !!v[`desenho${sufixo(i - 1)}`] } : {}),
+  }));
+}
+
+/** Ids das imagens escolhidas (a primeira sempre, com o exemplo se vazia). */
+function idsComImagem(v: Valores, n: number): string[] {
+  return Array.from({ length: n }, (_, i) => `desenho${sufixo(i)}`).filter((id, i) => i === 0 || desenho(v, id));
+}

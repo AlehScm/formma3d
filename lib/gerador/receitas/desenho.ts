@@ -5,7 +5,8 @@
  */
 import { diffRegion, regionBounds, scaleRegion, translateRegion, type Region } from '../../geom/region';
 import { coresDe, empilhar, hexDe, lerCamadas, parametrosCamadas } from '../camadas';
-import { circulo, contornar, estrela, semBuracos, temEmoji, textoNaCaixa, unir } from '../formas';
+import { ajustarLargura, circulo, contornar, estrela, semBuracos, temEmoji, textoNaCaixa, unir } from '../formas';
+import { espelharX } from '../figuras';
 import { comArgola, LOTE_MAX, loteDeNomes } from '../lote';
 import { ficha } from './fichas';
 import type { Parametro, Receita, Resultado, Valores } from '../tipos';
@@ -66,12 +67,20 @@ export const logoCamadas: Receita = {
 export const chaveiroDesenho: Receita = {
   ...ficha('chaveiro-desenho'),
   parametros: [
-    campoDesenho(),
+    { tipo: 'escolha', id: 'origem', rotulo: 'Em cima vai', grupo: 'Desenho', padrao: 'imagem', opcoes: [{ valor: 'imagem', rotulo: 'Imagem' }, { valor: 'texto', rotulo: 'Texto' }] },
+    { ...campoDesenho(), visivel: (v: Valores) => v.origem !== 'texto' },
+    { tipo: 'texto', id: 'texto', rotulo: 'Texto', grupo: 'Desenho', padrao: 'Ana', maxCaracteres: 40, dica: '"+" quebra a linha; aceita emoji', visivel: (v) => v.origem === 'texto' },
+    { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Desenho', padrao: 'pacifico', visivel: (v) => v.origem === 'texto' },
     { tipo: 'numero', id: 'tamanho', rotulo: 'Tamanho', grupo: 'Desenho', padrao: 50, min: 15, max: 150, passo: 1, unidade: 'mm' },
     campoEixo,
     {
       tipo: 'escolha', id: 'estilo', rotulo: 'Estilo', grupo: 'Chaveiro', padrao: 'relevo',
       opcoes: [{ valor: 'relevo', rotulo: 'Desenho em relevo' }, { valor: 'sobreposto', rotulo: 'Desenho encaixado' }],
+    },
+    {
+      tipo: 'escolha', id: 'face', rotulo: 'Imprimir com o desenho', grupo: 'Chaveiro', padrao: 'cima',
+      opcoes: [{ valor: 'cima', rotulo: 'Para cima (relevo)' }, { valor: 'baixo', rotulo: 'Para baixo (embutido, liso)' }],
+      dica: 'Para baixo: o desenho fica rente à face lisa que encosta na mesa', visivel: (v) => v.estilo !== 'sobreposto',
     },
     { tipo: 'numero', id: 'contornoBase', rotulo: 'Contorno da base', grupo: 'Chaveiro', padrao: 2.5, min: 0.5, max: 10, passo: 0.1, unidade: 'mm' },
     { tipo: 'numero', id: 'espBase', rotulo: 'Espessura da base', grupo: 'Chaveiro', padrao: 2.6, min: 0.6, max: 8, passo: 0.1, unidade: 'mm' },
@@ -90,8 +99,15 @@ export const chaveiroDesenho: Receita = {
     cor('corDesenho', 'Desenho', '#f59e0b'),
     cor('corBorda', 'Borda', '#ffffff', (v) => v.borda === true),
   ],
-  gerar(v): Resultado {
-    const { regiao, exemplo } = desenhoNoTamanho(v, 'desenho', num(v, 'tamanho'), txt(v, 'eixo') === 'altura' ? 'altura' : 'largura');
+  fontes: (v) => (v.origem === 'texto' ? [String(v.fonte), ...(temEmoji(String(v.texto ?? '')) ? ['noto-emoji'] : [])] : []),
+  gerar(v, ctx): Resultado {
+    const eixo = txt(v, 'eixo') === 'altura' ? 'altura' : 'largura';
+    let regiao: Region, exemplo = false;
+    if (txt(v, 'origem') === 'texto') {
+      const t = txt(v, 'texto').trim();
+      const tc = t ? textoNaCaixa(t.split('+'), { fonte: ctx.fonte(txt(v, 'fonte')), reserva: temEmoji(t) ? ctx.fonte('noto-emoji') : undefined, maxW: 1000, maxH: 1000, entrelinha: 1 }).regiao : [];
+      regiao = tc.length ? (eixo === 'altura' ? scaleRegion(tc, num(v, 'tamanho') / regionBounds(tc).h) : ajustarLargura(tc, num(v, 'tamanho'))) : [];
+    } else ({ regiao, exemplo } = desenhoNoTamanho(v, 'desenho', num(v, 'tamanho'), eixo));
     const borda = liga(v, 'borda');
     const cores = borda ? ['Base', 'Desenho', 'Borda'] : ['Base', 'Desenho'];
     const hex = borda ? [txt(v, 'corBase'), txt(v, 'corDesenho'), txt(v, 'corBorda')] : [txt(v, 'corBase'), txt(v, 'corDesenho')];
@@ -108,16 +124,26 @@ export const chaveiroDesenho: Receita = {
       const rebaixo = contornar(regiao, num(v, 'folga'));
       pecas.push({ nome: 'Base', cor: 0, camadas: [{ region: base, z0: 0, z1: eb - p }, { region: diffRegion(base, rebaixo), z0: eb - p, z1: eb }] });
       pecas.push({ nome: 'Desenho', cor: 1, camadas: [{ region: regiao, z0: eb - p, z1: eb - p + ed }] });
+    } else if (txt(v, 'face') === 'baixo') {
+      // Face para baixo: desenho e borda embutidos rente a mesa, espelhados (le-se virando a peca).
+      const e = Math.min(ed, eb - 0.4);
+      const anel = borda ? diffRegion(contorno, contornar(contorno, -num(v, 'larguraBorda'))) : [];
+      const des = diffRegion(espelharX(regiao), anel);
+      const anelM = espelharX(anel);
+      const baseM = espelharX(base);
+      pecas.push({ nome: 'Base', cor: 0, camadas: [{ region: diffRegion(baseM, unir([des, anelM])), z0: 0, z1: e }, { region: baseM, z0: e, z1: eb }] });
+      pecas.push({ nome: 'Desenho', cor: 1, camadas: [{ region: des, z0: 0, z1: e }] });
+      if (borda) pecas.push({ nome: 'Borda', cor: 2, camadas: [{ region: anelM, z0: 0, z1: e }] });
     } else {
       pecas.push({ nome: 'Base', cor: 0, camadas: [{ region: base, z0: 0, z1: eb }] });
       pecas.push({ nome: 'Desenho', cor: 1, camadas: [{ region: regiao, z0: eb, z1: eb + ed }] });
     }
-    if (borda) {
+    if (borda && txt(v, 'face') !== 'baixo') {
       const w = num(v, 'larguraBorda');
       const anel = diffRegion(contorno, contornar(contorno, -w));
       pecas.push({ nome: 'Borda', cor: 2, camadas: [{ region: anel, z0: eb, z1: eb + ed }] });
     }
-    return { itens: [{ nome: nomeDoDesenho(v, 'desenho') || 'Chaveiro', pecas }], cores, hex, avisos };
+    return { itens: [{ nome: (txt(v, 'origem') === 'texto' ? txt(v, 'texto').replace(/\+/g, ' ') : nomeDoDesenho(v, 'desenho')) || 'Chaveiro', pecas }], cores, hex, avisos };
   },
 };
 

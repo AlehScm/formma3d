@@ -1,5 +1,5 @@
 /** Varios nomes numa geracao so: cada nome vira um item, em grade, prontos para uma mesa. */
-import { diffRegion, translateRegion, type Region } from '../geom/region';
+import { diffRegion, pointInContour, regionBounds, translateRegion, type Region } from '../geom/region';
 import { circulo, unir } from './formas';
 import { caixaDoItem } from './malha';
 import { txt, type Item, type Valores } from './tipos';
@@ -73,8 +73,21 @@ export function comArgola(base: Region, lado: string, furo: number, aro: number)
 export function argolaNaDirecao(base: Region, dx: number, dy: number, furo: number, aro: number): { disco: Region; furo: Region; cx: number; cy: number } {
   const rf = furo / 2, R = rf + aro;
   const pts = base.flatMap((p) => p.outer);
-  const mede = (q: { x: number; y: number }) => q.x * dx + q.y * dy;
-  const extremo = pts.reduce((a, b) => (mede(b) > mede(a) ? b : a));
+  type P = { x: number; y: number };
+  const mede = (q: P) => q.x * dx + q.y * dy;
+  const perp = (q: P) => -q.x * dy + q.y * dx;
+  const max = Math.max(...pts.map(mede));
+  // Borda reta (pontos empatados no extremo): o furo vai no ponto dela mais perto da
+  // linha do centro da base, e nao num canto.
+  const b = regionBounds(base);
+  const centro = perp({ x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 });
+  const empatados = pts.filter((q) => mede(q) >= max - 0.05);
+  const ps = empatados.map(perp);
+  const alvo = Math.min(Math.max(centro, Math.min(...ps)), Math.max(...ps));
+  const perto = empatados.reduce((a, c) => (Math.abs(perp(c) - alvo) < Math.abs(perp(a) - alvo) ? c : a));
+  // So vale o ponto da linha do centro se ali for borda mesmo (e nao o vao entre duas pontas).
+  const dentro = (m: number) => base.some((p) => pointInContour(p.outer, { x: m * dx - alvo * dy, y: m * dy + alvo * dx }) && !p.holes.some((h) => pointInContour(h, { x: m * dx - alvo * dy, y: m * dy + alvo * dx })));
+  const extremo = empatados.length > 1 && dentro(max - 0.3) ? { x: max * dx - alvo * dy, y: max * dy + alvo * dx } : perto;
   const cx = extremo.x + rf * dx, cy = extremo.y + rf * dy;
   return { disco: circulo(cx, cy, R), furo: circulo(cx, cy, rf, 48), cx, cy };
 }
