@@ -9,13 +9,13 @@
 import { diffRegion, intersectRegion, regionArea, regionBounds, translateRegion, type Region } from '../../geom/region';
 import { circulo, contornar, retanguloArredondado, semBuracos, unir } from '../formas';
 import { espelharX } from '../figuras';
-import { argolaNaDirecao } from '../lote';
+import { argolaNaDirecao, emGrade } from '../lote';
 import { comVazios } from '../solidos';
 import { formaPadrao } from './cortadores';
 import { AVISO_EXEMPLO, campoDesenho, campoEixo, desenhoNoTamanho, nomeDoDesenho } from './desenho';
 import { ficha } from './fichas';
 import type { Item, Parametro, Peca, Receita, Resultado, Valores } from '../tipos';
-import { liga, num, txt } from '../tipos';
+import { desenho, liga, num, txt } from '../tipos';
 
 const cor = (id: string, rotulo: string, padrao: string, visivel?: (v: Valores) => boolean): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao, visivel });
 const mm = (id: string, rotulo: string, grupo: string, padrao: number, min: number, max: number, passo = 0.1, dica?: string, visivel?: (v: Valores) => boolean): Parametro =>
@@ -32,6 +32,7 @@ export const colorir: Receita = {
   ...ficha('colorir'),
   parametros: [
     campoDesenho('Desenho de linhas'),
+    ...[2, 3, 4].map((n): Parametro => ({ ...campoDesenho(`Desenho ${n}`), id: `desenho${n}`, visivel: (v: Valores) => !!v[n === 2 ? 'desenho' : `desenho${n - 1}`] })),
     {
       tipo: 'escolha', id: 'modo', rotulo: 'Tipo', grupo: 'Desenho', padrao: 'relevo',
       opcoes: [{ valor: 'relevo', rotulo: 'Linhas em relevo' }, { valor: 'duas', rotulo: 'Duas partes' }, { valor: 'afundado', rotulo: 'Linhas afundadas' }],
@@ -54,6 +55,16 @@ export const colorir: Receita = {
     cor('corLinhas', 'Linhas', '#111111'),
   ],
   gerar(v): Resultado {
+    // Ate 4 desenhos numa geracao: cada um vira uma pagina.
+    const ids = ['desenho', 'desenho2', 'desenho3', 'desenho4'].filter((id, k) => !k || desenho(v, id));
+    if (ids.length === 1) return colorirUma(v);
+    const rs = ids.map((id) => colorirUma({ ...v, desenho: v[id]! }));
+    return { itens: emGrade(rs.flatMap((r) => r.itens), 2, 10), cores: rs[0]!.cores, hex: rs[0]!.hex, avisos: [...new Set(rs.flatMap((r) => r.avisos))], notas: rs[0]!.notas };
+  },
+};
+
+function colorirUma(v: Valores): Resultado {
+  {
     const cores = ['Base', 'Linhas'], hex = [txt(v, 'corBase'), txt(v, 'corLinhas')];
     const avisos: string[] = [];
     const forma = txt(v, 'forma');
@@ -108,8 +119,8 @@ export const colorir: Receita = {
       ] }],
       cores, hex, avisos,
     };
-  },
-};
+  }
+}
 
 /**
  * Chaveiro (ou placa) com bordas altas para resina: base na silhueta com margem, desenho

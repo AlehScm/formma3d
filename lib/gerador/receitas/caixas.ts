@@ -35,6 +35,8 @@ export const caixaFigurinhas: Receita = {
     mm('parede', 'Parede', 'Caixa', 1.2, 0.8, 4),
     mm('base', 'Fundo', 'Caixa', 1.2, 0.8, 4),
     mm('corte', 'Largura dos cortes para pegar', 'Caixa', 14, 0, 40, 0.5, '0 = sem cortes'),
+    { tipo: 'liga', id: 'suporte', rotulo: 'Suporte removível', grupo: 'Caixa', padrao: true, dica: 'Bandeja com puxador em cada compartimento: levanta a pilha de figurinhas' },
+    mm('folgaSuporte', 'Folga do suporte', 'Caixa', 1.3, 0.4, 3, 0.1, undefined, (v) => v.suporte === true),
     mm('folgaTampa', 'Folga da tampa', 'Tampa', 0.23, 0.1, 0.6, 0.01),
     mm('aro', 'Altura do aro da tampa', 'Tampa', 3, 1.5, 8, 0.5),
     { ...campoDesenho('Logo na tampa'), grupo: 'Tampa' },
@@ -46,7 +48,7 @@ export const caixaFigurinhas: Receita = {
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte do nome', grupo: 'Fundo', padrao: 'bebas-neue', visivel: (v) => !!v.nome },
     { tipo: 'numero', id: 'escalaNome', rotulo: 'Tamanho do nome', grupo: 'Fundo', padrao: 60, min: 20, max: 100, passo: 1, unidade: '%', visivel: (v) => !!v.nome },
     cor('corCaixa', 'Caixa', '#ffef00'),
-    cor('corTampa', 'Tampa', '#228b22'),
+    cor('corTampa', 'Tampa e suporte', '#228b22'),
     cor('corLogo', 'Logo e nome', '#ffffff'),
   ],
   fontes: (v) => (String(v.nome ?? '').trim() ? [String(v.fonte), ...(temEmoji(String(v.nome)) ? ['noto-emoji'] : [])] : []),
@@ -83,6 +85,13 @@ export const caixaFigurinhas: Receita = {
     const tampa: Peca[] = [{ nome: 'Tampa', cor: 1, camadas: [...comVazios(fora, 0, 1.2, regionArea(logoM) > 0.3 ? [{ regiao: logoM, z0: 0, z1: 0.6 }] : []), { region: aro, z0: 1.2, z1: 1.2 + num(v, 'aro') }] }];
     if (regionArea(logoM) > 0.3) tampa.push({ nome: 'Logo', cor: 2, camadas: [{ region: logoM, z0: 0, z1: 0.6 }] });
     const itens: Item[] = [{ nome: 'Caixa', pecas: pecasCaixa }, { nome: 'Tampa', pecas: tampa }];
+    if (v.suporte === true) {
+      // Bandeja fina na medida da celula (menos a folga) com uma alca que sobe ate a borda.
+      const fs = num(v, 'folgaSuporte');
+      const bandeja = retanguloArredondado(0, 0, cw - 2 * fs, ch - 2 * fs, 1);
+      const alca = retanguloArredondado(0, ch / 2 - fs - 6, Math.min(16, cw * 0.4), 12, 2);
+      for (let i = 0; i < n; i++) itens.push({ nome: `Suporte ${i + 1}`, pecas: [{ nome: 'Suporte', cor: 1, camadas: [{ region: bandeja, z0: 0, z1: 1.2 }, { region: diffRegion(alca, retanguloArredondado(0, ch / 2 - fs - 6, Math.min(16, cw * 0.4) - 4, 8, 1)), z0: 1.2, z1: 1.2 + Math.max(4, P * 0.6) }] }] });
+    }
     return soCoresUsadas({ itens: emGrade(itens, 1, 8), cores, hex, avisos, notas: ['A tampa imprime com o topo na mesa (o logo fica rente) e o aro para cima.'] });
   },
 };

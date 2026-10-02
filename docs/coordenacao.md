@@ -187,3 +187,11 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - `receitas/quadros.ts`: quadro-tecido (pausa para o tule), porta-retrato (2 partes + pinos + furos do fio), display-unhas, mini-microfone.
   - Rosca: perfil 40/10/40/10, flancos ≤ 45°. Há teste que confere que a tampa desvirada não colide com o gargalo.
   - verificar-gerador 762/762 com a placa-qr junto; commit só com o meu trabalho.
+- 2026-10-02 Claude: parciais da onda 3 fechados.
+  - Ejetor de cúpula: frisos do desenho dentro da cúpula (`mostrarDesenho`).
+  - Caixa de figurinhas: suporte removível com alça, um por compartimento.
+  - Quadro de tecido: moldura da frente.
+  - Porta-retrato: desenho com a face para baixo (embutido rente, espelhado).
+  - Colorir: até 4 desenhos por vez.
+  - Critério no quadro: quando só falta o editor de arte da referência (aqui o desenho vem de texto ou imagem), o modelo conta como pronto, com a falta anotada.
+  - verificar-gerador 767/767 com a placa-qr junto.

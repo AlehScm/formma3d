@@ -3,18 +3,18 @@
 Gerado de `lib/gerador/cobertura.ts` por `npx tsx scripts/cobertura.mts`; não editar à mão.
 Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 
-**76 prontos · 26 parciais · 15 pendentes** de 117.
+**80 prontos · 22 parciais · 15 pendentes** de 117.
 
 | Onda | Claude | ChatGPT |
 |---|---:|---:|
-| já coberto | 76 | 0 |
+| já coberto | 80 | 0 |
 | 1 | 0 | 1 |
-| 2 | 9 | 15 |
-| 3 | 16 | 0 |
+| 2 | 8 | 15 |
+| 3 | 13 | 0 |
 
 | Modelo | Dono | Receita | Status | Onda | Falta |
 |---|---|---|---|---:|---|
-| [Porta-Retrato Suspenso](https://www.mafagrafos.com/models/hanging-photo-holder) | Claude | `porta-retrato` | Parcial | 3 | modos de cor (face para baixo, uma cor por camada); editor de arte |
+| [Porta-Retrato Suspenso](https://www.mafagrafos.com/models/hanging-photo-holder) | Claude | `porta-retrato` | Parcial | 3 | modo uma cor por camada; editor de arte |
 | [Carimbos de Massinha](https://www.mafagrafos.com/models/play-douh-stamps) | Claude | `carimbos-massinha` | Pronto | 0 | — |
 | [Enfeite Floco de Neve](https://www.mafagrafos.com/models/snowflake-ornament) | Claude | `floco-neve` | Pronto | 0 | — |
 | [Mini-Microfone](https://www.mafagrafos.com/models/mini-microphone) | Claude | `mini-microfone` | Parcial | 3 | cavidade moldada do microfone (aqui furo retangular nas medidas) |
@@ -23,7 +23,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Gerador de Chaveiro](https://www.mafagrafos.com/models/keychain-generator) | Claude | `chaveiro-desenho` | Pronto | 0 | — |
 | [Gerador de Porta-Canetas](https://www.mafagrafos.com/models/design-pen-holder) | Claude | `porta-canetas-design` | Pronto | 0 | — |
 | [Chaveiro Carretel de Filamento com NFC](https://www.mafagrafos.com/models/filament-spool) | Claude | `chaveiro-carretel` | Pronto | 0 | — |
-| [Quadro de Tecido](https://www.mafagrafos.com/models/fabric-floating-sign) | Claude | `quadro-tecido` | Parcial | 3 | tampa frontal; editor de arte |
+| [Quadro de Tecido](https://www.mafagrafos.com/models/fabric-floating-sign) | Claude | `quadro-tecido` | Pronto | 0 | editor de arte (o desenho vem de texto ou imagem) |
 | [Cartão de Visita com Tecido](https://www.mafagrafos.com/models/fabric-business-card) | ChatGPT | — | Pendente | 2 | cartão em camadas com tecido, NFC e QR |
 | [Cartão de Visita](https://www.mafagrafos.com/models/regular-business-card) | ChatGPT | — | Pendente | 2 | texto + QR, face para cima/baixo |
 | [Placas Profissionais](https://www.mafagrafos.com/models/profession) | ChatGPT | — | Parcial | 1 | editor de placa existe; falta receita com símbolo, nome e base que encaixa |
@@ -40,7 +40,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [@social - Luminária de LED](https://www.mafagrafos.com/models/social-handle-simple-lamp) | Claude | `luminaria-social` | Parcial | 3 | conferir encaixe da frente impresso |
 | [Chaveiro com Nome e Logo](https://www.mafagrafos.com/models/logo-text-keychain) | Claude | `chaveiro-logo-nome` | Pronto | 0 | — |
 | [Ejetor Arredondado com Escala de Forma](https://www.mafagrafos.com/models/scale-dome-ejector) | Claude | `ejetor-cupula` | Pronto | 0 | texto e logo da marca; pegador |
-| [Ejetor de Cúpula Arredondada](https://www.mafagrafos.com/models/rounded-dome-ejector) | Claude | `ejetor-cupula` | Parcial | 3 | linhas do desenho dentro da cúpula; texto e logo da marca |
+| [Ejetor de Cúpula Arredondada](https://www.mafagrafos.com/models/rounded-dome-ejector) | Claude | `ejetor-cupula` | Pronto | 0 | texto e logo da marca |
 | [Lista Vertical de Códigos QR](https://www.mafagrafos.com/models/vertical-qr-code-list) | ChatGPT | — | Pendente | 2 | QR por tipo (link, WiFi, PIX...) em coluna |
 | [Lista Vertical em Camadas de Códigos QR](https://www.mafagrafos.com/models/layered-vertical-qr-code-list) | ChatGPT | — | Pendente | 2 | QRs em camadas com logo e contato |
 | [Lista Horizontal de Códigos QR](https://www.mafagrafos.com/models/horizontal-qr-code-list) | ChatGPT | — | Pendente | 2 | QR por tipo em linha |
@@ -52,7 +52,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Placa de QRCode com Logo](https://www.mafagrafos.com/models/logo-qr-code-plaque) | ChatGPT | — | Pendente | 2 | QR com logo no centro |
 | [Suporte para Palitos](https://www.mafagrafos.com/models/stick-stand) | Claude | `suporte-palitos` | Pronto | 0 | curva das aletas em degraus de 0,4 mm |
 | [Suporte de Bolo](https://www.mafagrafos.com/models/cake-stand) | Claude | `suporte-bolo` | Pronto | 0 | — |
-| [Caixa de Figurinhas](https://www.mafagrafos.com/models/stickers-box) | Claude | `caixa-figurinhas` | Parcial | 3 | suporte removível das figurinhas |
+| [Caixa de Figurinhas](https://www.mafagrafos.com/models/stickers-box) | Claude | `caixa-figurinhas` | Pronto | 0 | — |
 | [Suporte de Foto com Texto](https://www.mafagrafos.com/models/photo-holder) | Claude | `suporte-foto` | Pronto | 0 | — |
 | [Topo de Bolo Circular com Glitter](https://www.mafagrafos.com/models/circle-glitter-cake-topper) | Claude | `topo-bolo-circular` | Parcial | 2 | desenho do glitter na janela |
 | [Cortadores de Retângulos em Grade](https://www.mafagrafos.com/models/rectangle-cutters) | Claude | `cortadores-grade` | Pronto | 0 | — |
@@ -79,7 +79,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Letra Grande - Nome Rebaixado](https://www.mafagrafos.com/models/big-letter-sunken-name) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Borda para Resina](https://www.mafagrafos.com/models/big-letter-resin-casting) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Fundo Texturizado](https://www.mafagrafos.com/models/big-letter-textured-background) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
-| [Colorir com Bordas em Relevo](https://www.mafagrafos.com/models/raised-borders-coloring) | Claude | `colorir` | Parcial | 2 | até 4 imagens por vez; editor de arte |
+| [Colorir com Bordas em Relevo](https://www.mafagrafos.com/models/raised-borders-coloring) | Claude | `colorir` | Pronto | 0 | editor de arte (o desenho vem de imagem) |
 | [Letra Grande Floral](https://www.mafagrafos.com/models/big-letter-floral-texture) | Claude | `letra-grande` | Parcial | 3 | floral próprio em 2 cores; nome em SVG |
 | [Letra Grande - Fundo de Material](https://www.mafagrafos.com/models/big-letter-shell-eva) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Letra Grande - Brilho](https://www.mafagrafos.com/models/big-letter-sunken-sparkle) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |

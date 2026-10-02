@@ -42,6 +42,9 @@ export const ejetorCupula: Receita = {
     mm('profundidade', 'Altura da cúpula', 'Desenho', 10, 2, 25, 0.5),
     { tipo: 'numero', id: 'curva', rotulo: 'Curva da cúpula', grupo: 'Desenho', padrao: 2, min: 1, max: 4, passo: 0.1, dica: 'Maior = mais redonda no alto' },
     mm('borda', 'Borda do embolo', 'Desenho', 0.6, 0.4, 2, 0.1, 'Aro fino em volta da cúpula'),
+    { tipo: 'liga', id: 'mostrarDesenho', rotulo: 'Linhas do desenho na cúpula', grupo: 'Desenho', padrao: false, dica: 'As linhas da imagem viram frisos dentro da cúpula e marcam o doce' },
+    mm('larguraLinhas', 'Largura das linhas', 'Desenho', 1.2, 0.6, 4, 0.1, undefined, (v) => v.mostrarDesenho === true),
+    mm('altLinhas', 'Altura dos frisos', 'Desenho', 1.2, 0.4, 4, 0.1, undefined, (v) => v.mostrarDesenho === true),
     mm('folga', 'Folga entre casca e êmbolo', 'Medidas', 0.4, 0.2, 3, 0.05),
     mm('alturaEjetor', 'Altura do êmbolo', 'Medidas', 35, 15, 60, 1),
     mm('alturaCasca', 'Altura da casca', 'Medidas', 35, 15, 60, 1),
@@ -69,13 +72,22 @@ export const ejetorCupula: Receita = {
     const b = regionBounds(S), maxRecuo = Math.min(b.w, b.h) / 2 - bw;
     const camadas: Camada[] = [{ region: S, z0: 0, z1: H - P }];
     const n = Math.max(4, Math.round(P / 0.2));
+    // Linhas do desenho dentro da cupula: frisos que sobem `altLinhas` acima da superficie
+    // dela (o doce sai com o desenho marcado), alinhados com a forma da casca.
+    const L = liga(v, 'mostrarDesenho') ? linhasDoDesenho(d.regiao, num(v, 'larguraLinhas')) : [];
+    const k2 = Math.max(1, Math.round(num(v, 'altLinhas') / (P / n)));
+    const cavs: Region[] = [];
     for (let i = 0; i < n; i++) {
       // t: 0 no fundo da cupula, 1 na boca. A meia largura da cavidade segue um quarto de
       // superelipse (k = 2 e um arco de elipse): fundo redondo, parede quase reta na boca.
       const t = (i + 0.5) / n;
       const largura = Math.pow(1 - Math.pow(1 - t, k), 1 / k);
       const recuo = bw + maxRecuo * (1 - largura) * 0.98;
-      const cav = encolhida(S, recuo, porEscala);
+      let cav = encolhida(S, recuo, porEscala);
+      cavs.push(cav);
+      // Friso: ponto da linha que virou cavidade ha menos de k2 camadas continua cheio.
+      const antes = i - k2 >= 0 ? cavs[i - k2]! : [];
+      if (L.length && regionArea(cav) > 0.05) cav = diffRegion(cav, diffRegion(L, antes));
       camadas.push({ region: regionArea(cav) > 0.05 ? diffRegion(S, cav) : S, z0: H - P + (P * i) / n, z1: H - P + (P * (i + 1)) / n });
     }
     const itens: Item[] = [
@@ -234,3 +246,7 @@ export const suporteBolo: Receita = {
   },
 };
 
+/** Linhas de um desenho (para frisos): a borda de cada area, com a largura `w`. */
+function linhasDoDesenho(D: Region, w: number): Region {
+  return diffRegion(contornar(D, w / 2), contornar(D, -w / 2));
+}

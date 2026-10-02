@@ -669,5 +669,22 @@ console.log('\n== onda 3: potes, caixas e quadros ==');
   ok('microfone: furo de 22,6 x 14,6 por 28 mm', perto(regionBounds([{ outer: furoMic, holes: [] }]).w, 22.6, 0.05) && perto(mic.itens[0]!.pecas[0]!.camadas[0]!.z1, 28, 1e-9));
 }
 
+console.log('\n== parciais fechados (onda 3) ==');
+{
+  const sq = JSON.stringify({ nome: 'q.svg', regiao: [{ outer: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], holes: [] }] });
+  const vol = (r: Resultado, nome: string) => r.itens.find((it) => it.nome === nome)!.pecas[0]!.camadas.reduce((s, c) => s + regionArea(c.region) * (c.z1 - c.z0), 0);
+  const ej0 = gerar(receitaPorId('ejetor-cupula')!, { mostrarDesenho: false }), ej1 = gerar(receitaPorId('ejetor-cupula')!, { mostrarDesenho: true, larguraLinhas: 1.2, altLinhas: 1.2 });
+  ok('ejetor: frisos do desenho somam volume dentro da cupula', vol(ej1, 'Êmbolo') > vol(ej0, 'Êmbolo') + 5, `${(vol(ej1, 'Êmbolo') - vol(ej0, 'Êmbolo')).toFixed(1)} mm3`);
+  const cf = gerar(receitaPorId('caixa-figurinhas')!, { caixas: 3, suporte: true });
+  ok('caixa: um suporte por compartimento', cf.itens.filter((it) => it.nome.startsWith('Suporte')).length === 3);
+  const qt = gerar(receitaPorId('quadro-tecido')!, { tampaFrente: 4 });
+  ok('quadro: moldura da frente de 4 mm', qt.itens.some((it) => it.nome === 'Moldura da frente' && it.pecas[0]!.camadas[0]!.z1 === 4));
+  const pr = gerar(receitaPorId('porta-retrato')!, { tamanho: '10x15', face: 'baixo' });
+  const baixo = pr.itens.find((it) => it.nome === 'Moldura de baixo')!;
+  ok('porta-retrato: face para baixo, desenho embutido rente', baixo.pecas.some((p) => p.nome === 'Desenho' && p.camadas[0]!.z0 === 0 && p.camadas[0]!.z1 === 0.6) && !pr.itens.some((it) => it.nome === 'Desenho'));
+  const co = gerar(receitaPorId('colorir')!, { desenho: sq, desenho2: sq, desenho3: sq, tamanho: 40 });
+  ok('colorir: 3 desenhos = 3 paginas', co.itens.length === 3);
+}
+
 console.log(`\n${total - falhas}/${total} passaram\n`);
 process.exit(falhas ? 1 : 0);

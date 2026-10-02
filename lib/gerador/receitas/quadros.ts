@@ -56,6 +56,7 @@ export const quadroTecido: Receita = {
     mm('espDesenho', 'Espessura do desenho', 'Quadro', 5, 0.6, 10, 0.1),
     mm('espCor', 'Camada de cor do desenho', 'Quadro', 0.2, 0, 5, 0.1, 'O topo do desenho em outra cor (0 = uma cor só)'),
     mm('pausa', 'Altura da pausa', 'Quadro', 0.6, 0.4, 3, 0.2, 'Onde entra o tecido'),
+    mm('tampaFrente', 'Moldura da frente', 'Quadro', 4, 0, 10, 0.5, 'Peça que cola por cima e esconde a borda do tecido (0 = sem)'),
     mm('alturaBase', 'Altura do pé', 'Pé', 12, 7, 40, 0.5),
     mm('profBase', 'Profundidade do pé', 'Pé', 48, 30, 100, 1),
     mm('ima', 'Diâmetro do ímã', 'Pé', 8, 0, 15, 0.5, '0 = sem ímã'),
@@ -90,6 +91,7 @@ export const quadroTecido: Receita = {
     const vaziosPe: Vazio[] = [{ regiao: fenda, z0: Hb - Math.min(6, Hb - 2), z1: Hb + 1 }];
     if (di > 0) for (const s of [-1, 1]) vaziosPe.push({ regiao: circulo(s * W / 4, 0, di / 2 + 0.2, 32), z0: Hb - Math.min(6, Hb - 2) - ei - 0.2, z1: Hb - Math.min(6, Hb - 2) });
     const itens: Item[] = [{ nome: 'Quadro', pecas }, { nome: 'Pé', pecas: [{ nome: 'Pé', cor: 3, camadas: comVazios(peB, 0, Hb, vaziosPe) }] }];
+    if (num(v, 'tampaFrente') > 0) itens.push({ nome: 'Moldura da frente', pecas: [{ nome: 'Moldura da frente', cor: 0, camadas: [{ region: diffRegion(fora, contornar(janela, 1)), z0: 0, z1: num(v, 'tampaFrente') }] }] });
     return soCoresUsadas({
       itens: emGrade(itens, 1, 10), cores, hex, avisos,
       notas: [`Pause a impressão em ${zp.toLocaleString('pt-BR')} mm, estique o tule ou organza por cima e continue: o desenho imprime em cima do tecido.`, 'Cole os ímãs nos bolsões da moldura e do pé e encaixe a moldura na fenda.'],
@@ -114,8 +116,9 @@ export const portaRetrato: Receita = {
     { tipo: 'numero', id: 'baseAltura', rotulo: 'Altura da parte de baixo', grupo: 'Moldura', padrao: 30, min: 10, max: 60, passo: 1, unidade: '%' },
     mm('furoFio', 'Distância do furo ao canto', 'Moldura', 5.3, 1, 40, 0.1),
     mm('dFio', 'Diâmetro do furo do fio', 'Moldura', 2, 1, 5, 0.1),
-    mm('espDesenho', 'Espessura do desenho', 'Desenho', 5, 1, 10, 0.5),
-    mm('embutir', 'Quanto o desenho entra na moldura', 'Desenho', 2, 0, 5, 0.5),
+    { tipo: 'escolha', id: 'face', rotulo: 'Desenho', grupo: 'Desenho', padrao: 'cima', opcoes: [{ valor: 'cima', rotulo: 'Peça em relevo na frente' }, { valor: 'baixo', rotulo: 'Embutido rente (face para baixo)' }] },
+    mm('espDesenho', 'Espessura do desenho', 'Desenho', 5, 1, 10, 0.5, undefined, (v) => v.face !== 'baixo'),
+    mm('embutir', 'Quanto o desenho entra na moldura', 'Desenho', 2, 0, 5, 0.5, undefined, (v) => v.face !== 'baixo'),
     mm('folga', 'Folga dos encaixes', 'Moldura', 0.2, 0.05, 0.6, 0.01),
     cor('corCima', 'Moldura (cima)', '#ffffff'),
     cor('corBaixo', 'Moldura (baixo)', '#a85f78'),
@@ -146,15 +149,20 @@ export const portaRetrato: Receita = {
     const D = arte(v, ctx, W - bw - 6, bw - 4, avisos);
     const desenhoR = intersectRegion(translateRegion(D, 0, -H / 2 + bw / 2), contornar(baixo, -1.5));
     const emb = Math.min(num(v, 'embutir'), T - 2);
+    const faceBaixo = txt(v, 'face') === 'baixo';
     const vaziosBaixo: Vazio[] = [...furosPino('baixo')];
-    if (regionArea(desenhoR) > 0.5 && emb > 0) vaziosBaixo.push({ regiao: contornar(desenhoR, folga), z0: T - emb, z1: T + 1 });
+    // Face para baixo: a frente da moldura e a face na mesa; o desenho, espelhado, fica
+    // embutido 0,6 mm nela, em outra cor e rente.
+    const desenhoM = faceBaixo ? intersectRegion(espelharX(desenhoR), contornar(espelharX(baixo), -1.5)) : [];
+    if (faceBaixo && regionArea(desenhoM) > 0.5) vaziosBaixo.push({ regiao: desenhoM, z0: 0, z1: 0.6 });
+    else if (regionArea(desenhoR) > 0.5 && emb > 0) vaziosBaixo.push({ regiao: contornar(desenhoR, folga), z0: T - emb, z1: T + 1 });
     if (regionArea(D) && regionArea(desenhoR) < regionArea(D) * 0.9) avisos.push('O desenho não coube na moldura de baixo: diminua o texto ou aumente a borda.');
     const itens: Item[] = [
       { nome: 'Moldura de cima', pecas: [{ nome: 'Cima', cor: 0, camadas: comVazios(cima, 0, T, [fio, ...furosPino('cima')]) }] },
-      { nome: 'Moldura de baixo', pecas: [{ nome: 'Baixo', cor: 1, camadas: comVazios(baixo, 0, T, vaziosBaixo) }] },
+      { nome: 'Moldura de baixo', pecas: [{ nome: 'Baixo', cor: 1, camadas: comVazios(faceBaixo ? espelharX(baixo) : baixo, 0, T, faceBaixo ? vaziosBaixo.map((x) => (x.z1 > 0.6 ? { ...x, regiao: espelharX(x.regiao) } : x)) : vaziosBaixo) }, ...(faceBaixo && regionArea(desenhoM) > 0.5 ? [{ nome: 'Desenho', cor: 2, camadas: [{ region: desenhoM, z0: 0, z1: 0.6 }] }] : [])] },
       { nome: 'Pinos', pecas: [{ nome: 'Pinos', cor: 0, camadas: [{ region: unir([retanguloArredondado(-6, 0, 4, 2 * prof - 1, 0.5), retanguloArredondado(6, 0, 4, 2 * prof - 1, 0.5)]), z0: 0, z1: 4 }] }] },
     ];
-    if (regionArea(desenhoR) > 0.5) itens.push({ nome: 'Desenho', pecas: [{ nome: 'Desenho', cor: 2, camadas: [{ region: desenhoR, z0: 0, z1: num(v, 'espDesenho') }] }] });
+    if (!faceBaixo && regionArea(desenhoR) > 0.5) itens.push({ nome: 'Desenho', pecas: [{ nome: 'Desenho', cor: 2, camadas: [{ region: desenhoR, z0: 0, z1: num(v, 'espDesenho') }] }] });
     return soCoresUsadas({
       itens: emGrade(itens, 2, 10), cores, hex, avisos,
       notas: ['Imprima as partes deitadas. Una com os pinos, passe um fio pelos furos das laterais e pendure as fotos com prendedores.'],
