@@ -4,7 +4,8 @@
  *   npx tsx scripts/verificar-marketplace.mts
  */
 import fs from 'fs';
-import { CATEGORIAS, MENSAGENS, PRODUTOS, buscar, categoriasComProdutos, linkWhatsapp, porSlug, produtosPublicos, textoDoPreco, type Produto } from '../lib/marketplace/index';
+import { CATEGORIAS, MENSAGENS, PRODUTOS, buscar, categoriasComProdutos, linkWhatsapp, porSlug, produtosPublicos, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
+import { FOTOS } from '../lib/marketplace/fotos';
 import { receitaPorId } from '../lib/gerador/receitas';
 
 let falhas = 0, total = 0;
@@ -32,6 +33,8 @@ ok('ha produtos publicos em pelo menos 4 categorias', categoriasComProdutos().le
 ok('nenhum preco publicado antes da validacao', PRODUTOS.every((p) => p.preco.status === 'validacao'));
 ok('texto do preco em validacao', publicos.every((p) => textoDoPreco(p) === 'Preço em validação'));
 ok('sem fotos de terceiros e sem midia faltando', PRODUTOS.every((p) => p.midias.every((m) => fs.existsSync(`public/${m.replace(/^\//, '')}`))) && terceirosSemLicenca.every((p) => !p.midias.length));
+ok('fotos so de produto publico (pasta public/marketplace/<slug>)', Object.keys(FOTOS).every((slug) => publicos.some((p) => p.slug === slug)), Object.keys(FOTOS).filter((slug) => !publicos.some((p) => p.slug === slug)).join(', '));
+ok('url da foto com o prefixo do site', urlDaMidia('marketplace/x/a.jpg') === `${process.env.NEXT_PUBLIC_BASE ?? ''}/marketplace/x/a.jpg`);
 
 const rotas = new Set(['/editor', '/placas', '/criar']);
 const linkValido = (p: Produto) => {

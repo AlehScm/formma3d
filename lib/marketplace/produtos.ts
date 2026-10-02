@@ -4,6 +4,7 @@
  * arquivo, nome de arquivo, foto, preco ou cliente aqui (o repo e publico): `ref` e uma
  * referencia opaca, e a tabela ref -> arquivo fica fora do repo, no estado do projeto.
  */
+import { FOTOS } from './fotos';
 import type { Categoria, Produto } from './tipos';
 
 const validacao = { status: 'validacao' } as const;
@@ -26,7 +27,7 @@ function deTerceiro(slug: string, nome: string, categoria: Categoria, resumo: st
   };
 }
 
-export const PRODUTOS: Produto[] = [
+const CADASTRO: Produto[] = [
   // Ja impressos para clientes, projeto nosso.
   nosso({
     slug: 'letreiro-letra-caixa-acm', nome: 'Letreiro de letra caixa com ACM', categoria: 'letreiros', destaque: true, jaImpresso: true,
@@ -101,3 +102,6 @@ export const PRODUTOS: Produto[] = [
   deTerceiro('mosquetao', 'Mosquetão utilitário', 'utilidades', 'Mosquetão para chaves e mochila.', 'T21'),
   deTerceiro('corredor', 'Figura de corredor', 'decoracao', 'Silhueta de corredor para troféu ou enfeite.', 'T22'),
 ];
+
+/** Cadastro com as fotos de `public/marketplace/<slug>/` (ver scripts/fotos-marketplace.mts). */
+export const PRODUTOS: Produto[] = CADASTRO.map((p) => (FOTOS[p.slug]?.length ? { ...p, midias: FOTOS[p.slug]! } : p));
