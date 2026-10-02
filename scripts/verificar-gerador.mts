@@ -716,7 +716,7 @@ console.log('\n== imagem colorida e ultimos parciais ==');
   ok('letra grande: textura rente (22) ou em relevo (22,6)', perto(topo(lg0), 22, 1e-9) && perto(topo(lg1), 22.6, 1e-9));
   const sqN = JSON.stringify({ nome: 'n.svg', regiao: [{ outer: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 10 }, { x: 0, y: 10 }], holes: [] }] });
   const lgN = gerar(receitaPorId('letra-grande')!, { nome: '', desenhoNome: sqN });
-  ok('letra grande: nome por imagem', lgN.itens[0]!.pecas.some((p) => p.nome === 'Nome'));
+  ok('letra grande: nome por imagem (peca propria, deitada)', lgN.itens.some((it) => it.nome === 'Nome' && it.pecas[0]!.camadas[0]!.z0 === 0));
 }
 
 console.log('\n== cores da imagem em NFC e porta-retrato ==');

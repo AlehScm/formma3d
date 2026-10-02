@@ -145,8 +145,11 @@ export const letraGrande: Receita = {
     if (L.length > 1) avisos.push('A letra saiu em partes: engrosse a letra.');
     const E = num(v, 'espLetra'), folga = num(v, 'folga'), estilo = txt(v, 'estilo');
     const N = nomeNaLetra(v, ctx, L);
-    const placaNome = N.length ? semBuracos(contornar(N, num(v, 'contornoNome'))) : [];
+    const placaNome = N.length ? placaDoNome(N, num(v, 'contornoNome')) : [];
     if (placaNome.length > 1) avisos.push('O nome ficou em pedaços: aumente o contorno do nome.');
+    // Nome em peca propria, deitada, para encaixar no rebaixo: onde ele passa da letra,
+    // impresso no lugar ficaria no ar.
+    const nomeSolto = (extra: Peca[] = []): Item => ({ nome: 'Nome', pecas: [{ nome: 'Nome', cor: 1, camadas: [{ region: placaNome, z0: 0, z1: num(v, 'espNome') }] }, ...extra] });
     if (N.length && regionArea(diffRegion(placaNome, L)) > 1 && estilo !== 'nome') avisos.push('O nome passa da letra: diminua ou mova o nome.');
     const p = Math.min(num(v, 'rebaixo'), E - 1);
     const vao = placaNome.length ? contornar(placaNome, folga) : [];
@@ -165,17 +168,15 @@ export const letraGrande: Receita = {
           const vazado = liga(v, 'nomeVazado');
           const reg = vazado ? unir([diffRegion(placaNome, contornar(placaNome, -1.2)), intersectRegion(N, placaNome)]) : placaNome;
           pecas.push({ nome: 'Nome', cor: 1, camadas: [{ region: reg, z0: fundoRebaixo, z1: E }] });
-        } else {
-          pecas.push({ nome: 'Nome', cor: 1, camadas: [{ region: placaNome, z0: fundoRebaixo, z1: fundoRebaixo + num(v, 'espNome') }] });
-        }
+        } else if (estilo !== 'resina') itensExtra.push(nomeSolto());
       }
       if (estilo === 'resina') {
         const hb = num(v, 'altBorda');
         const bordaL = diffRegion(diffRegion(L, contornar(L, -num(v, 'bordaLetra'))), vao);
         pecas.push({ nome: 'Borda da letra', cor: 0, camadas: [{ region: bordaL, z0: E, z1: E + hb }] });
         if (placaNome.length) {
-          const topo = fundoRebaixo + num(v, 'espNome');
-          pecas.push({ nome: 'Borda do nome', cor: 1, camadas: [{ region: diffRegion(placaNome, contornar(placaNome, -num(v, 'bordaNome'))), z0: topo, z1: topo + hb }] });
+          const topo = num(v, 'espNome');
+          itensExtra.push(nomeSolto([{ nome: 'Borda do nome', cor: 1, camadas: [{ region: diffRegion(placaNome, contornar(placaNome, -num(v, 'bordaNome'))), z0: topo, z1: topo + hb }] }]));
         }
         notas.push('Com a peça nivelada, despeje a resina dentro das bordas da letra e do nome.');
       }
@@ -191,12 +192,12 @@ export const letraGrande: Receita = {
       const tex = diffRegion(texturaDentro(v, I, estilo === 'floral'), p > 0 ? vao : []);
       pecas.push({ nome: 'Fundo de dentro', cor: 2, camadas: [...comVazios(dentro, fundo, topoFundo, vazios), ...(elevada ? [] : comVazios(diffRegion(dentro, tex), E - h, E, vazios))] });
       if (regionArea(tex) > 0.5) pecas.push({ nome: 'Textura', cor: 3, camadas: [{ region: tex, z0: topoFundo, z1: topoFundo + h }] });
-      if (placaNome.length) pecas.push({ nome: 'Nome', cor: 1, camadas: [{ region: placaNome, z0: E - p, z1: E - p + num(v, 'espNome') }] });
+      if (placaNome.length) itensExtra.push(nomeSolto());
     } else if (estilo === 'material') {
       // Moldura aberta na frente: fundo, parede, e o EVA/feltro cortado no molde deita no fundo.
       pecas.push({ nome: 'Letra', cor: 0, camadas: [{ region: L, z0: 0, z1: fundo }, { region: diffRegion(L, I), z0: fundo, z1: E }] });
       itensExtra.push({ nome: 'Molde do EVA', pecas: [{ nome: 'Molde', cor: 2, camadas: [{ region: contornar(I, -folga), z0: 0, z1: 0.6 }] }] });
-      if (placaNome.length) itensExtra.push({ nome: 'Nome', pecas: [{ nome: 'Nome', cor: 1, camadas: [{ region: placaNome, z0: 0, z1: num(v, 'espNome') }] }] });
+      if (placaNome.length) itensExtra.push(nomeSolto());
       notas.push(`Use a peça "Molde do EVA" para cortar o material (${num(v, 'material').toLocaleString('pt-BR')} mm), deite-o no fundo da letra e cole o nome por cima.`);
       if (fundo + num(v, 'material') > E - 1) avisos.push('O material não cabe na letra: aumente a espessura da letra.');
     } else {
@@ -206,10 +207,11 @@ export const letraGrande: Receita = {
       const frente = diffRegion(L, contornar(L, -lip));
       itensExtra.push({ nome: 'Moldura da frente', pecas: [{ nome: 'Moldura da frente', cor: 0, camadas: [{ region: frente, z0: 0, z1: ef }] }] });
       itensExtra.push({ nome: 'Molde do acetato', pecas: [{ nome: 'Molde', cor: 2, camadas: [{ region: contornar(L, -(lip / 2)), z0: 0, z1: 0.6 }] }] });
-      if (placaNome.length) itensExtra.push({ nome: 'Nome', pecas: [{ nome: 'Nome', cor: 1, camadas: [{ region: placaNome, z0: 0, z1: num(v, 'espNome') }] }] });
+      if (placaNome.length) itensExtra.push(nomeSolto());
       notas.push('Encha a letra de glitter, cubra com acetato cortado pelo molde, cole a moldura da frente e o nome.');
       if (lip <= parede) avisos.push('A moldura da frente é mais estreita que a parede: o acetato não apoia. Aumente a largura da frente.');
     }
+    if (placaNome.length && p > 0 && ['nome', 'resina', 'textura', 'floral'].includes(estilo)) notas.push('Encaixe o nome no rebaixo da letra (cola se precisar).');
     const itens: Item[] = [{ nome: `Letra ${[...txt(v, 'letra').trim()][0] ?? ''}`, pecas }, ...itensExtra];
     return soCoresUsadas({ itens: itens.length > 1 ? posLado(itens) : itens, cores, hex, avisos, notas });
   },
@@ -302,7 +304,7 @@ export const luminariaLetra: Receita = {
     const vv = { ...v, cortarBase: 0 };
     const N = nomeNaLetra(vv, ctx, L);
     if (N.length) {
-      const placa = semBuracos(contornar(N, num(v, 'contornoNome')));
+      const placa = placaDoNome(N, num(v, 'contornoNome'));
       itens.push({ nome: 'Nome', pecas: [{ nome: 'Nome', cor: 2, camadas: [{ region: placa, z0: 0, z1: num(v, 'espNome') }] }] });
     }
     return soCoresUsadas({
@@ -390,3 +392,16 @@ export const luminariaSocial: Receita = {
     });
   },
 };
+
+/**
+ * Placa do nome: o contorno das letras, sem miolo. Se ele se separar (palavras ou
+ * letras soltas), uma faixa arredondada por tras, na altura do meio, une tudo.
+ */
+function placaDoNome(N: Region, contorno: number): Region {
+  let placa = semBuracos(contornar(N, contorno));
+  if (placa.length > 1) {
+    const b = regionBounds(placa);
+    placa = semBuracos(unir([placa, retanguloArredondado((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, b.w - contorno, Math.max(b.h * 0.35, 2 * contorno), contorno)]));
+  }
+  return placa;
+}

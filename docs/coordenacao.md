@@ -218,3 +218,7 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Luminária letra: a montagem não fechava a espessura total (a tampa abraçava a parede e a peça montada dava 19 mm em vez de 32). Agora a tampa assenta em cima da parede, com um aro de alinhamento por dentro: base 18 + tampa 14 = 32. Tem teste.
   - String art: base destacável com fenda (a ponta da moldura encaixa) e capa de envio, como a ficha pública pede.
   - verificar-gerador 784/784 com a placa-qr junto.
+- 2026-10-02 Claude: revisão no 3D (aba visível).
+  - Letra grande: o nome saía em pedaços com a fonte real e, onde passava da letra, ficaria no ar.
+  - Agora uma faixa por trás une o contorno do nome (`placaDoNome`), e o nome é peça própria, deitada, que encaixa no rebaixo.
+  - Os demais geradores conferidos no 3D estão certos.
