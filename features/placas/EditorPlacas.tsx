@@ -203,9 +203,9 @@ export function EditorPlacas({ templateId, initialText = '', onSwitchTo3D }: { t
 
   return <main className={styles.shell}>
     <header className={styles.topbar}>
-      <Link className={styles.brand} href="/" aria-label="Voltar ao catálogo Scarprint"><span className={styles.brandMark}>S</span><span>SCARPRINT <small>COMPOSIÇÃO 2D</small></span></Link>
+      <Link className={styles.brand} href="/" aria-label="Scarprint, início"><span className={styles.brandMark}>S</span><span>SCARPRINT <small>COMPOSIÇÃO 2D</small></span></Link>
       <div className={styles.actions}>
-        <Link className={styles.quiet} href="/">← Catálogo</Link>
+        <Link className={styles.quiet} href="/criar">← Catálogo</Link>
         {onSwitchTo3D && <button className={styles.quiet} type="button" onClick={onSwitchTo3D}>Gerador 3D</button>}
         <button className={styles.quiet} type="button" onClick={() => setHistory(undoHistory)} disabled={!history.past.length}>Desfazer</button>
         <button className={styles.quiet} type="button" onClick={() => setHistory(redoHistory)} disabled={!history.future.length}>Refazer</button>

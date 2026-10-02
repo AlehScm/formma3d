@@ -30,7 +30,7 @@ export function MoldeAtivo({ id }: { id: MoldeId }) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#f5f8fb] px-6 py-12 text-slate-900">
         <section className="max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <Link href="/" className="text-sm font-semibold text-cyan-700">← Catálogo</Link>
+          <Link href="/criar" className="text-sm font-semibold text-cyan-700">← Catálogo</Link>
           <p className="mt-8 text-sm font-bold uppercase tracking-[.18em] text-cyan-600">Scarprint</p>
           <h1 className="mt-3 text-3xl font-bold text-[#123a63]">{molde.title}</h1>
           <p className="mt-3 text-slate-600">{molde.summary}</p>
@@ -66,7 +66,7 @@ export function MoldeAtivo({ id }: { id: MoldeId }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f5f8fb] px-6 py-12 text-slate-900">
       <section className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-7 shadow-sm sm:p-10">
-        <Link href="/" className="text-sm font-semibold text-cyan-700">← Catálogo</Link>
+        <Link href="/criar" className="text-sm font-semibold text-cyan-700">← Catálogo</Link>
         <p className="mt-8 text-sm font-bold uppercase tracking-[.18em] text-cyan-600">Scarprint / Personalizar</p>
         <h1 className="mt-3 text-3xl font-bold text-[#123a63]">{molde.title}</h1>
         <p className="mt-3 text-slate-600">{molde.summary}</p>

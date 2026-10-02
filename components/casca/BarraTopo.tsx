@@ -59,7 +59,7 @@ export function BarraTopo() {
         formma<span className="text-acento">3d</span>
       </span>
 
-      <Link href="/" className="flex h-8 shrink-0 items-center rounded-md px-2 text-mini font-medium text-texto-2 hover:bg-superficie-3">
+      <Link href="/criar" className="flex h-8 shrink-0 items-center rounded-md px-2 text-mini font-medium text-texto-2 hover:bg-superficie-3">
         ← Catálogo
       </Link>
 

@@ -142,10 +142,10 @@ export function GeradorPlaca3D({ moldeId, initialText, onSwitchTo2D }: GeradorPl
 
   return <main className="scar-3d">
     <header className="scar-3d-top">
-      <Link className="scar-3d-brand" href="/" aria-label="Voltar ao catálogo Scarprint"><span className="scar-3d-mark">S</span><span>SCARPRINT<small>GERADOR 3D</small></span></Link>
+      <Link className="scar-3d-brand" href="/" aria-label="Scarprint, início"><span className="scar-3d-mark">S</span><span>SCARPRINT<small>GERADOR 3D</small></span></Link>
       <div className="scar-3d-actions">
         <button className="scar-3d-btn" type="button" onClick={onSwitchTo2D}>Composição 2D / SVG</button>
-        <Link className="scar-3d-btn" href="/">Catálogo</Link>
+        <Link className="scar-3d-btn" href="/criar">Catálogo</Link>
       </div>
     </header>
     <div className="scar-3d-main">

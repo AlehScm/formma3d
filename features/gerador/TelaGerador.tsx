@@ -100,7 +100,7 @@ export function TelaGerador({ id }: { id: string }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-fundo text-texto lg:h-[100dvh]">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-borda bg-superficie px-4 py-2.5">
-        <Link href="/" className="rounded-md px-2 py-1 text-mini font-medium text-texto-2 hover:bg-superficie-3">
+        <Link href="/criar" className="rounded-md px-2 py-1 text-mini font-medium text-texto-2 hover:bg-superficie-3">
           ← Catálogo
         </Link>
         <div className="min-w-0">
