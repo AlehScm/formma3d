@@ -116,8 +116,9 @@ export function perfilDeRosca(rBase: number, prof: number, passoRosca: number, z
     const a = (2 * Math.PI * i) / lados;
     // Fase da helice neste angulo e altura: 0..1 ao longo de um passo.
     const f = (((z / passoRosca - a / (2 * Math.PI)) % 1) + 1) % 1;
-    // Trapezio: sobe 30%, plato 20%, desce 30%, vale 20%.
-    const t = f < 0.3 ? f / 0.3 : f < 0.5 ? 1 : f < 0.8 ? 1 - (f - 0.5) / 0.3 : 0;
+    // Trapezio: sobe 40%, plato 10%, desce 40%, vale 10%. Com profundidade de ate 40% do
+    // passo, os flancos ficam em 45 graus ou menos (imprime sem suporte).
+    const t = f < 0.4 ? f / 0.4 : f < 0.5 ? 1 : f < 0.9 ? 1 - (f - 0.5) / 0.4 : 0;
     const r = rBase + prof * t;
     pts.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
   }

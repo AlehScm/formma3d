@@ -8,7 +8,7 @@
 import fs from 'fs';
 import type { Font } from 'opentype.js';
 import { parseFont } from '../lib/text/glyphs';
-import { diffRegion, intersectRegion, regionArea, regionBounds, type Region } from '../lib/geom/region';
+import { diffRegion, intersectRegion, regionArea, regionBounds, scaleRegion, type Region } from '../lib/geom/region';
 import { malhaFechada } from '../lib/mesh/relevo';
 import { lerTresMf } from '../lib/import/tresmf';
 import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
@@ -18,8 +18,9 @@ import { valoresPadrao, type Receita, type Resultado, type Valores } from '../li
 import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
 import { corDe } from '../lib/gerador/malha';
-import { contornar, retanguloArredondado, textoEmArco, unir } from '../lib/gerador/formas';
+import { circulo, contornar, retanguloArredondado, textoEmArco, unir } from '../lib/gerador/formas';
 import JSZip from 'jszip';
+import { poteRosqueado } from '../lib/gerador/receitas/potes';
 import { cilindroComRelevo } from '../lib/gerador/cilindro';
 import { pixelsParaRegiao } from '../lib/import/imagem';
 import { pecasDeQuebraCabeca } from '../lib/gerador/receitas/imagens';
@@ -617,6 +618,55 @@ console.log('\n== onda 3: cilindros e cupulas ==');
   const pe = sb.itens.find((it) => it.nome === 'Pé')!.pecas[0]!.camadas;
   ok('suporte de bolo: pe de 170 embaixo a 50 em cima, oco', perto(largura(pe[0]!.region), 170, 1) && perto(largura(pe.at(-1)!.region), 50, 1) && pe.every((c) => c.region[0]!.holes.length === 1));
   ok('suporte de bolo: o pe afina subindo (sem balanco)', pe.every((c, i) => !i || largura(c.region) <= largura(pe[i - 1]!.region) + 1e-6));
+}
+
+console.log('\n== onda 3: potes, caixas e quadros ==');
+{
+  const largura = (r: Region) => regionBounds(r).w;
+  const furos = (r: Region) => r.reduce((n, q) => n + q.holes.length, 0);
+  const sq = JSON.stringify({ nome: 'q.svg', regiao: [{ outer: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], holes: [] }] });
+  // Rosca: a tampa (desvirada) nao encosta no gargalo e a crista entra no sulco.
+  const pote = poteRosqueado({ ri: 8, hi: 40, fundo: 2, passo: 2.5, prof: 1, folga: 0.3, rosca: 8, topoTampa: 2 });
+  let colide = 0, encaixa = 0;
+  for (const c of pote.corpo.filter((k) => k.z0 >= 42 - 8 - 1e-9)) {
+    const zc = (c.z0 + c.z1) / 2, h = 2 + (42 + 0.2 - zc);
+    const t = pote.tampa.find((k) => k.z0 <= h && k.z1 >= h);
+    if (!t) continue;
+    const tampaMontada = scaleRegion(t.region, 1, -1);
+    colide += regionArea(intersectRegion(tampaMontada, c.region));
+    // Sem folga e sem rosca na tampa, o gargalo encostaria: a crista passa do furo liso.
+    encaixa += regionArea(intersectRegion(diffRegion(circulo(0, 0, pote.R, 120), circulo(0, 0, 8 + 1.2 + 0.3, 120)), c.region)) > 0 ? 1 : 0;
+  }
+  ok('pote: a rosca da tampa casa com a do gargalo (sem colisao)', colide < 0.05, `${colide.toFixed(3)} mm2`);
+  ok('pote: a crista do gargalo entra no sulco da tampa', encaixa > 10);
+  const pp = gerar(receitaPorId('porta-pente')!, { diametroInterno: 16, alturaInterna: 90, argola: 'tampa' });
+  ok('porta-pente: argola na tampa (furo rente a mesa)', furos(pp.itens.find((it) => it.nome === 'Tampa')!.pecas[0]!.camadas[0]!.region) === 1);
+  const cm = gerar(receitaPorId('carimbos-massinha')!, { frente: sq, verso: sq, frente2: sq, diametro: 40, espessura: 8 });
+  ok('massinha: 2 carimbos + pote + tampa; verso afundado', cm.itens.length === 4 && cm.itens[0]!.pecas[0]!.camadas[0]!.region[0]!.holes.length === 1);
+  const potM = cm.itens.find((it) => it.nome === 'Pote')!.pecas[0]!.camadas.find((c) => c.z0 >= 2 && c.region[0]!.holes.length)!;
+  ok('massinha: os carimbos cabem no pote (furo 41,6 > 40)', regionBounds([{ outer: potM.region[0]!.holes[0]!, holes: [] }]).w > 40.5);
+
+  const cf = gerar(receitaPorId('caixa-figurinhas')!, { larguraFig: 49, alturaFig: 65, folgaFig: 1.2, caixas: 2, parede: 1.2, corte: 0 });
+  const paredeC = cf.itens[0]!.pecas.find((p) => p.nome === 'Caixa')!.camadas.at(-1)!;
+  ok('caixa: 2 celulas de 51,4 x 67,4', paredeC.region[0]!.holes.length === 2 && paredeC.region[0]!.holes.every((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 51.4, 0.05) && perto(regionBounds([{ outer: h, holes: [] }]).h, 67.4, 0.05)));
+  const aroT = cf.itens[1]!.pecas[0]!.camadas.at(-1)!.region;
+  ok('caixa: aro da tampa entra por dentro da parede com folga', perto(largura(aroT), 2 * 51.4 + 3 * 1.2 - 2 * 1.2 - 2 * 0.23, 0.05), largura(aroT).toFixed(2));
+
+  const pc = gerar(receitaPorId('porta-canetas-design')!, { lado: 55, parede: 2.4, rebaixo: 0.8, margem: 5 });
+  ok('porta-canetas: rebaixo de 0,8 na frente e painel de 0,8', pc.itens[0]!.pecas[0]!.camadas.some((c) => perto(regionBounds(c.region).minY, -27.5, 0.01) && regionArea(c.region) < regionArea(pc.itens[0]!.pecas[0]!.camadas[1]!.region) - 10) && pc.itens[1]!.pecas[0]!.camadas[0]!.z1 === 0.8);
+
+  const qt = gerar(receitaPorId('quadro-tecido')!, { pausa: 0.6, espDesenho: 5, espCor: 0.2 });
+  const desQ = qt.itens[0]!.pecas.find((p) => p.nome === 'Desenho')!.camadas[0]!;
+  ok('quadro: o desenho comeca na pausa (em cima do tecido)', desQ.z0 === 0.6 && !!qt.notas?.some((n) => n.includes('0,6')));
+  const pr = gerar(receitaPorId('porta-retrato')!, { tamanho: '10x15' });
+  ok('porta-retrato: duas partes com furos dos pinos e pinos soltos', pr.itens.length >= 3 && pr.itens.some((it) => it.nome === 'Pinos'));
+  const tunel = pr.itens[0]!.pecas[0]!.camadas.filter((c) => c.region.length > 1);
+  ok('porta-retrato: furo do fio atravessa a moldura de cima', tunel.length > 0);
+  const du = gerar(receitaPorId('display-unhas')!, { diametro: 90, mao: 'direita' });
+  ok('display: encaixe do dedo do lado direito', regionArea(intersectRegion(du.itens[0]!.pecas[0]!.camadas.at(-1)!.region, circulo(42, -15.75, 2, 24))) < 0.01 && regionArea(intersectRegion(du.itens[0]!.pecas[0]!.camadas.at(-1)!.region, circulo(-42, -15.75, 2, 24))) > 1);
+  const mic = gerar(receitaPorId('mini-microfone')!, { larguraMic: 22, espessuraMic: 14, folga: 0.3, profundidadeMic: 28 });
+  const furoMic = mic.itens[0]!.pecas[0]!.camadas[0]!.region[0]!.holes[0]!;
+  ok('microfone: furo de 22,6 x 14,6 por 28 mm', perto(regionBounds([{ outer: furoMic, holes: [] }]).w, 22.6, 0.05) && perto(mic.itens[0]!.pecas[0]!.camadas[0]!.z1, 28, 1e-9));
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

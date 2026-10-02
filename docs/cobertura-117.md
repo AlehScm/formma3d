@@ -3,31 +3,31 @@
 Gerado de `lib/gerador/cobertura.ts` por `npx tsx scripts/cobertura.mts`; não editar à mão.
 Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 
-**72 prontos · 22 parciais · 23 pendentes** de 117.
+**76 prontos · 26 parciais · 15 pendentes** de 117.
 
 | Onda | Claude | ChatGPT |
 |---|---:|---:|
-| já coberto | 72 | 0 |
+| já coberto | 76 | 0 |
 | 1 | 0 | 1 |
 | 2 | 9 | 15 |
-| 3 | 20 | 0 |
+| 3 | 16 | 0 |
 
 | Modelo | Dono | Receita | Status | Onda | Falta |
 |---|---|---|---|---:|---|
-| [Porta-Retrato Suspenso](https://www.mafagrafos.com/models/hanging-photo-holder) | Claude | — | Pendente | 3 | moldura em 2 partes com pinos, 3 tamanhos, design em relevo |
-| [Carimbos de Massinha](https://www.mafagrafos.com/models/play-douh-stamps) | Claude | — | Pendente | 3 | discos dupla face, cilindro com tampa rosqueada |
+| [Porta-Retrato Suspenso](https://www.mafagrafos.com/models/hanging-photo-holder) | Claude | `porta-retrato` | Parcial | 3 | modos de cor (face para baixo, uma cor por camada); editor de arte |
+| [Carimbos de Massinha](https://www.mafagrafos.com/models/play-douh-stamps) | Claude | `carimbos-massinha` | Pronto | 0 | — |
 | [Enfeite Floco de Neve](https://www.mafagrafos.com/models/snowflake-ornament) | Claude | `floco-neve` | Pronto | 0 | — |
-| [Mini-Microfone](https://www.mafagrafos.com/models/mini-microphone) | Claude | — | Pendente | 3 | corpo, cabeça texturizada e placas laterais com arte |
+| [Mini-Microfone](https://www.mafagrafos.com/models/mini-microphone) | Claude | `mini-microfone` | Parcial | 3 | cavidade moldada do microfone (aqui furo retangular nas medidas) |
 | [Gerador de Abridor de Latas (NFC)](https://www.mafagrafos.com/models/can-opener-nfc) | Claude | `abridor-latas` | Pronto | 0 | modo face para baixo |
 | [Gerador de Chaveiro NFC](https://www.mafagrafos.com/models/nfc-keychain-generator) | Claude | `chaveiro-nfc` | Parcial | 2 | editor de arte com cor por subcamada |
 | [Gerador de Chaveiro](https://www.mafagrafos.com/models/keychain-generator) | Claude | `chaveiro-desenho` | Pronto | 0 | — |
-| [Gerador de Porta-Canetas](https://www.mafagrafos.com/models/design-pen-holder) | Claude | — | Pendente | 3 | base paramétrica + peça de design separada |
+| [Gerador de Porta-Canetas](https://www.mafagrafos.com/models/design-pen-holder) | Claude | `porta-canetas-design` | Pronto | 0 | — |
 | [Chaveiro Carretel de Filamento com NFC](https://www.mafagrafos.com/models/filament-spool) | Claude | `chaveiro-carretel` | Pronto | 0 | — |
-| [Quadro de Tecido](https://www.mafagrafos.com/models/fabric-floating-sign) | Claude | — | Pendente | 3 | 3 partes, pausa para tecido, ímãs |
+| [Quadro de Tecido](https://www.mafagrafos.com/models/fabric-floating-sign) | Claude | `quadro-tecido` | Parcial | 3 | tampa frontal; editor de arte |
 | [Cartão de Visita com Tecido](https://www.mafagrafos.com/models/fabric-business-card) | ChatGPT | — | Pendente | 2 | cartão em camadas com tecido, NFC e QR |
 | [Cartão de Visita](https://www.mafagrafos.com/models/regular-business-card) | ChatGPT | — | Pendente | 2 | texto + QR, face para cima/baixo |
 | [Placas Profissionais](https://www.mafagrafos.com/models/profession) | ChatGPT | — | Parcial | 1 | editor de placa existe; falta receita com símbolo, nome e base que encaixa |
-| [Porta-Pente para Cílios](https://www.mafagrafos.com/models/lash-holder) | Claude | — | Pendente | 3 | cilindro com tampa rosqueada e textura/SVG |
+| [Porta-Pente para Cílios](https://www.mafagrafos.com/models/lash-holder) | Claude | `porta-pente` | Pronto | 0 | textura vem de imagem (sem editor de arte) |
 | [Luminária Letra Grande com Nome](https://www.mafagrafos.com/models/big-letter-lamp) | Claude | `luminaria-letra` | Parcial | 3 | editor de arte; conferir encaixe da frente impresso |
 | [Gerador de Chaveiro com Sobreposição](https://www.mafagrafos.com/models/overlay-keychain) | Claude | `chaveiro-desenho` | Pronto | 0 | — |
 | [Placa de Listras com Base](https://www.mafagrafos.com/models/stripes-plaques) | Claude | `placa-com-base` | Parcial | 2 | editor de arte (aqui o desenho vem de imagem) |
@@ -35,7 +35,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Gerador de Topo de Bolo](https://www.mafagrafos.com/models/cake-topper-generator) | Claude | `topo-bolo` | Pronto | 0 | — |
 | [Troféu Imagem + Texto](https://www.mafagrafos.com/models/text-image-trophy) | Claude | `trofeu` | Pronto | 0 | texto da base só na frente |
 | [Carimbo Circular de Imagem](https://www.mafagrafos.com/models/rounded-circle-stamp) | Claude | `carimbo-circular` | Pronto | 0 | — |
-| [Display para Salão de Unhas](https://www.mafagrafos.com/models/nail-salon-display) | Claude | — | Pendente | 3 | mão com logo e 2 linhas, decoração da base |
+| [Display para Salão de Unhas](https://www.mafagrafos.com/models/nail-salon-display) | Claude | `display-unhas` | Pronto | 0 | — |
 | [Carimbo de Letras/Números](https://www.mafagrafos.com/models/text-brigadeiro-stamp) | Claude | `carimbo-letras` | Pronto | 0 | — |
 | [@social - Luminária de LED](https://www.mafagrafos.com/models/social-handle-simple-lamp) | Claude | `luminaria-social` | Parcial | 3 | conferir encaixe da frente impresso |
 | [Chaveiro com Nome e Logo](https://www.mafagrafos.com/models/logo-text-keychain) | Claude | `chaveiro-logo-nome` | Pronto | 0 | — |
@@ -52,7 +52,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Placa de QRCode com Logo](https://www.mafagrafos.com/models/logo-qr-code-plaque) | ChatGPT | — | Pendente | 2 | QR com logo no centro |
 | [Suporte para Palitos](https://www.mafagrafos.com/models/stick-stand) | Claude | `suporte-palitos` | Pronto | 0 | curva das aletas em degraus de 0,4 mm |
 | [Suporte de Bolo](https://www.mafagrafos.com/models/cake-stand) | Claude | `suporte-bolo` | Pronto | 0 | — |
-| [Caixa de Figurinhas](https://www.mafagrafos.com/models/stickers-box) | Claude | — | Pendente | 3 | caixa, suporte removível e tampa |
+| [Caixa de Figurinhas](https://www.mafagrafos.com/models/stickers-box) | Claude | `caixa-figurinhas` | Parcial | 3 | suporte removível das figurinhas |
 | [Suporte de Foto com Texto](https://www.mafagrafos.com/models/photo-holder) | Claude | `suporte-foto` | Pronto | 0 | — |
 | [Topo de Bolo Circular com Glitter](https://www.mafagrafos.com/models/circle-glitter-cake-topper) | Claude | `topo-bolo-circular` | Parcial | 2 | desenho do glitter na janela |
 | [Cortadores de Retângulos em Grade](https://www.mafagrafos.com/models/rectangle-cutters) | Claude | `cortadores-grade` | Pronto | 0 | — |

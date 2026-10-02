@@ -314,6 +314,54 @@ export const FICHAS: Ficha[] = [
     destaques: ['Fita de LED', 'Contorno ou retângulo', 'Furo do cabo'],
     exemplo: { usuario: '@formma3d', largura: 200, corBase: '#1f2937', corTexto: '#f472b6' },
   },
+  {
+    id: 'porta-pente', nome: 'Porta-pente de cílios', familia: 'chaveiros', tipo: 'Beleza',
+    resumo: 'Potinho alto com tampa de rosca, textura em volta e argola na tampa ou no corpo.',
+    destaques: ['Tampa de rosca', 'Textura em volta', 'Argola'],
+    exemplo: { corPote: '#a85f78', corTextura: '#ffffff' },
+  },
+  {
+    id: 'carimbos-massinha', nome: 'Carimbos de massinha', familia: 'carimbos', tipo: 'Brinquedo',
+    resumo: 'Até 6 carimbos de dupla face e o pote com tampa de rosca onde eles cabem.',
+    destaques: ['Frente e verso', 'Até 6 carimbos', 'Pote com rosca'],
+    exemplo: { corCarimbo: '#6b2c42', corDesenho: '#fde68a', corPote: '#a85f78' },
+  },
+  {
+    id: 'caixa-figurinhas', nome: 'Caixa de figurinhas', familia: 'parametricos', tipo: 'Organização',
+    resumo: 'Caixa com compartimentos na medida da figurinha, cortes para pegar e tampa com o seu logo.',
+    destaques: ['1 a 4 compartimentos', 'Tampa de encaixe', 'Logo e nome'],
+    exemplo: { corCaixa: '#ffef00', corTampa: '#228b22', corLogo: '#ffffff' },
+  },
+  {
+    id: 'porta-canetas-design', nome: 'Porta-canetas com painel', familia: 'parametricos', tipo: 'Organização',
+    resumo: 'Porta-canetas quadrado com rebaixo na frente e painel com texto ou imagem que encaixa nele.',
+    destaques: ['Painel de encaixe', 'Texto ou imagem', 'Medidas livres'],
+    exemplo: { texto: 'Lápis+& cia', corCorpo: '#1f2937', corPainel: '#1f2937', corDesenho: '#fbbf24' },
+  },
+  {
+    id: 'quadro-tecido', nome: 'Quadro de tecido', familia: 'placas', tipo: 'Decoração',
+    resumo: 'O desenho imprime em cima de tule ou organza preso na moldura; pé com fenda e ímãs.',
+    destaques: ['Pausa para o tecido', 'Desenho flutuando', 'Pé com ímãs'],
+    exemplo: { texto: 'Ana+& Leo', largura: 140, altura: 140, corMoldura: '#c98fa3', corDesenho: '#ffffff', corBase: '#c98fa3' },
+  },
+  {
+    id: 'porta-retrato', nome: 'Porta-retrato suspenso', familia: 'placas', tipo: 'Decoração',
+    resumo: 'Moldura grossa em duas cores, unida por pinos, com fio para pendurar fotos e o nome embutido.',
+    destaques: ['3 tamanhos', 'Duas partes com pinos', 'Furos para o fio'],
+    exemplo: { texto: 'Família', tamanho: '10x15', corCima: '#ffffff', corBaixo: '#a85f78', corDesenho: '#4a1f2e' },
+  },
+  {
+    id: 'display-unhas', nome: 'Display para salão de unhas', familia: 'placas', tipo: 'Beleza',
+    resumo: 'Disco para fotografar as unhas: logo ou texto, borda, decoração embaixo e encaixe do dedo.',
+    destaques: ['Logo ou 2 linhas', 'Dupla face', 'Laço, estrelas ou floral'],
+    exemplo: { corBase: '#4a1f2e', corDesenho: '#ffffff', corBorda: '#f5d0a9' },
+  },
+  {
+    id: 'mini-microfone', nome: 'Mini-microfone', familia: 'parametricos', tipo: 'Acessório',
+    resumo: 'Cubo que veste o microfone sem fio, com capas de arte, cabeça de grade e cabo.',
+    destaques: ['Encaixe na medida', 'Capas com arte', 'Cabeça e cabo'],
+    exemplo: { corCubo: '#a85f78', corCabeca: '#c0c0c0', corCabo: '#222222' },
+  },
 ];
 
 export function ficha(id: string): Ficha {

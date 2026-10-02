@@ -48,7 +48,7 @@ function separar(camadas: Camada[], R: number, furo: Region): { corpo: Camada[];
   return { corpo: [{ region: furo.length ? diffRegion(liso, furo) : liso, z0, z1 }], relevo };
 }
 
-const camposTextura = (bloco: number): Parametro[] => [
+export const camposTextura = (bloco: number): Parametro[] => [
   campoDesenho('Imagem da textura'),
   { tipo: 'liga', id: 'preencher', rotulo: 'Preencher os buracos', grupo: 'Desenho', padrao: false, dica: 'Usa só a silhueta da imagem' },
   mm('bloco', 'Tamanho de cada bloco', 'Mosaico', bloco, 2, 30, 0.5, undefined, (v) => v.modo === 'mosaico'),
@@ -60,7 +60,7 @@ const camposTextura = (bloco: number): Parametro[] => [
 ];
 
 /** O desenho da textura no plano desenrolado de comprimento C, entre z0 e z1. */
-function texturaDesenrolada(v: Valores, C: number, z0: number, z1: number): { regiao: Region; exemplo: boolean } {
+export function texturaDesenrolada(v: Valores, C: number, z0: number, z1: number): { regiao: Region; exemplo: boolean } {
   const { regiao: bruto, exemplo } = desenhoNoTamanho(v, 'desenho', 100);
   const D = liga(v, 'preencher') ? semBuracos(bruto) : bruto;
   if (txt(v, 'modo') === 'mosaico') return { regiao: mosaico(D, num(v, 'bloco'), num(v, 'nU'), num(v, 'nZ'), C, z0, z1, liga(v, 'intercalar')), exemplo };

@@ -181,3 +181,9 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Os modelos de letra grande e das luminárias ficam parciais: a referência monta no editor de arte, e o encaixe ainda não foi conferido impresso.
   - `padraoVazado` (papelaria.ts) agora é exportado. verificar-gerador 669/669 com a placa-qr do ChatGPT junto; commit só com o meu trabalho.
   - Falta (onda 3): porta-pente (13), massinha (1), caixa de figurinhas (38), quadro de tecido (9), porta-retrato (117), porta-canetas com design (7), display de unhas (21), microfone (3). Os controles já estão mapeados.
+- 2026-10-02 Claude: onda 3, parte 3. Com isso, todos os modelos da minha parte têm receita.
+  - `receitas/potes.ts`: `poteRosqueado` (gargalo com rosca externa; tampa impressa de cabeça para baixo com a rosca espelhada em Y), porta-pente, carimbos-massinha.
+  - `receitas/caixas.ts`: caixa-figurinhas, porta-canetas-design.
+  - `receitas/quadros.ts`: quadro-tecido (pausa para o tule), porta-retrato (2 partes + pinos + furos do fio), display-unhas, mini-microfone.
+  - Rosca: perfil 40/10/40/10, flancos ≤ 45°. Há teste que confere que a tampa desvirada não colide com o gargalo.
+  - verificar-gerador 762/762 com a placa-qr junto; commit só com o meu trabalho.
