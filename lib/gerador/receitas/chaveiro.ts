@@ -1,7 +1,7 @@
 /** Chaveiros de nome: em camadas com argola, e retangular com o nome ajustado. */
 import { diffRegion, type Region } from '../../geom/region';
-import { coresDe, empilhar, lerCamadas, parametrosCamadas } from '../camadas';
-import { circulo, comporLinhas, contornar, escalaParaLargura, retanguloArredondado, semBuracos, unir } from '../formas';
+import { coresDe, empilhar, hexDe, lerCamadas, parametrosCamadas } from '../camadas';
+import { circulo, comporLinhas, contornar, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, unir } from '../formas';
 import { emGrade, LOTE_MAX, nomesDoLote } from '../lote';
 import { ficha } from './fichas';
 import type { Contexto, Item, Parametro, Receita, Valores } from '../tipos';
@@ -9,8 +9,10 @@ import { num, txt } from '../tipos';
 
 const nomes = (padrao: string): Parametro => ({
   tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao, maxCaracteres: 300,
-  dica: `Até ${LOTE_MAX} nomes separados por vírgula; "+" quebra a linha dentro de um nome`,
+  dica: `Até ${LOTE_MAX} nomes separados por vírgula; "+" quebra a linha dentro de um nome; aceita emoji (♥ 🐾)`,
 });
+const comEmoji = (v: Valores) => temEmoji(txt(v, 'nomes') + txt(v, 'prefixo') + txt(v, 'sufixo'));
+const fontesEmoji = (v: Valores) => (comEmoji(v) ? ['noto-emoji'] : []);
 const furo: Parametro[] = [
   { tipo: 'numero', id: 'furo', rotulo: 'Diâmetro do furo', grupo: 'Argola', padrao: 2.5, min: 2, max: 12, passo: 0.5, unidade: 'mm' },
   { tipo: 'numero', id: 'aro', rotulo: 'Largura do aro', grupo: 'Argola', padrao: 1.8, min: 1.2, max: 8, passo: 0.1, unidade: 'mm', dica: 'Material em volta do furo' },
@@ -69,14 +71,16 @@ export const chaveiroNome: Receita = {
   gerar(v, ctx) {
     const o = lerCamadas(v);
     const fonte = ctx.fonte(txt(v, 'fonte'));
+    const reserva = comEmoji(v) ? ctx.fonte('noto-emoji') : undefined;
     const r = lote(v, (linhas, nome) => {
-      const t = comporLinhas(linhas.map((texto) => ({ texto, fonte, altura: num(v, 'altura'), tracking: num(v, 'tracking') })), num(v, 'entrelinha'));
+      const t = comporLinhas(linhas.map((texto) => ({ texto, fonte, reserva, altura: num(v, 'altura'), tracking: num(v, 'tracking') })), num(v, 'entrelinha'));
       if (!t.letras.length) return { item: null, avisos: [] };
       const e = empilhar(t.regiao, o, (b) => comArgola(b, txt(v, 'argola'), num(v, 'furo'), num(v, 'aro')));
       return { item: { nome, pecas: e.pecas }, avisos: e.avisos };
     });
-    return { itens: r.itens, cores: coresDe(o), avisos: r.avisos };
+    return { itens: r.itens, cores: coresDe(o), hex: hexDe(v, o), avisos: r.avisos };
   },
+  fontes: fontesEmoji,
 };
 
 /**
@@ -113,7 +117,11 @@ export const chaveiroRetangular: Receita = {
     { tipo: 'liga', id: 'argola', rotulo: 'Argola no canto', grupo: 'Argola', padrao: true },
     { ...furo[0]!, visivel: (v: Valores) => v.argola === true },
     { tipo: 'numero', id: 'externo', rotulo: 'Diâmetro externo da argola', grupo: 'Argola', padrao: 6, min: 3, max: 20, passo: 0.5, unidade: 'mm', visivel: (v) => v.argola === true },
+    { tipo: 'cor', id: 'corPlaca', rotulo: 'Placa', grupo: 'Cores', padrao: '#2b2f36' },
+    { tipo: 'cor', id: 'corContorno', rotulo: 'Contorno', grupo: 'Cores', padrao: '#f2efe8', visivel: (v) => Number(v.contornoNome) > 0 },
+    { tipo: 'cor', id: 'corNome', rotulo: 'Nome', grupo: 'Cores', padrao: '#e0533d' },
   ],
+  fontes: fontesEmoji,
   gerar(v, ctx: Contexto) {
     const fonte = ctx.fonte(txt(v, 'fonte'));
     const L = num(v, 'largura'), H = num(v, 'altura'), raio = num(v, 'raio'), borda = num(v, 'borda');
@@ -121,11 +129,13 @@ export const chaveiroRetangular: Receita = {
     const cn = num(v, 'contornoNome');
     const ep = num(v, 'espPlaca'), ec = cn > 0 ? num(v, 'espContorno') : 0, en = num(v, 'espNome');
     const cores = cn > 0 ? ['Placa', 'Contorno', 'Nome'] : ['Placa', 'Nome'];
+    const hex = cn > 0 ? [txt(v, 'corPlaca'), txt(v, 'corContorno'), txt(v, 'corNome')] : [txt(v, 'corPlaca'), txt(v, 'corNome')];
+    const reserva = comEmoji(v) ? ctx.fonte('noto-emoji') : undefined;
     const r = lote(v, (linhas, nome) => {
       // Cada linha do tamanho que enche a largura; se nao couber na altura, todas encolhem juntas.
-      const larguraDe = (texto: string, altura: number) => comporLinhas([{ texto, fonte, altura, tracking: num(v, 'tracking') }], 0).bounds.w;
+      const larguraDe = (texto: string, altura: number) => comporLinhas([{ texto, fonte, reserva, altura, tracking: num(v, 'tracking') }], 0).bounds.w;
       const alturas = linhas.map((texto) => 10 * escalaParaLargura((k) => larguraDe(texto, 10 * k) + 2 * cn, W));
-      const compor = (f: number) => comporLinhas(linhas.map((texto, i) => ({ texto, fonte, altura: alturas[i]! * f, tracking: num(v, 'tracking') })), num(v, 'entrelinha'));
+      const compor = (f: number) => comporLinhas(linhas.map((texto, i) => ({ texto, fonte, reserva, altura: alturas[i]! * f, tracking: num(v, 'tracking') })), num(v, 'entrelinha'));
       let t = compor(1);
       if (!t.letras.length) return { item: null, avisos: [] };
       let escalaFinal = 1;
@@ -152,6 +162,6 @@ export const chaveiroRetangular: Receita = {
       pecas.push({ nome: 'Nome', cor: cores.length - 1, camadas: [{ region: t.regiao, z0: ep + ec, z1: ep + ec + en }] });
       return { item: { nome, pecas }, avisos };
     });
-    return { itens: r.itens, cores, avisos: r.avisos };
+    return { itens: r.itens, cores, hex, avisos: r.avisos };
   },
 };

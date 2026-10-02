@@ -22,7 +22,11 @@ export type Parametro =
   | (Base & { tipo: 'escolha'; padrao: string; opcoes: { valor: string; rotulo: string }[] })
   | (Base & { tipo: 'liga'; padrao: boolean })
   /** Fonte: id de `FONTES_WEB` (lib/text/fontes.ts). */
-  | (Base & { tipo: 'fonte'; padrao: string });
+  | (Base & { tipo: 'fonte'; padrao: string })
+  /** Cor de previa e do 3MF, '#rrggbb'. */
+  | (Base & { tipo: 'cor'; padrao: string })
+  /** Desenho do usuario (SVG): o valor e um `Desenho` em JSON, '' sem desenho. */
+  | (Base & { tipo: 'svg'; padrao: '' });
 
 export type Valor = number | string | boolean;
 export type Valores = Record<string, Valor>;
@@ -51,10 +55,18 @@ export interface Item {
   pecas: Peca[];
 }
 
+/** Desenho vindo de SVG: a area preenchida, em unidades do arquivo, Y para cima. */
+export interface Desenho {
+  nome: string;
+  regiao: Region;
+}
+
 export interface Resultado {
   itens: Item[];
   /** Nome de cada cor (Base, Meio, Topo...), na ordem dos indices de `Peca.cor`. */
   cores: string[];
+  /** Cor de cada indice ('#rrggbb'); sem ela a previa usa a paleta padrao. */
+  hex?: string[];
   avisos: string[];
 }
 
@@ -70,6 +82,8 @@ export interface Receita {
   resumo: string;
   parametros: Parametro[];
   gerar: (v: Valores, ctx: Contexto) => Resultado;
+  /** Fontes alem das dos campos `fonte` (ex.: a de emoji, se o texto tiver emoji). */
+  fontes?: (v: Valores) => string[];
 }
 
 export function valoresPadrao(r: Receita): Valores {
@@ -80,3 +94,15 @@ export function valoresPadrao(r: Receita): Valores {
 export const num = (v: Valores, id: string) => Number(v[id]);
 export const txt = (v: Valores, id: string) => String(v[id] ?? '');
 export const liga = (v: Valores, id: string) => v[id] === true;
+
+/** O desenho de um campo `svg`, ou null. */
+export function desenho(v: Valores, id: string): Desenho | null {
+  const s = txt(v, id);
+  if (!s) return null;
+  try {
+    const d = JSON.parse(s) as Desenho;
+    return Array.isArray(d.regiao) && d.regiao.length ? d : null;
+  } catch {
+    return null;
+  }
+}

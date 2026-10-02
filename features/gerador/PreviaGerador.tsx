@@ -5,7 +5,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { CORES_PREVIA, caixaDoItem, posicoesDaPeca } from '@/lib/gerador/malha';
+import { caixaDoItem, corDe, posicoesDaPeca } from '@/lib/gerador/malha';
 import type { Resultado } from '@/lib/gerador/tipos';
 
 export function PreviaGerador({ resultado }: { resultado: Resultado }) {
@@ -15,7 +15,7 @@ export function PreviaGerador({ resultado }: { resultado: Resultado }) {
         const g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.BufferAttribute(posicoesDaPeca(p), 3));
         g.computeVertexNormals();
-        return { chave: `${it.nome}/${p.nome}`, g, cor: CORES_PREVIA[p.cor % CORES_PREVIA.length]! };
+        return { chave: `${it.nome}/${p.nome}`, g, cor: corDe(resultado, p.cor) };
       })
     );
   }, [resultado]);

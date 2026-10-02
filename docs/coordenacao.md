@@ -62,4 +62,13 @@ com catálogo, placas e QR/PIX, migrando para a base.
 - Para o ChatGPT: o mesmo mapeamento vale para placas e QR/PIX — o personalizador fica em
   `/customize/<slug>` (abre numa aba nova a partir de "Personalizar este modelo"); as seções recolhidas
   abrem pelo botão "▶". A prévia deles é gerada no servidor (≈20 s) e não gasta crédito; o download gasta.
+- 2026-10-01 Claude: emoji, adorno e cores na base comum.
+  - Campos novos no esquema: `cor` ('#rrggbb', vai para a prévia e para os materiais do 3MF via
+    `Resultado.hex`) e `svg` (desenho do usuário; valor = JSON `{ nome, regiao }`, leitor em
+    `lib/import/svg.ts` com o SVGLoader do three — áreas preenchidas e traços viram área).
+  - `Receita.fontes(v)`: fontes além dos campos `fonte` (a de emoji quando o texto tem emoji).
+  - `comporLinhas` aceita `reserva` (fonte para o caractere que a fonte escolhida não tem).
+  - `lib/text/fontes.ts` (compartilhado): +18 Google Fonts (OFL) e `FONTE_EMOJI` (Noto Emoji, fora da
+    lista selecionável). Formas `coracao`, `estrela`, `ajustarLargura` em `lib/gerador/formas.ts`.
+  - verificar-gerador 89/89. SVG testado no navegador (Node não tem DOMParser).
 

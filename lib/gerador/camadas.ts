@@ -42,6 +42,10 @@ const PISO_MIN = 0.4;
 
 export const coresDe = (o: Pick<OpcoesCamadas, 'cores'>) => (o.cores === 3 ? ['Base', 'Meio', 'Topo'] : ['Base', 'Topo']);
 
+/** A cor escolhida de cada camada, na ordem de `coresDe`. */
+export const hexDe = (v: Valores, o: Pick<OpcoesCamadas, 'cores'>) =>
+  o.cores === 3 ? [txt(v, 'corBase'), txt(v, 'corMeio'), txt(v, 'corTopo')] : [txt(v, 'corBase'), txt(v, 'corTopo')];
+
 /**
  * As pecas de um texto, montadas (base em Z=0, as outras em cima). `ajustarBase`
  * deixa a receita mexer na base (argola do chaveiro, retangulo...).
@@ -98,6 +102,7 @@ type Padroes = Partial<{
   cores: number; contornoBase: number; contornoMeio: number; contornoTopo: number;
   espBase: number; espMeio: number; espTopo: number; preencherBase: boolean; preencherMiolo: boolean;
   formaBase: 'contorno' | 'retangulo'; folga: number;
+  corBase: string; corMeio: string; corTopo: string;
 }>;
 
 /** Os campos de camadas e montagem, iguais em todas as receitas de texto em camadas. */
@@ -124,6 +129,9 @@ export function parametrosCamadas(padrao: Padroes = {}): Parametro[] {
       tipo: 'escolha', id: 'montagem', rotulo: 'Como imprimir', grupo: 'Montagem', padrao: 'ams',
       opcoes: [{ valor: 'ams', rotulo: 'Uma peça multicor (AMS ou troca de filamento)' }, { valor: 'encaixe', rotulo: 'Peças separadas que se encaixam' }],
     },
+    { tipo: 'cor', id: 'corBase', rotulo: 'Base', grupo: 'Cores', padrao: padrao.corBase ?? '#2b2f36' },
+    { tipo: 'cor', id: 'corMeio', rotulo: 'Meio', grupo: 'Cores', padrao: padrao.corMeio ?? '#f2efe8', visivel: tres },
+    { tipo: 'cor', id: 'corTopo', rotulo: 'Topo', grupo: 'Cores', padrao: padrao.corTopo ?? '#e0533d' },
     { tipo: 'numero', id: 'profEncaixe', rotulo: 'Profundidade do encaixe', grupo: 'Montagem', padrao: 0.6, min: 0.2, max: 3, passo: 0.1, unidade: 'mm', visivel: encaixe },
     { tipo: 'numero', id: 'folga', rotulo: 'Folga do encaixe', grupo: 'Montagem', padrao: padrao.folga ?? 0.2, min: 0, max: 1, passo: 0.01, unidade: 'mm', visivel: encaixe, dica: 'Espaço entre a peça e o rebaixo (cada lado)' },
   ];

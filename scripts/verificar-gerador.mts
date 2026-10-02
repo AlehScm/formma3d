@@ -14,7 +14,8 @@ import { lerTresMf } from '../lib/import/tresmf';
 import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
 import { valoresPadrao, type Receita, type Resultado, type Valores } from '../lib/gerador/tipos';
 import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
-import { blob3mfMontado, blob3mfSoltas, zipStl } from '../lib/gerador/exportar';
+import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
+import { corDe } from '../lib/gerador/malha';
 import { contornar, retanguloArredondado } from '../lib/gerador/formas';
 import JSZip from 'jszip';
 
@@ -28,7 +29,8 @@ const ok = (nome: string, cond: boolean, detalhe = '') => {
 const perto = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
 
 // Fontes do sistema no lugar das web (o teste nao baixa nada): script -> Segoe Script.
-const arquivo = (id: string) => (['lobster', 'pacifico'].includes(id) ? 'segoescb.ttf' : id === 'archivo-black' ? 'ariblk.ttf' : 'arialbd.ttf');
+const arquivo = (id: string) =>
+  id === 'noto-emoji' ? 'seguiemj.ttf' : ['lobster', 'pacifico'].includes(id) ? 'segoescb.ttf' : id === 'archivo-black' ? 'ariblk.ttf' : 'arialbd.ttf';
 const fontes = new Map<string, Font>();
 const ctx = {
   fonte: (id: string) => {
@@ -132,6 +134,46 @@ console.log('\n== texto em camadas ==');
   const l = receitaPorId('letras-separadas')!;
   const lr = gerar(l, { linha1: 'CASA' });
   ok('letras separadas: um item por letra, cada um com base inteira', lr.itens.length === 4 && lr.itens.every((it) => it.pecas[0]!.camadas[0]!.region.length === 1), lr.itens.map((i) => i.nome).join(', '));
+}
+
+console.log('\n== emoji, adornos e cores ==');
+{
+  const r = receitaPorId('palavra-camadas')!;
+  ok('fonte de emoji so quando o texto tem emoji', r.fontes!({ ...valoresPadrao(r), linha1: 'Ana🐾' }).join() === 'noto-emoji' && r.fontes!({ ...valoresPadrao(r), linha1: 'Ana' }).length === 0);
+  const sem = gerar(r, { linha1: 'Ana', largura: 150 }), com = gerar(r, { linha1: 'Ana🐾', largura: 150 });
+  const nSem = regiaoDe(sem, 0, 'Topo').length, nCom = regiaoDe(com, 0, 'Topo').length;
+  ok('emoji que a fonte nao tem vem da fonte de emoji', nCom > nSem, `${nSem} -> ${nCom} contornos`);
+  // Mesma linha, altura fixa: o emoji (a direita do H) fica na altura das maiusculas.
+  const hp = regiaoDe(gerar(receitaPorId('chaveiro-nome')!, { nomes: 'H🐾', altura: 14 }), 0, 'Topo');
+  const bH = regionBounds([hp.reduce((a, b) => (regionBounds([b]).minX < regionBounds([a]).minX ? b : a))]);
+  const bEmoji = regionBounds(hp.filter((p) => regionBounds([p]).minX > bH.maxX));
+  ok('emoji na altura das maiusculas (0,7 a 1,4 x o H)', bEmoji.h > bH.h * 0.7 && bEmoji.h < bH.h * 1.4, `emoji ${bEmoji.h.toFixed(1)} mm, H ${bH.h.toFixed(1)} mm`);
+  ok('seletor de variacao (❤️) nao quebra', gerar(r, { linha1: 'Mãe❤️' }).itens.length === 1);
+
+  const cor = gerar(r, { linha1: 'Mom', largura: 200, adorno: 'coracao', larguraAdorno: 40 });
+  const base = regiaoDe(cor, 0, 'Base'), topo = regiaoDe(cor, 0, 'Topo');
+  ok('coracao: largura total continua a pedida', perto(regionBounds(base).w, 200, 0.1), `${regionBounds(base).w.toFixed(1)} mm`);
+  const caixas = topo.map((p) => regionBounds([p]));
+  const ilha = caixas.find((b) => perto(b.w, 40, 0.05));
+  const textoCom = caixas.filter((b) => b !== ilha);
+  const fimTexto = Math.max(...textoCom.map((b) => b.maxX));
+  ok('coracao: 40 mm, 4 mm a direita do texto, tudo numa base so', !!ilha && perto(ilha.minX - fimTexto, 4, 0.05) && base.length === 1, ilha ? `${ilha.w.toFixed(2)} mm, vao ${(ilha.minX - fimTexto).toFixed(2)} mm` : 'sem coracao');
+  const esq = regionBounds(regiaoDe(gerar(r, { linha1: 'Mom', adorno: 'estrela', ladoAdorno: 'esquerda' }), 0, 'Topo'));
+  ok('estrela a esquerda: gera e a peca fica centrada', esq.w > 0 && Math.abs(esq.minX + esq.maxX) < 1);
+  const quadrado: Region = [{ outer: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], holes: [] }];
+  const des = gerar(r, { linha1: 'Mom', adorno: 'desenho', desenho: JSON.stringify({ nome: 'q.svg', regiao: quadrado }), larguraAdorno: 30 });
+  const ilhaQuadrada = regiaoDe(des, 0, 'Topo').some((p) => { const b = regionBounds([p]); return perto(b.w, 30, 0.01) && perto(b.h, 30, 0.01); });
+  ok('desenho SVG: entra na largura pedida (30 mm)', ilhaQuadrada);
+  ok('desenho sem arquivo: avisa', gerar(r, { adorno: 'desenho', desenho: '' }).avisos.some((a) => a.includes('SVG')));
+
+  const pint = gerar(r, { corBase: '#112233', corMeio: '#445566', corTopo: '#778899' });
+  ok('cores escolhidas vao para o resultado', pint.hex!.join() === '#112233,#445566,#778899');
+  const xml = xml3mfMontado(pint);
+  ok('e para o 3MF (materiais com a cor)', xml.includes('displaycolor="#112233FF"') && xml.includes('displaycolor="#778899FF"'));
+  ok('2 cores: base e topo', gerar(r, { cores: '2', corBase: '#112233', corTopo: '#778899' }).hex!.join() === '#112233,#778899');
+  ok('cor invalida cai na paleta', corDe({ hex: ['xyz'] }, 0) !== 'xyz' && corDe({ hex: ['#ABCDEF'] }, 0) === '#ABCDEF');
+  const ch = receitaPorId('chaveiro-nome')!;
+  ok('chaveiro: nome com emoji', gerar(ch, { nomes: '♥Lu🐾' }).itens.length === 1 && ch.fontes!({ ...valoresPadrao(ch), nomes: 'Lu🐾' }).includes('noto-emoji'));
 }
 
 console.log('\n== chaveiros ==');

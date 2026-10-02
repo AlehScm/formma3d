@@ -10,6 +10,9 @@ import type { Camada, Item, Peca, Resultado } from './tipos';
 /** Cor de previa por indice (Base, Meio, Topo, ...). */
 export const CORES_PREVIA = ['#3b3f46', '#e9e6df', '#e0533d', '#2f7dd1', '#f2c230', '#3aa66b'];
 
+/** A cor do indice `i`: a escolhida na receita ou a da paleta. */
+export const corDe = (r: Pick<Resultado, 'hex'>, i: number) => (/^#[0-9a-f]{6}$/i.test(r.hex?.[i] ?? '') ? r.hex![i]! : CORES_PREVIA[i % CORES_PREVIA.length]!);
+
 export function posicoesDaPeca(p: Peca): Float32Array {
   const partes: Float32Array[] = [];
   for (const c of p.camadas) {

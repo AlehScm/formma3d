@@ -2,7 +2,7 @@
 import JSZip from 'jszip';
 import { empacotar3mf, modelo3mf, modelo3mfMontado } from '../export/tresmf';
 import { posicoesParaSTL } from '../export/stl';
-import { CORES_PREVIA, nomeComCor, pecasSoltas, posicoesDaPeca } from './malha';
+import { corDe, nomeComCor, pecasSoltas, posicoesDaPeca } from './malha';
 import type { Resultado } from './tipos';
 
 /** Nome de arquivo sem acento nem simbolo. */
@@ -14,7 +14,7 @@ export function xml3mfMontado(r: Resultado): string {
     nome: it.nome,
     partes: it.pecas.map((p) => ({ nome: `${it.nome} - ${p.nome}`, cor: p.cor, posicoes: posicoesDaPeca(p) })),
   }));
-  return modelo3mfMontado(grupos, r.cores.map((nome, i) => ({ nome, hex: CORES_PREVIA[i % CORES_PREVIA.length]! })));
+  return modelo3mfMontado(grupos, r.cores.map((nome, i) => ({ nome, hex: corDe(r, i) })));
 }
 
 /** Cada peca deitada na mesa, lado a lado: para imprimir cada cor separada e colar. */

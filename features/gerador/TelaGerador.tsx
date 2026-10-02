@@ -22,10 +22,11 @@ import {
 } from '@/components/ui';
 import { carregarFonteWeb, FONTES_WEB } from '@/lib/text/fontes';
 import { receitaPorId } from '@/lib/gerador/receitas';
-import { valoresPadrao, type Parametro, type Receita, type Resultado, type Valores } from '@/lib/gerador/tipos';
-import { CORES_PREVIA, centrada, nomeComCor, pecasSoltas } from '@/lib/gerador/malha';
+import { desenho, valoresPadrao, type Parametro, type Receita, type Resultado, type Valores } from '@/lib/gerador/tipos';
+import { centrada, corDe, nomeComCor, pecasSoltas } from '@/lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, nomeSeguro, zipStl } from '@/lib/gerador/exportar';
 import { baixar } from '@/features/acoes/exportar';
+import { svgParaRegiao } from '@/lib/import/svg';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { PreviaGerador } from './PreviaGerador';
@@ -58,7 +59,7 @@ export function TelaGerador({ id }: { id: string }) {
   }, [receita.id, valores]);
 
   const visiveis = receita.parametros.filter((p) => !p.visivel || p.visivel(valores));
-  const idsFonte = [...new Set(visiveis.filter((p) => p.tipo === 'fonte').map((p) => String(valores[p.id])))];
+  const idsFonte = [...new Set([...visiveis.filter((p) => p.tipo === 'fonte').map((p) => String(valores[p.id])), ...(receita.fontes?.(valores) ?? [])])];
   const [fontes, setFontes] = useState<Map<string, Font>>(new Map());
   const [erroFonte, setErroFonte] = useState<string | null>(null);
   const faltam = idsFonte.filter((f) => !fontes.has(f));
@@ -162,7 +163,7 @@ export function TelaGerador({ id }: { id: string }) {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-mini text-texto-2">
                 {resultado.cores.map((c, i) => (
                   <span key={c} className="flex items-center gap-1.5">
-                    <span className="size-3 rounded-sm border border-borda" style={{ background: CORES_PREVIA[i % CORES_PREVIA.length] }} aria-hidden />
+                    <span className="size-3 rounded-sm border border-borda" style={{ background: corDe(resultado, i) }} aria-hidden />
                     {c}
                   </span>
                 ))}
@@ -212,5 +213,44 @@ function CampoDoParametro({ p, valor, set }: { p: Parametro; valor: Valores[stri
       return <Interruptor rotulo={p.rotulo} dica={p.dica} valor={valor === true} set={set} />;
     case 'fonte':
       return <Selecao rotulo={p.rotulo} dica={p.dica} valor={String(valor)} set={set} opcoes={FONTES_WEB.map((f) => ({ valor: f.id, nome: f.nome }))} />;
+    case 'cor':
+      return (
+        <Campo rotulo={p.rotulo} dica={p.dica} layout="linha" htmlFor={`g-${p.id}`}>
+          <input id={`g-${p.id}`} type="color" value={String(valor)} onChange={(e) => set(e.target.value)} className="h-8 w-14 cursor-pointer rounded-md border border-borda bg-superficie-2 p-0.5" />
+        </Campo>
+      );
+    case 'svg':
+      return <CampoDesenho p={p} valor={String(valor)} set={set} />;
   }
+}
+
+/** Arquivo SVG -> desenho (area preenchida) guardado como JSON no valor do campo. */
+function CampoDesenho({ p, valor, set }: { p: Parametro; valor: string; set: (v: string) => void }) {
+  const [erro, setErro] = useState<string | null>(null);
+  const atual = desenho({ d: valor }, 'd');
+  const ler = async (arquivo: File | undefined) => {
+    if (!arquivo) return;
+    try {
+      const regiao = svgParaRegiao(await arquivo.text());
+      setErro(null);
+      set(JSON.stringify({ nome: arquivo.name, regiao }));
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  };
+  return (
+    <Campo rotulo={p.rotulo} dica={p.dica} erro={erro} valor={atual?.nome}>
+      <div className="flex items-center gap-2">
+        <label className="flex h-8 flex-1 cursor-pointer items-center justify-center rounded-md border border-dashed border-borda-forte bg-superficie-2 px-2.5 text-mini text-texto-2 hover:border-acento">
+          {atual ? 'Trocar SVG' : 'Escolher SVG…'}
+          <input type="file" accept=".svg,image/svg+xml" className="sr-only" onChange={(e) => ler(e.target.files?.[0])} />
+        </label>
+        {atual && (
+          <Botao variante="fantasma" onClick={() => set('')}>
+            Tirar
+          </Botao>
+        )}
+      </div>
+    </Campo>
+  );
 }
