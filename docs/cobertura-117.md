@@ -3,14 +3,14 @@
 Gerado de `lib/gerador/cobertura.ts` por `npx tsx scripts/cobertura.mts`; não editar à mão.
 Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 
-**85 prontos · 17 parciais · 15 pendentes** de 117.
+**88 prontos · 14 parciais · 15 pendentes** de 117.
 
 | Onda | Claude | ChatGPT |
 |---|---:|---:|
-| já coberto | 85 | 0 |
+| já coberto | 88 | 0 |
 | 1 | 0 | 1 |
-| 2 | 4 | 15 |
-| 3 | 12 | 0 |
+| 2 | 2 | 15 |
+| 3 | 11 | 0 |
 
 | Modelo | Dono | Receita | Status | Onda | Falta |
 |---|---|---|---|---:|---|
@@ -30,8 +30,8 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Porta-Pente para Cílios](https://www.mafagrafos.com/models/lash-holder) | Claude | `porta-pente` | Pronto | 0 | textura vem de imagem (sem editor de arte) |
 | [Luminária Letra Grande com Nome](https://www.mafagrafos.com/models/big-letter-lamp) | Claude | `luminaria-letra` | Parcial | 3 | editor de arte; conferir encaixe da frente impresso |
 | [Gerador de Chaveiro com Sobreposição](https://www.mafagrafos.com/models/overlay-keychain) | Claude | `chaveiro-desenho` | Pronto | 0 | — |
-| [Placa de Listras com Base](https://www.mafagrafos.com/models/stripes-plaques) | Claude | `placa-com-base` | Parcial | 2 | editor de arte (aqui o desenho vem de imagem) |
-| [Placa de Line Art](https://www.mafagrafos.com/models/line-art-plaque) | Claude | `placa-com-base` | Parcial | 2 | pincel para ligar linhas soltas |
+| [Placa de Listras com Base](https://www.mafagrafos.com/models/stripes-plaques) | Claude | `placa-com-base` | Pronto | 0 | editor de arte (o desenho vem de imagem) |
+| [Placa de Line Art](https://www.mafagrafos.com/models/line-art-plaque) | Claude | `placa-com-base` | Pronto | 0 | pincel para ligar linhas soltas (avisa quando há partes soltas) |
 | [Gerador de Topo de Bolo](https://www.mafagrafos.com/models/cake-topper-generator) | Claude | `topo-bolo` | Pronto | 0 | — |
 | [Troféu Imagem + Texto](https://www.mafagrafos.com/models/text-image-trophy) | Claude | `trofeu` | Pronto | 0 | texto da base só na frente |
 | [Carimbo Circular de Imagem](https://www.mafagrafos.com/models/rounded-circle-stamp) | Claude | `carimbo-circular` | Pronto | 0 | — |
@@ -120,7 +120,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Contador raspadinha](https://www.mafagrafos.com/models/scratch-off-counter) | Claude | `contador-raspadinha` | Pronto | 0 | — |
 | [Porta-canetas paramétrico](https://www.mafagrafos.com/models/sized-pen-holder) | Claude | `porta-canetas-grade` | Pronto | 0 | — |
 | [String art, coração](https://www.mafagrafos.com/models/string-art-heart-name-vertical-floating) | Claude | `string-art` | Pronto | 0 | — |
-| [String art, retângulo](https://www.mafagrafos.com/models/string-art-rectangle-name-radial) | Claude | `string-art` | Parcial | 3 | editor de arte (aqui o desenho vem de imagem) |
+| [String art, retângulo](https://www.mafagrafos.com/models/string-art-rectangle-name-radial) | Claude | `string-art` | Pronto | 0 | editor de arte (o desenho vem de imagem) |
 | [@social string art](https://www.mafagrafos.com/models/social-handle-string-art-floating) | Claude | `string-art` | Pronto | 0 | — |
 | [Letras separadas, 2 cores](https://www.mafagrafos.com/models/separate-letters-offset-2color) | Claude | `letras-separadas` | Pronto | 0 | — |
 | [Letras separadas, 3 cores](https://www.mafagrafos.com/models/separate-letters-offset-3color) | Claude | `letras-separadas` | Pronto | 0 | — |

@@ -207,3 +207,4 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Chaveiro NFC: arte colorida, uma parte por cor.
   - Porta-retrato: modo "uma cor por camada". A faixa j cobre as cores de índice ≥ j, então dá para imprimir trocando o filamento por altura.
   - verificar-gerador com a placa-qr junto: tudo passa.
+- 2026-10-02 Claude: critério do editor aplicado a mais três (listras, string art radial, line art): contam como prontos, com a falta anotada.
