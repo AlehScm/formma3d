@@ -242,6 +242,36 @@ export const FICHAS: Ficha[] = [
     destaques: ['Imagem + palavra', 'Peças grossas de encaixe', 'Placa atrás'],
     exemplo: { fundoImagem: true, corBase: '#333333', corImagem: '#ffd700', corTexto: '#ffd700' },
   },
+  {
+    id: 'rolo-textura', nome: 'Rolo de textura', familia: 'parametricos', tipo: 'Ferramenta',
+    resumo: 'Rolo com a sua imagem em relevo em volta, repetida em mosaico ou grande, para massa e argila.',
+    destaques: ['Mosaico ou imagem grande', 'Relevo para fora ou para dentro', 'Furo para o cabo'],
+    exemplo: { corRolo: '#6b2c42', corTextura: '#f5d0a9' },
+  },
+  {
+    id: 'estojo-batom', nome: 'Estojo de batom', familia: 'chaveiros', tipo: 'Beleza',
+    resumo: 'Chaveiro que guarda o batom, com nome, mosaico ou imagem em relevo em volta.',
+    destaques: ['Nome ou textura em volta', 'Argola em cima', 'Na medida do batom'],
+    exemplo: { nome: 'Bia', corCilindro: '#9d174d', corTextura: '#fde68a' },
+  },
+  {
+    id: 'ejetor-cupula', nome: 'Ejetor de cúpula', familia: 'cortadores', tipo: 'Confeitaria',
+    resumo: 'Casca e êmbolo com o topo em cúpula: o doce sai abaulado, na forma do seu desenho.',
+    destaques: ['Do seu desenho', 'Cúpula por escala ou recuo', 'Casca suavizada'],
+    exemplo: { corBase: '#a85f78', corTopo: '#fbcfe8' },
+  },
+  {
+    id: 'cumbuca', nome: 'Cumbuca a partir de imagem', familia: 'parametricos', tipo: 'Casa',
+    resumo: 'A forma da sua imagem vira a boca de uma cumbuca, com o desenho em relevo no fundo.',
+    destaques: ['Do seu desenho', 'Parede curva sem suporte', 'Desenho no fundo'],
+    exemplo: { tamanho: 120, altura: 35, corCumbuca: '#c8a2c8', corDesenho: '#ffffff' },
+  },
+  {
+    id: 'suporte-bolo', nome: 'Suporte de bolo', familia: 'parametricos', tipo: 'Festa',
+    resumo: 'Prato com borda ondulada e nome em arco, e pé em sino que imprime sem suporte.',
+    destaques: ['Borda em ondas', 'Nome no prato', 'Pé oco em sino'],
+    exemplo: { corTopo: '#ffffff', corBase: '#f9a8d4' },
+  },
 ];
 
 export function ficha(id: string): Ficha {

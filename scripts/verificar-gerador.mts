@@ -20,6 +20,7 @@ import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/ger
 import { corDe } from '../lib/gerador/malha';
 import { contornar, retanguloArredondado, textoEmArco, unir } from '../lib/gerador/formas';
 import JSZip from 'jszip';
+import { cilindroComRelevo } from '../lib/gerador/cilindro';
 import { pixelsParaRegiao } from '../lib/import/imagem';
 import { pecasDeQuebraCabeca } from '../lib/gerador/receitas/imagens';
 import { textura } from '../lib/gerador/figuras';
@@ -570,6 +571,52 @@ console.log('\n== lacunas dos parciais ==');
   const ls0 = gerar(receitaPorId('letreiro-sobreposto')!, {}), ls1 = gerar(receitaPorId('letreiro-sobreposto')!, { adornoNome: 'coracao' });
   const nomeLs = (r: Resultado) => r.itens[0]!.pecas.find((p) => p.nome === 'Nome')!.camadas[0]!.region;
   ok('letreiro: coracoes nas pontas alargam o nome, ainda uma peca', largura(nomeLs(ls1)) > largura(nomeLs(ls0)) + 10 && nomeLs(ls1).length === 1);
+}
+
+console.log('\n== onda 3: cilindros e cupulas ==');
+{
+  const largura = (r: Region) => regionBounds(r).w;
+  const pecaDe = (res: Resultado, item: number, peca: string) => res.itens[item]!.pecas.find((p) => p.nome === peca)!;
+  const sq = JSON.stringify({ nome: 'q.svg', regiao: [{ outer: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], holes: [] }] });
+  // Relevo em volta: um quadrado desenrolado vira um ressalto de h mm so naquelas camadas.
+  const desenroladoQ: Region = [{ outer: [{ x: 10, y: 5 }, { x: 20, y: 5 }, { x: 20, y: 15 }, { x: 10, y: 15 }], holes: [] }];
+  const cil = cilindroComRelevo({ R: 10, desenho: desenroladoQ, h: 1, z0: 0, z1: 20 });
+  const raioMax = (r: Region) => Math.max(...r.flatMap((p) => p.outer).map((q) => Math.hypot(q.x, q.y)));
+  const comRelevo = cil.filter((c) => raioMax(c.region) > 10.5);
+  ok('cilindro: relevo de 1 mm so entre z 5 e 15', comRelevo.length > 0 && comRelevo.every((c) => c.z0 >= 5 - 1e-9 && c.z1 <= 15 + 1e-9) && perto(raioMax(comRelevo[0]!.region), 11, 0.01));
+  const arco = comRelevo[0]!.region.flatMap((p) => p.outer).filter((q) => Math.hypot(q.x, q.y) > 10.5).map((q) => Math.atan2(q.y, q.x));
+  ok('cilindro: o ressalto cobre 10 mm de arco (1 rad em R = 10)', perto(Math.max(...arco) - Math.min(...arco), 1, 0.02), (Math.max(...arco) - Math.min(...arco)).toFixed(3));
+
+  const rolo = gerar(receitaPorId('rolo-textura')!, { desenho: sq, diametro: 30, altura: 60, furo: 8, relevo: 0.8, positiva: true, nU: 6, nZ: 4 });
+  const tex = pecaDe(rolo, 0, 'Textura').camadas;
+  ok('rolo: textura sai 0,8 mm do rolo de 30', tex.length > 0 && perto(Math.max(...tex.map((c) => raioMax(c.region))), 15.8, 0.02));
+  ok('rolo: furo de 8 mm no meio', pecaDe(rolo, 0, 'Rolo').camadas[0]!.region[0]!.holes.some((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 8, 0.05)));
+  const neg = gerar(receitaPorId('rolo-textura')!, { desenho: sq, diametro: 30, positiva: false, relevo: 0.8 });
+  ok('rolo: textura para dentro numa peca so', neg.itens[0]!.pecas.length === 1 && neg.itens[0]!.pecas[0]!.camadas.some((c) => Math.min(...c.region[0]!.outer.map((q) => Math.hypot(q.x, q.y))) < 14.3));
+
+  const eb = gerar(receitaPorId('estojo-batom')!, { modo: 'liso', diametroBatom: 16, folga: 1.4, parede: 2.8, alturaBatom: 67, paraFora: 12, fundo: 2, furo: 3.4 });
+  const tubo = pecaDe(eb, 0, 'Estojo').camadas.find((c) => c.z0 >= 2 && c.region[0]!.holes.length)!;
+  ok('batom: furo interno de 18,8 mm (16 + 2 x 1,4)', perto(regionBounds([{ outer: tubo.region[0]!.holes[0]!, holes: [] }]).w, 18.8, 0.05));
+  const topoTubo = Math.max(...pecaDe(eb, 0, 'Estojo').camadas.filter((c) => c.region.some((q) => q.holes.length)).map((c) => c.z1));
+  ok('batom: tubo de 57 mm (67 - 12 + fundo 2)', perto(topoTubo, 57, 0.01));
+  ok('batom: aba com furo acima da borda', pecaDe(eb, 0, 'Estojo').camadas.some((c) => c.z0 > 57 && c.region.length === 2));
+
+  const ej = gerar(receitaPorId('ejetor-cupula')!, { desenho: sq, tamanho: 30, profundidade: 10, alturaEjetor: 35, folga: 0.4, espCasca: 1.2 });
+  const emb = ej.itens.find((it) => it.nome === 'Êmbolo')!.pecas[0]!.camadas;
+  ok('ejetor: cupula de 10 mm cavada no topo do embolo de 35', perto(emb[0]!.z1, 25, 1e-9) && emb.at(-1)!.z1 === 35 && emb.at(-1)!.region[0]!.holes.length === 1);
+  const furoCav = (c: { region: Region }) => regionArea([{ outer: c.region[0]!.holes[0] ?? [], holes: [] }]);
+  ok('ejetor: a cavidade abre subindo (sem balanco)', emb.slice(1).every((c, i) => !i || furoCav(c) >= furoCav(emb[i]!) - 1e-6));
+  ok('ejetor: casca 0,4 mm por fora da forma', perto(regionBounds([{ outer: ej.itens[0]!.pecas[0]!.camadas[0]!.region[0]!.holes[0]!, holes: [] }]).w, 30.8, 0.05));
+
+  const cb = gerar(receitaPorId('cumbuca')!, { desenho: sq, tamanho: 120, altura: 40, casca: 1.6 });
+  const cc = pecaDe(cb, 0, 'Cumbuca').camadas;
+  ok('cumbuca: boca de 120 mm e fundo menor', perto(largura(cc.at(-1)!.region), 120, 0.2) && largura(cc[0]!.region) < 100);
+  ok('cumbuca: a parede abre no maximo 50 graus por camada', cc.every((c, i) => !i || (largura(c.region) - largura(cc[i - 1]!.region)) / 2 <= (c.z1 - c.z0) * Math.tan((50.5 * Math.PI) / 180) + 1e-6));
+
+  const sb = gerar(receitaPorId('suporte-bolo')!, { diametroBase: 170, diametroFinal: 50, altura: 100 });
+  const pe = sb.itens.find((it) => it.nome === 'Pé')!.pecas[0]!.camadas;
+  ok('suporte de bolo: pe de 170 embaixo a 50 em cima, oco', perto(largura(pe[0]!.region), 170, 1) && perto(largura(pe.at(-1)!.region), 50, 1) && pe.every((c) => c.region[0]!.holes.length === 1));
+  ok('suporte de bolo: o pe afina subindo (sem balanco)', pe.every((c, i) => !i || largura(c.region) <= largura(pe[i - 1]!.region) + 1e-6));
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

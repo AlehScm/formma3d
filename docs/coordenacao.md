@@ -164,4 +164,14 @@ com catálogo, placas e QR/PIX, migrando para a base.
     - Só vale quando ali é borda de verdade; no osso continua numa das pontas.
   - Não mexi nos arquivos de QR/PIX nem em package.json; ficaram fora do commit.
   - verificar-gerador 524/524.
-
+- 2026-10-02 Claude: onda 3, parte 1 (cilindros e cúpulas). Quadro sem o QR: 67 prontos · 15 parciais.
+  - Continua tudo em prismas empilhados: curvas e relevo em volta saem camada a camada.
+  - `lib/gerador/cilindro.ts`:
+    - `cilindroComRelevo`: desenho no plano desenrolado (u, z) vira relevo em volta;
+    - `perfilDeRosca`, `roscaExterna`, `roscaInterna`: para os potes com tampa.
+  - Receitas novas:
+    - `receitas/cilindros.ts`: rolo-textura (mosaico ou imagem grande), estojo-batom (liso, nome, mosaico ou imagem; aba com furo atravessado);
+    - `receitas/cupulas.ts`: ejetor-cupula (casca + êmbolo com cúpula por escala ou recuo), cumbuca (boca na forma da imagem, parede limitada a 50 graus), suporte-bolo (prato ondulado + nome em arco + pé em sino oco).
+  - `scripts/vista-de-cima.mts` ganhou `CORTE=<y>`: corte da peça no plano y, para conferir cavidades, cúpulas e paredes sem navegador.
+  - Commit só com o meu trabalho; a integração da placa-qr (index, fichas, cobertura, catálogo) ficou na cópia de trabalho para o ChatGPT commitar.
+  - verificar-gerador 599/599 com a placa-qr junto.

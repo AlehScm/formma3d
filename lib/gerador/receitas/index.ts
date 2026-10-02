@@ -14,12 +14,16 @@ import { abridorLatas, chaveiroCarretel, chaveiroNfc } from './nfc';
 import { chaveiroEspelho, rosaComTexto } from './arco';
 import { placaComBase, trofeu } from './expositores';
 
+import { estojoBatom, roloTextura } from './cilindros';
+import { cumbuca, ejetorCupula, suporteBolo } from './cupulas';
 export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparadas, chaveiroNome, chaveiroRetangular, logoCamadas, chaveiroDesenho, chaveiroLogoNome, plaquinhaPet, pingenteFamilia,
   letreiroSobreposto, topoBolo, topoBoloCircular, marcadorPagina, contadorRaspadinha, textoComGuia,
   suporteFoto, suportePalitos, portaCanetasGrade, flocoNeve,
   cortadorBiscoito, ejetorBrigadeiro, cortadoresGrade, carimboMolde, carimboCircular, carimboLetras, carimboImagem,
   colorir, chaveiroResina, imagemMultipartes, quebraCabeca, chaveiroNfc, chaveiroCarretel, abridorLatas, chaveiroEspelho, rosaComTexto,
   placaComBase, trofeu,
+  roloTextura, estojoBatom,
+  ejetorCupula, cumbuca, suporteBolo,
 ];
 
 export const receitaPorId = (id: string) => RECEITAS.find((r) => r.id === id);

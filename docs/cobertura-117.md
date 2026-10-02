@@ -3,14 +3,14 @@
 Gerado de `lib/gerador/cobertura.ts` por `npx tsx scripts/cobertura.mts`; não editar à mão.
 Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 
-**58 prontos · 10 parciais · 49 pendentes** de 117.
+**67 prontos · 11 parciais · 39 pendentes** de 117.
 
 | Onda | Claude | ChatGPT |
 |---|---:|---:|
-| já coberto | 58 | 0 |
+| já coberto | 67 | 0 |
 | 1 | 0 | 1 |
 | 2 | 11 | 15 |
-| 3 | 32 | 0 |
+| 3 | 23 | 0 |
 
 | Modelo | Dono | Receita | Status | Onda | Falta |
 |---|---|---|---|---:|---|
@@ -39,8 +39,8 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Carimbo de Letras/Números](https://www.mafagrafos.com/models/text-brigadeiro-stamp) | Claude | `carimbo-letras` | Pronto | 0 | — |
 | [@social - Luminária de LED](https://www.mafagrafos.com/models/social-handle-simple-lamp) | Claude | — | Pendente | 3 | base com canal de LED e furo de cabo |
 | [Chaveiro com Nome e Logo](https://www.mafagrafos.com/models/logo-text-keychain) | Claude | `chaveiro-logo-nome` | Pronto | 0 | — |
-| [Ejetor Arredondado com Escala de Forma](https://www.mafagrafos.com/models/scale-dome-ejector) | Claude | — | Pendente | 3 | cúpula curva: precisa de sólido não-prisma |
-| [Ejetor de Cúpula Arredondada](https://www.mafagrafos.com/models/rounded-dome-ejector) | Claude | — | Pendente | 3 | cúpula curva: precisa de sólido não-prisma |
+| [Ejetor Arredondado com Escala de Forma](https://www.mafagrafos.com/models/scale-dome-ejector) | Claude | `ejetor-cupula` | Pronto | 0 | texto e logo da marca; pegador |
+| [Ejetor de Cúpula Arredondada](https://www.mafagrafos.com/models/rounded-dome-ejector) | Claude | `ejetor-cupula` | Parcial | 3 | linhas do desenho dentro da cúpula; texto e logo da marca |
 | [Lista Vertical de Códigos QR](https://www.mafagrafos.com/models/vertical-qr-code-list) | ChatGPT | — | Pendente | 2 | QR por tipo (link, WiFi, PIX...) em coluna |
 | [Lista Vertical em Camadas de Códigos QR](https://www.mafagrafos.com/models/layered-vertical-qr-code-list) | ChatGPT | — | Pendente | 2 | QRs em camadas com logo e contato |
 | [Lista Horizontal de Códigos QR](https://www.mafagrafos.com/models/horizontal-qr-code-list) | ChatGPT | — | Pendente | 2 | QR por tipo em linha |
@@ -51,18 +51,18 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Placa de QRCode WhatsApp](https://www.mafagrafos.com/models/whats-app) | ChatGPT | — | Pendente | 2 | QR de WhatsApp |
 | [Placa de QRCode com Logo](https://www.mafagrafos.com/models/logo-qr-code-plaque) | ChatGPT | — | Pendente | 2 | QR com logo no centro |
 | [Suporte para Palitos](https://www.mafagrafos.com/models/stick-stand) | Claude | `suporte-palitos` | Pronto | 0 | curva das aletas em degraus de 0,4 mm |
-| [Suporte de Bolo](https://www.mafagrafos.com/models/cake-stand) | Claude | — | Pendente | 3 | prato com ondulações e pé |
+| [Suporte de Bolo](https://www.mafagrafos.com/models/cake-stand) | Claude | `suporte-bolo` | Pronto | 0 | — |
 | [Caixa de Figurinhas](https://www.mafagrafos.com/models/stickers-box) | Claude | — | Pendente | 3 | caixa, suporte removível e tampa |
 | [Suporte de Foto com Texto](https://www.mafagrafos.com/models/photo-holder) | Claude | `suporte-foto` | Pronto | 0 | — |
 | [Topo de Bolo Circular com Glitter](https://www.mafagrafos.com/models/circle-glitter-cake-topper) | Claude | `topo-bolo-circular` | Parcial | 2 | desenho do glitter na janela |
 | [Cortadores de Retângulos em Grade](https://www.mafagrafos.com/models/rectangle-cutters) | Claude | `cortadores-grade` | Pronto | 0 | — |
-| [Estojo de Batom - Ícone em Mosaico](https://www.mafagrafos.com/models/small-texture-lipstick-case) | Claude | — | Pendente | 3 | rosca + textura em mosaico |
-| [Estojo de Batom - Textura Grande](https://www.mafagrafos.com/models/large-texture-lipstick-case) | Claude | — | Pendente | 3 | rosca + textura de imagem |
-| [Estojo de Batom - Nome](https://www.mafagrafos.com/models/name-lipstick-case) | Claude | — | Pendente | 3 | rosca + nome |
-| [Estojo de Batom](https://www.mafagrafos.com/models/plain-lipstick-case) | Claude | — | Pendente | 3 | corpo e tampa rosqueada |
+| [Estojo de Batom - Ícone em Mosaico](https://www.mafagrafos.com/models/small-texture-lipstick-case) | Claude | `estojo-batom` | Pronto | 0 | — |
+| [Estojo de Batom - Textura Grande](https://www.mafagrafos.com/models/large-texture-lipstick-case) | Claude | `estojo-batom` | Pronto | 0 | — |
+| [Estojo de Batom - Nome](https://www.mafagrafos.com/models/name-lipstick-case) | Claude | `estojo-batom` | Pronto | 0 | — |
+| [Estojo de Batom](https://www.mafagrafos.com/models/plain-lipstick-case) | Claude | `estojo-batom` | Pronto | 0 | — |
 | [Letreiro com Sobreposição de Palavras](https://www.mafagrafos.com/models/big-word-letreiro) | Claude | `letreiro-sobreposto` | Pronto | 0 | — |
-| [Rolo de Textura - Mosaico](https://www.mafagrafos.com/models/tiled-texture-roller) | Claude | — | Pendente | 3 | cilindro com relevo em mosaico |
-| [Rolo de Textura - Imagem Grande](https://www.mafagrafos.com/models/large-texture-roller) | Claude | — | Pendente | 3 | cilindro com imagem envolvida |
+| [Rolo de Textura - Mosaico](https://www.mafagrafos.com/models/tiled-texture-roller) | Claude | `rolo-textura` | Pronto | 0 | — |
+| [Rolo de Textura - Imagem Grande](https://www.mafagrafos.com/models/large-texture-roller) | Claude | `rolo-textura` | Pronto | 0 | — |
 | [Gerador de Abridor de Latas](https://www.mafagrafos.com/models/can-opener) | Claude | `abridor-latas` | Pronto | 0 | modo face para baixo |
 | [Rosa com Nome](https://www.mafagrafos.com/models/rose-with-name) | Claude | — | Pendente | 3 | rosa orgânica com nome, até 9 |
 | [Chaveiro com Espelho e Texto](https://www.mafagrafos.com/models/mirror-text-keychain) | Claude | `chaveiro-espelho` | Pronto | 0 | — |
@@ -99,7 +99,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Marcador com nome e imagem](https://www.mafagrafos.com/models/name-side-bookmark) | Claude | `marcador-pagina` | Pronto | 0 | — |
 | [Chaveiro de nome, 3 cores](https://www.mafagrafos.com/models/text-offset-keychain-3colors) | Claude | `chaveiro-nome` | Pronto | 0 | — |
 | [Chaveiro de nome, 2 cores](https://www.mafagrafos.com/models/text-offset-keychain-2colors) | Claude | `chaveiro-nome` | Pronto | 0 | — |
-| [Cumbuca a partir de imagem](https://www.mafagrafos.com/models/bowl-anything) | Claude | — | Pendente | 3 | casca a partir de forma fechada |
+| [Cumbuca a partir de imagem](https://www.mafagrafos.com/models/bowl-anything) | Claude | `cumbuca` | Pronto | 0 | — |
 | [Palavra e coração, 2 camadas](https://www.mafagrafos.com/models/word-heart-2colors) | Claude | `palavra-camadas` | Pronto | 0 | — |
 | [Colorir em 2 partes](https://www.mafagrafos.com/models/2part-coloring-generator) | Claude | `colorir` | Pronto | 0 | — |
 | [Texto com guia de posicionamento](https://www.mafagrafos.com/models/text-placement-helper) | Claude | `texto-com-guia` | Pronto | 0 | — |

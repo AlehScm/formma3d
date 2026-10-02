@@ -3,6 +3,7 @@
  * quando nao ha WebGL): cada camada pintada na cor da peca, da mais baixa para a mais
  * alta, escurecida pela altura.
  *   npx tsx scripts/vista-de-cima.mts <pasta> [id | id={json com valores} ...]
+ *   CORTE=0 npx tsx scripts/vista-de-cima.mts <pasta> id   (corte no plano y = 0)
  */
 import fs from 'fs';
 import path from 'path';
@@ -16,6 +17,8 @@ import { CORES_PREVIA } from '../lib/gerador/malha';
 import type { Region } from '../lib/geom/region';
 
 const [pasta, ...ids] = process.argv.slice(2);
+/** CORTE=<y> no ambiente: em vez da vista de cima, o corte da peca no plano y. */
+const CORTE = process.env.CORTE !== undefined ? Number(process.env.CORTE) : null;
 if (!pasta) throw new Error('uso: vista-de-cima.mts <pasta> [id ...]');
 fs.mkdirSync(pasta, { recursive: true });
 
@@ -85,6 +88,28 @@ for (const { id, extra, arq } of pedidos) {
   const W = 640, k = (W - 20) / Math.max(maxX - minX, (maxY - minY) * 1.0), H = Math.ceil((maxY - minY) * k) + 20;
   const rgb = new Uint8Array(W * H * 3).fill(238);
   const map = (x: number, y: number): [number, number] => [10 + (x - minX) * k, H - 10 - (y - minY) * k];
+  if (CORTE !== null) {
+    // Corte no plano y = CORTE: cada camada vira os trechos em x da linha y, entre z0 e z1.
+    const Wc = 640, kc = (Wc - 20) / Math.max(maxX - minX, zMax), Hc = Math.ceil(zMax * kc) + 20;
+    const img = new Uint8Array(Wc * Hc * 3).fill(238);
+    for (const c of camadas) {
+      const xs: number[] = [];
+      for (const p of c.region) for (const anel of [p.outer, ...p.holes]) for (let i = 0; i < anel.length; i++) {
+        const a = anel[i]!, b = anel[(i + 1) % anel.length]!;
+        if ((a.y <= CORTE) !== (b.y <= CORTE)) xs.push(a.x + ((CORTE - a.y) / (b.y - a.y)) * (b.x - a.x));
+      }
+      xs.sort((a, b) => a - b);
+      const cor = hexRgb(res.hex?.[c.cor] ?? CORES_PREVIA[c.cor % CORES_PREVIA.length]!);
+      for (let i = 0; i + 1 < xs.length; i += 2) {
+        const x0 = Math.round(10 + (xs[i]! - minX) * kc), x1 = Math.round(10 + (xs[i + 1]! - minX) * kc);
+        const y0 = Math.round(Hc - 10 - c.z1 * kc), y1 = Math.round(Hc - 10 - c.z0 * kc);
+        for (let y = Math.max(0, y0); y < Math.min(Hc, Math.max(y1, y0 + 1)); y++) for (let x = Math.max(0, x0); x < Math.min(Wc, Math.max(x1, x0 + 1)); x++) img.set(cor, (y * Wc + x) * 3);
+      }
+    }
+    fs.writeFileSync(path.join(pasta, `${arq}-corte.png`), png(Wc, Hc, img));
+    console.log(arq, 'corte em y =', CORTE, res.avisos.join(' | '));
+    continue;
+  }
   for (const c of [...camadas].sort((a, b) => a.z1 - b.z1)) {
     const base = hexRgb(res.hex?.[c.cor] ?? CORES_PREVIA[c.cor % CORES_PREVIA.length]!);
     const luz = 0.55 + 0.45 * (c.z1 / zMax);
