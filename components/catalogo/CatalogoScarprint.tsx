@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { editoresLivres, emBreve, familias } from '@/features/catalogo/catalogo';
 import { FICHAS, type Ficha } from '@/lib/gerador/receitas/fichas';
+import { COBERTURA } from '@/lib/gerador/cobertura';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import './catalogo.css';
 
@@ -17,6 +18,7 @@ const tipoDe: Record<Familia, string> = {
 
 /** Modelos da vitrine do topo (fotos reais dos geradores). */
 const VITRINE = ['palavra-camadas', 'chaveiro-nome', 'social-camadas'];
+const RECEITAS_PARCIAIS = new Set(COBERTURA.filter((c) => c.status === 'parcial' && c.receita).map((c) => c.receita));
 
 export function CatalogoScarprint() {
   const [busca, setBusca] = useState('');
@@ -57,7 +59,7 @@ export function CatalogoScarprint() {
                 <Link href="/editor">Montar do zero</Link>
               </div>
               <div className="catalog-hero-meta">
-                <span><b>{FICHAS.length}</b> geradores prontos</span>
+                <span><b>{FICHAS.length}</b> geradores disponíveis</span>
                 <span><b>{editoresLivres.length}</b> editores livres</span>
                 <span><b>{emBreve.length}</b> chegando</span>
               </div>
@@ -92,7 +94,7 @@ export function CatalogoScarprint() {
           </div>
 
           {prontos.length > 0 && (
-            <Secao titulo="Geradores prontos" texto="Escolha um modelo, troque o texto, as cores e o tamanho, e baixe pronto para imprimir.">
+            <Secao titulo="Geradores disponíveis" texto="Escolha um modelo, confira as opções disponíveis e exporte para imprimir.">
               <div className="catalog-grid">
                 {prontos.map((f) => <CardGerador key={f.id} f={f} />)}
               </div>
@@ -165,7 +167,10 @@ function CardGerador({ f }: { f: Ficha }) {
         <Miniatura id={f.id} alt={`Exemplo: ${f.nome}`} reserva={<VisualReserva id={f.id} family={f.familia} />} />
       </div>
       <div className="card-corpo">
-        <span className="card-tag">{f.tipo ?? tipoDe[f.familia]}</span>
+        <div className="card-tag-row">
+          <span className="card-tag">{f.tipo ?? tipoDe[f.familia]}</span>
+          {RECEITAS_PARCIAIS.has(f.id) && <span className="card-status" title="Algumas opções desta família ainda estão em desenvolvimento">Em evolução</span>}
+        </div>
         <h3>{f.nome}</h3>
         <p>{f.resumo}</p>
         <Destaques itens={f.destaques} />
@@ -179,8 +184,24 @@ function CardGerador({ f }: { f: Ficha }) {
 function VisualReserva({ id, family }: { id: string; family: Familia }) {
   switch (id) {
     case 'texto-livre': return <div className="preview-letters"><span>S</span><span>C</span><span>A</span><span>R</span></div>;
+    case 'palavra-camadas': return <div className="preview-layers"><span>BOLOS</span><span>BOLOS</span><span>BOLOS</span></div>;
+    case 'social-camadas': return <div className="preview-social"><span>@</span><b>scarprint</b></div>;
     case 'placa-personalizada': return <div className="preview-sign"><span>STUDIO</span><small>DESIGN · CRIAÇÃO</small></div>;
     case 'placa-profissional': return <div className="preview-nameplate"><small>SEU NEGÓCIO</small><b>MARCA</b><i /></div>;
-    default: return family === 'chaveiros' ? <div className="preview-keychain"><i /><b>A</b></div> : <div className="preview-letters"><span>A</span><span>b</span><span>c</span></div>;
+    case 'logo-camadas': return <div className="preview-sign"><span>LOGO</span><small>CAMADAS</small></div>;
+    case 'floco-neve': return <div className="preview-snowflake">❄</div>;
+    case 'topo-bolo':
+    case 'topo-bolo-circular': return <div className="preview-cake"><span>★</span><b>FESTA</b><i /></div>;
+    case 'marcador-pagina': return <div className="preview-bookmark"><span>ANA</span></div>;
+    case 'plaquinha-pet': return <div className="preview-pet"><span>🐾</span><b>LUNA</b></div>;
+    case 'pingente-familia': return <div className="preview-pendant"><span>♥ ANA</span><span>♥ LEO</span><span>● MEL</span></div>;
+    default:
+      if (family === 'chaveiros') return <div className="preview-keychain"><i /><b>A</b></div>;
+      if (family === 'cortadores') return <div className="preview-cutter"><span>✦</span></div>;
+      if (family === 'carimbos') return <div className="preview-stamp"><span>CARIMBO</span></div>;
+      if (family === 'parametricos') return <div className="preview-parametric">{Array.from({ length: 12 }, (_, i) => <span key={i} />)}</div>;
+      if (family === 'multicor') return <div className="preview-layers"><span>BASE</span><span>MEIO</span><span>TOPO</span></div>;
+      if (family === 'qr') return <div className="preview-qr"><span>⌗</span><small>QR CODE</small></div>;
+      return <div className="preview-letters"><span>A</span><span>b</span><span>c</span></div>;
   }
 }

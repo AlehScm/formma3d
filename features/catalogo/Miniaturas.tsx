@@ -13,6 +13,7 @@ const VERSAO = 3;
 /** Foto que demora mais que isto (fonte que nao chega, WebGL travado) fica no desenho de reserva. */
 const TEMPO_MAX = 20000; // ms
 const memoria = new Map<string, string>();
+const pendentes = new Map<string, Promise<string>>();
 let fila: Promise<unknown> = Promise.resolve();
 
 function chave(id: string): string {
@@ -50,14 +51,16 @@ function guardada(id: string): string | null {
 
 function pedir(id: string): Promise<string> {
   const k = chave(id);
+  const emAndamento = pendentes.get(k);
+  if (emAndamento) return emAndamento;
   const vez = fila.then(async () => {
     const pronta = guardada(id);
     if (pronta) return pronta;
-    const { renderizarMiniatura } = await import('./renderMiniatura');
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const url = await Promise.race([
-      renderizarMiniatura(id),
-      new Promise<never>((_, falha) => setTimeout(() => falha(new Error('Miniatura demorou demais')), TEMPO_MAX)),
-    ]);
+      import('./renderMiniatura').then(({ renderizarMiniatura }) => renderizarMiniatura(id)),
+      new Promise<never>((_, falha) => { timer = setTimeout(() => falha(new Error('Miniatura demorou demais')), TEMPO_MAX); }),
+    ]).finally(() => { if (timer) clearTimeout(timer); });
     memoria.set(k, url);
     try {
       localStorage.setItem(k, url);
@@ -65,7 +68,8 @@ function pedir(id: string): Promise<string> {
       // sem espaco ou sem armazenamento: so vale nesta visita
     }
     return url;
-  });
+  }).finally(() => { pendentes.delete(k); });
+  pendentes.set(k, vez);
   fila = vez.catch(() => undefined);
   return vez;
 }
@@ -77,14 +81,14 @@ export function Miniatura({ id, alt, reserva }: { id: string; alt: string; reser
   useEffect(() => {
     let vivo = true;
     const pronta = guardada(id);
-    if (pronta) setUrl(pronta);
-    else pedir(id).then((u) => vivo && setUrl(u)).catch(() => vivo && setFalhou(true));
+    setUrl(pronta);
+    setFalhou(false);
+    if (!pronta) pedir(id).then((u) => vivo && setUrl(u)).catch(() => vivo && setFalhou(true));
     return () => {
       vivo = false;
     };
   }, [id]);
-  if (falhou) return <>{reserva}</>;
-  if (!url) return <div className="miniatura-carregando" aria-label="Carregando a prévia" />;
+  if (!url) return <div className="miniatura-reserva" role="img" aria-label={falhou ? `Ilustração de ${alt}` : `Ilustração de ${alt}; prévia 3D carregando`}>{reserva}</div>;
   // eslint-disable-next-line @next/next/no-img-element
   return <img className="miniatura" src={url} alt={alt} draggable={false} />;
 }

@@ -407,3 +407,34 @@ Faixas lidas dos formulários (padrão entre parênteses). Sem gerar prévia pag
   - Rosa chaveiro (52): tamanho 10–200 (50); fonte 3–10 (4,5); base 2,8, rosa 0,6,
     folhas 0,4, texto 0,4; furo 3; início 240°; raio 48%.
   - Rosa scrunchie (53): igual, com base 1 e furo 0–50 (20).
+
+### QR, Pix e cartões (sessão logada, 2026-10-02, Claude)
+- **Listas de QR (vertical, horizontal):**
+  - Liga/desliga até 9 QR: link 1, link 2, Wi-Fi (rede oculta), WhatsApp (+ mensagem), Instagram, TikTok, YouTube, Pix (chave + tipo), avaliação Google.
+  - Topo com nome do negócio (Cal Sans 10) ou logo (32, posição Y).
+  - Base 2,8; QR 35–55 (35), relevo 0,6; largura 80–200 (110); espaço 4 (horizontal 8); margem 10–12.
+  - Topo arredondado (altura 100, ligado); borda 3; logo de cada QR 26.
+- **Lista vertical em camadas:**
+  - Logo ou nome em 2 linhas (11/5) na lateral, com giro.
+  - QR 37; espaço 5; margem 12; plaquinhas de 100.
+  - Tábua 2 de espessura, 120 de largura, 30% para a lateral; pé com rebaixo 10 e altura 24; borda 3.
+- **Avaliação Google:**
+  - Link; título e subtítulo; logo próprio com altura 20.
+  - Título 5,2, subtítulo 4,5; placa 3; relevo de texto e logo 0,6; cantos 10; borda 1.
+  - QR 20–100 (56); largura 100–200 (110); espaço 9; margens 12 em cima e 10 embaixo.
+  - 5 cores: base, QR, texto, borda e logo.
+- **QR de rede social:** rede (Instagram, YouTube, TikTok ou outra); @; título; logo (20); subtítulo; mesmas medidas (largura 100, espaço 10).
+- **QR com logo:** logo; link; título e subtítulo; logo 25; título 5–30; subtítulo 3–10; relevo do texto 0,4.
+- **Pix com logo:**
+  - Tipo de chave (CNPJ, CPF, telefone, e-mail, aleatória); chave escrita embaixo do QR; título.
+  - Logo SVG 20 com posição X/Y; texto da chave substituível; escala do subtítulo; espaço 8.
+- **Pix com texto:** 3 linhas acima do QR com fonte e escala; título 5; distância entre linhas 3; margem lateral 8; espaço 6.
+- **@social de 2 cores com QR:**
+  - Texto; link do QR; Cal Sans; largura 80–280 (190).
+  - Base 8–30 (18), topo 2,2; QR 100%; contorno da base 4–10 (7); engrossar o topo 0,4; tapar buracos; folga 0,22.
+- **Cartão de visita:**
+  - Editor de arte; face para cima ou para baixo; cartão 0,8; desenho 0,4; borda 0,8.
+  - Porta-cartões de 100 com texto (10), em cor própria; textura de Hilbert opcional na base.
+- **Cartão com tecido:**
+  - Cartão 1,2; moldura 2,8; porta-cartões de 100 com texto.
+  - Capa do NFC em cor própria; tecido entra na pausa depois da 2ª camada, NFC nas camadas 5–6.

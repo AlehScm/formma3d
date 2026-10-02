@@ -243,6 +243,36 @@ export const FICHAS: Ficha[] = [
     exemplo: { fundoImagem: true, corBase: '#333333', corImagem: '#ffd700', corTexto: '#ffd700' },
   },
   {
+    id: 'placa-qr-wifi', nome: 'Placa de QR Code para Wi-Fi', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Compartilhe sua rede Wi-Fi com um QR Code que preenche os dados de conexão.',
+    destaques: ['Conexão rápida à rede', 'Nome e segurança configuráveis', 'Pés de mesa opcionais'],
+    exemplo: { ssid: 'Atelie Formma', senhaWifi: 'ImprimaEm3D', segurancaWifi: 'WPA', texto: 'WI-FI', corBase: '#f8fafc', corQr: '#172554', corTexto: '#172554' },
+  },
+  {
+    id: 'placa-qr-whatsapp', nome: 'Placa de QR Code para WhatsApp', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Abra uma conversa do WhatsApp com telefone e mensagem inicial configuráveis.',
+    destaques: ['Telefone internacional', 'Mensagem inicial opcional', 'Pés de mesa opcionais'],
+    exemplo: { telefone: '+5511999999999', mensagem: 'Olá! Vim pelo seu letreiro.', texto: 'FALE CONOSCO', corBase: '#dcfce7', corQr: '#14532d', corTexto: '#14532d' },
+  },
+  {
+    id: 'placa-qr-texto', nome: 'Placa de QR Code com Texto', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Gere uma placa com QR de endereço web e uma chamada curta acima ou abaixo.',
+    destaques: ['Endereço web configurável', 'Texto acima ou abaixo do QR', 'Pés de mesa opcionais'],
+    exemplo: { url: 'https://example.com', texto: 'ACESSE AQUI', corBase: '#f8fafc', corQr: '#172554', corTexto: '#172554' },
+  },
+  {
+    id: 'placa-pix-simples', nome: 'Placa de Pix Simples', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Monte um QR Pix estático com chave, recebedor, cidade e valor opcional.',
+    destaques: ['Pix estático BR Code', 'Chave e recebedor configuráveis', 'Base e QR em duas cores'],
+    exemplo: { chavePix: '123e4567-e12b-12d1-a456-426655440000', nomePix: 'Fulano de Tal', cidadePix: 'BRASILIA', texto: 'PAGUE COM PIX', corBase: '#f8fafc', corQr: '#14532d', corTexto: '#14532d' },
+  },
+  {
+    id: 'placa-qr', nome: 'Placa com QR Code', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Placa com QR real para link, Wi-Fi, WhatsApp ou Pix estático, pronta para exportar.',
+    destaques: ['QR gerado de verdade', 'Link, Wi-Fi, WhatsApp ou Pix', 'Base e relevo em duas cores'],
+    exemplo: { tipoQr: 'url', url: 'https://example.com', texto: 'ACESSE AQUI', corBase: '#f8fafc', corQr: '#172554', corTexto: '#172554' },
+  },
+  {
     id: 'rolo-textura', nome: 'Rolo de textura', familia: 'parametricos', tipo: 'Ferramenta',
     resumo: 'Rolo com a sua imagem em relevo em volta, repetida em mosaico ou grande, para massa e argila.',
     destaques: ['Mosaico ou imagem grande', 'Relevo para fora ou para dentro', 'Furo para o cabo'],
@@ -361,6 +391,66 @@ export const FICHAS: Ficha[] = [
     resumo: 'Cubo que veste o microfone sem fio, com capas de arte, cabeça de grade e cabo.',
     destaques: ['Encaixe na medida', 'Capas com arte', 'Cabeça e cabo'],
     exemplo: { corCubo: '#a85f78', corCabeca: '#c0c0c0', corCabo: '#222222' },
+  },
+  {
+    id: 'placa-google-review', nome: 'Placa de avaliação no Google', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'QR que abre a página de avaliação da sua empresa, com estrelas, título e subtítulo.',
+    destaques: ['Estrelas ou o seu logo', 'Título e subtítulo', 'Borda em outra cor'],
+    exemplo: { link: 'https://g.page/r/formma3d/review', corBase: '#4a1f2e', corQr: '#ffffff', corTexto: '#ffffff', corBorda: '#f5d0a9', corLogo: '#fbbf24' },
+  },
+  {
+    id: 'placa-qr-social', nome: 'Placa de QR para rede social', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Digite o @ e escolha a rede: o QR abre o perfil e o @ vai escrito embaixo.',
+    destaques: ['Instagram, TikTok, YouTube, Facebook', 'Título e logo opcionais', 'Borda em outra cor'],
+    exemplo: { rede: 'instagram', handle: '@formma3d', corBase: '#831843', corQr: '#ffffff', corTexto: '#ffffff', corBorda: '#fbcfe8' },
+  },
+  {
+    id: 'placa-qr-logo', nome: 'Placa de QR com logo', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'O seu logo acima do QR ou no meio dele, com correção de erro alta para continuar lendo.',
+    destaques: ['Logo acima ou no centro', 'Título e subtítulo', 'SVG, PNG ou JPG'],
+    exemplo: { link: 'https://formma3d.com', titulo: 'VISITE', subtitulo: 'formma3d.com', corBase: '#0f172a', corQr: '#ffffff', corTexto: '#ffffff', corBorda: '#38bdf8' },
+  },
+  {
+    id: 'placa-pix-logo', nome: 'Placa de Pix com logo', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'QR Pix estático com o seu logo, título e a chave escrita embaixo.',
+    destaques: ['CPF, CNPJ, e-mail, telefone ou aleatória', 'Valor fixo ou aberto', 'Logo opcional'],
+    exemplo: { chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', corBase: '#134e4a', corQr: '#ffffff', corTexto: '#ffffff', corBorda: '#5eead4' },
+  },
+  {
+    id: 'placa-pix-texto', nome: 'Placa de Pix com texto', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Até três linhas de texto acima do QR Pix, cada uma com fonte e tamanho próprios.',
+    destaques: ['3 linhas livres', 'Chave escrita embaixo', 'Valor fixo ou aberto'],
+    exemplo: { chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', linha1: 'DOCES DA ANA', corBase: '#fdf2f8', corQr: '#831843', corTexto: '#831843', corBorda: '#831843' },
+  },
+  {
+    id: 'lista-qr', nome: 'Lista de QR Codes', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Vários QR numa placa só (site, Wi-Fi, WhatsApp, redes, Pix, Google), cada um com o nome embaixo.',
+    destaques: ['Até 9 QR', 'Vertical ou horizontal', 'Logo ou nome no topo'],
+    exemplo: { usar_pix: true, chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', corBase: '#1e293b', corQr: '#ffffff', corBorda: '#f5d0a9' },
+  },
+  {
+    id: 'lista-qr-camadas', nome: 'Lista de QR em camadas', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Tábua com o nome do negócio na lateral e os QR em plaquinhas de outra cor, com pé.',
+    destaques: ['Plaquinhas em relevo', 'Nome girado na faixa lateral', 'Pé com fenda'],
+    exemplo: { usar_pix: true, chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', negocio: 'Formma3D', corBase: '#1e293b', corQr: '#1e293b', corPlaquinha: '#f5d0a9' },
+  },
+  {
+    id: 'social-com-qr', nome: '@social de 2 cores com QR', familia: 'multicor', tipo: 'Letreiro',
+    resumo: 'O @ com base contornada em outra cor e um QR ao lado, na mesma peça.',
+    destaques: ['Base contornada', 'QR do tamanho do texto', 'Multicor ou encaixe'],
+    exemplo: { usuario: '@formma3d', link: 'https://instagram.com/formma3d', corBase: '#831843', corTopo: '#ffffff' },
+  },
+  {
+    id: 'cartao-visita', nome: 'Cartão de visita', familia: 'qr', tipo: 'Cartão',
+    resumo: 'Cartão com nome, contatos e QR em relevo (ou embutidos, face para baixo) e porta-cartões.',
+    destaques: ['Face para cima ou para baixo', 'QR opcional', 'Porta-cartões com texto'],
+    exemplo: { corCartao: '#1f2937', corTexto: '#fbbf24', corPorta: '#1f2937' },
+  },
+  {
+    id: 'cartao-tecido', nome: 'Cartão de visita com tecido', familia: 'qr', tipo: 'Cartão',
+    resumo: 'O texto e o QR imprimem em cima de um tecido preso na moldura; NFC opcional.',
+    destaques: ['Pausa para o tecido', 'NFC opcional', 'Porta-cartões'],
+    exemplo: { corCartao: '#1f2937', corPorta: '#1f2937' },
   },
 ];
 

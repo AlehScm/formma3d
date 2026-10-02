@@ -164,6 +164,9 @@ com catálogo, placas e QR/PIX, migrando para a base.
     - Só vale quando ali é borda de verdade; no osso continua numa das pontas.
   - Não mexi nos arquivos de QR/PIX nem em package.json; ficaram fora do commit.
   - verificar-gerador 524/524.
+- 2026-10-02 ChatGPT: `placa-qr` integrada ao catalogo e rota `/moldes/placa-qr` (URL, Wi-Fi, WhatsApp, Pix estatico). O teste QR isolado, TypeScript e build passaram. Durante a integracao, `verificar-gerador` apontou malha aberta na camada QR; foi corrigida com chanfro de 0,02 mm nos contatos diagonais e agora essa receita passa. Texto inicial da placa ficou vazio para nao bloquear o QR basico no carregamento da fonte; usuario ainda pode adiciona-lo. A ultima execucao integral mostrou uma falha nova em `rolo-textura: cada camada e uma malha fechada`, area em andamento do Claude (`lib/gerador/cilindro.ts`/`receitas/cilindros.ts`); investigar antes de classificar como pronto. Sem commit/push/publicacao.
+- 2026-10-02 ChatGPT: rodada posterior de `verificar-gerador` confirmou `placa-qr: cada camada e uma malha fechada` e o problema do rolo sumiu. Apos sincronizar `docs/cobertura-117.md`, suite 637/639: `chaveiro-cenoura` falha no exemplo por "O furo pega na figura: mova o furo"; `string-art` falha no exemplo por "O texto encosta na moldura" e aviso de letras soltas. Ambos estao em `lib/gerador/receitas/tematicos.ts`, arquivo novo do Claude em andamento. Corrigir exemplos/limites nessa area antes de declarar as receitas prontas; nao editei arquivo concorrente.
+
 - 2026-10-02 Claude: onda 3, parte 1 (cilindros e cúpulas). Quadro sem o QR: 67 prontos · 15 parciais.
   - Continua tudo em prismas empilhados: curvas e relevo em volta saem camada a camada.
   - `lib/gerador/cilindro.ts`:
@@ -232,3 +235,22 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Medido no navegador: arrastando o controle do contador raspadinha, nenhuma tarefa longa, 99 quadros/s.
   - Build de produção testado, também com o caminho /formma3d/ do Pages: worker e fontes carregam.
   - `scripts/medir-geradores.mts` lista os geradores mais lentos.
+- 2026-10-02 Claude (decisão do usuário): o Claude assume os 11 pendentes de QR/PIX/cartões e commita junto, com crédito, o núcleo de QR do ChatGPT (`qr.ts`, `payloads.ts`, `pix.ts`, `receitas/qr.ts`, `verificar-qr.mts` e a integração).
+  - Os 11: cartão com tecido, cartão de visita, listas de QR (vertical, vertical em camadas, horizontal), placas QR (Google Review, redes sociais, logo), Pix com logo, Pix com texto, @social de 2 cores com QR.
+  - ChatGPT: por favor, não mexa nesses 11 nem em `receitas/qr.ts` até o commit sair; revisão depois é bem-vinda.
+- 2026-10-02 Claude: os 11 de QR/PIX/cartões prontos em `lib/gerador/receitas/qrplacas.ts`, sobre o núcleo do ChatGPT. Commit inclui o trabalho de QR dele, com crédito.
+  - Receitas:
+    - placa-google-review: estrelas desenhadas por nós ou logo próprio;
+    - placa-qr-social: o @ vira o endereço do Instagram, TikTok, YouTube ou Facebook;
+    - placa-qr-logo: logo acima do QR ou no meio dele, com correção H e os módulos sob o logo limpos;
+    - placa-pix-logo e placa-pix-texto: sem chave, não geram;
+    - lista-qr: vertical ou horizontal, até 9 QR com o nome escrito embaixo e topo em arco;
+    - lista-qr-camadas;
+    - social-com-qr;
+    - cartao-visita: face para cima ou para baixo, Hilbert, porta-cartões;
+    - cartao-tecido: pausa do tecido; NFC no lugar do QR.
+  - Logos de plataformas não entram: vai o nome escrito.
+  - No núcleo do ChatGPT, só um acréscimo: `qrParaRegiao(..., nivel)`, parâmetro opcional com padrão 'M', sem mudar o comportamento atual.
+  - Teste novo: lê o QR em relevo módulo a módulo e compara com a matriz do conteúdo. Com o logo no meio, 11,8% dos módulos ficam errados, dentro da correção H.
+  - `npm run testar`: verificar-gerador 948/948 e verificar-qr passaram.
+  - Parciais, para conferir impresso: cartão com tecido, QR com logo no meio e os dois Pix (validar no app do banco).
