@@ -1,5 +1,7 @@
 /** Referencia viva da marca (tokens e primitivos) para a pagina /sistema. */
 import { BotaoMarca, BotaoWhatsapp, CartaoMarca, SecaoMarca, SeloMarca, Wordmark } from '.';
+import { ArteCategoria } from './ArteCategoria';
+import { CATEGORIAS, type Categoria } from '@/lib/marketplace/tipos';
 
 const CORES: [string, string][] = [
   ['--marca-navy', 'texto forte'], ['--marca-azul', 'ação'], ['--marca-ciano', 'brilho'], ['--marca-profundo', 'faixa escura'],
@@ -60,6 +62,16 @@ export function VitrineMarca() {
               <p style={{ margin: 0, color: 'var(--marca-texto-2)', fontSize: 14 }}>Mesma borda, raio 18 e sombra 1.</p>
             </div>
           </CartaoMarca>
+        </div>
+      </SecaoMarca>
+      <SecaoMarca fundo="gelo" sobretitulo="Sem foto" titulo="Arte por categoria" texto="Desenho nosso enquanto a foto do produto não chega (components/marca/ArteCategoria).">
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+          {(Object.keys(CATEGORIAS) as Categoria[]).map((c) => (
+            <CartaoMarca key={c}>
+              <div style={{ aspectRatio: '6 / 5' }}><ArteCategoria categoria={c} /></div>
+              <div className="p-3" style={{ fontSize: 13, fontWeight: 700 }}>{CATEGORIAS[c].nome}</div>
+            </CartaoMarca>
+          ))}
         </div>
       </SecaoMarca>
       <SecaoMarca fundo="escura" sobretitulo="Faixa escura" titulo="Para chamadas fortes" texto="Fundo --marca-profundo, texto claro com contraste AA." acao={<BotaoMarca>Chamada</BotaoMarca>} />
