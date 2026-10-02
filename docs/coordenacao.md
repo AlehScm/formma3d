@@ -203,3 +203,7 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Janela do topo de bolo com glitter: círculo, coração, estrela ou desenho.
   - Letra grande: textura rente ou em relevo; nome por imagem (fonte que não está na lista).
   - verificar-gerador 774/774 com a placa-qr junto.
+- 2026-10-02 Claude: cores da imagem em mais dois geradores.
+  - Chaveiro NFC: arte colorida, uma parte por cor.
+  - Porta-retrato: modo "uma cor por camada". A faixa j cobre as cores de índice ≥ j, então dá para imprimir trocando o filamento por altura.
+  - verificar-gerador com a placa-qr junto: tudo passa.

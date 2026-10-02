@@ -23,12 +23,12 @@ type Linha = [slug: string, nome: string, dono: Dono, receita: string, status: S
 const C: Dono = 'claude', G: Dono = 'chatgpt';
 
 const LINHAS: Linha[] = [
-  ['hanging-photo-holder', 'Porta-Retrato Suspenso', C, 'porta-retrato', 'parcial', 3, 'modo uma cor por camada; editor de arte'],
+  ['hanging-photo-holder', 'Porta-Retrato Suspenso', C, 'porta-retrato', 'pronto', 0, 'editor de arte (o desenho vem de texto ou imagem)'],
   ['play-douh-stamps', 'Carimbos de Massinha', C, 'carimbos-massinha', 'pronto', 0, ''],
   ['snowflake-ornament', 'Enfeite Floco de Neve', C, 'floco-neve', 'pronto', 0, ''],
   ['mini-microphone', 'Mini-Microfone', C, 'mini-microfone', 'parcial', 3, 'cavidade moldada do microfone (aqui furo retangular nas medidas)'],
   ['can-opener-nfc', 'Gerador de Abridor de Latas (NFC)', C, 'abridor-latas', 'pronto', 0, 'modo face para baixo'],
-  ['nfc-keychain-generator', 'Gerador de Chaveiro NFC', C, 'chaveiro-nfc', 'parcial', 2, 'editor de arte com cor por subcamada'],
+  ['nfc-keychain-generator', 'Gerador de Chaveiro NFC', C, 'chaveiro-nfc', 'pronto', 0, 'editor de arte (a arte colorida vem de imagem)'],
   ['keychain-generator', 'Gerador de Chaveiro', C, 'chaveiro-desenho', 'pronto', 0, ''],
   ['design-pen-holder', 'Gerador de Porta-Canetas', C, 'porta-canetas-design', 'pronto', 0, ''],
   ['filament-spool', 'Chaveiro Carretel de Filamento com NFC', C, 'chaveiro-carretel', 'pronto', 0, ''],

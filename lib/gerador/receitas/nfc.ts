@@ -11,7 +11,7 @@ import { circulo, contornar, coracao, estrela, retanguloArredondado, semBuracos,
 import { espelharX, regular } from '../figuras';
 import { argolaNaDirecao } from '../lote';
 import { comVazios, torneado, type Vazio } from '../solidos';
-import { AVISO_EXEMPLO, campoDesenho, desenhoNoTamanho, nomeDoDesenho } from './desenho';
+import { AVISO_EXEMPLO, campoDesenho, coresNoTamanho, desenhoNoTamanho, nomeDoDesenho } from './desenho';
 import { ficha } from './fichas';
 import type { Camada, Parametro, Peca, Receita, Resultado, Valores } from '../tipos';
 import { liga, num, soCoresUsadas, txt } from '../tipos';
@@ -152,9 +152,19 @@ export const chaveiroNfc: Receita = {
     const d = desenhoNoTamanho(v, 'desenho', num(v, 'tamDesenho'));
     if (d.exemplo) avisos.push(AVISO_EXEMPLO);
     const D = translateRegion(rotateRegion(d.regiao, num(v, 'giro')), num(v, 'x') + (b.minX + b.maxX) / 2, num(v, 'y') + (b.minY + b.maxY) / 2);
-    const des = intersectRegion(D, liga(v, 'borda') ? contornar(miolo, -0.4) : miolo);
+    const areaDes = liga(v, 'borda') ? contornar(miolo, -0.4) : miolo;
+    const des = intersectRegion(D, areaDes);
     if (regionArea(diffRegion(D, miolo)) > 0.5) avisos.push('O desenho passa da borda: diminua ou mova o desenho.');
-    if (regionArea(des) > 0.1) pecas.push({ nome: 'Desenho', cor: 2, camadas: [{ region: des, z0: T, z1: T + num(v, 'espDesenho') }] });
+    // Imagem colorida: cada cor dela sai como uma parte do desenho, na cor da imagem.
+    const coresImg = coresNoTamanho(v, 'desenho', num(v, 'tamDesenho'));
+    if (coresImg.length) {
+      coresImg.forEach((c, i) => {
+        const r = intersectRegion(translateRegion(rotateRegion(c.regiao, num(v, 'giro')), num(v, 'x') + (b.minX + b.maxX) / 2, num(v, 'y') + (b.minY + b.maxY) / 2), areaDes);
+        if (regionArea(r) > 0.1) pecas.push({ nome: `Cor ${i + 1}`, cor: 4 + i, camadas: [{ region: r, z0: T, z1: T + num(v, 'espDesenho') }] });
+      });
+      cores.push(...coresImg.map((_, i) => `Cor ${i + 1}`));
+      hex.push(...coresImg.map((c) => c.hex));
+    } else if (regionArea(des) > 0.1) pecas.push({ nome: 'Desenho', cor: 2, camadas: [{ region: des, z0: T, z1: T + num(v, 'espDesenho') }] });
     return soCoresUsadas({ itens: [{ nome: nomeDoDesenho(v, 'desenho') || 'Chaveiro NFC', pecas }], cores, hex, avisos, notas });
   },
 };

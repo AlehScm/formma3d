@@ -719,5 +719,18 @@ console.log('\n== imagem colorida e ultimos parciais ==');
   ok('letra grande: nome por imagem', lgN.itens[0]!.pecas.some((p) => p.nome === 'Nome'));
 }
 
+console.log('\n== cores da imagem em NFC e porta-retrato ==');
+{
+  const quadrado = (x: number, y: number, l: number): Region => [{ outer: [{ x, y }, { x: x + l, y }, { x: x + l, y: y + l }, { x, y: y + l }], holes: [] }];
+  const a = quadrado(0, 0, 10), b = quadrado(12, 0, 10);
+  const des = JSON.stringify({ nome: 'c.png', regiao: [...a, ...b], cores: [{ regiao: a, hex: '#ff0000' }, { regiao: b, hex: '#0000ff' }] });
+  const nf = gerar(receitaPorId('chaveiro-nfc')!, { desenho: des, tamDesenho: 20 });
+  ok('NFC: arte colorida sai em 2 partes com as cores da imagem', nf.itens[0]!.pecas.filter((p) => p.nome.startsWith('Cor')).length === 2 && !!nf.hex?.includes('#ff0000') && !!nf.hex?.includes('#0000ff'));
+  const pr = gerar(receitaPorId('porta-retrato')!, { tamanho: '25x15', origem: 'imagem', desenho: des, face: 'camadas', alturaCor: 0.7, espDesenho: 3 });
+  const dz = pr.itens.find((it) => it.nome === 'Desenho')!.pecas;
+  const topoCor2 = dz.find((p) => p.nome === 'Cor 2')!.camadas[0]!;
+  ok('porta-retrato: uma cor por camada (cor 2 na faixa de cima)', dz.length === 3 && perto(topoCor2.z1 - topoCor2.z0, 0.7, 1e-9) && perto(topoCor2.z1, 3, 1e-9));
+}
+
 console.log(`\n${total - falhas}/${total} passaram\n`);
 process.exit(falhas ? 1 : 0);

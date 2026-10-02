@@ -9,7 +9,7 @@ import { circulo, contornar, estrela, retanguloArredondado, temEmoji, textoNaCai
 import { elipse, espelharX } from '../figuras';
 import { emGrade } from '../lote';
 import { comVazios, torneado, type Vazio } from '../solidos';
-import { AVISO_EXEMPLO, campoDesenho, desenhoNoTamanho } from './desenho';
+import { AVISO_EXEMPLO, campoDesenho, coresNoTamanho, desenhoNoTamanho } from './desenho';
 import { ficha } from './fichas';
 import { padraoVazado } from './papelaria';
 import type { Camada, Contexto, Item, Parametro, Peca, Receita, Resultado, Valores } from '../tipos';
@@ -37,6 +37,13 @@ function arte(v: Valores, ctx: Contexto, maxW: number, maxH: number, avisos: str
   const t = txt(v, 'texto').trim();
   if (!t) return [];
   return textoNaCaixa(t.split('+'), { fonte: ctx.fonte(txt(v, 'fonte')), reserva: temEmoji(t) ? ctx.fonte('noto-emoji') : undefined, maxW, maxH, entrelinha: 1 }).regiao;
+}
+/** As cores da imagem (se colorida) na mesma escala que `arte` da ao desenho. */
+function coresDaArte(v: Valores, maxW: number, maxH: number): { regiao: Region; hex: string }[] {
+  const d = desenhoNoTamanho(v, 'desenho', 100), b = regionBounds(d.regiao);
+  if (!(b.w > 0)) return [];
+  const k = Math.min(maxW / b.w, maxH / b.h);
+  return coresNoTamanho(v, 'desenho', 100).map((c) => ({ hex: c.hex, regiao: c.regiao.map((p) => ({ outer: p.outer.map((q) => ({ x: q.x * k, y: q.y * k })), holes: p.holes.map((h) => h.map((q) => ({ x: q.x * k, y: q.y * k }))) })) }));
 }
 const fontesArte = (v: Valores) => (v.origem !== 'imagem' ? [String(v.fonte), ...(temEmoji(String(v.texto ?? '')) ? ['noto-emoji'] : [])] : []);
 
@@ -116,7 +123,8 @@ export const portaRetrato: Receita = {
     { tipo: 'numero', id: 'baseAltura', rotulo: 'Altura da parte de baixo', grupo: 'Moldura', padrao: 30, min: 10, max: 60, passo: 1, unidade: '%' },
     mm('furoFio', 'Distância do furo ao canto', 'Moldura', 5.3, 1, 40, 0.1),
     mm('dFio', 'Diâmetro do furo do fio', 'Moldura', 2, 1, 5, 0.1),
-    { tipo: 'escolha', id: 'face', rotulo: 'Desenho', grupo: 'Desenho', padrao: 'cima', opcoes: [{ valor: 'cima', rotulo: 'Peça em relevo na frente' }, { valor: 'baixo', rotulo: 'Embutido rente (face para baixo)' }] },
+    { tipo: 'escolha', id: 'face', rotulo: 'Desenho', grupo: 'Desenho', padrao: 'cima', opcoes: [{ valor: 'cima', rotulo: 'Peça em relevo na frente' }, { valor: 'baixo', rotulo: 'Embutido rente (face para baixo)' }, { valor: 'camadas', rotulo: 'Uma cor por camada (imagem colorida)' }] },
+    mm('alturaCor', 'Altura de cada cor', 'Desenho', 0.7, 0.2, 2, 0.1, 'Cada cor da imagem sobe uma faixa: dá para imprimir trocando o filamento na altura', (v) => v.face === 'camadas'),
     mm('espDesenho', 'Espessura do desenho', 'Desenho', 5, 1, 10, 0.5, undefined, (v) => v.face !== 'baixo'),
     mm('embutir', 'Quanto o desenho entra na moldura', 'Desenho', 2, 0, 5, 0.5, undefined, (v) => v.face !== 'baixo'),
     mm('folga', 'Folga dos encaixes', 'Moldura', 0.2, 0.05, 0.6, 0.01),
@@ -162,10 +170,25 @@ export const portaRetrato: Receita = {
       { nome: 'Moldura de baixo', pecas: [{ nome: 'Baixo', cor: 1, camadas: comVazios(faceBaixo ? espelharX(baixo) : baixo, 0, T, faceBaixo ? vaziosBaixo.map((x) => (x.z1 > 0.6 ? { ...x, regiao: espelharX(x.regiao) } : x)) : vaziosBaixo) }, ...(faceBaixo && regionArea(desenhoM) > 0.5 ? [{ nome: 'Desenho', cor: 2, camadas: [{ region: desenhoM, z0: 0, z1: 0.6 }] }] : [])] },
       { nome: 'Pinos', pecas: [{ nome: 'Pinos', cor: 0, camadas: [{ region: unir([retanguloArredondado(-6, 0, 4, 2 * prof - 1, 0.5), retanguloArredondado(6, 0, 4, 2 * prof - 1, 0.5)]), z0: 0, z1: 4 }] }] },
     ];
-    if (!faceBaixo && regionArea(desenhoR) > 0.5) itens.push({ nome: 'Desenho', pecas: [{ nome: 'Desenho', cor: 2, camadas: [{ region: desenhoR, z0: 0, z1: num(v, 'espDesenho') }] }] });
+    const notasCor: string[] = [];
+    const coresImg = txt(v, 'origem') === 'imagem' && txt(v, 'face') === 'camadas' ? coresDaArte(v, W - bw - 6, bw - 4) : [];
+    if (coresImg.length > 1) {
+      // Uma cor por camada: a faixa j cobre todas as cores de indice >= j, na cor j. Vista
+      // de cima, cada area mostra a sua cor; imprime com troca de filamento por altura.
+      const hc = num(v, 'alturaCor'), area = contornar(baixo, -1.5);
+      const regs = coresImg.map((c) => intersectRegion(translateRegion(c.regiao, 0, -H / 2 + bw / 2), area));
+      const pecasD: Peca[] = regs.map((_, j) => ({ nome: `Cor ${j + 1}`, cor: 3 + j, camadas: [{ region: unir(regs.slice(j)), z0: j * hc, z1: (j + 1) * hc }] }));
+      const base = Math.max(0, num(v, 'espDesenho') - regs.length * hc);
+      if (base > 0) pecasD.forEach((p) => { p.camadas = p.camadas.map((c) => ({ ...c, z0: c.z0 + base, z1: c.z1 + base })); });
+      if (base > 0) pecasD.unshift({ nome: 'Base do desenho', cor: 3, camadas: [{ region: unir(regs), z0: 0, z1: base }] });
+      itens.push({ nome: 'Desenho', pecas: pecasD });
+      cores.push(...coresImg.map((_, j) => `Cor ${j + 1}`));
+      hex.push(...coresImg.map((c) => c.hex));
+      notasCor.push(`Desenho: troque o filamento a cada ${num(v, 'alturaCor').toLocaleString('pt-BR')} mm (uma cor por faixa).`);
+    } else if (!faceBaixo && regionArea(desenhoR) > 0.5) itens.push({ nome: 'Desenho', pecas: [{ nome: 'Desenho', cor: 2, camadas: [{ region: desenhoR, z0: 0, z1: num(v, 'espDesenho') }] }] });
     return soCoresUsadas({
       itens: emGrade(itens, 2, 10), cores, hex, avisos,
-      notas: ['Imprima as partes deitadas. Una com os pinos, passe um fio pelos furos das laterais e pendure as fotos com prendedores.'],
+      notas: ['Imprima as partes deitadas. Una com os pinos, passe um fio pelos furos das laterais e pendure as fotos com prendedores.', ...notasCor],
     });
   },
 };

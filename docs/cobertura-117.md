@@ -3,23 +3,23 @@
 Gerado de `lib/gerador/cobertura.ts` por `npx tsx scripts/cobertura.mts`; não editar à mão.
 Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 
-**83 prontos · 19 parciais · 15 pendentes** de 117.
+**85 prontos · 17 parciais · 15 pendentes** de 117.
 
 | Onda | Claude | ChatGPT |
 |---|---:|---:|
-| já coberto | 83 | 0 |
+| já coberto | 85 | 0 |
 | 1 | 0 | 1 |
-| 2 | 5 | 15 |
-| 3 | 13 | 0 |
+| 2 | 4 | 15 |
+| 3 | 12 | 0 |
 
 | Modelo | Dono | Receita | Status | Onda | Falta |
 |---|---|---|---|---:|---|
-| [Porta-Retrato Suspenso](https://www.mafagrafos.com/models/hanging-photo-holder) | Claude | `porta-retrato` | Parcial | 3 | modo uma cor por camada; editor de arte |
+| [Porta-Retrato Suspenso](https://www.mafagrafos.com/models/hanging-photo-holder) | Claude | `porta-retrato` | Pronto | 0 | editor de arte (o desenho vem de texto ou imagem) |
 | [Carimbos de Massinha](https://www.mafagrafos.com/models/play-douh-stamps) | Claude | `carimbos-massinha` | Pronto | 0 | — |
 | [Enfeite Floco de Neve](https://www.mafagrafos.com/models/snowflake-ornament) | Claude | `floco-neve` | Pronto | 0 | — |
 | [Mini-Microfone](https://www.mafagrafos.com/models/mini-microphone) | Claude | `mini-microfone` | Parcial | 3 | cavidade moldada do microfone (aqui furo retangular nas medidas) |
 | [Gerador de Abridor de Latas (NFC)](https://www.mafagrafos.com/models/can-opener-nfc) | Claude | `abridor-latas` | Pronto | 0 | modo face para baixo |
-| [Gerador de Chaveiro NFC](https://www.mafagrafos.com/models/nfc-keychain-generator) | Claude | `chaveiro-nfc` | Parcial | 2 | editor de arte com cor por subcamada |
+| [Gerador de Chaveiro NFC](https://www.mafagrafos.com/models/nfc-keychain-generator) | Claude | `chaveiro-nfc` | Pronto | 0 | editor de arte (a arte colorida vem de imagem) |
 | [Gerador de Chaveiro](https://www.mafagrafos.com/models/keychain-generator) | Claude | `chaveiro-desenho` | Pronto | 0 | — |
 | [Gerador de Porta-Canetas](https://www.mafagrafos.com/models/design-pen-holder) | Claude | `porta-canetas-design` | Pronto | 0 | — |
 | [Chaveiro Carretel de Filamento com NFC](https://www.mafagrafos.com/models/filament-spool) | Claude | `chaveiro-carretel` | Pronto | 0 | — |
