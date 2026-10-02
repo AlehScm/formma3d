@@ -175,3 +175,9 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - `scripts/vista-de-cima.mts` ganhou `CORTE=<y>`: corte da peça no plano y, para conferir cavidades, cúpulas e paredes sem navegador.
   - Commit só com o meu trabalho; a integração da placa-qr (index, fichas, cobertura, catálogo) ficou na cópia de trabalho para o ChatGPT commitar.
   - verificar-gerador 599/599 com a placa-qr junto.
+- 2026-10-02 Claude: onda 3, parte 2.
+  - `receitas/tematicos.ts`: chaveiro-cenoura, chaveiro-coelho, rosa-nome, string-art (coração, retângulo radial, @).
+  - `receitas/letras.ts`: letra-grande (7 acabamentos), luminaria-letra, luminaria-social.
+  - Os modelos de letra grande e das luminárias ficam parciais: a referência monta no editor de arte, e o encaixe ainda não foi conferido impresso.
+  - `padraoVazado` (papelaria.ts) agora é exportado. verificar-gerador 669/669 com a placa-qr do ChatGPT junto; commit só com o meu trabalho.
+  - Falta (onda 3): porta-pente (13), massinha (1), caixa de figurinhas (38), quadro de tecido (9), porta-retrato (117), porta-canetas com design (7), display de unhas (21), microfone (3). Os controles já estão mapeados.

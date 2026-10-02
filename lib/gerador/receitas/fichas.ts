@@ -272,6 +272,48 @@ export const FICHAS: Ficha[] = [
     destaques: ['Borda em ondas', 'Nome no prato', 'Pé oco em sino'],
     exemplo: { corTopo: '#ffffff', corBase: '#f9a8d4' },
   },
+  {
+    id: 'chaveiro-cenoura', nome: 'Chaveiro cenoura', familia: 'chaveiros', tipo: 'Páscoa',
+    resumo: 'Cenoura com folhas e o nome atravessado; até 9 nomes numa impressão.',
+    destaques: ['Até 9 por vez', '4 cores', 'Desenho próprio'],
+    exemplo: { nomes: 'Enzo, Ana' },
+  },
+  {
+    id: 'chaveiro-coelho', nome: 'Chaveiro coelho', familia: 'chaveiros', tipo: 'Páscoa',
+    resumo: 'Coelho com orelhas e o nome com contorno; até 9 nomes numa impressão.',
+    destaques: ['Até 9 por vez', '4 cores', 'Desenho próprio'],
+    exemplo: { nomes: 'Clara, Leo' },
+  },
+  {
+    id: 'rosa-nome', nome: 'Rosa com nome', familia: 'chaveiros', tipo: 'Presente',
+    resumo: 'Rosa de uma cor só, com o nome formando o cabo; até 9 nomes.',
+    destaques: ['Uma cor', 'Nome no cabo', 'Até 9 por vez'],
+    exemplo: { nomes: 'Aline, Mãe' },
+  },
+  {
+    id: 'string-art', nome: 'String art impresso', familia: 'placas', tipo: 'Decoração',
+    resumo: 'Texto ou desenho flutuando numa moldura, preso por fios finos impressos em outra cor.',
+    destaques: ['Coração, retângulo ou @', 'Fios verticais ou radiais', '2 cores'],
+    exemplo: { corBorda: '#a85f78', corFio: '#ffffff' },
+  },
+  {
+    id: 'letra-grande', nome: 'Letra grande com nome', familia: 'texto', tipo: 'Letra grande',
+    resumo: 'Uma letra grande com o nome em cima, em sete acabamentos: encaixado, afundado, resina, textura, floral, EVA ou glitter.',
+    destaques: ['7 acabamentos', 'Nome com enfeite', 'Pé cortado para ficar em pé'],
+    exemplo: { letra: 'M', nome: 'Mom', altura: 140, corLetra: '#4a1f2e', corNome: '#f5d0a9' },
+  },
+  {
+    id: 'luminaria-letra', nome: 'Luminária letra grande', familia: 'texto', tipo: 'Luminária',
+    resumo: 'Letra oca com parede para fita de LED, frente translúcida de encaixe e o nome por cima.',
+    destaques: ['Fita de LED', 'Frente translúcida', 'Saída do cabo'],
+    exemplo: { letra: 'A', nome: 'Ana', altura: 140, corLetra: '#e91e8c', corNome: '#1f2937' },
+  },
+  {
+    id: 'luminaria-social', nome: 'Luminária @social', familia: 'multicor', tipo: 'Luminária',
+    resumo: 'O seu @ iluminado: caixa com LED, letras em cor na frente translúcida e faixa na lateral.',
+    destaques: ['Fita de LED', 'Contorno ou retângulo', 'Furo do cabo'],
+    exemplo: { usuario: '@formma3d', largura: 200, corBase: '#1f2937', corTexto: '#f472b6' },
+  },
 ];
 
 export function ficha(id: string): Ficha {

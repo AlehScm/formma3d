@@ -3,14 +3,14 @@
 Gerado de `lib/gerador/cobertura.ts` por `npx tsx scripts/cobertura.mts`; não editar à mão.
 Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 
-**67 prontos · 11 parciais · 39 pendentes** de 117.
+**72 prontos · 22 parciais · 23 pendentes** de 117.
 
 | Onda | Claude | ChatGPT |
 |---|---:|---:|
-| já coberto | 67 | 0 |
+| já coberto | 72 | 0 |
 | 1 | 0 | 1 |
-| 2 | 11 | 15 |
-| 3 | 23 | 0 |
+| 2 | 9 | 15 |
+| 3 | 20 | 0 |
 
 | Modelo | Dono | Receita | Status | Onda | Falta |
 |---|---|---|---|---:|---|
@@ -28,7 +28,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Cartão de Visita](https://www.mafagrafos.com/models/regular-business-card) | ChatGPT | — | Pendente | 2 | texto + QR, face para cima/baixo |
 | [Placas Profissionais](https://www.mafagrafos.com/models/profession) | ChatGPT | — | Parcial | 1 | editor de placa existe; falta receita com símbolo, nome e base que encaixa |
 | [Porta-Pente para Cílios](https://www.mafagrafos.com/models/lash-holder) | Claude | — | Pendente | 3 | cilindro com tampa rosqueada e textura/SVG |
-| [Luminária Letra Grande com Nome](https://www.mafagrafos.com/models/big-letter-lamp) | Claude | — | Pendente | 3 | letra oca com canal de LED e tampa |
+| [Luminária Letra Grande com Nome](https://www.mafagrafos.com/models/big-letter-lamp) | Claude | `luminaria-letra` | Parcial | 3 | editor de arte; conferir encaixe da frente impresso |
 | [Gerador de Chaveiro com Sobreposição](https://www.mafagrafos.com/models/overlay-keychain) | Claude | `chaveiro-desenho` | Pronto | 0 | — |
 | [Placa de Listras com Base](https://www.mafagrafos.com/models/stripes-plaques) | Claude | `placa-com-base` | Parcial | 2 | editor de arte (aqui o desenho vem de imagem) |
 | [Placa de Line Art](https://www.mafagrafos.com/models/line-art-plaque) | Claude | `placa-com-base` | Parcial | 2 | pincel para ligar linhas soltas |
@@ -37,7 +37,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Carimbo Circular de Imagem](https://www.mafagrafos.com/models/rounded-circle-stamp) | Claude | `carimbo-circular` | Pronto | 0 | — |
 | [Display para Salão de Unhas](https://www.mafagrafos.com/models/nail-salon-display) | Claude | — | Pendente | 3 | mão com logo e 2 linhas, decoração da base |
 | [Carimbo de Letras/Números](https://www.mafagrafos.com/models/text-brigadeiro-stamp) | Claude | `carimbo-letras` | Pronto | 0 | — |
-| [@social - Luminária de LED](https://www.mafagrafos.com/models/social-handle-simple-lamp) | Claude | — | Pendente | 3 | base com canal de LED e furo de cabo |
+| [@social - Luminária de LED](https://www.mafagrafos.com/models/social-handle-simple-lamp) | Claude | `luminaria-social` | Parcial | 3 | conferir encaixe da frente impresso |
 | [Chaveiro com Nome e Logo](https://www.mafagrafos.com/models/logo-text-keychain) | Claude | `chaveiro-logo-nome` | Pronto | 0 | — |
 | [Ejetor Arredondado com Escala de Forma](https://www.mafagrafos.com/models/scale-dome-ejector) | Claude | `ejetor-cupula` | Pronto | 0 | texto e logo da marca; pegador |
 | [Ejetor de Cúpula Arredondada](https://www.mafagrafos.com/models/rounded-dome-ejector) | Claude | `ejetor-cupula` | Parcial | 3 | linhas do desenho dentro da cúpula; texto e logo da marca |
@@ -64,7 +64,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Rolo de Textura - Mosaico](https://www.mafagrafos.com/models/tiled-texture-roller) | Claude | `rolo-textura` | Pronto | 0 | — |
 | [Rolo de Textura - Imagem Grande](https://www.mafagrafos.com/models/large-texture-roller) | Claude | `rolo-textura` | Pronto | 0 | — |
 | [Gerador de Abridor de Latas](https://www.mafagrafos.com/models/can-opener) | Claude | `abridor-latas` | Pronto | 0 | modo face para baixo |
-| [Rosa com Nome](https://www.mafagrafos.com/models/rose-with-name) | Claude | — | Pendente | 3 | rosa orgânica com nome, até 9 |
+| [Rosa com Nome](https://www.mafagrafos.com/models/rose-with-name) | Claude | `rosa-nome` | Pronto | 0 | — |
 | [Chaveiro com Espelho e Texto](https://www.mafagrafos.com/models/mirror-text-keychain) | Claude | `chaveiro-espelho` | Pronto | 0 | — |
 | [Chaveiro de Rosa com Texto](https://www.mafagrafos.com/models/rose-text-keychain) | Claude | `rosa-texto` | Pronto | 0 | — |
 | [Rosa para Scrunchie](https://www.mafagrafos.com/models/rose-scrunchie) | Claude | `rosa-texto` | Pronto | 0 | — |
@@ -75,15 +75,15 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Placa PIX Simples](https://www.mafagrafos.com/models/simple-pix-plaque) | ChatGPT | — | Pendente | 2 | QR PIX (BR Code) + título |
 | [Placa PIX Logo](https://www.mafagrafos.com/models/logo-pix-plaque) | ChatGPT | — | Pendente | 2 | QR PIX + logo |
 | [Placa PIX Texto](https://www.mafagrafos.com/models/text-pix-plaque) | ChatGPT | — | Pendente | 2 | QR PIX + 2 linhas |
-| [Letra Grande - Textura](https://www.mafagrafos.com/models/big-letter-foreground-texture) | Claude | — | Pendente | 3 | letra + nome com textura SVG |
-| [Letra Grande - Nome Rebaixado](https://www.mafagrafos.com/models/big-letter-sunken-name) | Claude | — | Pendente | 3 | letra com nome rebaixado |
-| [Letra Grande - Borda para Resina](https://www.mafagrafos.com/models/big-letter-resin-casting) | Claude | — | Pendente | 3 | letra com bordas para resina |
-| [Letra Grande - Fundo Texturizado](https://www.mafagrafos.com/models/big-letter-textured-background) | Claude | — | Pendente | 3 | letra + fundo texturizado |
+| [Letra Grande - Textura](https://www.mafagrafos.com/models/big-letter-foreground-texture) | Claude | `letra-grande` | Parcial | 3 | textura elevada x plana; editor de arte |
+| [Letra Grande - Nome Rebaixado](https://www.mafagrafos.com/models/big-letter-sunken-name) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
+| [Letra Grande - Borda para Resina](https://www.mafagrafos.com/models/big-letter-resin-casting) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
+| [Letra Grande - Fundo Texturizado](https://www.mafagrafos.com/models/big-letter-textured-background) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Colorir com Bordas em Relevo](https://www.mafagrafos.com/models/raised-borders-coloring) | Claude | `colorir` | Parcial | 2 | até 4 imagens por vez; editor de arte |
-| [Letra Grande Floral](https://www.mafagrafos.com/models/big-letter-floral-texture) | Claude | — | Pendente | 3 | fundo floral em camadas |
-| [Letra Grande - Fundo de Material](https://www.mafagrafos.com/models/big-letter-shell-eva) | Claude | — | Pendente | 3 | letra + fundo para EVA/feltro |
-| [Letra Grande - Brilho](https://www.mafagrafos.com/models/big-letter-sunken-sparkle) | Claude | — | Pendente | 3 | letra com compartimento para glitter |
-| [Letra Grande - Nome](https://www.mafagrafos.com/models/big-letter-name) | Claude | — | Pendente | 3 | letra + nome encaixado |
+| [Letra Grande Floral](https://www.mafagrafos.com/models/big-letter-floral-texture) | Claude | `letra-grande` | Parcial | 3 | floral próprio em 2 cores; nome em SVG |
+| [Letra Grande - Fundo de Material](https://www.mafagrafos.com/models/big-letter-shell-eva) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
+| [Letra Grande - Brilho](https://www.mafagrafos.com/models/big-letter-sunken-sparkle) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
+| [Letra Grande - Nome](https://www.mafagrafos.com/models/big-letter-name) | Claude | `letra-grande` | Parcial | 3 | editor de arte; conferir no fatiador |
 | [Marcador de Livro Floral com Nome](https://www.mafagrafos.com/models/floral-name-side-bookmark) | Claude | `marcador-pagina` | Pronto | 0 | — |
 | [Plaquinha de Pet Oval Ondulada](https://www.mafagrafos.com/models/pet-name-oval-wave) | Claude | `plaquinha-pet` | Pronto | 0 | — |
 | [Plaquinha de Pet Oval](https://www.mafagrafos.com/models/pet-name-oval) | Claude | `plaquinha-pet` | Pronto | 0 | — |
@@ -105,8 +105,8 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Texto com guia de posicionamento](https://www.mafagrafos.com/models/text-placement-helper) | Claude | `texto-com-guia` | Pronto | 0 | — |
 | [Imagem 3D com borda para resina](https://www.mafagrafos.com/models/image-to3d-resin-border) | Claude | `chaveiro-resina` | Parcial | 2 | segunda imagem |
 | [Imagem multipartes](https://www.mafagrafos.com/models/image-multipart) | Claude | `imagem-multipartes` | Pronto | 0 | — |
-| [Chaveiro cenoura](https://www.mafagrafos.com/models/carrot-name-keychain) | Claude | — | Pendente | 2 | forma temática própria + nome |
-| [Chaveiro coelho](https://www.mafagrafos.com/models/bunny-name-keychain) | Claude | — | Pendente | 2 | forma temática própria + nome |
+| [Chaveiro cenoura](https://www.mafagrafos.com/models/carrot-name-keychain) | Claude | `chaveiro-cenoura` | Pronto | 0 | — |
+| [Chaveiro coelho](https://www.mafagrafos.com/models/bunny-name-keychain) | Claude | `chaveiro-coelho` | Pronto | 0 | — |
 | [Chaveiro retangular com nome](https://www.mafagrafos.com/models/rectangle-name-keychain) | Claude | `chaveiro-retangular` | Pronto | 0 | — |
 | [Carimbo de brigadeiro com imagem](https://www.mafagrafos.com/models/image-brigadeiro-stamp) | Claude | `carimbo-imagem` | Pronto | 0 | — |
 | [Quebra-cabeça de imagem](https://www.mafagrafos.com/models/image-puzzle) | Claude | `quebra-cabeca` | Parcial | 2 | imagem colorida (aqui 2 cores); editor de arte |
@@ -119,9 +119,9 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Colorir afundado, forma](https://www.mafagrafos.com/models/sunken-image-coloring) | Claude | `colorir` | Pronto | 0 | — |
 | [Contador raspadinha](https://www.mafagrafos.com/models/scratch-off-counter) | Claude | `contador-raspadinha` | Pronto | 0 | — |
 | [Porta-canetas paramétrico](https://www.mafagrafos.com/models/sized-pen-holder) | Claude | `porta-canetas-grade` | Pronto | 0 | — |
-| [String art, coração](https://www.mafagrafos.com/models/string-art-heart-name-vertical-floating) | Claude | — | Pendente | 3 | moldura com pinos e nome flutuante |
-| [String art, retângulo](https://www.mafagrafos.com/models/string-art-rectangle-name-radial) | Claude | — | Pendente | 3 | moldura com pinos radial |
-| [@social string art](https://www.mafagrafos.com/models/social-handle-string-art-floating) | Claude | — | Pendente | 3 | moldura com texto suspenso |
+| [String art, coração](https://www.mafagrafos.com/models/string-art-heart-name-vertical-floating) | Claude | `string-art` | Pronto | 0 | — |
+| [String art, retângulo](https://www.mafagrafos.com/models/string-art-rectangle-name-radial) | Claude | `string-art` | Parcial | 3 | editor de arte (aqui o desenho vem de imagem) |
+| [@social string art](https://www.mafagrafos.com/models/social-handle-string-art-floating) | Claude | `string-art` | Pronto | 0 | — |
 | [Letras separadas, 2 cores](https://www.mafagrafos.com/models/separate-letters-offset-2color) | Claude | `letras-separadas` | Pronto | 0 | — |
 | [Letras separadas, 3 cores](https://www.mafagrafos.com/models/separate-letters-offset-3color) | Claude | `letras-separadas` | Pronto | 0 | — |
 | [@social, 3 cores](https://www.mafagrafos.com/models/social-handle-offset-3color) | Claude | `social-camadas` | Pronto | 0 | — |

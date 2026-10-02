@@ -16,6 +16,8 @@ import { placaComBase, trofeu } from './expositores';
 
 import { estojoBatom, roloTextura } from './cilindros';
 import { cumbuca, ejetorCupula, suporteBolo } from './cupulas';
+import { chaveiroCenoura, chaveiroCoelho, rosaNome, stringArt } from './tematicos';
+import { letraGrande, luminariaLetra, luminariaSocial } from './letras';
 export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparadas, chaveiroNome, chaveiroRetangular, logoCamadas, chaveiroDesenho, chaveiroLogoNome, plaquinhaPet, pingenteFamilia,
   letreiroSobreposto, topoBolo, topoBoloCircular, marcadorPagina, contadorRaspadinha, textoComGuia,
   suporteFoto, suportePalitos, portaCanetasGrade, flocoNeve,
@@ -24,6 +26,8 @@ export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparad
   placaComBase, trofeu,
   roloTextura, estojoBatom,
   ejetorCupula, cumbuca, suporteBolo,
+  chaveiroCenoura, chaveiroCoelho, rosaNome, stringArt,
+  letraGrande, luminariaLetra, luminariaSocial,
 ];
 
 export const receitaPorId = (id: string) => RECEITAS.find((r) => r.id === id);

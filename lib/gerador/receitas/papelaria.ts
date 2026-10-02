@@ -14,7 +14,7 @@ const cor = (id: string, rotulo: string, padrao: string): Parametro => ({ tipo: 
 const espacamento: Parametro = { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%' };
 
 /** Furos repetidos cobrindo a caixa `b` (padrao vazado da aba). */
-function padraoVazado(tipo: string, b: { minX: number; minY: number; maxX: number; maxY: number }, linha: number): Region {
+export function padraoVazado(tipo: string, b: { minX: number; minY: number; maxX: number; maxY: number }, linha: number): Region {
   const furos: Region[] = [];
   const passo = tipo === 'floral' ? 11 : 8;
   for (let x = b.minX - passo; x <= b.maxX + passo; x += passo) {
