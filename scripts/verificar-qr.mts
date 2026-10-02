@@ -7,6 +7,7 @@ import { payloadWhatsapp, payloadWifi, payloadUrl } from '../lib/gerador/payload
 import { crc16Ccitt, gerarPixEstatico } from '../lib/gerador/pix';
 import { qrParaRegiao } from '../lib/gerador/qr';
 import { payloadDaPlacaQr, placaQr, placaPixSimples, placaQrTexto, placaQrWhatsapp, placaQrWifi } from '../lib/gerador/receitas/qr';
+import { cartaoTecido, cartaoVisita, listaQrVertical, listaQrHorizontal, listaQrCamadas, placaGoogleReview, placaPixLogo, placaPixTexto, placaQrLogo, placaQrSocial, socialComQr } from '../lib/gerador/receitas/qrplacas';
 import { receitaPorId } from '../lib/gerador/receitas';
 import { FICHAS } from '../lib/gerador/receitas/fichas';
 import { regionArea, regionBounds } from '../lib/geom/region';
@@ -139,5 +140,28 @@ assert.match(placaEstreita.avisos[0]!, /margem livre de quatro módulos/);
 const placaBaixa = placaQr.gerar({ ...valores, alturaPlaca: 50 }, contexto);
 assert.equal(placaBaixa.itens.length, 0);
 assert.match(placaBaixa.avisos[0]!, /altura da placa/);
+
+const qrObrigatorios = [
+  { receita: placaGoogleReview, valores: { link: 'javascript:alert(1)' } },
+  { receita: placaQrSocial, valores: { rede: 'outra', handle: 'perfil-invalido' } },
+  { receita: placaQrLogo, valores: { link: 'javascript:alert(1)', posLogo: 'centro' } },
+  { receita: placaPixLogo, valores: { chavePix: 'chave-invalida', nomePix: 'Ana', cidadePix: 'Sao Paulo' } },
+  { receita: placaPixTexto, valores: { chavePix: 'chave-invalida', nomePix: 'Ana', cidadePix: 'Sao Paulo' } },
+  { receita: socialComQr, valores: { link: 'javascript:alert(1)' } },
+  { receita: listaQrVertical, valores: { url1: 'javascript:alert(1)' } },
+  { receita: listaQrHorizontal, valores: { url1: 'javascript:alert(1)' } },
+  { receita: listaQrCamadas, valores: { url1: 'javascript:alert(1)' } },
+  { receita: cartaoVisita, valores: { linkQr: 'javascript:alert(1)' } },
+  { receita: cartaoTecido, valores: { linkQr: 'javascript:alert(1)', nfc: false } },
+];
+for (const { receita, valores: alteracoes } of qrObrigatorios) {
+  const gerado = receita.gerar({ ...valoresPadrao(receita), ...alteracoes }, contexto);
+  assert.equal(gerado.itens.length, 0, `${receita.id}: QR inválido bloqueia exportação`);
+  assert.ok(gerado.avisos.length > 0, `${receita.id}: mostra o motivo`);
+}
+assert.ok(cartaoTecido.gerar({ ...valoresPadrao(cartaoTecido), linkQr: 'javascript:alert(1)', nfc: true }, contexto).itens.length > 0, 'NFC substitui o QR no cartão de tecido');
+const qrCortado = placaGoogleReview.gerar({ ...valoresPadrao(placaGoogleReview), largura: 60, tamQr: 120 }, contexto);
+assert.equal(qrCortado.itens.length, 0, 'QR que não cabe na placa bloqueia exportação');
+assert.match(qrCortado.avisos.join(' '), /não cabe na placa/);
 
 console.log('QR/PIX: payloads, vetor oficial do Pix, geometria e exportações passaram.');

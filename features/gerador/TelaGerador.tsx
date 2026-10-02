@@ -73,9 +73,10 @@ export function TelaGerador({ id }: { id: string }) {
   const mudar = (id: string, v: Valores[string]) => setValores((s) => ({ ...s, [id]: v }));
   const nomeArquivo = nomeSeguro(`${receita.id}-${resultado?.itens[0]?.nome ?? ''}`);
   const temPecas = !!resultado?.itens.length;
+  const podeExportar = temPecas && !gerando && !erro && !erroFonte;
 
   const abrirNoEditor = () => {
-    if (!resultado) return;
+    if (!resultado || !podeExportar) return;
     const projeto = useProjeto.getState();
     for (const p of pecasSoltas(resultado)) {
       const posicoes = centrada(p.posicoes);
@@ -107,16 +108,16 @@ export function TelaGerador({ id }: { id: string }) {
           <p className="truncate text-mini text-texto-3">{receita.resumo}</p>
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
-          <Botao variante="primario" icone={IconeBaixar} disabled={!temPecas} onClick={async () => resultado && baixar(`${nomeArquivo}.3mf`, await blob3mfMontado(resultado))}>
+          <Botao variante="primario" icone={IconeBaixar} disabled={!podeExportar} onClick={async () => resultado && podeExportar && baixar(`${nomeArquivo}.3mf`, await blob3mfMontado(resultado))}>
             3MF multicor
           </Botao>
-          <Botao icone={IconeBaixar} disabled={!temPecas} onClick={async () => resultado && baixar(`${nomeArquivo}-pecas.3mf`, await blob3mfSoltas(resultado))}>
+          <Botao icone={IconeBaixar} disabled={!podeExportar} onClick={async () => resultado && podeExportar && baixar(`${nomeArquivo}-pecas.3mf`, await blob3mfSoltas(resultado))}>
             3MF peças separadas
           </Botao>
-          <Botao icone={IconeBaixar} disabled={!temPecas} onClick={async () => resultado && baixar(`${nomeArquivo}-stl.zip`, await zipStl(resultado))}>
+          <Botao icone={IconeBaixar} disabled={!podeExportar} onClick={async () => resultado && podeExportar && baixar(`${nomeArquivo}-stl.zip`, await zipStl(resultado))}>
             STL (zip)
           </Botao>
-          <Botao variante="fantasma" icone={IconeImprimir} disabled={!temPecas} onClick={abrirNoEditor}>
+          <Botao variante="fantasma" icone={IconeImprimir} disabled={!podeExportar} onClick={abrirNoEditor}>
             Abrir no editor
           </Botao>
         </div>

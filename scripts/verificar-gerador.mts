@@ -14,21 +14,24 @@ import { lerTresMf } from '../lib/import/tresmf';
 import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
 import { FICHAS } from '../lib/gerador/receitas/fichas';
 import { COBERTURA, markdownCobertura } from '../lib/gerador/cobertura';
-import { valoresPadrao, type Receita, type Resultado, type Valores } from '../lib/gerador/tipos';
+import { valoresPadrao, type Peca, type Receita, type Resultado, type Valores } from '../lib/gerador/tipos';
 import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
 import { corDe } from '../lib/gerador/malha';
 import { circulo, contornar, retanguloArredondado, textoEmArco, unir } from '../lib/gerador/formas';
 import JSZip from 'jszip';
+import { payloadWifi, payloadWhatsapp } from '../lib/gerador/payloads';
+import { crc16Ccitt } from '../lib/gerador/pix';
+import jsQR from 'jsqr';
 import { gerarPixEstatico } from '../lib/gerador/pix';
 import { payloadUrl } from '../lib/gerador/payloads';
-import { cartaoTecido, cartaoVisita, listaQr, listaQrCamadas, placaGoogleReview, placaPixLogo, placaPixTexto, placaQrLogo, placaQrSocial, socialComQr, urlDoPerfil } from '../lib/gerador/receitas/qrplacas';
+import { cartaoTecido, cartaoVisita, listaQrVertical, listaQrHorizontal, listaQrCamadas, placaGoogleReview, placaPixLogo, placaPixTexto, placaQrLogo, placaQrSocial, socialComQr, urlDoPerfil } from '../lib/gerador/receitas/qrplacas';
 import QRCode from 'qrcode';
 import { poteRosqueado } from '../lib/gerador/receitas/potes';
 import { cilindroComRelevo } from '../lib/gerador/cilindro';
 import { pixelsParaCores, pixelsParaRegiao } from '../lib/import/imagem';
 import { pecasDeQuebraCabeca } from '../lib/gerador/receitas/imagens';
-import { textura } from '../lib/gerador/figuras';
+import { espelharX, textura } from '../lib/gerador/figuras';
 
 let falhas = 0;
 let total = 0;
@@ -786,6 +789,8 @@ console.log('\n== placas e listas de QR, cartoes ==');
   ok('qr com logo no meio: modulos tirados cabem na correcao H (< 15%)', errosLogo > 0.02 && errosLogo < 0.15, `${(errosLogo * 100).toFixed(1)}%`);
   const lb = regionBounds(comLogo.itens[0]!.pecas.find((p) => p.nome === 'Logo')!.camadas[0]!.region), qb = regionBounds(qrDa(comLogo));
   ok('qr com logo no meio: logo centrado no QR', perto((lb.minX + lb.maxX) / 2, (qb.minX + qb.maxX) / 2, 0.05) && perto((lb.minY + lb.maxY) / 2, (qb.minY + qb.maxY) / 2, 0.05));
+  const logoMenor = gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', altLogo: 8, link: 'https://formma3d.com' });
+  ok('qr com logo no meio: altura do logo altera a peca', regionArea(logoMenor.itens[0]!.pecas.find((p) => p.nome === 'Logo')!.camadas[0]!.region) < regionArea(comLogo.itens[0]!.pecas.find((p) => p.nome === 'Logo')!.camadas[0]!.region));
   ok('qr com logo acima: QR com correcao normal sem erro', errosDoQr(qrDa(gerar(placaQrLogo, { desenho: svg, link: 'https://formma3d.com' })), payloadUrl('https://formma3d.com')) === 0);
   const pixV = { chavePix: '123e4567-e12b-12d1-a456-426655440000', nomePix: 'Fulano de Tal', cidadePix: 'BRASILIA' };
   const pixPayload = gerarPixEstatico({ chave: pixV.chavePix, nome: pixV.nomePix, cidade: pixV.cidadePix });
@@ -793,17 +798,44 @@ console.log('\n== placas e listas de QR, cartoes ==');
   const pixT = gerar(placaPixTexto, { ...pixV, linha3: 'OBRIGADO' });
   ok('pix texto: QR le o BR Code e as linhas ficam acima', errosDoQr(qrDa(pixT), pixPayload) === 0 && regionBounds(pixT.itens[0]!.pecas.find((p) => p.nome === 'Texto')!.camadas[0]!.region).maxY > regionBounds(qrDa(pixT)).maxY);
   ok('pix sem chave nao gera', placaPixLogo.gerar(valoresPadrao(placaPixLogo), ctx).itens.length === 0 && placaPixTexto.gerar(valoresPadrao(placaPixTexto), ctx).itens.length === 0);
-  const vert = gerar(listaQr, { usar_wifi: true, senhaWifi: 'abc12345' }), hor = gerar(listaQr, { direcao: 'horizontal', usar_wifi: true, senhaWifi: 'abc12345' });
-  const bv = regionBounds(regiaoDe(vert, 0, 'Base')), bh = regionBounds(regiaoDe(hor, 0, 'Base'));
-  ok('lista: vertical alta, horizontal larga', bv.h > bv.w && bh.w > bh.h, `${bv.w.toFixed(0)}x${bv.h.toFixed(0)} / ${bh.w.toFixed(0)}x${bh.h.toFixed(0)}`);
-  const qrsLista = regiaoDe(vert, 0, 'QR e textos');
-  ok('lista: 4 QR (site, Wi-Fi, WhatsApp, Instagram) dentro da borda e sem aviso', regionArea(diffRegion(qrsLista, contornar(regiaoDe(vert, 0, 'Base'), -3))) < 0.01 && vert.avisos.length === 0, vert.avisos.join(' | '));
-  ok('lista: QR pequeno demais para o Pix avisa', /módulos/.test(gerar(listaQr, { usar_pix: true, ...pixV, tamQr: 30 }).avisos.join()));
+  const svgLogo = JSON.stringify({ nome: 'q.svg', regiao: [{ outer: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }], holes: [] }] });
+  const todosQr = { usar_link2: true, usar_wifi: true, senhaWifi: 'abc12345', usar_tiktok: true, usar_youtube: true, usar_pix: true, ...pixV, usar_google: true };
+  const vert = gerar(listaQrVertical, { usar_wifi: true, senhaWifi: 'abc12345' }), hor = gerar(listaQrHorizontal, { usar_wifi: true, senhaWifi: 'abc12345' });
+  const bv = regionBounds(regiaoDe(vert, 0, 'Placa')), bh = regionBounds(regiaoDe(hor, 0, 'Placa'));
+  ok('lista: URLs proprias, vertical alta e horizontal larga', listaQrVertical.id !== listaQrHorizontal.id && bv.h > bv.w && bh.w > bh.h, `${bv.w.toFixed(0)}x${bv.h.toFixed(0)} / ${bh.w.toFixed(0)}x${bh.h.toFixed(0)}`);
+  ok('lista: placa + suporte, icones em peca e cor proprias', vert.itens.length === 2 && vert.itens[0]!.pecas.some((p) => p.nome === 'Ícones e nome') && vert.cores.includes('Suporte'));
+  const qrsV = regiaoDe(vert, 0, 'QR Code'), icV = regiaoDe(vert, 0, 'Ícones e nome');
+  ok('lista: icones nao invadem o QR', regionArea(intersectRegion(icV, contornar(qrsV, 0.5))) < 0.01);
+  const comLogoWifi = gerar(listaQrVertical, { usar_wifi: true, senhaWifi: 'abc12345', logo_wifi: svgLogo });
+  ok('lista: logo proprio no lugar do icone de um QR', Math.abs(regionArea(regiaoDe(comLogoWifi, 0, 'Ícones e nome')) - regionArea(icV)) > 1);
+  const maior = gerar(listaQrVertical, { usar_wifi: true, senhaWifi: 'abc12345', tamIcone_wifi: 34 });
+  ok('lista: tamanho do icone por QR', regionArea(regiaoDe(maior, 0, 'Ícones e nome')) > regionArea(icV));
+  ok('lista: nome escrito no lugar do icone', regionArea(regiaoDe(gerar(listaQrVertical, { marca: 'nome' }), 0, 'Ícones e nome')) > 1);
+  ok('lista: 9 QR ligados geram sem aviso', gerar(listaQrVertical, todosQr).avisos.length === 0, gerar(listaQrVertical, todosQr).avisos.join(' | '));
+  const pixPequeno = gerar(listaQrVertical, { usar_pix: true, ...pixV, tamQr: 30 });
+  ok('lista: QR pequeno demais para o Pix bloqueia exportacao e diz qual', pixPequeno.itens.length === 0 && /Pix: .*módulos/.test(pixPequeno.avisos.join()));
+  const notaFenda = (r: Resultado) => Number((r.notas ?? []).join(' ').match(/Fenda do suporte: ([\d,]+) mm/)?.[1]?.replace(',', '.'));
+  ok('lista: fenda do suporte = placa + relevo da borda + 0,5 mm', perto(notaFenda(vert), 2.8 + 0.6 + 0.5, 0.001), String(notaFenda(vert)));
+  const zMaxQr = Math.min(...vert.itens[0]!.pecas.filter((p) => p.nome === 'QR Code' || p.nome === 'Ícones e nome').map((p) => regionBounds(p.camadas[0]!.region).minY));
+  ok('lista: nada impresso dentro da fenda do suporte', zMaxQr - bv.minY >= 10, (zMaxQr - bv.minY).toFixed(1));
   const cam = gerar(listaQrCamadas, { usar_pix: true, ...pixV });
-  const plaq = regiaoDe(cam, 0, 'Plaquinhas'), qrsCam = regiaoDe(cam, 0, 'QR e textos');
-  ok('lista em camadas: QR em cima das plaquinhas, nome na tabua', regionArea(diffRegion(qrsCam, plaq)) < 0.01 && regionArea(intersectRegion(regiaoDe(cam, 0, 'Nome'), plaq)) < 0.01 && cam.itens.length === 2);
-  const zQr = cam.itens[0]!.pecas.find((p) => p.nome === 'QR e textos')!.camadas[0]!.z0, zPl = cam.itens[0]!.pecas.find((p) => p.nome === 'Plaquinhas')!.camadas[0]!.z1;
-  ok('lista em camadas: QR apoiado na plaquinha', zQr === zPl);
+  ok('lista em camadas: tabua, placa dos QR e suporte, cada um com cor propria', cam.itens.length === 3 && cam.cores.length === 7, `${cam.itens.map((i) => i.nome).join(', ')} / ${cam.cores.join(', ')}`);
+  const tab = cam.itens.find((i) => i.nome === 'Tábua de fundo')!, pq = cam.itens.find((i) => i.nome === 'Placa dos QR')!;
+  ok('lista em camadas: nome na tabua, icones e QR na placa', tab.pecas.some((p) => p.nome === 'Nome da tábua') && pq.pecas.some((p) => p.nome === 'Ícones') && pq.pecas.some((p) => p.nome === 'QR Code'));
+  ok('lista em camadas: fenda pega tabua + placa + borda', perto(notaFenda(cam), 2 + 2 + 0.6 + 0.5, 0.001), String(notaFenda(cam)));
+  const corDe = (r: Resultado, peca: string) => r.hex![r.itens.flatMap((i) => i.pecas).find((p) => p.nome === peca)!.cor];
+  const outraCor = gerar(listaQrCamadas, { usar_pix: true, ...pixV, corFundo: '#123456', corLogo: '#00ff00' });
+  ok('lista em camadas: cor da tabua e dos icones mudam sozinhas', corDe(outraCor, 'Tábua de fundo') === '#123456' && corDe(outraCor, 'Ícones') === '#00ff00' && corDe(outraCor, 'QR Code') === '#4a1f2e');
+  const socialTres = gerar(placaQrSocial, { perfil2: true, perfil3: true });
+  ok('social: tres perfis, tres placas', socialTres.itens.filter((i) => i.nome.startsWith('Placa')).length === 3);
+  const socialPes = gerar(placaQrSocial, { montagem: 'suporte' });
+  ok('social: pes de mesa', socialPes.itens.filter((i) => i.nome.startsWith('Pé')).length === 2);
+  const logoPes = gerar(placaQrLogo, { desenho: svg, montagem: 'suporteFuro' });
+  const pe = logoPes.itens.find((i) => i.nome.startsWith('Pé'))!.pecas[0]!.camadas[0]!.region;
+  ok('qr com logo: pes com furo de fixacao', logoPes.itens.length === 3 && regionArea(pe) < 45 * 50 - 24 * 4 - 20);
+  const fendaPe = (logoPes.notas ?? []).join(' ').match(/A fenda tem ([\d,]+) mm/)?.[1];
+  ok('qr com logo: fenda dos pes conta a borda em relevo', fendaPe === (3 + 0.6 + 0.5).toLocaleString('pt-BR'), fendaPe);
+  ok('cores: pouco contraste entre QR e base avisa', /contraste/.test(gerar(placaGoogleReview, { corQr: '#4a1f2e', corBase: '#5a2f3e' }).avisos.join()));
   const soc = gerar(socialComQr);
   const baseSoc = regiaoDe(soc, 0, 'Base');
   ok('@social com QR: base inteira e QR dentro dela', baseSoc.length === 1 && regionArea(diffRegion(regiaoDe(soc, 0, 'Topo e QR'), baseSoc)) < 0.01 && !soc.avisos.length, soc.avisos.join());
@@ -821,6 +853,88 @@ console.log('\n== placas e listas de QR, cartoes ==');
   const capa = ct.itens[0]!.pecas.find((p) => p.nome === 'Capa do NFC');
   ok('cartao com tecido: pausa para o tecido e para o NFC', (ct.notas ?? []).length >= 2 && !!capa && !ct.avisos.length, ct.avisos.join());
   ok('cartao com tecido: NFC no lugar do QR, sem tocar o texto', regionArea(intersectRegion(capa!.camadas[0]!.region, contornar(ct.itens[0]!.pecas.find((p) => p.nome === 'Texto e QR')!.camadas[0]!.region, 0.3))) < 0.01);
+  console.log('\n== leitura real dos QR (vista de cima nas cores das pecas + decodificador) ==');
+  const luzDe = (hex: string) => { const n = parseInt(hex.replace('#', ''), 16); return Math.round(0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)); };
+  /** Pinta uma regiao na imagem (preenchimento par-impar por linha). */
+  const pintar = (img: Uint8ClampedArray, W: number, H: number, x0: number, y1: number, s: number, r: Region, cinza: number) => {
+    const arestas: number[][] = [];
+    for (const p of r) for (const c of [p.outer, ...p.holes]) for (let i = 0; i < c.length; i++) { const a = c[i]!, b = c[(i + 1) % c.length]!; arestas.push([a.x, a.y, b.x, b.y]); }
+    for (let row = 0; row < H; row++) {
+      const y = y1 - (row + 0.5) / s, xs: number[] = [];
+      for (const [ax, ay, bx, by] of arestas) if ((ay! <= y) !== (by! <= y)) xs.push(ax! + ((y - ay!) / (by! - ay!)) * (bx! - ax!));
+      xs.sort((a, b) => a - b);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const c0 = Math.max(0, Math.ceil((xs[k]! - x0) * s - 0.5)), c1 = Math.min(W - 1, Math.floor((xs[k + 1]! - x0) * s - 0.5));
+        for (let c = c0; c <= c1; c++) { const o = (row * W + c) * 4; img[o] = img[o + 1] = img[o + 2] = cinza; }
+      }
+    }
+  };
+  /** Le todos os QR de um item: acha cada QR (grupos da peca de QR) e decodifica a vista de cima em volta dele. */
+  const lerItem = (res: Resultado, item: number, opc: { espelhar?: boolean; soPecas?: string[]; nomeQr?: string } = {}) => {
+    const it = res.itens[item]!;
+    const espelha = (r: Region) => (opc.espelhar ? espelharX(r) : r);
+    const qrPeca = it.pecas.find((p) => p.nome === (opc.nomeQr ?? 'QR Code'))!;
+    const polis = espelha(qrPeca.camadas.map((c) => c.region).flat());
+    // Agrupa os pedacos do QR pelo tamanho do modulo (o menor pedaco solto e um modulo): ate 3 modulos de vao = mesmo codigo.
+    const caixas = polis.map((p) => regionBounds([p]));
+    const mod = Math.min(...caixas.map((c) => Math.max(c.w, c.h))), d = 1.5 * mod;
+    const grupo = caixas.map((_, i) => i);
+    const raiz = (i: number): number => (grupo[i] === i ? i : (grupo[i] = raiz(grupo[i]!)));
+    for (let i = 0; i < caixas.length; i++) for (let j = i + 1; j < caixas.length; j++) {
+      const a = caixas[i]!, b = caixas[j]!;
+      if (a.minX - d < b.maxX + d && b.minX - d < a.maxX + d && a.minY - d < b.maxY + d && b.minY - d < a.maxY + d) grupo[raiz(i)] = raiz(j);
+    }
+    const lidos: string[] = [];
+    const pecas = [...it.pecas].filter((p) => !opc.soPecas || opc.soPecas.includes(p.nome)).sort((a, b) => Math.max(...a.camadas.map((c) => c.z1)) - Math.max(...b.camadas.map((c) => c.z1)));
+    const frente = (p: Peca) => (opc.espelhar ? p.camadas.filter((c) => c.z0 === Math.min(...p.camadas.map((d) => d.z0))) : p.camadas);
+    for (const g of new Set(caixas.map((_, i) => raiz(i)))) {
+      const b = regionBounds(polis.filter((_, i) => raiz(i) === g));
+      const m = 6, s = 8, x0 = b.minX - m, y1 = b.maxY + m, W = Math.ceil((b.w + 2 * m) * s), H = Math.ceil((b.h + 2 * m) * s);
+      const img = new Uint8ClampedArray(W * H * 4).fill(255);
+      const ordem = opc.espelhar ? [...pecas].reverse() : pecas;
+      for (const p of ordem) for (const c of frente(p)) pintar(img, W, H, x0, y1, s, espelha(c.region), luzDe(res.hex![p.cor]!));
+      // Como a camera do celular: tenta normal e invertido (QR claro em fundo escuro).
+      const inv = new Uint8ClampedArray(img.length);
+      for (let k = 0; k < img.length; k += 4) { inv[k] = inv[k + 1] = inv[k + 2] = 255 - img[k]!; inv[k + 3] = 255; }
+      const r = jsQR(img, W, H, { inversionAttempts: 'dontInvert' }) ?? jsQR(inv, W, H, { inversionAttempts: 'dontInvert' });
+      if (r) lidos.push(r.data);
+    }
+    return lidos;
+  };
+  const confere = (nome: string, lidos: string[], esperados: string[]) =>
+    ok(`leitura: ${nome}`, lidos.length === esperados.length && [...lidos].sort().join('\n') === [...esperados].sort().join('\n'), `leu ${lidos.length}/${esperados.length}: ${lidos.map((l) => l.slice(0, 40)).join(' | ')}`);
+  const exemplo = (r: Receita) => FICHAS.find((f) => f.id === r.id)!.exemplo!;
+  const g = gerar(placaGoogleReview, exemplo(placaGoogleReview));
+  confere('avaliacao Google (QR claro em fundo escuro)', lerItem(g, 0), [payloadUrl(String(exemplo(placaGoogleReview).link))]);
+  const so = gerar(placaQrSocial, exemplo(placaQrSocial));
+  confere('social, 3 placas', [0, 1, 2].flatMap((i) => lerItem(so, i)), ['instagram', 'tiktok', 'youtube'].map((r) => urlDoPerfil(r, '@formma3d')));
+  confere('QR com logo acima', lerItem(gerar(placaQrLogo, { desenho: svg }), 0), [payloadUrl('https://formma3d.com')]);
+  confere('QR com logo no meio, logo da cor do QR', lerItem(gerar(placaQrLogo, { desenho: svg, posLogo: 'centro' }), 0), [payloadUrl('https://formma3d.com')]);
+  confere('QR com logo no meio, logo de outra cor', lerItem(gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', corLogo: '#ff0000' }), 0), [payloadUrl('https://formma3d.com')]);
+  const pl = lerItem(gerar(placaPixLogo, pixV), 0);
+  confere('Pix com logo = BR Code oficial', pl, [pixPayload]);
+  ok('leitura: Pix lido tem CRC valido', pl.length === 1 && pl[0]!.endsWith(crc16Ccitt(pl[0]!.slice(0, -4))));
+  const logoGrande = gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', altLogo: 150 });
+  confere('logo no meio pedido enorme: reduzido e ainda le', lerItem(logoGrande, 0), [payloadUrl('https://formma3d.com')]);
+  ok('logo no meio pedido enorme: avisa a reducao', /reduzido/.test(logoGrande.avisos.join()));
+  let menor = 70;
+  while (menor > 30 && gerar(listaQrVertical, { usar_link1: false, usar_whatsapp: false, usar_instagram: false, usar_pix: true, ...pixV, tamQr: menor - 1 }).itens.length) menor--;
+  confere(`Pix no menor QR aceito (${menor} mm)`, lerItem(gerar(listaQrVertical, { usar_link1: false, usar_whatsapp: false, usar_instagram: false, usar_pix: true, ...pixV, tamQr: menor }), 0), [pixPayload]);
+  confere('Pix com texto', lerItem(gerar(placaPixTexto, { ...pixV, linha3: 'OBRIGADO' }), 0), [pixPayload]);
+  const todos = { usar_link2: true, usar_wifi: true, senhaWifi: 'abc12345', usar_tiktok: true, usar_youtube: true, usar_pix: true, ...pixV, usar_google: true };
+  const esperadosLista = [
+    payloadUrl('https://formma3d.com'), payloadUrl('https://formma3d.com/catalogo'), payloadWifi('Minha rede', 'abc12345', 'WPA'), payloadWhatsapp('+5511999999999', ''),
+    ...['instagram', 'tiktok', 'youtube'].map((r) => urlDoPerfil(r, '@formma3d')), pixPayload, payloadUrl('https://g.page/r/SEU-CODIGO/review'),
+  ];
+  confere('lista vertical com os 9 QR', lerItem(gerar(listaQrVertical, todos), 0), esperadosLista);
+  confere('lista horizontal com os 9 QR', lerItem(gerar(listaQrHorizontal, todos), 0), esperadosLista);
+  const camR = gerar(listaQrCamadas, todos);
+  confere('lista em camadas com os 9 QR', lerItem(camR, camR.itens.findIndex((i) => i.nome === 'Placa dos QR')), esperadosLista);
+  confere('Wi-Fi de rede oculta', lerItem(gerar(listaQrVertical, { usar_link1: false, usar_whatsapp: false, usar_instagram: false, usar_wifi: true, senhaWifi: 'abc12345', wifiOculta: true }), 0), [payloadWifi('Minha rede', 'abc12345', 'WPA').replace(/;;$/, ';H:true;;')]);
+  confere('@social de 2 cores com QR', lerItem(gerar(socialComQr), 0, { nomeQr: 'Topo e QR' }), [payloadUrl('https://instagram.com/formma3d')]);
+  confere('cartao de visita (QR de 0,6 mm por modulo)', lerItem(gerar(cartaoVisita), 0, { nomeQr: 'Frente' }), [payloadUrl('https://formma3d.com')]);
+  confere('cartao face para baixo, visto pela face da mesa', lerItem(gerar(cartaoVisita, { face: 'baixo' }), 0, { nomeQr: 'Frente', espelhar: true }), [payloadUrl('https://formma3d.com')]);
+  confere('cartao com tecido (tecido branco)', lerItem(gerar(cartaoTecido), 0, { nomeQr: 'Texto e QR', soPecas: ['Texto e QR'] }), [payloadUrl('https://formma3d.com')]);
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

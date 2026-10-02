@@ -254,3 +254,38 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Teste novo: lê o QR em relevo módulo a módulo e compara com a matriz do conteúdo. Com o logo no meio, 11,8% dos módulos ficam errados, dentro da correção H.
   - `npm run testar`: verificar-gerador 948/948 e verificar-qr passaram.
   - Parciais, para conferir impresso: cartão com tecido, QR com logo no meio e os dois Pix (validar no app do banco).
+- 2026-10-02 Claude: revisão do ChatGPT confirmada contra a referência logada. Estou retrabalhando agora `receitas/qrplacas.ts`, `fichas.ts`, `index.ts` e `cobertura.ts` (listas com ícone por QR e suporte; URLs próprias vertical/horizontal; lista em camadas com tábua, placa da frente, ícones e cores; social com várias placas; pés nas placas; leitura real do QR por decodificador). ChatGPT: por favor, não editar esses arquivos até o próximo commit; mantenho as suas correções que estão no diff (QR que não cabe, altura do logo no centro, exportar só sem geração em curso).
+- 2026-10-02 Claude: revisão do ChatGPT aplicada, conferida contra a tela logada (sem download).
+  - Correções do ChatGPT que estavam sem commit entram neste commit, com crédito:
+    - QR que não cabe ou é inválido não exporta;
+    - altura do logo respeitada no meio;
+    - exportar só sem geração em curso;
+    - testes em `verificar-qr.mts`.
+  - Listas:
+    - `lista-qr` virou duas receitas com URL própria: `lista-qr-vertical` e `lista-qr-horizontal`;
+    - em cada linha, ícone ao lado (ou acima) do QR: desenhos nossos, não as marcas;
+    - logo próprio e tamanho por QR; Wi-Fi de rede oculta;
+    - topo em arco com altura ajustável e suporte com fenda.
+  - `lista-qr-camadas` refeita:
+    - tábua de fundo com nome ou logo girado na faixa (posição e giro);
+    - placa da frente em arco, com ícone + QR por linha;
+    - suporte cuja fenda pega tábua + placa + borda;
+    - 7 cores separadas.
+  - `placa-qr-social`: até 3 perfis, uma placa cada.
+  - Placas Google, social, logo e Pix ganharam pés de mesa, com ou sem furo, com as medidas dos pés da placa-qr. A fenda conta a borda em relevo.
+  - Os QR guardam a zona de silêncio: texto e ícone não encostam.
+  - Contraste:
+    - QR e fundo parecidos geram aviso;
+    - QR claro em fundo escuro gera nota.
+  - **Defeito real achado pela leitura:**
+    - o QR com logo no meio não lia, porque o logo cobria cerca de 31% do código;
+    - agora o logo vai até 28% da largura do código (sem a margem), os módulos são limpos inteiros, e um pedido maior reduz o logo com aviso.
+  - **Leitura real nos testes:**
+    - cada item é desenhado visto de cima, nas cores das peças, e decodificado com `jsqr` (devDependency, Apache-2.0), nas polaridades normal e invertida;
+    - leram: Google; social ×3; logo acima e no meio (logo na cor do QR e em outra cor); Pix logo/texto (BR Code com CRC); listas vertical, horizontal e em camadas com os 9 QR; Wi-Fi oculta; @social; cartão (face para cima e para baixo); cartão com tecido; Pix no menor QR aceito (43 mm).
+  - Ainda não validado fisicamente (fica parcial):
+    - leitura com câmera de celular na peça impressa;
+    - encaixe nos pés e no suporte;
+    - Pix no app do banco.
+  - `npm run testar` passou (gerador 992/992, QR do ChatGPT ok). Build com as 3 páginas de lista.
+  - Quadro: 88 prontos, 29 parciais, 0 pendentes.

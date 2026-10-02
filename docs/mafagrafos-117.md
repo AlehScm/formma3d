@@ -438,3 +438,26 @@ Faixas lidas dos formulários (padrão entre parênteses). Sem gerar prévia pag
 - **Cartão com tecido:**
   - Cartão 1,2; moldura 2,8; porta-cartões de 100 com texto.
   - Capa do NFC em cor própria; tecido entra na pausa depois da 2ª camada, NFC nas camadas 5–6.
+
+### QR, revisão (sessão logada, 2026-10-02, Claude)
+- **Placa social:** o gerador tem uma rede e um @ por placa (um QR); a foto da ficha mostra três placas lado a lado (Instagram, YouTube, TikTok).
+- **Listas (fotos):** placa em arco; em cada linha, ícone à esquerda e QR à direita; nome do negócio no topo; suporte com fenda.
+- **Lista vertical em camadas:**
+  - Liga/desliga 9 QR (2 links, Wi-Fi, WhatsApp, Instagram, TikTok, YouTube, Pix, avaliação Google).
+  - Cada QR tem uma seção com os dados dele e o tamanho do logo (10–100). Os links aceitam também um logo próprio.
+  - Wi-Fi: rede, senha, autenticação, rede oculta. Pix: chave e tipo (CNPJ, CPF, e-mail, telefone).
+  - Logo lateral:
+    - nome em 2 linhas, cada uma com tamanho próprio (3–20), e fonte;
+    - logo opcional, com tamanho (3–100), posição Y (−100 a 100) e giro (0–360).
+  - Ajustes: espessura da base 0,1–10; QR 35–55; espessura do QR; espaço 0–50; margem lateral 0–100; altura do arredondamento 50–200; largura da placa dos QR 50–200.
+  - Placa de fundo: espessura 0–10, largura 80–130, porcentagem à esquerda.
+  - Suporte: profundidade do rebaixo 0–50, altura 0–50.
+  - Borda opcional, com espessura 0–10.
+  - Cores: QR, base, logo e borda.
+  - Foto: tábua de madeira com o nome girado; placa branca em arco por cima; suporte azul.
+- **Placa com logo:**
+  - Logo opcional (altura 20–150); link; título e subtítulo (fontes, 5–30 e 3–10).
+  - Espessuras da placa, do texto e do logo; arredondamento 0–10; borda 0–3.
+  - QR 20–100; largura 100–200; espaço 0–10; margens 0–20.
+  - 5 cores.
+  - Sem controle de suporte na tela; a ficha cita suporte e suporte com furo como peças.

@@ -22,7 +22,7 @@ import { letraGrande, luminariaLetra, luminariaSocial } from './letras';
 import { carimbosMassinha, portaPente } from './potes';
 import { caixaFigurinhas, portaCanetasDesign } from './caixas';
 import { displayUnhas, miniMicrofone, portaRetrato, quadroTecido } from './quadros';
-import { cartaoTecido, cartaoVisita, listaQr, listaQrCamadas, placaGoogleReview, placaPixLogo, placaPixTexto, placaQrLogo, placaQrSocial, socialComQr } from './qrplacas';
+import { cartaoTecido, cartaoVisita, listaQrCamadas, listaQrHorizontal, listaQrVertical, placaGoogleReview, placaPixLogo, placaPixTexto, placaQrLogo, placaQrSocial, socialComQr } from './qrplacas';
 export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparadas, chaveiroNome, chaveiroRetangular, logoCamadas, chaveiroDesenho, chaveiroLogoNome, plaquinhaPet, pingenteFamilia,
   letreiroSobreposto, topoBolo, topoBoloCircular, marcadorPagina, contadorRaspadinha, textoComGuia,
   suporteFoto, suportePalitos, portaCanetasGrade, flocoNeve,
@@ -35,7 +35,7 @@ export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparad
   letraGrande, luminariaLetra, luminariaSocial,
   portaPente, carimbosMassinha,
   caixaFigurinhas, portaCanetasDesign, quadroTecido, portaRetrato, displayUnhas, miniMicrofone,
-  placaGoogleReview, placaQrSocial, placaQrLogo, placaPixLogo, placaPixTexto, listaQr, listaQrCamadas, socialComQr, cartaoVisita, cartaoTecido,
+  placaGoogleReview, placaQrSocial, placaQrLogo, placaPixLogo, placaPixTexto, listaQrVertical, listaQrHorizontal, listaQrCamadas, socialComQr, cartaoVisita, cartaoTecido,
 ];
 
 export const receitaPorId = (id: string) => RECEITAS.find((r) => r.id === id);

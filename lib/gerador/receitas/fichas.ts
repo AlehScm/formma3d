@@ -400,9 +400,9 @@ export const FICHAS: Ficha[] = [
   },
   {
     id: 'placa-qr-social', nome: 'Placa de QR para rede social', familia: 'qr', tipo: 'QR e Pix',
-    resumo: 'Digite o @ e escolha a rede: o QR abre o perfil e o @ vai escrito embaixo.',
-    destaques: ['Instagram, TikTok, YouTube, Facebook', 'Título e logo opcionais', 'Borda em outra cor'],
-    exemplo: { rede: 'instagram', handle: '@formma3d', corBase: '#831843', corQr: '#ffffff', corTexto: '#ffffff', corBorda: '#fbcfe8' },
+    resumo: 'Digite o @ e escolha a rede: o QR abre o perfil e o @ vai escrito embaixo. Até 3 perfis, uma placa cada.',
+    destaques: ['Instagram, TikTok, YouTube, Facebook', 'Até 3 placas de uma vez', 'Pés de mesa opcionais'],
+    exemplo: { rede: 'instagram', handle: '@formma3d', perfil2: true, perfil3: true, corBase: '#831843', corQr: '#ffffff', corTexto: '#ffffff', corBorda: '#fbcfe8' },
   },
   {
     id: 'placa-qr-logo', nome: 'Placa de QR com logo', familia: 'qr', tipo: 'QR e Pix',
@@ -423,16 +423,22 @@ export const FICHAS: Ficha[] = [
     exemplo: { chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', linha1: 'DOCES DA ANA', corBase: '#fdf2f8', corQr: '#831843', corTexto: '#831843', corBorda: '#831843' },
   },
   {
-    id: 'lista-qr', nome: 'Lista de QR Codes', familia: 'qr', tipo: 'QR e Pix',
-    resumo: 'Vários QR numa placa só (site, Wi-Fi, WhatsApp, redes, Pix, Google), cada um com o nome embaixo.',
-    destaques: ['Até 9 QR', 'Vertical ou horizontal', 'Logo ou nome no topo'],
-    exemplo: { usar_pix: true, chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', corBase: '#1e293b', corQr: '#ffffff', corBorda: '#f5d0a9' },
+    id: 'lista-qr-vertical', nome: 'Lista vertical de QR Codes', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Placa em arco com vários QR em coluna (site, Wi-Fi, WhatsApp, redes, Pix, Google), cada um com o seu ícone.',
+    destaques: ['Até 9 QR', 'Ícone ou logo por QR', 'Suporte com fenda'],
+    exemplo: { usar_pix: true, chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', corBase: '#ffffff', corQr: '#1e3a8a', corLogo: '#1e3a8a', corBorda: '#1e3a8a', corSuporte: '#1e3a8a' },
+  },
+  {
+    id: 'lista-qr-horizontal', nome: 'Lista horizontal de QR Codes', familia: 'qr', tipo: 'QR e Pix',
+    resumo: 'Placa em arco com os QR lado a lado, cada um com o seu ícone em cima, e suporte.',
+    destaques: ['Até 9 QR', 'Ícone ou logo por QR', 'Suporte com fenda'],
+    exemplo: { usar_pix: true, chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', corBase: '#ffffff', corQr: '#4a1f2e', corLogo: '#4a1f2e', corBorda: '#4a1f2e', corSuporte: '#4a1f2e' },
   },
   {
     id: 'lista-qr-camadas', nome: 'Lista de QR em camadas', familia: 'qr', tipo: 'QR e Pix',
-    resumo: 'Tábua com o nome do negócio na lateral e os QR em plaquinhas de outra cor, com pé.',
-    destaques: ['Plaquinhas em relevo', 'Nome girado na faixa lateral', 'Pé com fenda'],
-    exemplo: { usar_pix: true, chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', negocio: 'Formma3D', corBase: '#1e293b', corQr: '#1e293b', corPlaquinha: '#f5d0a9' },
+    resumo: 'Tábua de fundo com o nome na lateral, placa da frente em arco com ícone e QR por linha, e suporte que segura as duas.',
+    destaques: ['Cor própria em cada camada', 'Ícone ou logo por QR', 'Suporte com fenda'],
+    exemplo: { usar_pix: true, chavePix: 'contato@formma3d.com', nomePix: 'FORMMA3D', cidadePix: 'SAO PAULO', negocio: 'FORMMA3D', negocio2: 'Impressão 3D', corFundo: '#8b5e3c', corNome: '#ffffff', corBase: '#ffffff', corQr: '#4a1f2e', corLogo: '#4a1f2e', corBorda: '#4a1f2e', corSuporte: '#1e3a8a' },
   },
   {
     id: 'social-com-qr', nome: '@social de 2 cores com QR', familia: 'multicor', tipo: 'Letreiro',

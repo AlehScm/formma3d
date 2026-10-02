@@ -3,13 +3,13 @@
 Gerado de `lib/gerador/cobertura.ts` por `npx tsx scripts/cobertura.mts`; não editar à mão.
 Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 
-**95 prontos · 22 parciais · 0 pendentes** de 117.
+**88 prontos · 29 parciais · 0 pendentes** de 117.
 
 | Onda | Claude | ChatGPT |
 |---|---:|---:|
-| já coberto | 95 | 0 |
+| já coberto | 88 | 0 |
 | 1 | 0 | 1 |
-| 2 | 6 | 4 |
+| 2 | 13 | 4 |
 | 3 | 11 | 0 |
 
 | Modelo | Dono | Receita | Status | Onda | Falta |
@@ -25,7 +25,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Chaveiro Carretel de Filamento com NFC](https://www.mafagrafos.com/models/filament-spool) | Claude | `chaveiro-carretel` | Pronto | 0 | — |
 | [Quadro de Tecido](https://www.mafagrafos.com/models/fabric-floating-sign) | Claude | `quadro-tecido` | Pronto | 0 | editor de arte (o desenho vem de texto ou imagem) |
 | [Cartão de Visita com Tecido](https://www.mafagrafos.com/models/fabric-business-card) | Claude | `cartao-tecido` | Parcial | 2 | conferir impresso: tecido na pausa e NFC |
-| [Cartão de Visita](https://www.mafagrafos.com/models/regular-business-card) | Claude | `cartao-visita` | Pronto | 0 | — |
+| [Cartão de Visita](https://www.mafagrafos.com/models/regular-business-card) | Claude | `cartao-visita` | Parcial | 2 | textura Hilbert geométrica não equivale ao preenchimento de 70% no fatiador; orientações em um seletor |
 | [Placas Profissionais](https://www.mafagrafos.com/models/profession) | ChatGPT | — | Parcial | 1 | editor de placa existe; falta receita com símbolo, nome e base que encaixa |
 | [Porta-Pente para Cílios](https://www.mafagrafos.com/models/lash-holder) | Claude | `porta-pente` | Pronto | 0 | textura vem de imagem (sem editor de arte) |
 | [Luminária Letra Grande com Nome](https://www.mafagrafos.com/models/big-letter-lamp) | Claude | `luminaria-letra` | Parcial | 3 | editor de arte; conferir encaixe da frente impresso |
@@ -41,15 +41,15 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Chaveiro com Nome e Logo](https://www.mafagrafos.com/models/logo-text-keychain) | Claude | `chaveiro-logo-nome` | Pronto | 0 | — |
 | [Ejetor Arredondado com Escala de Forma](https://www.mafagrafos.com/models/scale-dome-ejector) | Claude | `ejetor-cupula` | Pronto | 0 | texto e logo da marca; pegador |
 | [Ejetor de Cúpula Arredondada](https://www.mafagrafos.com/models/rounded-dome-ejector) | Claude | `ejetor-cupula` | Pronto | 0 | texto e logo da marca |
-| [Lista Vertical de Códigos QR](https://www.mafagrafos.com/models/vertical-qr-code-list) | Claude | `lista-qr` | Pronto | 0 | — |
-| [Lista Vertical em Camadas de Códigos QR](https://www.mafagrafos.com/models/layered-vertical-qr-code-list) | Claude | `lista-qr-camadas` | Pronto | 0 | — |
-| [Lista Horizontal de Códigos QR](https://www.mafagrafos.com/models/horizontal-qr-code-list) | Claude | `lista-qr` | Pronto | 0 | — |
-| [Google Review - Placa de QRCode](https://www.mafagrafos.com/models/google-review-qr-code) | Claude | `placa-google-review` | Pronto | 0 | — |
+| [Lista Vertical de Códigos QR](https://www.mafagrafos.com/models/vertical-qr-code-list) | Claude | `lista-qr-vertical` | Parcial | 2 | leitura e encaixe no suporte depois de impresso |
+| [Lista Vertical em Camadas de Códigos QR](https://www.mafagrafos.com/models/layered-vertical-qr-code-list) | Claude | `lista-qr-camadas` | Parcial | 2 | leitura e encaixe tábua + placa no suporte depois de impresso |
+| [Lista Horizontal de Códigos QR](https://www.mafagrafos.com/models/horizontal-qr-code-list) | Claude | `lista-qr-horizontal` | Parcial | 2 | leitura e encaixe no suporte depois de impresso |
+| [Google Review - Placa de QRCode](https://www.mafagrafos.com/models/google-review-qr-code) | Claude | `placa-google-review` | Parcial | 2 | leitura e encaixe nos pés depois de impresso |
 | [Placa de QRCode WiFi](https://www.mafagrafos.com/models/wi-fi-qr-code) | ChatGPT | `placa-qr-wifi` | Parcial | 2 | encaixe do suporte e leitura após impressão ainda não validados |
-| [Social - Placa de QRCode](https://www.mafagrafos.com/models/social-qr-code) | Claude | `placa-qr-social` | Pronto | 0 | — |
+| [Social - Placa de QRCode](https://www.mafagrafos.com/models/social-qr-code) | Claude | `placa-qr-social` | Parcial | 2 | leitura e encaixe nos pés depois de impresso |
 | [Placa de QRCode com Texto](https://www.mafagrafos.com/models/text-qr-code-plaque) | ChatGPT | `placa-qr-texto` | Parcial | 2 | falta conteúdo QR livre além de URL; encaixe e leitura após impressão não validados |
 | [Placa de QRCode WhatsApp](https://www.mafagrafos.com/models/whats-app) | ChatGPT | `placa-qr-whatsapp` | Parcial | 2 | encaixe do suporte e leitura após impressão ainda não validados |
-| [Placa de QRCode com Logo](https://www.mafagrafos.com/models/logo-qr-code-plaque) | Claude | `placa-qr-logo` | Parcial | 2 | conferir a leitura do QR com logo no meio depois de impresso |
+| [Placa de QRCode com Logo](https://www.mafagrafos.com/models/logo-qr-code-plaque) | Claude | `placa-qr-logo` | Parcial | 2 | leitura do QR com logo no meio e encaixe nos pés depois de impresso |
 | [Suporte para Palitos](https://www.mafagrafos.com/models/stick-stand) | Claude | `suporte-palitos` | Pronto | 0 | curva das aletas em degraus de 0,4 mm |
 | [Suporte de Bolo](https://www.mafagrafos.com/models/cake-stand) | Claude | `suporte-bolo` | Pronto | 0 | — |
 | [Caixa de Figurinhas](https://www.mafagrafos.com/models/stickers-box) | Claude | `caixa-figurinhas` | Pronto | 0 | — |
@@ -113,7 +113,7 @@ Fonte dos modelos: `docs/mafagrafos-117.md`. Divisão em `docs/coordenacao.md`.
 | [Ejetor arredondado de brigadeiro](https://www.mafagrafos.com/models/candy-mold-rounded) | Claude | `ejetor-brigadeiro` | Pronto | 0 | — |
 | [Ejetor plano de brigadeiro](https://www.mafagrafos.com/models/candy-mold) | Claude | `ejetor-brigadeiro` | Pronto | 0 | — |
 | [Chaveiro NFC](https://www.mafagrafos.com/models/square-nfc-keychain) | Claude | `chaveiro-nfc` | Parcial | 2 | QR code no chaveiro (aguarda o núcleo de QR) |
-| [@social, 2 cores + QR](https://www.mafagrafos.com/models/social-handle-offset-2color-qr-code) | Claude | `social-com-qr` | Pronto | 0 | — |
+| [@social, 2 cores + QR](https://www.mafagrafos.com/models/social-handle-offset-2color-qr-code) | Claude | `social-com-qr` | Parcial | 2 | leitura do QR depois de impresso |
 | [Cortador de biscoito](https://www.mafagrafos.com/models/cookie-cutter-generator) | Claude | `cortador-biscoito` | Pronto | 0 | reforço da base; logo da marca em imagem |
 | [Colorir afundado, offset](https://www.mafagrafos.com/models/sunken-image-coloring-offset) | Claude | `colorir` | Pronto | 0 | — |
 | [Colorir afundado, forma](https://www.mafagrafos.com/models/sunken-image-coloring) | Claude | `colorir` | Pronto | 0 | — |
