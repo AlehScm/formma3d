@@ -1,0 +1,51 @@
+/*
+ * Tokens da marca Scarprint (tema claro da loja e do catalogo). O tema escuro do app e
+ * do editor continua em tokens.css. Prefixo --marca-* para nao colidir com o app.
+ */
+:root {
+  /* Cor */
+  --marca-navy: #091a34;      /* texto forte, titulos */
+  --marca-profundo: #102b51;  /* fundo escuro de faixa */
+  --marca-azul: #0868ee;      /* acao, link */
+  --marca-azul-forte: #0557c7;/* hover da acao */
+  --marca-ciano: #00a8f7;     /* brilho, destaque */
+  --marca-gelo: #e8f6ff;      /* fundo de destaque suave */
+  --marca-palido: #f4f9fe;    /* fundo da pagina */
+  --marca-branco: #ffffff;    /* cartoes */
+  --marca-linha: #d8e6f3;     /* bordas */
+  --marca-linha-forte: #a9d6f8;
+  --marca-texto: #091a34;
+  --marca-texto-2: #3e5670;   /* corpo (AA sobre branco e palido) */
+  --marca-texto-3: #5d7389;   /* apoio (AA sobre branco) */
+  --marca-sucesso: #0b7a55;
+  --marca-atencao: #8a5a00;
+  --marca-atencao-fundo: #fff4d6;
+  --marca-whatsapp: #128c4a;
+  --marca-gradiente: linear-gradient(115deg, #00a8f7 0%, #0877f4 45%, #103cba 100%);
+  --marca-gradiente-suave: radial-gradient(circle at 85% 0%, #d7efff 0, transparent 34%), radial-gradient(circle at 0% 100%, #e3f4ff 0, transparent 30%), linear-gradient(135deg, #fff 0%, #f4faff 60%, #eaf6ff 100%);
+
+  /* Tipo: display em Arial Black (o wordmark), texto na fonte da interface. */
+  --marca-fonte-display: 'Arial Black', 'Segoe UI Black', 'Segoe UI', Arial, sans-serif;
+  --marca-fonte: var(--fonte-ui), 'Segoe UI', Arial, sans-serif;
+  --marca-t-mini: 11px;   /* sobretitulo, selo */
+  --marca-t-pequeno: 13px;
+  --marca-t-corpo: 16px;
+  --marca-t-destaque: 18px;
+  --marca-t-titulo-3: 20px;
+  --marca-t-titulo-2: clamp(28px, 3.4vw, 44px);
+  --marca-t-display: clamp(42px, 6.2vw, 92px);
+
+  /* Forma */
+  --marca-r-sm: 8px;
+  --marca-r-md: 12px;
+  --marca-r-lg: 18px;
+  --marca-r-pilula: 999px;
+  --marca-sombra-1: 0 1px 2px #0c376512, 0 6px 18px #0c37650d;
+  --marca-sombra-2: 0 18px 40px -14px #0c376540;
+  --marca-foco: 0 0 0 3px #ffffff, 0 0 0 5px #49baff;
+
+  /* Espaco: margem lateral fluida (largura total) e respiro entre secoes. */
+  --marca-margem: clamp(16px, 4vw, 72px);
+  --marca-secao: clamp(56px, 8vw, 112px);
+  --marca-vao: clamp(14px, 1.6vw, 24px);
+}

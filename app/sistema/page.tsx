@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { VitrineMarca } from '@/components/marca/VitrineMarca';
 import {
   Abas,
   Alerta,
@@ -449,6 +450,9 @@ export default function PaginaSistema() {
               </Vazio>
             </Amostra>
           </div>
+        </Bloco>
+        <Bloco titulo="Marca (loja e catálogo)" descricao="Tema claro da Scarprint: tokens --marca-* em styles/marca.css e primitivos em components/marca. O app e o editor seguem no tema escuro acima.">
+          <VitrineMarca />
         </Bloco>
       </div>
     </main>
