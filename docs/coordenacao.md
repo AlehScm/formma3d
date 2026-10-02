@@ -208,3 +208,13 @@ com catálogo, placas e QR/PIX, migrando para a base.
   - Porta-retrato: modo "uma cor por camada". A faixa j cobre as cores de índice ≥ j, então dá para imprimir trocando o filamento por altura.
   - verificar-gerador com a placa-qr junto: tudo passa.
 - 2026-10-02 Claude: critério do editor aplicado a mais três (listras, string art radial, line art): contam como prontos, com a falta anotada.
+- 2026-10-02 Claude: revisão do ChatGPT na onda 3 incorporada.
+  - As correções dele em `letras.ts` entraram neste commit, com crédito:
+    - "A" engrossado mantém o vazado;
+    - a saída do cabo procura uma parede de verdade;
+    - furo do cabo fora da base bloqueia;
+    - a moldura do glitter começa larga o bastante.
+  - As 5 verificações de `scripts/verificar-luminarias.mts` agora estão no `verificar-gerador`, que roda no `npm run testar`. O arquivo dele ficou sem commit; pode apagar.
+  - Luminária letra: a montagem não fechava a espessura total (a tampa abraçava a parede e a peça montada dava 19 mm em vez de 32). Agora a tampa assenta em cima da parede, com um aro de alinhamento por dentro: base 18 + tampa 14 = 32. Tem teste.
+  - String art: base destacável com fenda (a ponta da moldura encaixa) e capa de envio, como a ficha pública pede.
+  - verificar-gerador 784/784 com a placa-qr junto.

@@ -37,7 +37,7 @@ function letraGrandeRegiao(v: Valores, ctx: Contexto): Region {
   const fonte = ctx.fonte(txt(v, 'fonteLetra'));
   const compor = (k: number) => comporLinhas([{ texto: c, fonte, altura: 10 * k }], 0);
   const t = compor(escalaParaLargura((k) => compor(k).bounds.h, num(v, 'altura')));
-  let L = num(v, 'engrossar') > 0 ? semBuracos(contornar(t.regiao, num(v, 'engrossar'))) : t.regiao;
+  let L = num(v, 'engrossar') > 0 ? contornar(t.regiao, num(v, 'engrossar')) : t.regiao;
   const corte = num(v, 'cortarBase') / 100;
   if (corte > 0) {
     const b = regionBounds(L);
@@ -125,7 +125,7 @@ export const letraGrande: Receita = {
     mm('relevoTextura', 'Relevo da textura', 'Moldura', 0.6, 0.2, 3, 0.1, undefined, (v) => v.estilo === 'textura' || v.estilo === 'floral'),
     { tipo: 'liga', id: 'texturaElevada', rotulo: 'Textura em relevo', grupo: 'Moldura', padrao: false, dica: 'Desligado: a textura fica rente à moldura (boa para imprimir com a face na mesa)', visivel: (v) => v.estilo === 'textura' || v.estilo === 'floral' },
     mm('material', 'Espessura do EVA/feltro', 'Moldura', 2, 0.5, 6, 0.1, undefined, (v) => v.estilo === 'material'),
-    mm('frente', 'Largura da moldura da frente', 'Moldura', 3, 1.5, 10, 0.5, 'Segura o acetato', (v) => v.estilo === 'brilho'),
+    mm('frente', 'Largura da moldura da frente', 'Moldura', 6, 1.5, 10, 0.5, 'Segura o acetato', (v) => v.estilo === 'brilho'),
     mm('espFrente', 'Espessura da moldura da frente', 'Moldura', 2, 1, 5, 0.5, undefined, (v) => v.estilo === 'brilho'),
     mm('bordaLetra', 'Borda da letra', 'Resina', 1, 0.4, 4, 0.1, undefined, (v) => v.estilo === 'resina'),
     mm('bordaNome', 'Borda do nome', 'Resina', 0.6, 0.4, 3, 0.1, undefined, (v) => v.estilo === 'resina'),
@@ -277,11 +277,27 @@ export const luminariaLetra: Receita = {
     // parede, no ponto mais baixo.
     const anel = diffRegion(L, contornar(L, -pw));
     const b = regionBounds(L), dc = num(v, 'cabo');
-    const saida = ret((b.minX + b.maxX) / 2 - dc / 2, b.minY - 1, (b.minX + b.maxX) / 2 + dc / 2, b.minY + pw + 1);
+    let saida: Region = [];
+    let areaSaida = 0;
+    for (let i = 0; i <= 40; i++) {
+      const x = b.minX + dc / 2 + (b.w - dc) * i / 40;
+      const candidata = ret(x - dc / 2, b.minY - 1, x + dc / 2, b.minY + pw + 1);
+      const areaCortada = regionArea(intersectRegion(anel, candidata));
+      if (areaCortada > areaSaida) { saida = candidata; areaSaida = areaCortada; }
+    }
+    if (areaSaida < 0.5) return { itens: [], cores, hex, avisos: ['Não há parede na base da letra para a saída do cabo: ajuste a letra ou o corte da base.'] };
     const base: Camada[] = [{ region: L, z0: 0, z1: fz }, ...comVazios(anel, fz, fz + hl, [{ regiao: saida, z0: fz, z1: fz + dc }])];
-    // Tampa: impressa com a frente na mesa; a parede dela abraca a parede da base por fora.
-    const dentroTampa = contornar(L, folga), foraTampa = contornar(L, folga + pw);
-    const tampa: Camada[] = [{ region: foraTampa, z0: 0, z1: et }, { region: diffRegion(foraTampa, dentroTampa), z0: et, z1: et + Math.max(2, hTampa) }];
+    // Tampa (impressa com a frente na mesa): frente + parede do mesmo contorno da base, que
+    // assenta em cima da parede dela; um aro fino entra por dentro da parede da base e
+    // alinha as duas. Montada: fundo + parede do LED + tampa = espessura total.
+    const hParedeTampa = Math.max(0.6, hTampa - et);
+    const dentroAro = contornar(L, -(pw + folga));
+    const aroTampa = diffRegion(dentroAro, contornar(dentroAro, -1.2));
+    const tampa: Camada[] = [
+      { region: L, z0: 0, z1: et },
+      { region: anel, z0: et, z1: et + hParedeTampa },
+      { region: aroTampa, z0: et + hParedeTampa, z1: et + hParedeTampa + 3 },
+    ];
     const itens: Item[] = [{ nome: 'Base', pecas: [{ nome: 'Base', cor: 0, camadas: base }] }, { nome: 'Frente', pecas: [{ nome: 'Frente', cor: 1, camadas: tampa }] }];
     const vv = { ...v, cortarBase: 0 };
     const N = nomeNaLetra(vv, ctx, L);
@@ -349,7 +365,9 @@ export const luminariaSocial: Receita = {
     const D = num(v, 'profundidade'), tr = num(v, 'tras'), fr = num(v, 'frente'), folga = num(v, 'folga');
     const anelFora = diffRegion(S, contornar(S, -pw));
     const internas = diffRegion(intersectRegion(contornar(t.regiao, num(v, 'paredeInterna')), contornar(S, -pw)), contornar(t.regiao, 0.3));
-    const vazios = liga(v, 'furoCabo') ? [{ regiao: circulo(num(v, 'xCabo'), num(v, 'yCabo'), num(v, 'dCabo') / 2, 40), z0: 0, z1: tr }] : [];
+    const furo = circulo(num(v, 'xCabo'), num(v, 'yCabo'), num(v, 'dCabo') / 2, 40);
+    if (liga(v, 'furoCabo') && regionArea(diffRegion(furo, S)) > 0.1) return { itens: [], cores, hex, avisos: ['O furo do cabo está fora da base: ajuste a posição X/Y ou a largura.'] };
+    const vazios = liga(v, 'furoCabo') ? [{ regiao: furo, z0: 0, z1: tr }] : [];
     const zFrente = D - fr;
     // Parede de fora: com faixa, o trecho do meio sai em outra cor (peca propria).
     const lf = liga(v, 'faixa') ? Math.min(num(v, 'larguraFaixa'), zFrente - tr - 2) : 0;

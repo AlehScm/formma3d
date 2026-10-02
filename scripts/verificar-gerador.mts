@@ -732,5 +732,26 @@ console.log('\n== cores da imagem em NFC e porta-retrato ==');
   ok('porta-retrato: uma cor por camada (cor 2 na faixa de cima)', dz.length === 3 && perto(topoCor2.z1 - topoCor2.z0, 0.7, 1e-9) && perto(topoCor2.z1, 3, 1e-9));
 }
 
+console.log('\n== luminarias e string art (revisao do ChatGPT) ==');
+{
+  const lum = gerar(receitaPorId('luminaria-letra')!, { letra: 'A', engrossar: 4, nome: '', espTotal: 32, fundo: 4, paredeLed: 14, tampa: 1 });
+  const base = lum.itens.find((it) => it.nome === 'Base')!.pecas[0]!.camadas, tampa = lum.itens.find((it) => it.nome === 'Frente')!.pecas[0]!.camadas;
+  const topoBase = Math.max(...base.map((c) => c.z1));
+  const alturaTampa = tampa[1]!.z1; // frente + parede (o aro entra na base)
+  ok('luminaria: base 18 + tampa 14 = espessura total 32', perto(topoBase + alturaTampa, 32, 1e-9), `${topoBase} + ${alturaTampa}`);
+  ok('luminaria: o aro da tampa cabe por dentro da parede da base', regionArea(intersectRegion(tampa[2]!.region, base.at(-1)!.region)) < 0.01);
+  ok('luminaria: A engrossado mantem o vazado interno', base[0]!.region.some((p) => p.holes.length > 0));
+  const parede = base.filter((c) => c.z0 >= 4);
+  ok('luminaria: a saida do cabo corta a parede', parede.length >= 2 && regionArea(parede[0]!.region) < regionArea(parede.at(-1)!.region) - 1);
+  const fora = gerar(receitaPorId('luminaria-social')!, { largura: 120, xCabo: -90 });
+  ok('luminaria social: furo do cabo fora da base nao gera', fora.itens.length === 0 && fora.avisos.some((a) => a.includes('furo do cabo')));
+  const brilho = gerar(receitaPorId('letra-grande')!, { estilo: 'brilho', nome: '' });
+  ok('letra grande: moldura do glitter apoia o acetato por padrao', !brilho.avisos.some((a) => a.includes('acetato')));
+  const sa = gerar(receitaPorId('string-art')!, { base: true, capa: true, profundidade: 10 });
+  ok('string art: base com fenda e capa de envio', sa.itens.some((it) => it.nome === 'Base') && sa.itens.some((it) => it.nome === 'Capa de envio'));
+  const fendaSa = sa.itens.find((it) => it.nome === 'Base')!.pecas[0]!.camadas.find((c) => c.region.length === 1 && c.region[0]!.holes.length === 0 && regionArea(c.region) < regionArea(sa.itens.find((it) => it.nome === 'Base')!.pecas[0]!.camadas[0]!.region) - 1);
+  ok('string art: fenda da base com a espessura da moldura + folgas', !!fendaSa && perto(fendaSa.z1 - fendaSa.z0, 10.4, 1e-9));
+}
+
 console.log(`\n${total - falhas}/${total} passaram\n`);
 process.exit(falhas ? 1 : 0);

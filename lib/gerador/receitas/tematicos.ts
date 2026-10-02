@@ -9,9 +9,10 @@ import { elipse } from '../figuras';
 import { emGrade, LOTE_MAX, nomesDoLote } from '../lote';
 import { rosa } from './arco';
 import { AVISO_EXEMPLO, campoDesenho, desenhoNoTamanho } from './desenho';
+import { baseDeitada } from './expositores';
 import { ficha } from './fichas';
 import type { Item, Parametro, Peca, Receita, Resultado, Valores } from '../tipos';
-import { num, soCoresUsadas, txt } from '../tipos';
+import { liga, num, soCoresUsadas, txt } from '../tipos';
 
 const cor = (id: string, rotulo: string, padrao: string): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao });
 const mm = (id: string, rotulo: string, grupo: string, padrao: number, min: number, max: number, passo = 0.1, dica?: string, visivel?: (v: Valores) => boolean): Parametro =>
@@ -214,6 +215,9 @@ export const stringArt: Receita = {
     { tipo: 'numero', id: 'nFios', rotulo: 'Número de fios', grupo: 'Fios', padrao: 60, min: 12, max: 160, passo: 1, visivel: (v) => v.modelo === 'retangulo' },
     mm('larguraFio', 'Largura do fio', 'Fios', 0.8, 0.4, 2, 0.1),
     mm('espFio', 'Espessura do fio', 'Fios', 0.6, 0.2, 2, 0.1),
+    { tipo: 'liga', id: 'base', rotulo: 'Base para ficar em pé', grupo: 'Extras', padrao: true, dica: 'Peça separada com fenda; a moldura encaixa e sai' },
+    mm('encaixeBase', 'Quanto a moldura entra na base', 'Extras', 8, 4, 20, 0.5, undefined, (v) => v.base === true),
+    { tipo: 'liga', id: 'capa', rotulo: 'Capa de envio', grupo: 'Extras', padrao: false, dica: 'Tampa que protege os fios no transporte' },
     cor('corBorda', 'Moldura e texto', '#a85f78'),
     cor('corFio', 'Fios', '#ffffff'),
   ],
@@ -266,7 +270,30 @@ export const stringArt: Receita = {
       { nome: 'Centro', cor: 0, camadas: [{ region: centro, z0: 0, z1: num(v, 'espTexto') }] },
       { nome: 'Fios', cor: 1, camadas: [{ region: diffRegion(fios, unir([moldura, centro])), z0: 0, z1: ef }] },
     ];
-    return { itens: [{ nome: modelo === 'retangulo' ? 'String art' : txt(v, 'linha1'), pecas }], cores, hex, avisos, notas: ['Imprima deitado; os fios são finos de propósito (aspecto de linha).'] };
+    const itens: Item[] = [{ nome: modelo === 'retangulo' ? 'String art' : txt(v, 'linha1'), pecas }];
+    const notas = ['Imprima deitado; os fios são finos de propósito (aspecto de linha).'];
+    const prof = num(v, 'profundidade'), fb = regionBounds(fora);
+    if (liga(v, 'base')) {
+      // Base destacavel: a ponta de baixo da moldura (no coracao, a ponta dele) entra na
+      // fenda; a largura da fenda e a da moldura nessa altura.
+      const enc = num(v, 'encaixeBase');
+      const ponta = intersectRegion(fora, retanguloArredondado((fb.minX + fb.maxX) / 2, fb.minY + enc / 2, fb.w + 2, enc, 0));
+      const pb = regionBounds(ponta);
+      const W = Math.max(pb.w + 30, fb.w * 0.6), Hb = enc + 6, Lb = Math.max(prof + 16, 30);
+      const frente = retanguloArredondado(0, Hb / 2, W, Hb, 3);
+      const base = baseDeitada(frente, Hb, Lb, 0, [{ cx: (pb.minX + pb.maxX) / 2 - (fb.minX + fb.maxX) / 2, largura: pb.w, espessura: prof, profundidade: enc }], 0.2, 0.2);
+      itens.push({ nome: 'Base', pecas: [{ nome: 'Base', cor: 0, camadas: base.camadas }] });
+      avisos.push(...base.avisos);
+      notas.push('A base imprime deitada; encaixe a ponta de baixo da moldura na fenda dela.');
+    }
+    if (liga(v, 'capa')) {
+      // Capa de envio: placa no contorno de fora, com um aro que entra por dentro da
+      // moldura e protege os fios no transporte.
+      const folga = 0.3, dentroCapa = contornar(dentro, -folga);
+      itens.push({ nome: 'Capa de envio', pecas: [{ nome: 'Capa', cor: 1, camadas: [{ region: fora, z0: 0, z1: 1.2 }, { region: diffRegion(dentroCapa, contornar(dentroCapa, -1.2)), z0: 1.2, z1: 3.2 }] }] });
+      if (num(v, 'espTexto') > prof - 2) avisos.push('O texto é mais alto que a moldura: a capa encostaria nele.');
+    }
+    return { itens: itens.length > 1 ? emGrade(itens, 2, 10) : itens, cores, hex, avisos, notas };
   },
 };
 
