@@ -103,7 +103,8 @@ for (const f of FICHAS) {
   const estranhos = Object.keys(f.exemplo).filter((k) => !ids.has(k));
   ok(`${f.id}: o exemplo da miniatura so usa campos do gerador`, !estranhos.length, estranhos.join(', '));
   const res = gerar(r, f.exemplo);
-  ok(`${f.id}: o exemplo gera sem aviso`, res.itens.length > 0 && !res.avisos.length, res.avisos.join(' | '));
+  const avisos = res.avisos.filter((a) => !a.startsWith('Usando um desenho de exemplo'));
+  ok(`${f.id}: o exemplo gera sem aviso (fora o de desenho de exemplo)`, res.itens.length > 0 && !avisos.length, avisos.join(' | '));
 }
 
 console.log('\n== texto em camadas ==');
@@ -256,6 +257,83 @@ console.log('\n== chaveiros ==');
   const semEspaco = gerar(r, { nomes: 'Ana', largura: 20, margemH: 30 });
   ok('margem maior que a placa: nao gera, explica', semEspaco.itens.length === 0 && semEspaco.avisos.some((a) => a.includes('margens')));
   ok('sem contorno do nome: 2 cores', gerar(r, { contornoNome: 0 }).cores.join() === 'Placa,Nome');
+}
+
+console.log('\n== onda 1: medidas de cada familia ==');
+{
+  const camada = (res: Resultado, item: number, peca: string, i = 0) => res.itens[item]!.pecas.find((p) => p.nome === peca)!.camadas[i]!;
+  // Plaquinha pet: verso embutido e espelhado, nome dentro da borda, furo, NFC.
+  const pet = receitaPorId('plaquinha-pet')!;
+  const rp = gerar(pet, { nomes: 'Luna', versos: 'Ana+41 9999-1111', forma: 'oval' });
+  const versoDet = camada(rp, 0, 'Detalhes', 0), versoPlaca = camada(rp, 0, 'Placa', 0);
+  ok('pet: verso embutido rente a face de baixo (0 a 0,4 mm)', versoDet.z0 === 0 && versoDet.z1 === 0.4 && versoPlaca.z1 === 0.4);
+  ok('pet: o verso ocupa exatamente o vazio da placa', area(intersectRegion(versoDet.region, versoPlaca.region)) < 0.01);
+  // "L" espelhado: a haste vai para a direita, entao a metade direita tem mais area.
+  const rl = gerar(pet, { nomes: 'X', versos: 'L', forma: 'oval' });
+  const vl = camada(rl, 0, 'Detalhes', 0).region, vb = regionBounds(vl), meioX = (vb.minX + vb.maxX) / 2;
+  const metade = (dir: boolean) => area(intersectRegion(vl, [{ outer: dir ? [{ x: meioX, y: -999 }, { x: 999, y: -999 }, { x: 999, y: 999 }, { x: meioX, y: 999 }] : [{ x: -999, y: -999 }, { x: meioX, y: -999 }, { x: meioX, y: 999 }, { x: -999, y: 999 }], holes: [] }]));
+  ok('pet: verso espelhado (le-se por baixo)', metade(true) > metade(false) * 1.2, `${metade(false).toFixed(1)} | ${metade(true).toFixed(1)} mm2`);
+  const comFuro = gerar(pet, { nomes: 'Luna', forma: 'osso', suporte: 'furo', furo: 3 });
+  const placaFuro = camada(comFuro, 0, 'Placa', comFuro.itens[0]!.pecas[0]!.camadas.length - 1).region;
+  ok('pet: furo de 3 mm dentro da placa', placaFuro.some((q) => q.holes.some((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 3, 0.05))));
+  const nfc = gerar(pet, { nomes: 'Luna', tamanho: 60, nfc: true });
+  ok('pet: NFC com bolsao de 25,6 mm e instrucao de pausa', nfc.itens[0]!.pecas[0]!.camadas.some((c) => c.region.some((q) => q.holes.some((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 25.6, 0.1)))) && !!nfc.notas?.some((n) => n.includes('pause')));
+  ok('pet: plaquinha pequena demais para NFC avisa', gerar(pet, { nomes: 'Luna', tamanho: 30, nfc: true }).avisos.some((a) => a.includes('NFC')));
+  for (const forma of ['ondulada', 'peixe', 'osso']) {
+    const r = gerar(pet, { nomes: 'Bob', forma });
+    const placa = r.itens[0]!.pecas[0]!.camadas.at(-1)!.region, nome = r.itens[0]!.pecas[1]!.camadas.at(-1)!.region;
+    ok(`pet ${forma}: placa inteira e nome dentro dela`, placa.length === 1 && area(diffRegion(nome, placa)) < 0.01);
+  }
+  // Pingente: dois furos por peca, uma peca por nome + titulo.
+  const pin = gerar(receitaPorId('pingente-familia')!, { titulo: 'Família', nomes: 'Ana, Leo', cachorros: 'Rex', gatos: '', outros: '' });
+  ok('pingente: titulo + 3 nomes = 4 pecas, cada uma com 2 furos', pin.itens.length === 4 && pin.itens.every((it) => it.pecas[0]!.camadas[0]!.region[0]!.holes.length === 2));
+  // Chaveiro desenho encaixado: o desenho cabe no rebaixo.
+  const cd = gerar(receitaPorId('chaveiro-desenho')!, { estilo: 'sobreposto', folga: 0.15, borda: false });
+  const fundoRebaixo = camada(cd, 0, 'Base', 1).region, des = camada(cd, 0, 'Desenho', 0).region;
+  ok('chaveiro encaixado: desenho cabe no rebaixo, sem colisao', area(intersectRegion(fundoRebaixo, des)) < 0.01);
+  // Chaveiro com logo e nome: 4 cores e o logo do lado pedido.
+  const cl = gerar(receitaPorId('chaveiro-logo-nome')!, { nomes: 'ANA', ladoLogo: 'esquerda' });
+  const lb = regionBounds(camada(cl, 0, 'Logo', 0).region), tb = regionBounds(camada(cl, 0, 'Nome', 0).region);
+  ok('chaveiro logo+nome: 4 cores, logo a esquerda do nome', cl.cores.length === 4 && lb.maxX < tb.minX);
+  // Letreiro sobreposto: o nome sai numa peca e cabe no rebaixo.
+  const ls = gerar(receitaPorId('letreiro-sobreposto')!, {});
+  const nomeLs = camada(ls, 0, 'Nome', 0).region;
+  ok('sobreposto: nome numa peca so, sem colidir com a palavra', nomeLs.length === 1 && area(intersectRegion(camada(ls, 0, 'Palavra', 1).region, nomeLs)) < 0.01);
+  // Topo de bolo: hastes descem do comprimento pedido.
+  const tb2 = gerar(receitaPorId('topo-bolo')!, { haste: 60 });
+  const baseTb = regionBounds(camada(tb2, 0, 'Base', 0).region), textoTb = regionBounds(camada(tb2, 0, 'Topo', 0).region);
+  ok('topo de bolo: hastes descem ~60 mm abaixo do texto', baseTb.minY < textoTb.minY - 55, `${(textoTb.minY - baseTb.minY).toFixed(1)} mm`);
+  // Topo circular: aro com o diametro pedido e aba por dentro.
+  const tc = gerar(receitaPorId('topo-bolo-circular')!, { diametro: 140, haste: 0 });
+  ok('topo circular: aro de 140 mm', perto(regionBounds(camada(tc, 0, 'Tampa', 0).region).w, 140, 0.2));
+  // Marcador: nome mais grosso que a aba, aba com o comprimento pedido.
+  const mk = gerar(receitaPorId('marcador-pagina')!, { comprimento: 60 });
+  const aba = regionBounds(camada(mk, 0, 'Aba', 0).region);
+  ok('marcador: aba de ~60 mm e nome de 2 mm sobre aba de 1,4', aba.h > 58 && aba.h < 66 && camada(mk, 0, 'Nome', 0).z1 === 2 && camada(mk, 0, 'Aba', 0).z1 === 1.4, `aba ${aba.h.toFixed(1)} mm`);
+  ok('marcador: padrao grade vaza a aba', camada(mk, 0, 'Aba', 0).region.some((q) => q.holes.length > 5));
+  // Raspadinha: um quadrado por numero.
+  const rs = gerar(receitaPorId('contador-raspadinha')!, { contador: 30, passo: 1, colunas: 10, titulo: '' });
+  ok('raspadinha: 30 quadrados (furos na grade)', camada(rs, 0, 'Grade', 0).region.reduce((n, q) => n + q.holes.length, 0) >= 30);
+  ok('raspadinha: quadrado pequeno demais nao gera', gerar(receitaPorId('contador-raspadinha')!, { contador: 400, colunas: 20, maxW: 60, maxH: 60 }).itens.length === 0);
+  // Guia: cada pedaco cabe na mesa; uma peca por letra.
+  const gg = gerar(receitaPorId('texto-com-guia')!, { texto: 'CASA', tamanho: 700, mesa: 230 });
+  const guias = gg.itens.filter((it) => it.nome.startsWith('Guia'));
+  ok('guia: 4 letras + pedacos de guia que cabem na mesa de 230', gg.itens.length - guias.length === 4 && guias.length >= 3 && guias.every((g) => { const b = regionBounds(g.pecas[0]!.camadas[0]!.region); return b.w <= 230 && b.h <= 230; }), `${guias.length} pedacos`);
+  // Porta-canetas: medidas externas e celulas.
+  const pc = gerar(receitaPorId('porta-canetas-grade')!, { celula: 14, colunas: 3, linhas: 2, paredeInterna: 1, paredeExterna: 1.2 });
+  const pcb = regionBounds(camada(pc, 0, 'Porta-canetas', 1).region);
+  ok('porta-canetas: 3x2 celulas de 14 mm, paredes 1 e 1,2', perto(pcb.w, 3 * 14 + 2 + 2.4, 0.01) && perto(pcb.h, 2 * 14 + 1 + 2.4, 0.01) && camada(pc, 0, 'Porta-canetas', 1).region[0]!.holes.length === 6);
+  // Palitos: furo do palito com folga.
+  const sp = gerar(receitaPorId('suporte-palitos')!, { palito: 6, folga: 0.3 });
+  const furoP = camada(sp, 0, 'Suporte', 0).region[0]!.holes[0]!;
+  ok('palitos: furo de 6,6 mm (palito 6 + folga)', perto(regionBounds([{ outer: furoP, holes: [] }]).w, 6.6, 0.05));
+  // Suporte de foto: fenda com a largura da foto + folga, no meio da profundidade.
+  const sf = gerar(receitaPorId('suporte-foto')!, { fenda: 1, folga: 0.2, profundidade: 21 });
+  const meio = camada(sf, 0, 'Base', 1);
+  ok('suporte de foto: fenda de 1,4 mm no meio da base', perto(meio.z1 - meio.z0, 1.4, 1e-9) && perto((meio.z0 + meio.z1) / 2, 10.5, 1e-9));
+  // Floco: argola e nome no centro.
+  const fl = gerar(receitaPorId('floco-neve')!, { nomes: 'Ana, Leo' });
+  ok('floco: um enfeite por nome, corpo inteiro', fl.itens.length === 2 && fl.itens.every((it) => it.pecas[0]!.camadas[0]!.region.length === 1));
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

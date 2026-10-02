@@ -2,7 +2,7 @@
 import { diffRegion, type Region } from '../../geom/region';
 import { coresDe, empilhar, hexDe, lerCamadas, parametrosCamadas } from '../camadas';
 import { circulo, comporLinhas, contornar, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, unir } from '../formas';
-import { emGrade, LOTE_MAX, nomesDoLote } from '../lote';
+import { comArgola, LOTE_MAX, loteDeNomes } from '../lote';
 import { ficha } from './fichas';
 import type { Contexto, Item, Parametro, Receita, Valores } from '../tipos';
 import { num, txt } from '../tipos';
@@ -20,41 +20,6 @@ const furo: Parametro[] = [
   { tipo: 'numero', id: 'aro', rotulo: 'Largura do aro', grupo: 'Argola', padrao: 1.8, min: 1.2, max: 8, passo: 0.1, unidade: 'mm', dica: 'Material em volta do furo' },
 ];
 
-/** Linhas de um nome ("Ana+Maria" -> 2 linhas), com prefixo na 1a e sufixo na ultima. */
-function linhasDoNome(nome: string, prefixo: string, sufixo: string): string[] {
-  const ls = nome.split('+').map((s) => s.trim()).filter(Boolean);
-  if (!ls.length) return [];
-  ls[0] = prefixo + ls[0];
-  ls[ls.length - 1] = ls[ls.length - 1] + sufixo;
-  return ls;
-}
-
-function lote(v: Valores, fazer: (linhas: string[], nome: string) => { item: Item | null; avisos: string[] }) {
-  const lista = nomesDoLote(txt(v, 'nomes'));
-  const avisos = new Set<string>();
-  if (lista.length > LOTE_MAX) avisos.add(`Só os ${LOTE_MAX} primeiros nomes entram.`);
-  const itens: Item[] = [];
-  for (const nome of lista.slice(0, LOTE_MAX)) {
-    const r = fazer(linhasDoNome(nome, txt(v, 'prefixo'), txt(v, 'sufixo')), nome.replace(/\+/g, ' '));
-    r.avisos.forEach((a) => avisos.add(a));
-    if (r.item) itens.push(r.item);
-  }
-  if (!lista.length) avisos.add('Digite ao menos um nome.');
-  return { itens: itens.length > 1 ? emGrade(itens) : itens, avisos: [...avisos] };
-}
-
-/**
- * Argola: disco unido a base no ponto mais a esquerda (ou direita) dela, com o furo
- * encostado na borda da base -- assim o furo fica a um contorno inteiro das letras.
- */
-function comArgola(base: Region, lado: string, furo: number, aro: number): Region {
-  if (lado === 'nenhuma' || !base.length) return base;
-  const rf = furo / 2, R = rf + aro;
-  const pts = base.flatMap((p) => p.outer);
-  const extremo = pts.reduce((a, b) => (lado === 'direita' ? (b.x > a.x ? b : a) : b.x < a.x ? b : a));
-  const cx = lado === 'direita' ? extremo.x + rf : extremo.x - rf;
-  return diffRegion(unir([base, circulo(cx, extremo.y, R)]), circulo(cx, extremo.y, rf, 48));
-}
 
 export const chaveiroNome: Receita = {
   ...ficha('chaveiro-nome'),
@@ -74,7 +39,7 @@ export const chaveiroNome: Receita = {
     const o = lerCamadas(v);
     const fonte = ctx.fonte(txt(v, 'fonte'));
     const reserva = comEmoji(v) ? ctx.fonte('noto-emoji') : undefined;
-    const r = lote(v, (linhas, nome) => {
+    const r = loteDeNomes(v, (linhas, nome) => {
       const t = comporLinhas(linhas.map((texto) => ({ texto, fonte, reserva, altura: num(v, 'altura'), espacamento: num(v, 'espacamento') / 100 })), num(v, 'entrelinha'));
       if (!t.letras.length) return { item: null, avisos: [] };
       const e = empilhar(t.regiao, o, (b) => comArgola(b, txt(v, 'argola'), num(v, 'furo'), num(v, 'aro')));
@@ -133,7 +98,7 @@ export const chaveiroRetangular: Receita = {
     const cores = cn > 0 ? ['Placa', 'Contorno', 'Nome'] : ['Placa', 'Nome'];
     const hex = cn > 0 ? [txt(v, 'corPlaca'), txt(v, 'corContorno'), txt(v, 'corNome')] : [txt(v, 'corPlaca'), txt(v, 'corNome')];
     const reserva = comEmoji(v) ? ctx.fonte('noto-emoji') : undefined;
-    const r = lote(v, (linhas, nome) => {
+    const r = loteDeNomes(v, (linhas, nome) => {
       // Cada linha do tamanho que enche a largura; se nao couber na altura, todas encolhem juntas.
       const larguraDe = (texto: string, altura: number) => comporLinhas([{ texto, fonte, reserva, altura, espacamento: num(v, 'espacamento') / 100 }], 0).bounds.w;
       const alturas = linhas.map((texto) => 10 * escalaParaLargura((k) => larguraDe(texto, 10 * k) + 2 * cn, W));

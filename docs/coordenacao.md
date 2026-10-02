@@ -93,3 +93,11 @@ com catálogo, placas e QR/PIX, migrando para a base.
     espaço; SVG soma fill e stroke; miniaturas com tempo-limite e limpeza do cache velho; espaçamento
     entre letras em % (fator do avanço de cada glifo), como a referência.
 
+- 2026-10-02 Claude: onda 1 dos 117 (15 receitas novas, 20 no total; quadro 25 prontos · 16 parciais).
+  - Receitas novas em `receitas/desenho.ts`, `pet.ts`, `letreiros.ts`, `papelaria.ts`, `objetos.ts`;
+    formas (oval, ondulada, peixe, osso, pata, gato, polígono, trapézio, floco) em `lib/gerador/figuras.ts`.
+  - `loteDeNomes`, `linhasDoNome` e `comArgola` saíram de `chaveiro.ts` para `lote.ts` (usar de lá).
+  - `Resultado.notas`: instruções de impressão (pausar para o NFC, montar a guia) que não são aviso.
+  - `Ficha.tipo` (opcional): etiqueta do card no catálogo; sem ela vale a da família.
+  - `posicoesDaPeca` aplica um jitter determinístico ≤ 1e-5 mm: o earcut errava com pontos colineares.
+  - verificar-gerador 273/273, com testes de medida por família.

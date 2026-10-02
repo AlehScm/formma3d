@@ -25,7 +25,7 @@ export function CatalogoScarprint() {
   const passa = (fam: Familia, ...textos: string[]) =>
     (familia === 'todos' || fam === familia) && (!termo || [...textos, familias[fam]].join(' ').toLocaleLowerCase('pt-BR').includes(termo));
 
-  const prontos = FICHAS.filter((f) => passa(f.familia, f.nome, f.resumo, ...f.destaques));
+  const prontos = FICHAS.filter((f) => passa(f.familia, f.nome, f.resumo, f.tipo ?? '', ...f.destaques));
   const editores = editoresLivres.filter((e) => passa(e.family, e.title, e.summary, ...e.destaques));
   const breve = emBreve.filter((m) => passa(m.family, m.title, m.summary));
   const comAlgo = new Set<Familia>([...FICHAS.map((f) => f.familia), ...editoresLivres.map((e) => e.family), ...emBreve.map((m) => m.family)]);
@@ -165,7 +165,7 @@ function CardGerador({ f }: { f: Ficha }) {
         <Miniatura id={f.id} alt={`Exemplo: ${f.nome}`} reserva={<VisualReserva id={f.id} family={f.familia} />} />
       </div>
       <div className="card-corpo">
-        <span className="card-tag">{tipoDe[f.familia]}</span>
+        <span className="card-tag">{f.tipo ?? tipoDe[f.familia]}</span>
         <h3>{f.nome}</h3>
         <p>{f.resumo}</p>
         <Destaques itens={f.destaques} />

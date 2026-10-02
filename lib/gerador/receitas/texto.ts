@@ -1,5 +1,5 @@
 /** Letreiros de texto em camadas: palavra (1 ou 2 linhas), @social e letras separadas. */
-import { regionBounds, translateRegion, type Region } from '../../geom/region';
+import { buildRegion, regionBounds, translateRegion, type Region } from '../../geom/region';
 import { coresDe, empilhar, hexDe, lerCamadas, parametrosCamadas, sobraLateral } from '../camadas';
 import { ajustarLargura, comporLinhas, coracao, escalaParaLargura, estrela, temEmoji, unir, type Linha } from '../formas';
 import { ficha } from './fichas';
@@ -148,5 +148,49 @@ export const letrasSeparadas: Receita = {
       return { nome: `${String(i + 1).padStart(2, '0')} ${l.nome}`, pecas: r.pecas };
     });
     return { itens, cores: coresDe(o), hex: hexDe(v, o), avisos: [...avisos] };
+  },
+};
+
+/** Hastes de espetar: duas pontas descendo da base, a 1/4 e 3/4 da largura. */
+function comHastes(base: Region, comprimento: number, largura: number): Region {
+  if (!base.length || comprimento <= 0) return base;
+  const b = regionBounds(base);
+  const hastes = [0.3, 0.7].map((f) => {
+    const x = b.minX + b.w * f, topo = b.minY + Math.min(b.h * 0.35, 8);
+    const ponta = b.minY - comprimento;
+    return buildRegion([[
+      { x: x - largura / 2, y: topo },
+      { x: x - largura / 2, y: ponta + largura },
+      { x, y: ponta },
+      { x: x + largura / 2, y: ponta + largura },
+      { x: x + largura / 2, y: topo },
+    ]]);
+  });
+  return unir([base, ...hastes]);
+}
+
+export const topoBolo: Receita = {
+  ...ficha('topo-bolo'),
+  parametros: [
+    { tipo: 'texto', id: 'linha1', rotulo: 'Texto', grupo: 'Texto', padrao: 'Feliz', maxCaracteres: 40, dica: 'Aceita emoji (♥ ⭐...)' },
+    { tipo: 'fonte', id: 'fonte1', rotulo: 'Fonte', grupo: 'Texto', padrao: 'great-vibes' },
+    { tipo: 'texto', id: 'linha2', rotulo: 'Segunda linha (opcional)', grupo: 'Texto', padrao: 'Aniversário', maxCaracteres: 40 },
+    { tipo: 'fonte', id: 'fonte2', rotulo: 'Fonte da segunda linha', grupo: 'Texto', padrao: 'great-vibes', visivel: (v) => !!txt(v, 'linha2').trim() },
+    { tipo: 'numero', id: 'razaoLinha2', rotulo: 'Tamanho da segunda linha', grupo: 'Texto', padrao: 80, min: 20, max: 150, passo: 5, unidade: '%', visivel: (v) => !!txt(v, 'linha2').trim() },
+    { tipo: 'numero', id: 'entrelinha', rotulo: 'Espaço entre as linhas', grupo: 'Texto', padrao: -4, min: -20, max: 30, passo: 0.5, unidade: 'mm', visivel: (v) => !!txt(v, 'linha2').trim() },
+    espacamento,
+    tamanho(150),
+    { tipo: 'numero', id: 'haste', rotulo: 'Comprimento das hastes', grupo: 'Hastes', padrao: 60, min: 0, max: 150, passo: 1, unidade: 'mm', dica: '0 = sem hastes' },
+    { tipo: 'numero', id: 'larguraHaste', rotulo: 'Largura das hastes', grupo: 'Hastes', padrao: 5, min: 3, max: 12, passo: 0.5, unidade: 'mm' },
+    ...parametrosAdorno(),
+    ...parametrosCamadas({ espBase: 2.2, espMeio: 0.8, espTopo: 1.2, contornoBase: 4, contornoMeio: 2, preencherBase: true, folga: 0.12, corBase: '#fde68a', corMeio: '#ffffff', corTopo: '#db2777' }),
+  ],
+  fontes: fontesEmoji,
+  gerar(v, ctx) {
+    const t = textoNaLargura(v, ctx);
+    if (!t.letras.length) return vazio(v, 'Digite um texto.');
+    const o = lerCamadas(v);
+    const { pecas, avisos } = empilhar(t.regiao, o, (b) => comHastes(b, num(v, 'haste'), num(v, 'larguraHaste')));
+    return { itens: [{ nome: txt(v, 'linha1').trim() || 'Topo de bolo', pecas }], cores: coresDe(o), hex: hexDe(v, o), avisos: [...t.avisos, ...avisos] };
   },
 };

@@ -67,7 +67,10 @@ export interface Resultado {
   cores: string[];
   /** Cor de cada indice ('#rrggbb'); sem ela a previa usa a paleta padrao. */
   hex?: string[];
+  /** Problemas: algo nao saiu como pedido. */
   avisos: string[];
+  /** Instrucoes de impressao e montagem (pausa para NFC, como colar...). */
+  notas?: string[];
 }
 
 export interface Contexto {

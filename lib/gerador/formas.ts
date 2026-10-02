@@ -177,3 +177,26 @@ export function ajustarLargura(r: Region, w: number): Region {
   const k = w / b.w;
   return scaleRegion(translateRegion(r, -(b.minX + b.maxX) / 2, -(b.minY + b.maxY) / 2), k);
 }
+
+export interface OpcoesCaixa {
+  fonte: Font;
+  /** Largura e altura maximas do bloco de texto, mm. */
+  maxW: number;
+  maxH: number;
+  entrelinha?: number;
+  /** Fator do avanco (1 = normal). */
+  espacamento?: number;
+  reserva?: Font;
+  /** Altura relativa de cada linha (1 = igual a primeira). */
+  razoes?: number[];
+}
+
+/** Linhas de texto no maior tamanho que cabe em `maxW` x `maxH`, centradas em (0, 0). */
+export function textoNaCaixa(linhas: string[], o: OpcoesCaixa): TextoComposto {
+  const compor = (k: number) =>
+    comporLinhas(linhas.map((texto, i) => ({ texto, fonte: o.fonte, reserva: o.reserva, espacamento: o.espacamento, altura: 10 * k * (o.razoes?.[i] ?? 1) })), o.entrelinha ?? 0);
+  const kw = escalaParaLargura((k) => compor(k).bounds.w, o.maxW);
+  const kh = escalaParaLargura((k) => compor(k).bounds.h, o.maxH);
+  return compor(Math.min(kw, kh));
+}
+

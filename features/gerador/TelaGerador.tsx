@@ -182,6 +182,11 @@ export function TelaGerador({ id }: { id: string }) {
               </Alerta>
             )}
             {erro && <Alerta tom="perigo">{erro}</Alerta>}
+            {resultado?.notas?.map((n) => (
+              <Alerta key={n} tom="neutro">
+                {n}
+              </Alerta>
+            ))}
             {resultado?.avisos.map((a) => (
               <Alerta key={a} tom="atencao">
                 {a}

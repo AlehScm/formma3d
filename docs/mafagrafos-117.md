@@ -241,3 +241,76 @@ arquivo ou arte foi copiado. A prévia é gerada no servidor deles (OpenSCAD); l
   (3), texto 0–2 (0,8), contorno 0–2 (0,4).
 - Argola (liga/desliga, padrão sim): aba no canto de cima, por fora da placa; diâmetro interno 0–10
   (2,5), externo 0–10 (5).
+
+### Onda 1 — controles observados (sessão logada, 2026-10-01, Claude)
+
+Padrão (faixa). Sem download.
+
+- **Plaquinhas pet (oval, ondulada, peixe, osso, qualquer formato por arquivo):**
+  - Textos da frente separados por vírgula (lote); textos de baixo (verso) por vírgula, com "+"
+    quebrando linha.
+  - Tamanho 53 (10–200); espessura 5 (1–10).
+  - Borda: espessura 0,8 (0,2–2), largura 1 (0–5).
+  - Escala do texto da frente 52–68%, do verso 79%.
+  - Verso: espessura 0,4 (0,1–1), entrelinha 4.
+  - Suporte argola ou furo: espessura 2, diâmetro 4, furo 3, posição Y.
+  - Opção de tag NFC.
+  - "Qualquer formato": arquivo obrigatório e direção do tamanho (largura/altura).
+- **Pingente da família:**
+  - Título, listas de nomes, cachorros, gatos e outros; texto no topo.
+  - Tamanho 60 (40–100); negrito do texto 0,4; espessura 3; furo 4.
+  - Texto 0,6; design 0,2; escala por categoria (nome 100, gato 130, cachorro 100).
+- **Marcadores de página "nome na lateral" (castelo, geométrico, elegante, floral, com imagem):**
+  - O que é: aba fina (1,4 mm) que entra no livro; o nome (2 mm) fica para fora, na borda das
+    páginas.
+  - Texto; comprimento da aba 50–70; largura 0 = automática.
+  - Largura máx. 160, altura máx. 16; espaçamento %.
+  - Imagens frente/verso com escala (padrão da aba: grade, geométrico, floral ou imagem).
+- **Gerador de chaveiro (design próprio):**
+  - Modo face para cima / face para baixo / uma cor por camada.
+  - Base 2,6 (0–8); design 1 (0–2); argola 2 (0–4); borda (largura 1, 0–1,6); verso 0,2.
+- **Chaveiro com sobreposição:**
+  - Modo face cima / baixo / multipartes.
+  - Base 4; sobreposição 2; rebaixo 0,8; argola 3.
+- **Chaveiro com nome e logo:**
+  - Logo opcional; até 9 nomes.
+  - Altura do chaveiro 20 (10–50); altura do logo 13; logo à esquerda/direita.
+  - Borda: largura 1, offset 0,8. Anel 7 (6–12), furo 2,75.
+  - Espessuras: base 2,8, logo 1,2, borda 1, texto 1.
+  - Margem 5; distância entre elementos 2; offset da base 2,8.
+- **Placa multipart a partir de imagem (2/3 cores):**
+  - Imagem; tamanho 180 (40–320) por largura ou altura.
+  - Retângulo da base opcional; tolerância 0,16.
+  - Espessuras base 18, meio 3,4, topo 2,2; offsets base 6, meio 3, topo 0.
+  - Preencher buracos: base sim, meio não.
+- **Letreiro com palavras sobrepostas:** editor de design.
+  - Espessura da letra grande 22 (8–40); nome 5 (2–20).
+  - Rebaixo 2 (0–10); tolerância 0,2.
+- **Floco de neve:** nomes; espessura 3 (2–5); nome 3; cor face superior / inferior / total; fundo 0,6;
+  cor da face 1.
+- **Topo de bolo:** editor de design.
+  - Modo cima / baixo / multipeça.
+  - Base 2,2; meio 0,8; topo 1,2; rebaixo 0,6; tolerância 0,12.
+- **Topo de bolo circular com glitter:**
+  - Círculo 140 (100–200); número e nome (tamanhos 50 e 120).
+  - Base do nome 2; rebaixo 0,4.
+  - Borda 9 (5–15); parede 1; altura 5 (3–10); base 1; anel interno 4.
+  - Desenho do glitter 9; tolerância 0,16.
+- **Suporte de foto com texto:**
+  - Nome; tamanho 35,6 por altura/largura; texto 1,8; espaçamento 104%.
+  - Base 21 (espessura); texto da base deslocado 4.
+  - Fenda da foto 1 de largura e 14 de profundidade; tolerância 0,2.
+- **Suporte de palitos:**
+  - Palito 6 (2–10); base 80 × 2; altura 40; parede 1.
+  - 3–10 apoios, altura 30.
+- **Porta-canetas paramétrico:**
+  - Célula 14 (8–50); 3–20 × 3–20; altura 130.
+  - Furo no fundo; paredes interna e externa 1; fundo 1.
+- **Contador raspadinha:**
+  - Título; contador 100; passo 1–100; 10 quadrados por linha (5–20).
+  - Largura máx. 180, altura máx. 256.
+  - Caractere antes/depois; regressivo; borda 1.
+- **Texto com guia de posicionamento:**
+  - Texto; tamanho total 700 (100–3000) por largura/altura; base (mesa) 230 (150–360).
+  - Espelhar na exportação; texto 16; base 1,8; espaçamento 105%.
+  - Folga de espaçamento 0,3; tolerância do encaixe 0,2.

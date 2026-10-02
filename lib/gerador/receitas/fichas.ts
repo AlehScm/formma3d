@@ -11,6 +11,8 @@ export interface Ficha {
   /** Chave de `familias` em features/catalogo/catalogo.ts. */
   familia: 'texto' | 'placas' | 'chaveiros' | 'qr' | 'cortadores' | 'carimbos' | 'multicor' | 'parametricos';
   resumo: string;
+  /** Etiqueta do card ("Festa", "Pet"...); sem ela, a da familia. */
+  tipo?: string;
   /** O que a pessoa recebe, em poucas palavras (etiquetas do card). */
   destaques: string[];
   /** Valores da miniatura do catalogo (por cima dos padroes; o gerador abre com os padroes). */
@@ -47,6 +49,90 @@ export const FICHAS: Ficha[] = [
     resumo: 'Placa retangular com o nome ajustado à largura; nome completo ou até 9 nomes.',
     destaques: ['Nome completo em 2 linhas', 'Borda e contorno em 3 cores', 'Até 9 por vez'],
     exemplo: { nomes: 'Maria+Eduarda Silva', corPlaca: '#0f766e', corContorno: '#ffffff', corNome: '#0f172a' },
+  },
+  {
+    id: 'logo-camadas', nome: 'Placa a partir de imagem', familia: 'multicor', tipo: 'Placa',
+    resumo: 'Seu logo ou desenho (SVG) em 2 ou 3 camadas de cor, com base para ficar em pé.',
+    destaques: ['Do seu SVG', '2 ou 3 cores', 'Base em contorno ou retângulo', 'Peça única ou encaixe'],
+    exemplo: { corBase: '#0f172a', corMeio: '#fde68a', corTopo: '#2563eb', espBase: 8 },
+  },
+  {
+    id: 'chaveiro-desenho', nome: 'Chaveiro a partir de desenho', familia: 'chaveiros',
+    resumo: 'Qualquer desenho (SVG) vira chaveiro: em relevo ou encaixado na base, com borda e argola.',
+    destaques: ['Do seu SVG', 'Relevo ou encaixado', 'Borda e argola'],
+    exemplo: { corBase: '#7c3aed', corDesenho: '#fde047', corBorda: '#ffffff' },
+  },
+  {
+    id: 'chaveiro-logo-nome', nome: 'Chaveiro com logo e nome', familia: 'chaveiros',
+    resumo: 'Logo ao lado do nome, com borda e anel; até 9 nomes numa impressão.',
+    destaques: ['Logo + nome', 'Até 9 por vez', 'Até 4 cores'],
+    exemplo: { nomes: 'ALINE, BRUNA, LAURA, CECI' },
+  },
+  {
+    id: 'plaquinha-pet', nome: 'Plaquinha de pet', familia: 'chaveiros', tipo: 'Pet',
+    resumo: 'Nome na frente e contato no verso; oval, ondulada, peixe, osso ou o seu formato.',
+    destaques: ['5 formatos ou o seu SVG', 'Frente e verso', 'Argola, furo ou NFC', 'Até 9 por vez'],
+    exemplo: { nomes: 'Luna, Thor, Mel, Bob', forma: 'osso', corPlaca: '#f97316', corDetalhe: '#ffffff' },
+  },
+  {
+    id: 'pingente-familia', nome: 'Pingente da família', familia: 'chaveiros', tipo: 'Pingente',
+    resumo: 'Uma peça por pessoa ou pet, com ícone, ligadas por um cordão.',
+    destaques: ['Pessoas, cães e gatos', 'Ícone por tipo', 'Peças conectáveis'],
+  },
+  {
+    id: 'letreiro-sobreposto', nome: 'Letreiro com nome por cima', familia: 'multicor', tipo: 'Letreiro',
+    resumo: 'Uma palavra grande e um nome em outra cor encaixado por cima dela.',
+    destaques: ['Palavra grande + nome', 'Encaixe com folga', 'Peça de ficar em pé'],
+    exemplo: { largura: 200, espPalavra: 14 },
+  },
+  {
+    id: 'topo-bolo', nome: 'Topo de bolo', familia: 'multicor', tipo: 'Festa',
+    resumo: 'Texto em 2 ou 3 cores com hastes para espetar no bolo.',
+    destaques: ['1 ou 2 linhas', 'Hastes ajustáveis', 'Coração, estrela ou SVG'],
+  },
+  {
+    id: 'topo-bolo-circular', nome: 'Topo de bolo com glitter', familia: 'multicor', tipo: 'Festa',
+    resumo: 'Círculo com janela para glitter entre duas lâminas de acetato, nome e número.',
+    destaques: ['Janela para glitter', 'Nome + número', 'Haste'],
+  },
+  {
+    id: 'marcador-pagina', nome: 'Marcador de página com nome', familia: 'texto', tipo: 'Papelaria',
+    resumo: 'Aba fina que entra no livro com o nome para fora, na borda das páginas.',
+    destaques: ['Nome na borda do livro', 'Grade, geométrico ou floral', 'Seu desenho na aba'],
+  },
+  {
+    id: 'contador-raspadinha', nome: 'Contador raspadinha', familia: 'parametricos', tipo: 'Papelaria',
+    resumo: 'Placa com números em grade para raspar a cada meta cumprida.',
+    destaques: ['Até 400 números', 'Passo e regressivo', 'Título'],
+    exemplo: { contador: 50, colunas: 10, maxH: 160 },
+  },
+  {
+    id: 'texto-com-guia', nome: 'Letras de parede com guia', familia: 'texto', tipo: 'Letras de parede',
+    resumo: 'Texto grande em letras soltas e uma guia vazada, em pedaços que cabem na mesa.',
+    destaques: ['Até 3 m', 'Guia com encaixe', 'Uma peça por letra'],
+    exemplo: { texto: 'CASA', tamanho: 500 },
+  },
+  {
+    id: 'suporte-foto', nome: 'Suporte de foto com nome', familia: 'parametricos', tipo: 'Decoração',
+    resumo: 'Base no contorno do nome com fenda para a foto em pé.',
+    destaques: ['Fenda para foto', 'Letras para colar', 'Base em pé'],
+  },
+  {
+    id: 'suporte-palitos', nome: 'Suporte de palitos', familia: 'parametricos', tipo: 'Utilidade',
+    resumo: 'Disco com tubo central e aletas, para palito, pincel ou vareta.',
+    destaques: ['Furo de 2 a 10 mm', '3 a 10 aletas', 'Sem suporte de impressão'],
+  },
+  {
+    id: 'porta-canetas-grade', nome: 'Porta-canetas em grade', familia: 'parametricos', tipo: 'Organização',
+    resumo: 'Grade de células quadradas na medida, com furo de drenagem.',
+    destaques: ['Até 20 × 20 células', 'Paredes na medida', 'Furo no fundo'],
+    exemplo: { colunas: 4, linhas: 3, altura: 90 },
+  },
+  {
+    id: 'floco-neve', nome: 'Enfeite floco de neve', familia: 'multicor', tipo: 'Enfeite',
+    resumo: 'Floco de neve com nome no centro e argola; até 9 nomes.',
+    destaques: ['Desenho próprio', 'Nome no centro', 'Até 9 por vez'],
+    exemplo: { nomes: 'Ana' },
   },
 ];
 

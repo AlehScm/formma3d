@@ -3,7 +3,7 @@
  * arranjo das pecas soltas para imprimir cada uma deitada.
  */
 import { layerToGeometry } from '../geom/extrude';
-import { regionArea, regionBounds } from '../geom/region';
+import { regionArea, regionBounds, type Region } from '../geom/region';
 import { posicoesDaGeometria } from '../export/stl';
 import type { Camada, Item, Peca, Resultado } from './tipos';
 
@@ -13,10 +13,26 @@ export const CORES_PREVIA = ['#3b3f46', '#e9e6df', '#e0533d', '#2f7dd1', '#f2c23
 /** A cor do indice `i`: a escolhida na receita ou a da paleta. */
 export const corDe = (r: Pick<Resultado, 'hex'>, i: number) => (/^#[0-9a-f]{6}$/i.test(r.hex?.[i] ?? '') ? r.hex![i]! : CORES_PREVIA[i % CORES_PREVIA.length]!);
 
+/**
+ * Desvio minimo e deterministico (ate 0,00001 mm) de cada ponto. O triangulador do three
+ * (earcut) erra com pontos exatamente alinhados -- a base de um "A" espelhado tem quatro
+ * na mesma reta e a tampa saia aberta. O mesmo ponto sempre desvia igual, entao as
+ * camadas empilhadas continuam encaixando.
+ */
+const desvio = (a: number, b: number) => {
+  const h = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
+  return (h - Math.floor(h) - 0.5) * 2e-5;
+};
+const semAlinhamento = (r: Region): Region =>
+  r.map((p) => ({
+    outer: p.outer.map((q) => ({ x: q.x + desvio(q.x, q.y), y: q.y + desvio(q.y, q.x) })),
+    holes: p.holes.map((h) => h.map((q) => ({ x: q.x + desvio(q.x, q.y), y: q.y + desvio(q.y, q.x) }))),
+  }));
+
 export function posicoesDaPeca(p: Peca): Float32Array {
   const partes: Float32Array[] = [];
   for (const c of p.camadas) {
-    const geo = layerToGeometry(c);
+    const geo = layerToGeometry({ ...c, region: semAlinhamento(c.region) });
     if (!geo) continue;
     partes.push(posicoesDaGeometria(geo));
     geo.dispose();
