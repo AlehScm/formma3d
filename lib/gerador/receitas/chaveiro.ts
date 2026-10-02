@@ -1,7 +1,7 @@
 /** Chaveiros de nome: em camadas com argola, e retangular com o nome ajustado. */
-import { diffRegion, regionBounds, translateRegion, type Region } from '../../geom/region';
+import { diffRegion, type Region } from '../../geom/region';
 import { coresDe, empilhar, lerCamadas, parametrosCamadas } from '../camadas';
-import { circulo, comporLinhas, escalaParaLargura, retanguloArredondado, unir } from '../formas';
+import { circulo, comporLinhas, contornar, escalaParaLargura, retanguloArredondado, semBuracos, unir } from '../formas';
 import { emGrade, LOTE_MAX, nomesDoLote } from '../lote';
 import { ficha } from './fichas';
 import type { Contexto, Item, Parametro, Receita, Valores } from '../tipos';
@@ -12,8 +12,8 @@ const nomes = (padrao: string): Parametro => ({
   dica: `Até ${LOTE_MAX} nomes separados por vírgula; "+" quebra a linha dentro de um nome`,
 });
 const furo: Parametro[] = [
-  { tipo: 'numero', id: 'furo', rotulo: 'Diâmetro do furo', grupo: 'Argola', padrao: 4, min: 2, max: 12, passo: 0.5, unidade: 'mm' },
-  { tipo: 'numero', id: 'aro', rotulo: 'Largura do aro', grupo: 'Argola', padrao: 2.5, min: 1.2, max: 8, passo: 0.1, unidade: 'mm', dica: 'Material em volta do furo' },
+  { tipo: 'numero', id: 'furo', rotulo: 'Diâmetro do furo', grupo: 'Argola', padrao: 2.5, min: 2, max: 12, passo: 0.5, unidade: 'mm' },
+  { tipo: 'numero', id: 'aro', rotulo: 'Largura do aro', grupo: 'Argola', padrao: 1.8, min: 1.2, max: 8, passo: 0.1, unidade: 'mm', dica: 'Material em volta do furo' },
 ];
 
 /** Linhas de um nome ("Ana+Maria" -> 2 linhas), com prefixo na 1a e sufixo na ultima. */
@@ -64,7 +64,7 @@ export const chaveiroNome: Receita = {
     { tipo: 'texto', id: 'sufixo', rotulo: 'Depois do nome', grupo: 'Texto', padrao: '', maxCaracteres: 15 },
     { tipo: 'escolha', id: 'argola', rotulo: 'Argola', grupo: 'Argola', padrao: 'esquerda', opcoes: [{ valor: 'esquerda', rotulo: 'À esquerda' }, { valor: 'direita', rotulo: 'À direita' }, { valor: 'nenhuma', rotulo: 'Sem argola' }] },
     ...furo.map((p) => ({ ...p, visivel: (v: Valores) => v.argola !== 'nenhuma' })),
-    ...parametrosCamadas({ contornoBase: 3, contornoMeio: 1.2, espBase: 2.4, espMeio: 1, espTopo: 1 }),
+    ...parametrosCamadas({ contornoBase: 2.8, contornoMeio: 1.8, espBase: 2.8, espMeio: 1.2, espTopo: 1.2, preencherBase: true }),
   ],
   gerar(v, ctx) {
     const o = lerCamadas(v);
@@ -79,47 +79,78 @@ export const chaveiroNome: Receita = {
   },
 };
 
+/**
+ * Argola em aba: disco tangente por fora ao canto de cima a esquerda da placa, com o
+ * furo inteiro fora dela (a placa fica lisa) e o aro unido ao canto.
+ */
+function abaNoCanto(L: number, H: number, raio: number, furo: number, externo: number): { disco: Region; furo: Region } {
+  const rf = furo / 2, R = Math.max(externo / 2, rf + 0.8);
+  const r = Math.min(raio, L / 2, H / 2);
+  const ax = -L / 2 + r, ay = H / 2 - r; // centro do arco do canto
+  const d = (r + rf) / Math.SQRT2;
+  return { disco: circulo(ax - d, ay + d, R), furo: circulo(ax - d, ay + d, rf, 48) };
+}
+
 export const chaveiroRetangular: Receita = {
   ...ficha('chaveiro-retangular'),
   parametros: [
-    nomes('Maria Eduarda Silva'),
-    { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'montserrat-900' },
-    { tipo: 'numero', id: 'alturaMax', rotulo: 'Altura máx. das letras', grupo: 'Texto', padrao: 10, min: 3, max: 40, passo: 0.5, unidade: 'mm', dica: 'O nome encolhe para caber na largura; não passa desta altura' },
-    { tipo: 'numero', id: 'entrelinha', rotulo: 'Espaço entre linhas', grupo: 'Texto', padrao: 1.5, min: 0, max: 20, passo: 0.5, unidade: 'mm' },
+    nomes('Aline+Borges, Ana+Silva da Mata'),
+    { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'archivo-black' },
+    { tipo: 'numero', id: 'tracking', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 0, min: -3, max: 10, passo: 0.1, unidade: 'mm' },
+    { tipo: 'numero', id: 'entrelinha', rotulo: 'Espaço entre linhas', grupo: 'Texto', padrao: 1.5, min: -5, max: 20, passo: 0.5, unidade: 'mm' },
     { tipo: 'texto', id: 'prefixo', rotulo: 'Antes do nome', grupo: 'Texto', padrao: '', maxCaracteres: 15 },
     { tipo: 'texto', id: 'sufixo', rotulo: 'Depois do nome', grupo: 'Texto', padrao: '', maxCaracteres: 15 },
-    { tipo: 'numero', id: 'largura', rotulo: 'Largura', grupo: 'Placa', padrao: 75, min: 30, max: 200, passo: 1, unidade: 'mm' },
-    { tipo: 'numero', id: 'margem', rotulo: 'Margem', grupo: 'Placa', padrao: 3, min: 1, max: 15, passo: 0.5, unidade: 'mm' },
-    { tipo: 'numero', id: 'raio', rotulo: 'Raio dos cantos', grupo: 'Placa', padrao: 4, min: 0, max: 20, passo: 0.5, unidade: 'mm' },
-    { tipo: 'numero', id: 'espBase', rotulo: 'Espessura da placa', grupo: 'Placa', padrao: 2.4, min: 0.8, max: 10, passo: 0.2, unidade: 'mm' },
-    { tipo: 'numero', id: 'espTopo', rotulo: 'Altura do nome', grupo: 'Placa', padrao: 1, min: 0.4, max: 5, passo: 0.2, unidade: 'mm' },
-    furo[0]!,
+    { tipo: 'numero', id: 'largura', rotulo: 'Largura', grupo: 'Placa', padrao: 75, min: 20, max: 200, passo: 1, unidade: 'mm' },
+    { tipo: 'numero', id: 'altura', rotulo: 'Altura', grupo: 'Placa', padrao: 30, min: 12, max: 200, passo: 1, unidade: 'mm' },
+    { tipo: 'numero', id: 'raio', rotulo: 'Raio dos cantos', grupo: 'Placa', padrao: 5, min: 0, max: 20, passo: 0.5, unidade: 'mm' },
+    { tipo: 'numero', id: 'margemH', rotulo: 'Margem nas laterais', grupo: 'Placa', padrao: 6, min: 0, max: 30, passo: 0.5, unidade: 'mm' },
+    { tipo: 'numero', id: 'margemV', rotulo: 'Margem em cima e embaixo', grupo: 'Placa', padrao: 6, min: 0, max: 30, passo: 0.5, unidade: 'mm' },
+    { tipo: 'numero', id: 'borda', rotulo: 'Borda elevada', grupo: 'Placa', padrao: 1.2, min: 0, max: 5, passo: 0.1, unidade: 'mm', dica: 'Largura da borda em volta da placa (0 = sem borda)' },
+    { tipo: 'numero', id: 'espPlaca', rotulo: 'Espessura da placa', grupo: 'Placa', padrao: 3, min: 0.8, max: 10, passo: 0.2, unidade: 'mm' },
+    { tipo: 'numero', id: 'contornoNome', rotulo: 'Contorno do nome', grupo: 'Nome', padrao: 1.2, min: 0, max: 3, passo: 0.1, unidade: 'mm', dica: '0 = nome sem contorno (2 cores)' },
+    { tipo: 'numero', id: 'espContorno', rotulo: 'Espessura do contorno', grupo: 'Nome', padrao: 0.4, min: 0.2, max: 3, passo: 0.1, unidade: 'mm', visivel: (v) => Number(v.contornoNome) > 0 },
+    { tipo: 'numero', id: 'espNome', rotulo: 'Espessura do nome', grupo: 'Nome', padrao: 0.8, min: 0.2, max: 3, passo: 0.1, unidade: 'mm' },
+    { tipo: 'liga', id: 'argola', rotulo: 'Argola no canto', grupo: 'Argola', padrao: true },
+    { ...furo[0]!, visivel: (v: Valores) => v.argola === true },
+    { tipo: 'numero', id: 'externo', rotulo: 'Diâmetro externo da argola', grupo: 'Argola', padrao: 6, min: 3, max: 20, passo: 0.5, unidade: 'mm', visivel: (v) => v.argola === true },
   ],
   gerar(v, ctx: Contexto) {
     const fonte = ctx.fonte(txt(v, 'fonte'));
-    const L = num(v, 'largura'), m = num(v, 'margem'), rf = num(v, 'furo') / 2;
-    const zonaFuro = 2 * rf + m; // furo + margem ate o texto
-    const livre = L - 2 * m - zonaFuro;
-    const cores = ['Placa', 'Nome'];
+    const L = num(v, 'largura'), H = num(v, 'altura'), raio = num(v, 'raio'), borda = num(v, 'borda');
+    const W = L - 2 * num(v, 'margemH') - 2 * borda, Hd = H - 2 * num(v, 'margemV') - 2 * borda;
+    const cn = num(v, 'contornoNome');
+    const ep = num(v, 'espPlaca'), ec = cn > 0 ? num(v, 'espContorno') : 0, en = num(v, 'espNome');
+    const cores = cn > 0 ? ['Placa', 'Contorno', 'Nome'] : ['Placa', 'Nome'];
     const r = lote(v, (linhas, nome) => {
-      const compor = (k: number) => comporLinhas(linhas.map((texto) => ({ texto, fonte, altura: 10 * k })), num(v, 'entrelinha'));
-      const t0 = compor(1);
-      if (!t0.letras.length) return { item: null, avisos: [] };
-      // Escala que faz a linha mais larga caber em `livre`, sem passar da altura maxima.
-      const k = Math.min(escalaParaLargura((k) => compor(k).bounds.w, livre), num(v, 'alturaMax') / 10);
-      const t = compor(k);
-      const H = Math.max(t.bounds.h + 2 * m, 2 * rf + 2 * m);
-      const placa = diffRegion(retanguloArredondado(0, 0, L, H, num(v, 'raio')), circulo(-L / 2 + m + rf, 0, rf, 48));
-      const dx = -L / 2 + m + zonaFuro + livre / 2;
-      const texto = translateRegion(t.regiao, dx, 0);
-      const avisos = livre <= 0 ? ['A placa é estreita demais para o furo e as margens.'] : [];
-      const tb = regionBounds(texto);
-      if (tb.h < 2.5) avisos.push(`"${nome}" ficou com ${tb.h.toFixed(1)} mm de altura: pequeno para imprimir bem (aumente a largura).`);
-      const eb = num(v, 'espBase');
-      return {
-        item: { nome, pecas: [{ nome: 'Placa', cor: 0, camadas: [{ region: placa, z0: 0, z1: eb }] }, { nome: 'Nome', cor: 1, camadas: [{ region: texto, z0: eb, z1: eb + num(v, 'espTopo') }] }] },
-        avisos,
-      };
+      // Cada linha do tamanho que enche a largura; se nao couber na altura, todas encolhem juntas.
+      const larguraDe = (texto: string, altura: number) => comporLinhas([{ texto, fonte, altura, tracking: num(v, 'tracking') }], 0).bounds.w;
+      const alturas = linhas.map((texto) => 10 * escalaParaLargura((k) => larguraDe(texto, 10 * k) + 2 * cn, W));
+      const compor = (f: number) => comporLinhas(linhas.map((texto, i) => ({ texto, fonte, altura: alturas[i]! * f, tracking: num(v, 'tracking') })), num(v, 'entrelinha'));
+      let t = compor(1);
+      if (!t.letras.length) return { item: null, avisos: [] };
+      let escalaFinal = 1;
+      if (t.bounds.h + 2 * cn > Hd) {
+        escalaFinal = escalaParaLargura((f) => compor(f).bounds.h + 2 * cn, Hd);
+        t = compor(escalaFinal);
+      }
+      const avisos: string[] = [];
+      if (W <= 0 || Hd <= 0) avisos.push('As margens e a borda não deixam espaço para o nome.');
+      // Altura das maiusculas da menor linha (a minuscula e menor, mas e a maiuscula que se escolhe).
+      const menor = Math.min(...alturas) * escalaFinal;
+      if (menor < 2.5) avisos.push(`"${nome}" ficou com letras de ${menor.toFixed(1)} mm: pequeno para imprimir bem.`);
+
+      let placa = retanguloArredondado(0, 0, L, H, raio);
+      const fundo = placa;
+      if (v.argola === true) {
+        const a = abaNoCanto(L, H, raio, num(v, 'furo'), num(v, 'externo'));
+        placa = diffRegion(unir([placa, a.disco]), a.furo);
+      }
+      const camadasPlaca = [{ region: placa, z0: 0, z1: ep }];
+      if (borda > 0) camadasPlaca.push({ region: diffRegion(fundo, contornar(fundo, -borda)), z0: ep, z1: ep + ec + en });
+      const pecas = [{ nome: 'Placa', cor: 0, camadas: camadasPlaca }];
+      if (cn > 0) pecas.push({ nome: 'Contorno', cor: 1, camadas: [{ region: semBuracos(contornar(t.regiao, cn)), z0: ep, z1: ep + ec }] });
+      pecas.push({ nome: 'Nome', cor: cores.length - 1, camadas: [{ region: t.regiao, z0: ep + ec, z1: ep + ec + en }] });
+      return { item: { nome, pecas }, avisos };
     });
     return { itens: r.itens, cores, avisos: r.avisos };
   },

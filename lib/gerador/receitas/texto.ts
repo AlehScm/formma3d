@@ -1,5 +1,5 @@
 /** Letreiros de texto em camadas: palavra (1 ou 2 linhas), @social e letras separadas. */
-import { coresDe, empilhar, lerCamadas, parametrosCamadas } from '../camadas';
+import { coresDe, empilhar, lerCamadas, parametrosCamadas, sobraLateral } from '../camadas';
 import { comporLinhas, escalaParaLargura, type Linha } from '../formas';
 import { ficha } from './fichas';
 import type { Contexto, Parametro, Receita, Resultado, Valores } from '../tipos';
@@ -26,9 +26,9 @@ function linhasDe(v: Valores, ctx: Contexto, k: number): Linha[] {
   ];
 }
 
-/** O texto na largura pedida (a largura conta o contorno da base dos dois lados). */
+/** O texto na largura pedida (a largura conta a base dos dois lados). */
 function textoNaLargura(v: Valores, ctx: Contexto) {
-  const cb = num(v, 'contornoBase');
+  const cb = sobraLateral(lerCamadas(v));
   const compor = (k: number) => comporLinhas(linhasDe(v, ctx, k), num(v, 'entrelinha') || 0);
   const k = escalaParaLargura((k) => compor(k).bounds.w + 2 * cb, num(v, 'largura'));
   return compor(k);
@@ -44,7 +44,7 @@ export const palavraCamadas: Receita = {
     { tipo: 'numero', id: 'razaoLinha2', rotulo: 'Tamanho da segunda linha', grupo: 'Texto', padrao: 60, min: 20, max: 150, passo: 5, unidade: '%', visivel: (v) => !!txt(v, 'linha2').trim() },
     { tipo: 'numero', id: 'entrelinha', rotulo: 'Espaço entre as linhas', grupo: 'Texto', padrao: 2, min: -10, max: 30, passo: 0.5, unidade: 'mm', visivel: (v) => !!txt(v, 'linha2').trim() },
     espacamento,
-    tamanho(160),
+    tamanho(166),
     ...parametrosCamadas(),
   ],
   gerar(v, ctx) {
@@ -62,8 +62,8 @@ export const socialCamadas: Receita = {
     { tipo: 'texto', id: 'usuario', rotulo: 'Usuário', grupo: 'Texto', padrao: 'formma3d', maxCaracteres: 30, placeholder: 'sem o @' },
     { tipo: 'fonte', id: 'fonte1', rotulo: 'Fonte', grupo: 'Texto', padrao: 'poppins-800' },
     espacamento,
-    tamanho(180),
-    ...parametrosCamadas({ cores: 2, contornoBase: 4 }),
+    tamanho(190),
+    ...parametrosCamadas({ contornoBase: 7, contornoMeio: 4, contornoTopo: 0.4, espBase: 18 }),
   ],
   gerar(v, ctx) {
     const usuario = txt(v, 'usuario').trim().replace(/^@+/, '');
@@ -78,8 +78,8 @@ export const letrasSeparadas: Receita = {
     { tipo: 'texto', id: 'linha1', rotulo: 'Texto', grupo: 'Texto', padrao: 'CASA', maxCaracteres: 20 },
     { tipo: 'fonte', id: 'fonte1', rotulo: 'Fonte', grupo: 'Texto', padrao: 'archivo-black' },
     { ...espacamento, padrao: 6 },
-    tamanho(300),
-    ...parametrosCamadas({ contornoBase: 3, contornoMeio: 1.5 }),
+    tamanho(450),
+    ...parametrosCamadas({ contornoBase: 6, contornoMeio: 4, contornoTopo: 0.2, espBase: 10, folga: 0.24 }),
   ],
   gerar(v, ctx) {
     const vv = { ...v, linha2: '', razaoLinha2: 100, entrelinha: 0, fonte2: txt(v, 'fonte1') };

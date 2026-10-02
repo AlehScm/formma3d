@@ -190,3 +190,54 @@ A prioridade de implementação mais segura é criar essas operações comuns um
 
 Para confirmar os controles e testar equivalência, preciso de acesso legítimo aos geradores (por exemplo, sessão aberta pelo usuário), capturas dos formulários de cada família e arquivos de exemplo que o usuário tenha direito de usar. A partir daí, podemos registrar campos/defaults/faixas, gerar casos de teste e comparar dimensão, encaixe, número de peças, colorização e exportação. Até isso acontecer, os detalhes ausentes estão marcados “não confirmado”, sem inventar opções.
 
+
+## Controles observados nos geradores (sessão logada, 2026-10-01, Claude)
+
+Fonte: personalizador público de cada modelo (`/customize/<slug>`), aberto logado, **sem download** (o
+crédito só é cobrado no download). Registro com nossas palavras: campo, padrão e faixa. Nenhum código,
+arquivo ou arte foi copiado. A prévia é gerada no servidor deles (OpenSCAD); levou cerca de 20 s.
+
+**Comum aos letreiros de palavra (word-offset, @social, 2 linhas, letras separadas):**
+- Texto e fonte (seletor com busca e prévia; Google Fonts por categoria: sem serifa — Montserrat, Open
+  Sans, Plus Jakarta Sans, Google Sans Flex, Cal Sans, Sofia; display — Bebas Neue, Chicle, Cinzel,
+  Elsie, Emilys Candy, Lobster, Luckiest Guy, Matemasie, Mouse Memoirs, Noto Emoji, Playfair Display;
+  manuscrita — Cookie, Damion, Dancing Script, Great Vibes, Kaushan Script, Molle, Pacifico, Permanent
+  Marker, Praise, Sacramento; mono — Roboto Mono; internacionais — hebraico, japonês, devanágari).
+- Largura-alvo do letreiro, mm: 40–360 (palavra 2 camadas, padrão 166); 40–280 nos demais (padrão
+  160–200); letras separadas 40–500 (padrão 450).
+- Espaçamento entre letras em **%** (50–200, padrão 100–105) e distância entre linhas (−20 a 20 mm).
+- Retângulo na base (liga/desliga, padrão desligado): largura 40–320, altura 10–320, arredondamento 0–10,
+  deslocamento X/Y −100 a 100.
+- Imagem opcional ao lado do texto (SVG/PNG/JPG até 8 MB, ou banco de ícones): largura 20–200,
+  posição esquerda/direita, deslocamentos X/Y.
+- Cor de cada camada (seletor de cor; só para a prévia/3MF).
+- Espessuras: **base 8–30 mm (padrão 16–18; letras separadas 10; palavra+coração 10)**, meio 2–5
+  (padrão 3,4), topo 2–5 (padrão 2,2). É peça de ficar em pé, por isso a base é grossa.
+- Contornos (offset): base 0–20 (padrão 5–8), meio 2–5/20 (padrão 4–5,7), **topo 0–2 (engrossa o
+  texto; padrão 0–0,8)**.
+- Tolerância do encaixe 0,1–0,5 mm (padrão 0,18–0,24).
+- Preencher buracos: base e meio separados (padrão: base **não**, meio varia).
+- 2 linhas: texto da linha 2, "mesmo tamanho de fonte nas duas linhas" (padrão sim), largura-alvo de
+  cada linha, mover cada linha para a direita (−100 a 100).
+- @social retângulo: em vez do contorno, a base é um retângulo com margem vertical (0–20, padrão 8) e
+  lateral (padrão 12).
+- Palavra + coração: borda da base 0–20 (5,2), borda do topo 0–2 (0,4), imagem (coração) com largura e
+  deslocamentos, tolerância 0,01–1 (0,18).
+- Saída (ficha): STL da base, STL do topo e um 3MF completo.
+
+**Chaveiro de nome 2/3 cores (text-offset-keychain):**
+- 9 campos de nome; "+" divide em duas linhas; emoji no começo/fim (fonte de emoji).
+- Tamanho do chaveiro 18–50 (padrão 20); anel: diâmetro 6–12 (6), furo 2–10 (2,5).
+- Espaçamento entre letras % e distância entre linhas.
+- Contornos: base 1–10 (2,8), meio 1–10 (1,8), topo 0–0,5 (0).
+- Espessuras: base 1–6 (2,8), meio 1–6 (1,2), topo 1–6 (1,2).
+- Prévia: lote em grade de 3 colunas; anel pequeno no meio da lateral esquerda.
+
+**Chaveiro retangular / nome completo:**
+- 9 campos de nome ("+" = segunda linha; cada linha se ajusta à largura sozinha, a primeira sai maior).
+- Placa: largura 20–120 (75), altura 20–120 (30), cantos 2–10 (5), margens horizontal e vertical 0–20 (6).
+- Borda elevada em volta da placa: largura 0–3 (1,2).
+- Nome em 3 cores: placa, contorno do nome (offset 0–3, padrão 1,4 / 1,1) e nome; espessuras placa 1–10
+  (3), texto 0–2 (0,8), contorno 0–2 (0,4).
+- Argola (liga/desliga, padrão sim): aba no canto de cima, por fora da placa; diâmetro interno 0–10
+  (2,5), externo 0–10 (5).

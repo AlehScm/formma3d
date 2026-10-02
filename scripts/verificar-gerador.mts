@@ -15,7 +15,7 @@ import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
 import { valoresPadrao, type Receita, type Resultado, type Valores } from '../lib/gerador/tipos';
 import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, zipStl } from '../lib/gerador/exportar';
-import { contornar } from '../lib/gerador/formas';
+import { contornar, retanguloArredondado } from '../lib/gerador/formas';
 import JSZip from 'jszip';
 
 let falhas = 0;
@@ -80,14 +80,15 @@ for (const r of RECEITAS) {
 console.log('\n== texto em camadas ==');
 {
   const r = receitaPorId('palavra-camadas')!;
-  const res = gerar(r, { linha1: 'Bolo', largura: 150 });
+  const fino = { espBase: 3, espMeio: 1.6, espTopo: 1.6, preencherBase: true };
+  const res = gerar(r, { linha1: 'Bolo', largura: 150, ...fino });
   const base = regiaoDe(res, 0, 'Base'), meio = regiaoDe(res, 0, 'Meio'), topo = regiaoDe(res, 0, 'Topo');
   ok('3 cores: Base, Meio, Topo', res.cores.join() === 'Base,Meio,Topo' && res.itens[0]!.pecas.length === 3);
   ok('largura total = a pedida', perto(regionBounds(base).w, 150, 0.05), `${regionBounds(base).w.toFixed(2)} mm`);
   ok('topo dentro do meio, meio dentro da base', area(diffRegion(topo, meio)) < 0.01 && area(diffRegion(meio, base)) < 0.01);
   ok('base sem miolo e numa peca so', base.length === 1 && base[0]!.holes.length === 0);
   ok('meio com o miolo tapado (padrao)', meio.every((p) => p.holes.length === 0));
-  const comMiolo = regiaoDe(gerar(r, { linha1: 'Bolo', preencherMiolo: false }), 0, 'Meio');
+  const comMiolo = regiaoDe(gerar(r, { linha1: 'Bolo', preencherMiolo: false, ...fino }), 0, 'Meio');
   ok('desligando: o meio guarda o miolo do o', comMiolo.some((p) => p.holes.length > 0));
   const zs = res.itens[0]!.pecas.map((p) => [p.camadas[0]!.z0, p.camadas.at(-1)!.z1]);
   ok('empilhadas sem vao: base 0-3, meio 3-4,6, topo 4,6-6,2', perto(zs[0]![0]!, 0, 1e-9) && perto(zs[1]![0]!, 3, 1e-9) && perto(zs[2]![0]!, 4.6, 1e-9) && perto(zs[2]![1]!, 6.2, 1e-9));
@@ -100,7 +101,7 @@ console.log('\n== texto em camadas ==');
   const bUma = regionBounds(regiaoDe(gerar(r, { linha1: 'Feliz', largura: 200 }), 0, 'Topo'));
   ok('segunda linha: o texto fica mais alto e cabe na largura', bLinhas.h > bUma.h && perto(regionBounds(regiaoDe(linhas, 0, 'Base')).w, 200, 0.05));
 
-  const enc = gerar(r, { montagem: 'encaixe', profEncaixe: 0.6, folga: 0.2 });
+  const enc = gerar(r, { montagem: 'encaixe', profEncaixe: 0.6, folga: 0.2, ...fino });
   const [pb, pm, pt] = enc.itens[0]!.pecas;
   ok('encaixe: base e meio ganham rebaixo em cima', pb!.camadas.length === 2 && pm!.camadas.length === 2 && pt!.camadas.length === 1);
   ok('encaixe: meio afunda 0,6 mm na base', perto(pm!.camadas[0]!.z0, 3 - 0.6, 1e-9));
@@ -109,9 +110,20 @@ console.log('\n== texto em camadas ==');
   const folga = area(intersectRegion(pb!.camadas[1]!.region, contornar(pm!.camadas[0]!.region, 0.19)));
   const alem = area(intersectRegion(pb!.camadas[1]!.region, contornar(pm!.camadas[0]!.region, 0.25)));
   ok('encaixe: folga de 0,2 mm em volta (nem menos, nem mais)', folga < 0.01 && alem > 0.1, `${folga.toFixed(3)} mm2 a menos de 0,19 mm; ${alem.toFixed(2)} mm2 ate 0,25 mm`);
-  ok('encaixe raso: sem aviso; fundo demais: avisa e limita', enc.avisos.length === 0 && gerar(r, { montagem: 'encaixe', profEncaixe: 3 }).avisos.some((a) => a.includes('Encaixe')));
+  ok('encaixe raso: sem aviso; fundo demais: avisa e limita', enc.avisos.length === 0 && gerar(r, { montagem: 'encaixe', profEncaixe: 3, ...fino }).avisos.some((a) => a.includes('Encaixe')));
   ok('contorno da base pequeno: avisa que a base partiu', gerar(r, { linha1: 'I I', contornoBase: 1, tracking: 10 }).avisos.some((a) => a.includes('mais de um pedaço')));
   ok('sem texto: avisa e nao gera', gerar(r, { linha1: '  ' }).itens.length === 0);
+
+  // Opcoes que o gerador de referencia tem: base em retangulo, engrossar o topo, miolo da base.
+  const ret = gerar(r, { linha1: 'Bolo', largura: 200, formaBase: 'retangulo', margemLateral: 12, margemVertical: 8, raioBase: 8 });
+  const bRet = regionBounds(regiaoDe(ret, 0, 'Base')), bTxt = regionBounds(regiaoDe(ret, 0, 'Topo'));
+  ok('base em retangulo: largura pedida, margens de 12 e 8 mm', perto(bRet.w, 200, 0.05) && perto(bRet.h, bTxt.h + 16, 0.05) && regiaoDe(ret, 0, 'Base').length === 1, `${bRet.w.toFixed(1)} x ${bRet.h.toFixed(1)} mm`);
+  const grosso = gerar(r, { linha1: 'Bolo', contornoTopo: 0.8 });
+  const topoGrosso = regiaoDe(grosso, 0, 'Topo'), topoFino = regiaoDe(gerar(r, { linha1: 'Bolo' }), 0, 'Topo');
+  ok('engrossar o texto: topo maior e ainda dentro do meio', area(topoGrosso) > area(topoFino) && area(diffRegion(topoGrosso, regiaoDe(grosso, 0, 'Meio'))) < 0.01);
+  ok('topo engrossado alem do meio: avisa', gerar(r, { contornoTopo: 2, contornoMeio: 1.5 }).avisos.some((a) => a.includes('engrossado')));
+  const miolo = (pb: boolean) => regiaoDe(gerar(r, { linha1: 'OBO', contornoBase: 1, preencherBase: pb }), 0, 'Base').some((p) => p.holes.length > 0);
+  ok('miolo da base: aberto por padrao, tapado quando pedido', miolo(false) && !miolo(true));
 }
 {
   const s = receitaPorId('social-camadas')!;
@@ -135,8 +147,8 @@ console.log('\n== chaveiros ==');
   const bf = furos.length ? regionBounds([{ outer: furos[0]!, holes: [] }]) : null;
   ok('argola: base com um furo de 4 mm', base.length === 1 && furos.length === 1 && perto(bf!.w, 4, 0.05), bf ? `${bf.w.toFixed(2)} mm` : 'sem furo');
   const furo: Region = [{ outer: furos[0]!, holes: [] }];
-  const perto3 = area(intersectRegion(contornar(furo, 2.9), regiaoDe(res, 0, 'Topo')));
-  ok('argola: furo a um contorno inteiro (3 mm) das letras', perto3 < 0.01);
+  const perto3 = area(intersectRegion(contornar(furo, 2.7), regiaoDe(res, 0, 'Topo')));
+  ok('argola: furo a um contorno inteiro (2,8 mm) das letras', perto3 < 0.01);
   const muitos = gerar(r, { nomes: 'a,b,c,d,e,f,g,h,i,j,k' });
   ok('mais de 9 nomes: fica com 9 e avisa', muitos.itens.length === 9 && muitos.avisos.some((a) => a.includes('9')));
   const duasLinhas = gerar(r, { nomes: 'Ana+Clara' });
@@ -147,14 +159,27 @@ console.log('\n== chaveiros ==');
 }
 {
   const r = receitaPorId('chaveiro-retangular')!;
-  const res = gerar(r, { nomes: 'Maria Eduarda Silva', largura: 75 });
-  const placa = regiaoDe(res, 0, 'Placa'), nome = regiaoDe(res, 0, 'Nome');
-  ok('placa com a largura pedida e um furo', perto(regionBounds(placa).w, 75, 0.01) && placa[0]!.holes.length === 1);
-  ok('nome inteiro dentro da placa e fora do furo', area(diffRegion(nome, placa)) < 0.01);
-  const curto = regionBounds(regiaoDe(gerar(r, { nomes: 'Lu' }), 0, 'Nome'));
-  ok('nome curto nao passa da altura maxima (10 mm)', curto.h <= 10 * 1.4, `${curto.h.toFixed(1)} mm`);
-  const longo = gerar(r, { nomes: 'Maria Eduarda dos Santos Albuquerque Ferreira', largura: 40 });
-  ok('nome longo numa placa estreita: avisa que ficou pequeno', longo.avisos.some((a) => a.includes('pequeno')));
+  const res = gerar(r, { nomes: 'Aline+Borges', largura: 75, altura: 30, borda: 1.2, contornoNome: 1.2, argola: false });
+  const placa = regiaoDe(res, 0, 'Placa'), contorno = regiaoDe(res, 0, 'Contorno'), nome = regiaoDe(res, 0, 'Nome');
+  const bp = regionBounds(placa);
+  ok('3 cores: Placa, Contorno, Nome', res.cores.join() === 'Placa,Contorno,Nome');
+  ok('placa com a largura e a altura pedidas', perto(bp.w, 75, 0.01) && perto(bp.h, 30, 0.01), `${bp.w.toFixed(2)} x ${bp.h.toFixed(2)}`);
+  const miolo = contornar(placa, -1.2);
+  ok('borda elevada: anel de 1,2 mm em volta, acima da placa', perto(area(res.itens[0]!.pecas[0]!.camadas[1]!.region), area(placa) - area(miolo), 0.5) && res.itens[0]!.pecas[0]!.camadas[1]!.z0 === 3);
+  ok('nome e contorno dentro da borda', area(diffRegion(contorno, miolo)) < 0.01 && area(diffRegion(nome, contorno)) < 0.01);
+  const zs = res.itens[0]!.pecas.map((p) => [p.camadas[0]!.z0, p.camadas[0]!.z1]);
+  ok('empilhado: placa 0-3, contorno 3-3,4, nome 3,4-4,2', perto(zs[1]![0]!, 3, 1e-9) && perto(zs[1]![1]!, 3.4, 1e-9) && perto(zs[2]![1]!, 4.2, 1e-9));
+  const larguraUtil = 75 - 2 * 6 - 2 * 1.2;
+  ok('a linha mais larga enche a largura util (ou a altura limita)', perto(regionBounds(contorno).w, larguraUtil, 0.1) || perto(regionBounds(contorno).h, 30 - 2 * 6 - 2 * 1.2, 0.1), `${regionBounds(contorno).w.toFixed(1)} x ${regionBounds(contorno).h.toFixed(1)} mm`);
+  const comAba = gerar(r, { nomes: 'Ana', argola: true, furo: 2.5, externo: 6 });
+  const pa = regiaoDe(comAba, 0, 'Placa');
+  const furos = pa.flatMap((p) => p.holes);
+  const ret = retanguloArredondado(0, 0, 75, 30, 5);
+  const furoFora = furos.length === 1 && area(intersectRegion([{ outer: furos[0]!, holes: [] }], ret)) < 0.05;
+  ok('argola em aba: um furo de 2,5 mm, todo fora da placa', furoFora && perto(regionBounds([{ outer: furos[0]!, holes: [] }]).w, 2.5, 0.05) && pa.length === 1);
+  const longo = gerar(r, { nomes: 'Maria Eduarda dos Santos Albuquerque Ferreira', largura: 40, altura: 14 });
+  ok('nome longo numa placa pequena: avisa que ficou pequeno', longo.avisos.some((a) => a.includes('pequeno')));
+  ok('sem contorno do nome: 2 cores', gerar(r, { contornoNome: 0 }).cores.join() === 'Placa,Nome');
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

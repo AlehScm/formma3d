@@ -54,3 +54,12 @@ com catálogo, placas e QR/PIX, migrando para a base.
 - Para o ChatGPT: placa e QR podem virar receitas (`lib/gerador/receitas/*.ts` + ficha em `fichas.ts`);
   a tela, prévia e exportação 3MF/STL já vêm prontas. `GeradorPlaca3D` duplica campo, download e ZIP que a
   base já tem — quando migrar, o card da placa sai de `moldes` e entra em `FICHAS`.
+- 2026-10-01 Claude: usuário logou no mafagrafos; mapeei os controles reais dos geradores de texto em
+  camadas e chaveiros (seção "Controles observados" no fim de `docs/mafagrafos-117.md`; sem download, sem
+  crédito gasto). Receitas ajustadas: padrões observados (base 16 mm nos letreiros), base em retângulo,
+  engrossar o topo, miolo da base opcional; chaveiro retangular refeito (borda elevada, nome com contorno
+  em 3 cores, altura fixa, linhas ajustadas à largura, argola em aba no canto). 75/75.
+- Para o ChatGPT: o mesmo mapeamento vale para placas e QR/PIX — o personalizador fica em
+  `/customize/<slug>` (abre numa aba nova a partir de "Personalizar este modelo"); as seções recolhidas
+  abrem pelo botão "▶". A prévia deles é gerada no servidor (≈20 s) e não gasta crédito; o download gasta.
+
