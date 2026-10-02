@@ -18,9 +18,10 @@ import { valoresPadrao, type Receita, type Resultado, type Valores } from '../li
 import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
 import { corDe } from '../lib/gerador/malha';
-import { contornar, retanguloArredondado } from '../lib/gerador/formas';
+import { contornar, retanguloArredondado, textoEmArco, unir } from '../lib/gerador/formas';
 import JSZip from 'jszip';
 import { pixelsParaRegiao } from '../lib/import/imagem';
+import { pecasDeQuebraCabeca } from '../lib/gerador/receitas/imagens';
 
 let falhas = 0;
 let total = 0;
@@ -413,6 +414,97 @@ console.log('\n== onda 2: imagem, cortadores e carimbos ==');
   const corpoDoce = cl.itens[0]!.pecas[0]!.camadas;
   const passos = corpoDoce.map((c, i) => (i ? (largura(c.region) - largura(corpoDoce[i - 1]!.region)) / 2 / (c.z0 - corpoDoce[i - 1]!.z0) : 0));
   ok('doce: o topo abre no maximo ~40 graus', Math.max(...passos) <= Math.tan((41 * Math.PI) / 180) * 1.5, Math.max(...passos).toFixed(2));
+}
+
+console.log('\n== onda 2: colorir, resina, multipartes, quebra-cabeca, NFC, arco, bases ==');
+{
+  const largura = (r: Region) => regionBounds(r).w;
+  const furos = (r: Region) => r.reduce((n, q) => n + q.holes.length, 0);
+  const pecaDe = (res: Resultado, item: string, peca: string) => res.itens.find((it) => it.nome.startsWith(item))!.pecas.find((p) => p.nome === peca)!;
+  const quadrado = (l: number): Region => [{ outer: [{ x: 0, y: 0 }, { x: l, y: 0 }, { x: l, y: l }, { x: 0, y: l }], holes: [] }];
+  // Moldura quadrada com uma cruz: 4 areas fechadas.
+  const grade: Region = diffRegion(quadrado(40), [
+    { outer: [{ x: 2, y: 2 }, { x: 19, y: 2 }, { x: 19, y: 19 }, { x: 2, y: 19 }], holes: [] }, { outer: [{ x: 21, y: 2 }, { x: 38, y: 2 }, { x: 38, y: 19 }, { x: 21, y: 19 }], holes: [] },
+    { outer: [{ x: 2, y: 21 }, { x: 19, y: 21 }, { x: 19, y: 38 }, { x: 2, y: 38 }], holes: [] }, { outer: [{ x: 21, y: 21 }, { x: 38, y: 21 }, { x: 38, y: 38 }, { x: 21, y: 38 }], holes: [] },
+  ]);
+  const gradeJ = JSON.stringify({ nome: 'grade.svg', regiao: grade });
+
+  // Texto em arco: o pe das letras no raio pedido.
+  const arco = textoEmArco({ texto: 'ABCDE', fonte: ctx.fonte('bebas-neue'), altura: 5 }, 20, 300);
+  const dists = arco.regiao.flatMap((p) => p.outer).map((q) => Math.hypot(q.x, q.y));
+  ok('arco: letras entre o raio 20 e 20 + altura', Math.min(...dists) > 19.5 && Math.max(...dists) < 26.5, `${Math.min(...dists).toFixed(2)} a ${Math.max(...dists).toFixed(2)}`);
+  ok('arco: angulo = largura / raio', arco.graus > 30 && arco.graus < 90, arco.graus.toFixed(1));
+
+  // Colorir.
+  const rel = gerar(receitaPorId('colorir')!, { desenho: gradeJ, tamanho: 40, modo: 'relevo', margem: 0 });
+  ok('colorir relevo: linhas 1 mm sobre base 1,8', pecaDe(rel, 'grade', 'Linhas').camadas[0]!.z0 === 1.8 && pecaDe(rel, 'grade', 'Linhas').camadas[0]!.z1 === 2.8);
+  const af = gerar(receitaPorId('colorir')!, { desenho: gradeJ, tamanho: 40, modo: 'afundado', espBase: 2, profundidade: 0.6 });
+  const topoAf = pecaDe(af, 'grade', 'Topo').camadas[0]!;
+  ok('colorir afundado: topo = fundo menos as linhas, de 1,4 a 2', perto(topoAf.z0, 1.4, 1e-9) && perto(regionArea(topoAf.region), 4 * 17 * 17, 0.5), regionArea(topoAf.region).toFixed(1));
+  const duas = gerar(receitaPorId('colorir')!, { desenho: gradeJ, tamanho: 40, modo: 'duas', espBase: 1.8, espLinhas: 1, folga: 0.2 });
+  const linhasD = duas.itens.find((it) => it.nome.endsWith('linhas'))!.pecas[0]!.camadas[0]!;
+  ok('colorir 2 partes: linhas soltas com 1 + rebaixo de altura', perto(linhasD.z1, 1 + 1, 1e-9) && duas.itens.length === 2);
+  ok('colorir 2 partes: rebaixo da base com folga de 0,2', perto(regionArea(pecaDe(duas, 'grade base', 'Base').camadas.at(-1)!.region), 4 * 16.6 * 16.6, 2));
+  const circ = gerar(receitaPorId('colorir')!, { desenho: gradeJ, forma: 'circulo', tamanho: 100, escala: 50 });
+  ok('colorir em circulo: fundo de 100 mm', perto(largura(pecaDe(circ, 'grade', 'Base').camadas[0]!.region), 100, 0.1));
+
+  // Resina: bordas mais altas que o desenho.
+  const rs = gerar(receitaPorId('chaveiro-resina')!, { desenho: gradeJ, tamanho: 40, bordaExterna: true, bordaInterna: true, altBorda: 1.4, altDesenho: 0.6 });
+  ok('resina: bordas 1,4 e desenho 0,6 sobre a base', pecaDe(rs, 'grade', 'Bordas').camadas[0]!.z1 === 1.8 + 1.4 && pecaDe(rs, 'grade', 'Desenho').camadas[0]!.z1 === 1.8 + 0.6);
+  ok('resina: argola com furo', furos(pecaDe(rs, 'grade', 'Base').camadas[0]!.region) >= 1);
+
+  // Multipartes: 4 pecas que cabem nas 4 areas com folga.
+  const mp = gerar(receitaPorId('imagem-multipartes')!, { desenho: gradeJ, tamanho: 40, folga: 0.22 });
+  const pcs = mp.itens.find((it) => it.nome.startsWith('Peças'))!.pecas[0]!.camadas[0]!.region;
+  ok('multipartes: 4 pecas de 17 - 2 x 0,22 mm', pcs.length === 4 && pcs.every((p) => perto(regionBounds([p]).w, 17 - 0.44, 0.02)), pcs.map((p) => regionBounds([p]).w.toFixed(2)).join(' '));
+
+  // Quebra-cabeca: n^2 pecas sem sobrepor, cada uma do tamanho da celula em media.
+  const pz = pecasDeQuebraCabeca(4, 100, 0.2);
+  const somaPz = pz.reduce((s, p) => s + regionArea(p), 0), uniao = regionArea(pz.flat().length ? unir(pz) : []);
+  ok('quebra-cabeca: 16 pecas inteiras (uma ilha cada)', pz.length === 16 && pz.every((p) => p.length === 1));
+  ok('quebra-cabeca: pecas nao se sobrepoem', perto(somaPz, uniao, 0.01), `${somaPz.toFixed(1)} vs ${uniao.toFixed(1)}`);
+  ok('quebra-cabeca: area total = lado^2 menos a folga', somaPz < 100 * 100 && somaPz > 100 * 100 * 0.97, somaPz.toFixed(0));
+  ok('quebra-cabeca: abas variam entre as pecas', new Set(pz.map((p) => regionArea(p).toFixed(0))).size > 2);
+
+  // Chaveiro NFC: bolsao fechado de 26 mm, argola mais fina.
+  const nf = gerar(receitaPorId('chaveiro-nfc')!, { forma: 'quadrado', largura: 32, altura: 32, espessura: 4, dNfc: 26, espNfc: 0.6, argola: 'cantoDir', espArgola: 2 });
+  const corpoNf = pecaDe(nf, 'Chaveiro', 'Chaveiro').camadas;
+  const comBolsao = corpoNf.filter((c) => c.region.some((q) => q.holes.some((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 26, 0.05))));
+  ok('NFC: bolsao de 26 mm entre 2,4 e 3 mm (1 mm de tampa)', comBolsao.length === 1 && perto(comBolsao[0]!.z0, 2.4, 1e-9) && perto(comBolsao[0]!.z1, 3, 1e-9));
+  ok('NFC: nota da pausa na altura certa', !!nf.notas?.some((n) => n.includes('3 mm')));
+  ok('NFC: argola so ate 2 mm', largura(corpoNf.find((c) => c.z0 >= 2)!.region) < largura(corpoNf[0]!.region) - 1);
+  ok('NFC: simbolo embutido embaixo', pecaDe(nf, 'Chaveiro', 'Embaixo').camadas[0]!.z0 === 0);
+  ok('NFC: etiqueta que nao cabe avisa', gerar(receitaPorId('chaveiro-nfc')!, { largura: 24, altura: 24, dNfc: 30 }).avisos.some((a) => a.includes('NFC')));
+
+  // Carretel: o fio forma ondas de meio fio.
+  const cr = gerar(receitaPorId('chaveiro-carretel')!, { diametro: 32, fio: 1.2 });
+  const fil = pecaDe(cr, 'Carretel', 'Filamento').camadas.map((c) => largura(c.region) / 2);
+  ok('carretel: fio enrolado (sulcos de 0,2 a 0,6 mm em degraus de 0,2)', Math.max(...fil) - Math.min(...fil) >= 0.2 && Math.max(...fil) - Math.min(...fil) <= 0.6, `${Math.min(...fil).toFixed(2)} a ${Math.max(...fil).toFixed(2)}`);
+  ok('carretel: tampa com pino que entra no cubo', cr.itens.length === 2 && pecaDe(cr, 'Tampa', 'Tampa').camadas.length === 2);
+
+  // Abridor: tunel aberto na camada do meio.
+  const ab = gerar(receitaPorId('abridor-latas')!, { alturaInicial: 0.8, alturaTunel: 2.6, alivio: false, argola: false });
+  const cab = pecaDe(ab, 'Abridor', 'Corpo').camadas;
+  const tun = cab.find((c) => perto(c.z0, 0.8, 1e-9))!;
+  ok('abridor: tunel de 2,6 mm a partir de 0,8', !!tun && perto(tun.z1, 3.4, 1e-9) && regionArea(tun.region) < regionArea(cab[0]!.region) - 200);
+
+  // Espelho: rebaixo do espelho e furo no vao da frase.
+  const es = gerar(receitaPorId('chaveiro-espelho')!, { texto: 'MAE', dEspelho: 30 });
+  const rebaixo = pecaDe(es, 'Chaveiro', 'Chaveiro').camadas.at(-1)!;
+  ok('espelho: rebaixo de 30,4 mm ate o topo', rebaixo.region.some((q) => q.holes.some((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 30.4, 0.05))) && !es.avisos.length, es.avisos.join(' | '));
+
+  // Rosa scrunchie: furo do meio.
+  const sc = gerar(receitaPorId('rosa-texto')!, { uso: 'scrunchie', furoCentral: 20, tamanho: 60 });
+  ok('rosa scrunchie: furo de 20 mm no meio da base', pecaDe(sc, 'Rosa', 'Base').camadas[0]!.region.some((q) => q.holes.some((h) => perto(regionBounds([{ outer: h, holes: [] }]).w, 20, 0.05))));
+
+  // Base com fenda: fenda = aba + folgas.
+  const pb = gerar(receitaPorId('placa-com-base')!, { desenho: gradeJ, tamanho: 40, espPeca: 3, tolH: 0.2, tolV: 0.24, encaixe: 10, profBase: 26, chanfro: 8, larguraBase: 120 });
+  const cb2 = pecaDe(pb, 'Base', 'Base').camadas;
+  const fenda = cb2.find((c) => c.region.length === 1 && regionArea(c.region) < 120 * 30 - 1)!;
+  ok('base: fenda com a espessura da peca + 2 x 0,2', !!fenda && perto(fenda.z1 - fenda.z0, 3.4, 1e-9));
+  ok('base: chanfro em degraus ate a frente', cb2.at(-1)!.z1 === 26 && regionBounds(cb2.at(-1)!.region).h < 30 - 7);
+  const tf = gerar(receitaPorId('trofeu')!, { fundoImagem: true });
+  ok('trofeu: base, imagem, palavra e placa', tf.itens.length === 4);
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

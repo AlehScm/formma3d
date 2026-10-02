@@ -52,7 +52,7 @@ export const FICHAS: Ficha[] = [
   },
   {
     id: 'logo-camadas', nome: 'Placa a partir de imagem', familia: 'multicor', tipo: 'Placa',
-    resumo: 'Seu logo ou desenho (SVG, PNG ou JPG) em 2 ou 3 camadas de cor, com base para ficar em pé.',
+    resumo: 'Seu logo ou desenho (SVG, PNG ou JPG) em 2 ou 3 camadas de cor sobre uma base plana.',
     destaques: ['Do seu SVG, PNG ou JPG', '2 ou 3 cores', 'Base em contorno ou retângulo', 'Peça única ou encaixe'],
     exemplo: { corBase: '#0f172a', corMeio: '#fde68a', corTopo: '#2563eb', espBase: 8 },
   },
@@ -131,7 +131,7 @@ export const FICHAS: Ficha[] = [
   {
     id: 'floco-neve', nome: 'Enfeite floco de neve', familia: 'multicor', tipo: 'Enfeite',
     resumo: 'Floco de neve com nome no centro e argola; até 9 nomes.',
-    destaques: ['Desenho próprio', 'Nome no centro', 'Até 9 por vez'],
+    destaques: ['Floco paramétrico', 'Nome no centro', 'Até 9 por vez'],
     exemplo: { nomes: 'Ana' },
   },
   {
@@ -175,6 +175,72 @@ export const FICHAS: Ficha[] = [
     resumo: 'Carimbos de brigadeiro com as suas imagens: até 4 desenhos diferentes por vez.',
     destaques: ['Até 4 imagens', 'Só a silhueta, se quiser', 'Marca embaixo'],
     exemplo: { corBase: '#92400e', corTopo: '#fef3c7' },
+  },
+  {
+    id: 'colorir', nome: 'Página de colorir', familia: 'multicor', tipo: 'Colorir',
+    resumo: 'Seu desenho de linhas vira uma página de pintar: linhas em relevo, encaixadas ou afundadas.',
+    destaques: ['Do seu desenho', 'Relevo, 2 partes ou afundado', 'Contorno, círculo ou quadrado'],
+    exemplo: { tamanho: 120, corBase: '#ffffff', corLinhas: '#111111' },
+  },
+  {
+    id: 'chaveiro-resina', nome: 'Chaveiro para resina', familia: 'chaveiros', tipo: 'Resina',
+    resumo: 'Desenho com bordas altas para segurar a resina epóxi, na peça toda ou só no desenho.',
+    destaques: ['Do seu desenho', 'Borda interna ou externa', 'Argola', '3 cores'],
+    exemplo: { bordaExterna: true, corBase: '#4a1f2e', corBorda: '#ffffff', corDesenho: '#f5c518' },
+  },
+  {
+    id: 'imagem-multipartes', nome: 'Imagem em várias peças', familia: 'multicor', tipo: 'Multipartes',
+    resumo: 'As linhas viram paredes numa base e cada área vira uma peça para encaixar, de outra cor.',
+    destaques: ['Do seu desenho', 'Peças com folga', 'Para imprimir de face para baixo'],
+    exemplo: { tamanho: 120, corBase: '#1f2937', corPecas: '#f59e0b' },
+  },
+  {
+    id: 'quebra-cabeca', nome: 'Quebra-cabeça de imagem', familia: 'parametricos', tipo: 'Brinquedo',
+    resumo: 'Quebra-cabeça quadrado com a sua imagem no topo, verso de outra cor e moldura.',
+    destaques: ['2 a 16 peças por lado', 'Imagem afundada', 'Moldura'],
+    exemplo: { lado: 120, pecas: 4, corVerso: '#1e88e5', corFundo: '#ffffff', corDesenho: '#1f2937' },
+  },
+  {
+    id: 'chaveiro-nfc', nome: 'Chaveiro NFC', familia: 'chaveiros', tipo: 'NFC',
+    resumo: 'Chaveiro com etiqueta NFC embutida, seu desenho em cima e o símbolo de NFC embaixo.',
+    destaques: ['6 formatos', 'NFC embutido', 'Borda para resina', 'Argola no canto'],
+    exemplo: { corBase: '#4a1f2e', corBorda: '#ffffff', corDesenho: '#ffffff' },
+  },
+  {
+    id: 'chaveiro-carretel', nome: 'Chaveiro carretel de filamento', familia: 'chaveiros', tipo: 'NFC',
+    resumo: 'Mini carretel com o filamento enrolado, tampa de encaixe e NFC escondido na aba.',
+    destaques: ['Fio enrolado em relevo', 'NFC opcional', 'Tampa de encaixe'],
+    exemplo: { corBase: '#222222', corFilamento: '#ff69b4' },
+  },
+  {
+    id: 'abridor-latas', nome: 'Abridor de latas', familia: 'chaveiros', tipo: 'Utilidade',
+    resumo: 'Chaveiro com o seu desenho e um túnel que abre a lata pela aba; NFC opcional.',
+    destaques: ['Do seu desenho', 'Abre lata', 'NFC opcional'],
+    exemplo: { corBase: '#b91c1c', corDesenho: '#ffffff' },
+  },
+  {
+    id: 'chaveiro-espelho', nome: 'Chaveiro com espelho e frase', familia: 'chaveiros', tipo: 'Presente',
+    resumo: 'Disco com rebaixo para colar um espelho redondo e a frase em volta.',
+    destaques: ['Frase em arco', 'Rebaixo para espelho', 'Emoji embaixo'],
+    exemplo: { texto: 'MELHOR MÃE ♥', alturaLetra: 4.5, corTexto: '#ffffff', corBase: '#4a1f2e' },
+  },
+  {
+    id: 'rosa-texto', nome: 'Rosa com frase', familia: 'chaveiros', tipo: 'Presente',
+    resumo: 'Rosa com folhas e a frase em volta, como chaveiro ou enfeite de scrunchie.',
+    destaques: ['Frase em arco', 'Chaveiro ou scrunchie', '4 cores'],
+    exemplo: { corBase: '#111111', corRosa: '#f472b6', corFolhas: '#2e7d32', corTexto: '#fbcfe8' },
+  },
+  {
+    id: 'placa-com-base', nome: 'Placa de line art com base', familia: 'placas', tipo: 'Decoração',
+    resumo: 'Seu desenho em pe (line art ou placa de listras) encaixado numa base com nome na frente.',
+    destaques: ['Line art ou listras', 'Base com chanfro', 'Nome na base'],
+    exemplo: { modo: 'listras', tamanho: 90, larguraBase: 140, textoBase: 'PAI', corBase: '#fcd7b6', corDesenho: '#111111', corTexto: '#001b5e' },
+  },
+  {
+    id: 'trofeu', nome: 'Troféu imagem + texto', familia: 'placas', tipo: 'Troféu',
+    resumo: 'Imagem e palavra grossas em pé numa base com texto na frente e placa atrás.',
+    destaques: ['Imagem + palavra', 'Peças grossas de encaixe', 'Placa atrás'],
+    exemplo: { fundoImagem: true, corBase: '#333333', corImagem: '#ffd700', corTexto: '#ffd700' },
   },
 ];
 

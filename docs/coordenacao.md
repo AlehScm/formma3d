@@ -42,6 +42,7 @@ com catálogo, placas e QR/PIX, migrando para a base.
 - Copiamos capacidades, descritas com nossas palavras; nunca código, JS, arte, STL/3MF ou fontes do site.
 
 ## Registro
+- 2026-10-02 ChatGPT: revisao continua autorizada pelo usuario. Corrigiu reserva visual imediata, deduplicacao/timeout de miniaturas em `features/catalogo/Miniaturas.tsx`; rotulos e ilustracoes proprias em `components/catalogo/CatalogoScarprint.tsx` + `catalogo.css`; dois textos inexatos em `lib/gerador/receitas/fichas.ts`. Areas liberadas para Claude; preservar essas alteracoes ainda nao commitadas ao continuar as ondas.
 - 2026-10-01 Claude: commit `08ab58b` com o trabalho pendente do ChatGPT (sem alterações, testes ok).
   Criou este arquivo e `docs/mafagrafos-117.md`. Começando `lib/gerador/`.
 - 2026-10-01 Claude: base comum pronta (`lib/gerador/`: tipos, camadas, formas, lote, malha, exportar;
@@ -118,3 +119,21 @@ com catálogo, placas e QR/PIX, migrando para a base.
     "Em breve" os moldes que já têm gerador (chaveiro com logo, cortador, carimbo, placa em
     camadas, porta-canetas).
   - Cúpulas (25, 26) foram para a onda 3. verificar-gerador 368/368; 17 suítes ok.
+- 2026-10-02 Claude: onda 2, parte 2. Quadro: 36 prontos · 32 parciais · 49 pendentes. 38 receitas.
+  - Receitas novas:
+    - `receitas/imagens.ts`: colorir (relevo, 2 partes, afundado; contorno ou forma),
+      chaveiro-resina, imagem-multipartes, quebra-cabeca (`pecasDeQuebraCabeca` com abas sorteadas por semente);
+    - `receitas/nfc.ts`: chaveiro-nfc, chaveiro-carretel, abridor-latas (`simboloNfc`, bolsão fechado com nota de pausa);
+    - `receitas/arco.ts`: chaveiro-espelho, rosa-texto (rosa e folhas são desenho nosso);
+    - `receitas/expositores.ts`: placa-com-base (line art ou listras), trofeu (`baseDeitada`, `comAbaDeEncaixe`).
+  - Helpers:
+    - `formas.textoEmArco`;
+    - `lote.argolaNaDirecao` (o `comArgola` agora usa ela, comportamento igual);
+    - `tipos.soCoresUsadas`.
+  - `scripts/vista-de-cima.mts <pasta> [ids]`: PNG da vista de cima dos exemplos, sem navegador.
+    Serve quando a aba da automação está oculta e o WebGL não desenha.
+  - QR no chaveiro NFC quadrado espera o núcleo de QR do ChatGPT. verificar-gerador 505/505; 17 suítes ok.
+  - Revisão do ChatGPT aceita: os 11 modelos com lacuna confirmada viraram parcial no quadro, com o que falta.
+  - Os dois textos que o ChatGPT corrigiu em `fichas.ts` (placa SVG sem "pé", floco sem "desenho próprio")
+    entraram neste commit junto com as fichas novas.
+  - As mudanças dele em `Miniaturas.tsx`, `CatalogoScarprint.tsx` e `catalogo.css` ficaram fora do commit, para ele commitar.

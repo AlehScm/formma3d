@@ -142,3 +142,15 @@ export function desenho(v: Valores, id: string): Desenho | null {
     return null;
   }
 }
+
+/** Tira do resultado as cores que nenhuma peca usa (e renumera as pecas). */
+export function soCoresUsadas(r: Resultado): Resultado {
+  const usadas = [...new Set(r.itens.flatMap((it) => it.pecas.map((p) => p.cor)))].sort((a, b) => a - b);
+  const novo = new Map(usadas.map((c, i) => [c, i]));
+  return {
+    ...r,
+    itens: r.itens.map((it) => ({ ...it, pecas: it.pecas.map((p) => ({ ...p, cor: novo.get(p.cor)! })) })),
+    cores: usadas.map((c) => r.cores[c]!),
+    hex: r.hex ? usadas.map((c) => r.hex![c]!) : undefined,
+  };
+}

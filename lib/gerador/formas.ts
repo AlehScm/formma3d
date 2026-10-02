@@ -1,7 +1,7 @@
 /** Formas e operacoes 2D que as receitas repetem (sobre lib/geom/region). */
 import type { Font } from 'opentype.js';
 import { textToLetters, type Letra } from '../text/glyphs';
-import { buildRegion, offsetRegion, regionBounds, scaleRegion, translateRegion, unionRegion, type Bounds, type Pt, type Region } from '../geom/region';
+import { buildRegion, offsetRegion, regionBounds, rotateRegion, scaleRegion, translateRegion, unionRegion, type Bounds, type Pt, type Region } from '../geom/region';
 
 export function circulo(cx: number, cy: number, r: number, lados = 64): Region {
   const pts: Pt[] = [];
@@ -200,3 +200,21 @@ export function textoNaCaixa(linhas: string[], o: OpcoesCaixa): TextoComposto {
   return compor(Math.min(kw, kh));
 }
 
+/**
+ * Texto em volta de um circulo: a base das letras no `raio`, os pes para o centro, lendo
+ * no sentido horario a partir de `inicio` graus (0 = topo, 90 = direita). Devolve tambem
+ * o angulo que o texto ocupa, em graus.
+ */
+export function textoEmArco(linha: Linha, raio: number, inicio: number): { regiao: Region; graus: number } {
+  const t = comporLinhas([linha], 0);
+  if (!t.letras.length) return { regiao: [], graus: 0 };
+  const base = t.bounds.minY, x0 = t.bounds.minX;
+  const letras = t.letras.map((l) => {
+    const cx = (l.bounds.minX + l.bounds.maxX) / 2;
+    const theta = inicio + ((cx - x0) / raio) * (180 / Math.PI);
+    const rad = (theta * Math.PI) / 180;
+    const pe = translateRegion(l.region, -cx, -base);
+    return translateRegion(rotateRegion(pe, -theta), raio * Math.sin(rad), raio * Math.cos(rad));
+  });
+  return { regiao: unir(letras), graus: (t.bounds.w / raio) * (180 / Math.PI) };
+}

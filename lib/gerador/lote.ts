@@ -61,11 +61,20 @@ export function loteDeNomes(v: Valores, fazer: (linhas: string[], nome: string) 
  */
 export function comArgola(base: Region, lado: string, furo: number, aro: number): Region {
   if (lado === 'nenhuma' || !base.length) return base;
+  const dir = lado === 'direita' ? { x: 1, y: 0 } : lado === 'topo' ? { x: 0, y: 1 } : { x: -1, y: 0 };
+  const { disco, furo: f } = argolaNaDirecao(base, dir.x, dir.y, furo, aro);
+  return diffRegion(unir([base, disco]), f);
+}
+
+/**
+ * Disco e furo da argola no ponto da base mais longe na direcao (dx, dy) -- unitaria --,
+ * com o centro do furo a um raio de furo para fora dali.
+ */
+export function argolaNaDirecao(base: Region, dx: number, dy: number, furo: number, aro: number): { disco: Region; furo: Region; cx: number; cy: number } {
   const rf = furo / 2, R = rf + aro;
   const pts = base.flatMap((p) => p.outer);
-  const mede = (q: { x: number; y: number }) => (lado === 'direita' ? q.x : lado === 'topo' ? q.y : -q.x);
+  const mede = (q: { x: number; y: number }) => q.x * dx + q.y * dy;
   const extremo = pts.reduce((a, b) => (mede(b) > mede(a) ? b : a));
-  const cx = extremo.x + (lado === 'direita' ? rf : lado === 'topo' ? 0 : -rf);
-  const cy = extremo.y + (lado === 'topo' ? rf : 0);
-  return diffRegion(unir([base, circulo(cx, cy, R)]), circulo(cx, cy, rf, 48));
+  const cx = extremo.x + rf * dx, cy = extremo.y + rf * dy;
+  return { disco: circulo(cx, cy, R), furo: circulo(cx, cy, rf, 48), cx, cy };
 }

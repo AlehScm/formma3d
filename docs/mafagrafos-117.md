@@ -356,3 +356,54 @@ Faixas lidas dos formulários (padrão entre parênteses). Sem gerar prévia pag
   - Molde + ejetor com o fundo em cúpula: tamanho 10–50, profundidade 5–30, folga 0,2–3.
   - Suavização do ápice; casca externa com suavização e espessura; pegador.
   - Ficam para a onda 3, que traz os sólidos que não são prismas.
+
+### Onda 2, parte 2 (sessão logada, 2026-10-02, Claude)
+
+- **Colorir:**
+  - Bordas em relevo (65): editor de arte; base 1–10 (1,6), topo 0,2–2 (0,6).
+  - Em 2 partes (87): imagem com linhas fechadas e borda externa; lado maior 40–340 (160).
+    Base 1,8, linhas 1, tolerância 0,2.
+  - Afundado com offset (101): tamanho 40–200 (90); espessura 1,4–10 (2);
+    rebaixo 0,4–2 (0,6); offset X/Y.
+  - Afundado em forma (102): círculo, quadrado ou hexágono; tamanho 40–200 (100);
+    escala da imagem 0,5–2 (0,92); espessura 1–4 (2); rebaixo 0,2–1,2 (0,6).
+- **Resina (89):**
+  - Até 2 imagens; tamanho 2–200 (65); offset 0–10 (4).
+  - Borda externa (desligada) e interna (ligada); largura 0,6, altura 1,4.
+  - Argola: raio do furo 1,8, aro 1,4. Base 1,8, desenho 0,6. 4 cores.
+- **Imagem multipartes (90):**
+  - Tamanho 40–300 (200); inverter; espelhar as peças.
+  - Base 1, linhas 2, peças 1,6; tolerância 0,1–0,5 (0,22).
+- **Line art (17):**
+  - Desenho 0–320 (180) por altura; posição do corte 0–20 (10).
+  - Texto da base (Chicle, 23, espaçamento 200%, engrossar 0,4); desenho 3.
+  - Base 180 × 30 × 26, chanfro 8; tolerâncias 0,24/0,2. Ferramenta de pincel para ligar linhas.
+- **Listras (16):**
+  - Editor de arte; corte 0–40 (20); 5–15 listras (12), vão 0–2,5 (1,2).
+  - Placa 2, listra 1,6, desenho 3,6; base como a do line art (chanfro 5).
+- **Troféu (19):**
+  - Imagem + palavra (Cal Sans); largura 100–320 (235); imagem 60.
+  - Base 38 × 40, chanfro nos cantos; imagem 22 de profundidade, fundo opcional 3; palavra 18.
+  - Texto da base na frente ou atrás (20, 1,6, corte 0,3).
+  - Placa atrás 90 × 30 × 1,6 com desenho; margens 12/8; extensão 9; tolerâncias 0,21/0,16.
+- **Quebra-cabeça (95):**
+  - Editor de arte; 2–16 peças por lado (8); folga 0,1–0,3 (0,18); espessura 2,4–5 (3,2).
+  - Moldura 8–30 (10), cantos 0–10 (4); imagem afundada 0,2–1,2 (0,6); fundo e verso coloridos.
+- **NFC:**
+  - Gerador (5): editor de arte; base 2,8, NFC 0,6–1,5 (0,74), desenho 1, argola 2; borda 1.
+  - Quadrado (98):
+    - 20–50 (30 × 30), espessura 3–6 (4), cantos 3–10 (5).
+    - NFC 25–40 (26) × 0,6–1,5 (0,6); anel em um dos 4 cantos (furo 1,8, aro 1,8, espessura 2).
+    - Borda 1 × 0,8; desenho 10–60 (20) com giro e posição.
+    - Indicador NFC ou SVG embaixo (22); QR no fundo ou no topo.
+  - Carretel (8): furo 3,4; NFC 25 × 0,8; base 1,6; tolerância 0,14; fio 1,2; filamento 10; encaixe 3.
+- **Abridor de latas (4, 49):**
+  - Editor de arte; retângulo do abridor (sem ele precisa suporte).
+  - Espessura 6,4 (7 com NFC); caixa 5,8 (5); altura inicial 0,8; furo do abridor 2,6;
+    alívio circular na entrada.
+- **Texto em arco:**
+  - Espelho (51): disco 10–100 (50), espelho 10–50 (30), fonte 1–20 (5), início 270°.
+    Furo 3 a 90°; texto 0,6, chaveiro 3, fundo sob o espelho 1; emoji ou imagem embaixo.
+  - Rosa chaveiro (52): tamanho 10–200 (50); fonte 3–10 (4,5); base 2,8, rosa 0,6,
+    folhas 0,4, texto 0,4; furo 3; início 240°; raio 48%.
+  - Rosa scrunchie (53): igual, com base 1 e furo 0–50 (20).
