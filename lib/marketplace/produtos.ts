@@ -37,21 +37,21 @@ const CADASTRO: Produto[] = [
     personalizar: { href: '/editor', rotulo: 'Montar no editor' },
   }),
   nosso({
-    slug: 'letra-moldura-acm', nome: 'Letra decorativa com moldura de ACM', categoria: 'letreiros', jaImpresso: true,
+    slug: 'letra-moldura-acm', nome: 'Letra decorativa com moldura de ACM', categoria: 'letreiros',
     resumo: 'Uma letra grande com moldura impressa e face em ACM.',
     descricao: 'Letra avulsa para decoração, vitrine ou evento: a moldura sai da impressora e a face é uma chapa de ACM cortada na medida.',
     personalizavel: ['Letra', 'Tamanho', 'Cor da moldura'],
     personalizar: { href: '/editor', rotulo: 'Montar no editor' },
   }),
   nosso({
-    slug: 'placa-personalizada', nome: 'Placa personalizada', categoria: 'placas', jaImpresso: true, destaque: true,
+    slug: 'placa-personalizada', nome: 'Placa personalizada', categoria: 'placas', destaque: true,
     resumo: 'Placa com texto e medidas sob medida, em peças prontas para imprimir.',
     descricao: 'Placa de sinalização ou decoração com o seu texto, medidas e cores. Dividimos em peças quando passa do tamanho da mesa da impressora.',
     personalizavel: ['Texto', 'Medidas', 'Cores'],
     personalizar: { href: '/placas', rotulo: 'Montar a placa' },
   }),
   nosso({
-    slug: 'placa-com-marca', nome: 'Placa com a sua marca', categoria: 'placas', jaImpresso: true,
+    slug: 'placa-com-marca', nome: 'Placa com a sua marca', categoria: 'placas',
     resumo: 'Sua logo em relevo numa placa, para balcão, porta ou parede.',
     descricao: 'Enviamos a sua logo para o 3D: base, logo e texto em cores diferentes, com pé de mesa ou furos para parafusar.',
     personalizavel: ['Logo', 'Texto', 'Cores', 'Pé ou furos'],
@@ -76,7 +76,7 @@ const CADASTRO: Produto[] = [
   doGerador('porta-canetas', 'Porta-canetas sob medida', 'utilidades', 'Organizador em grade com o seu nome.', 'Porta-canetas com o número de divisões, altura e nome que você escolher.', 'porta-canetas-grade', ['Divisões', 'Altura', 'Nome']),
 
   // Nossos com origem a confirmar (ocultos ate o usuario validar).
-  { ...nosso({ slug: 'mapa-3d-cidade', nome: 'Mapa 3D da cidade', categoria: 'decoracao', jaImpresso: true, resumo: 'Ruas, rios e o nome da cidade em relevo, em camadas coloridas.', descricao: 'Mapa da sua cidade em camadas: base, ruas, água, trilhas e o nome.', personalizavel: ['Cidade', 'Recorte', 'Cores'] }), licenca: 'a-verificar', visibilidade: 'oculto', ref: 'N01' },
+  { ...nosso({ slug: 'mapa-3d-cidade', nome: 'Mapa 3D da cidade', categoria: 'decoracao', resumo: 'Ruas, rios e o nome da cidade em relevo, em camadas coloridas.', descricao: 'Mapa da sua cidade em camadas: base, ruas, água, trilhas e o nome.', personalizavel: ['Cidade', 'Recorte', 'Cores'] }), licenca: 'a-verificar', visibilidade: 'oculto', ref: 'N01' },
 
   // Terceiros (MakerWorld e afins): ocultos ate a licenca de venda ser confirmada.
   deTerceiro('porta-medalhas-corrida', 'Porta-medalhas de corrida', 'decoracao', 'Suporte de parede para medalhas, com nome do atleta.', 'T01', true),

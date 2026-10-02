@@ -8,11 +8,13 @@ import { ArteCategoria } from '@/components/marca/ArteCategoria';
 import { BotaoMarca, BotaoWhatsapp, CartaoMarca, SeloMarca, Wordmark } from '@/components/marca';
 import { CATEGORIAS, type Produto } from '@/lib/marketplace/tipos';
 import { textoDoPreco, urlDaMidia } from '@/lib/marketplace/consultas';
-import { MENSAGENS } from '@/lib/marketplace/contato';
+import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
 import './produto.css';
 
 export function DetalheProduto({ produto: p, relacionados }: { produto: Produto; relacionados: Produto[] }) {
   const categoria = CATEGORIAS[p.categoria];
+  // Sem numero de WhatsApp ainda nao ha atendimento: o texto nao promete resposta.
+  const temCanal = linkWhatsapp(MENSAGENS.geral()) !== null;
   return (
     <div className="m-escopo p-pagina">
       <header className="p-topo">
@@ -20,7 +22,7 @@ export function DetalheProduto({ produto: p, relacionados }: { produto: Produto;
         <nav aria-label="Navegação principal" className="p-nav">
           <Link href="/#colecao">Loja</Link>
           <Link href="/criar">Crie o seu 3D</Link>
-          <BotaoWhatsapp mensagem={MENSAGENS.geral()} pequeno>WhatsApp</BotaoWhatsapp>
+          {temCanal && <BotaoWhatsapp mensagem={MENSAGENS.geral()} pequeno>WhatsApp</BotaoWhatsapp>}
         </nav>
       </header>
 
@@ -65,7 +67,7 @@ export function DetalheProduto({ produto: p, relacionados }: { produto: Produto;
 
             <div className="p-preco">
               <SeloMarca tom="validacao">{textoDoPreco(p)}</SeloMarca>
-              {p.preco.status === 'validacao' && <p>O valor depende do tamanho, das cores e da quantidade. Peça um orçamento: respondemos com o preço e o prazo.</p>}
+              {p.preco.status === 'validacao' && <p>O valor depende do tamanho, das cores e da quantidade. {temCanal ? 'Peça um orçamento: respondemos com o preço e o prazo.' : 'Os pedidos de orçamento abrem em breve.'}{p.personalizar && !temCanal ? ' Enquanto isso, você já pode montar o seu no gerador.' : ''}</p>}
             </div>
 
             {p.personalizavel.length > 0 && (
@@ -88,7 +90,7 @@ export function DetalheProduto({ produto: p, relacionados }: { produto: Produto;
             {p.personalizar && (
               <aside className="p-faca">
                 <strong>Prefere fazer você mesmo?</strong>
-                <p>Monte no gerador, veja em 3D e baixe o arquivo (3MF multicor ou STL). Imprima na sua impressora ou mande para nós imprimirmos.</p>
+                <p>Monte no gerador, veja em 3D e baixe o arquivo (3MF multicor ou STL) para imprimir na sua impressora{temCanal ? ' ou mande para nós imprimirmos' : ''}.</p>
               </aside>
             )}
           </div>
