@@ -21,6 +21,14 @@
   --marca-atencao: #8a5a00;
   --marca-atencao-fundo: #fff4d6;
   --marca-whatsapp: #128c4a;
+  --marca-whatsapp-forte: #0e7a40;
+  --marca-sucesso-fundo: #e3f7ef;
+  --marca-neutro-fundo: #edf2f7;
+  --marca-sobretitulo: #075cb7;         /* sobretitulo sobre claro */
+  --marca-escura-texto: #c5d6ea;        /* corpo sobre a faixa escura */
+  --marca-escura-sobretitulo: #7fd0ff;  /* sobretitulo sobre a faixa escura */
+  --marca-vidro: #ffffffeb;             /* cabecalho translucido */
+  --marca-sombra-acao: 0 10px 24px -10px #0868eeaa;
   --marca-gradiente: linear-gradient(115deg, #00a8f7 0%, #0877f4 45%, #103cba 100%);
   --marca-gradiente-suave: radial-gradient(circle at 85% 0%, #d7efff 0, transparent 34%), radial-gradient(circle at 0% 100%, #e3f4ff 0, transparent 30%), linear-gradient(135deg, #fff 0%, #f4faff 60%, #eaf6ff 100%);
 
@@ -104,3 +112,71 @@
   --secao-forte: #1f6f62;
   --secao-borda: #cdebe5;
 }
+
+/*
+ * Marca e secoes no Tailwind. `inline`: a classe usa a variavel, entao a cor filha muda
+ * dentro de [data-secao] sem classe nova (bg-secao, text-secao-forte, border-secao-borda).
+ * Regra igual a do tema escuro: componente nenhum usa hex nem valor arbitrario de cor.
+ */
+@theme inline {
+  --color-marca-navy: var(--marca-navy);
+  --color-marca-profundo: var(--marca-profundo);
+  --color-marca-azul: var(--marca-azul);
+  --color-marca-azul-forte: var(--marca-azul-forte);
+  --color-marca-ciano: var(--marca-ciano);
+  --color-marca-gelo: var(--marca-gelo);
+  --color-marca-palido: var(--marca-palido);
+  --color-marca-branco: var(--marca-branco);
+  --color-marca-linha: var(--marca-linha);
+  --color-marca-linha-forte: var(--marca-linha-forte);
+  --color-marca-texto: var(--marca-texto);
+  --color-marca-texto-2: var(--marca-texto-2);
+  --color-marca-texto-3: var(--marca-texto-3);
+  --color-marca-sucesso: var(--marca-sucesso);
+  --color-marca-sucesso-fundo: var(--marca-sucesso-fundo);
+  --color-marca-atencao: var(--marca-atencao);
+  --color-marca-atencao-fundo: var(--marca-atencao-fundo);
+  --color-marca-neutro-fundo: var(--marca-neutro-fundo);
+  --color-marca-whatsapp: var(--marca-whatsapp);
+  --color-marca-whatsapp-forte: var(--marca-whatsapp-forte);
+  --color-marca-escura-texto: var(--marca-escura-texto);
+  --color-marca-escura-sobretitulo: var(--marca-escura-sobretitulo);
+  --color-marca-sobretitulo: var(--marca-sobretitulo);
+  --color-marca-vidro: var(--marca-vidro);
+
+  --color-secao: var(--secao);
+  --color-secao-2: var(--secao-2);
+  --color-secao-suave: var(--secao-suave);
+  --color-secao-forte: var(--secao-forte);
+  --color-secao-borda: var(--secao-borda);
+
+  --font-display: var(--marca-fonte-display);
+  --font-marca: var(--marca-fonte);
+
+  --text-marca-mini: var(--marca-t-mini);
+  --text-marca-pequeno: var(--marca-t-pequeno);
+  --text-marca-corpo: var(--marca-t-corpo);
+  --text-marca-destaque: var(--marca-t-destaque);
+  --text-marca-titulo-3: var(--marca-t-titulo-3);
+  --text-marca-titulo-2: var(--marca-t-titulo-2);
+  --text-marca-display: var(--marca-t-display);
+
+  --radius-marca-sm: var(--marca-r-sm);
+  --radius-marca-md: var(--marca-r-md);
+  --radius-marca-lg: var(--marca-r-lg);
+  --radius-marca-pilula: var(--marca-r-pilula);
+
+  --shadow-marca-1: var(--marca-sombra-1);
+  --shadow-marca-2: var(--marca-sombra-2);
+  --shadow-marca-foco: var(--marca-foco);
+  --shadow-marca-acao: var(--marca-sombra-acao);
+}
+
+/* O que o tema nao cobre: gradientes, texto em gradiente e os espacos fluidos. */
+@utility bg-marca { background-image: var(--marca-gradiente); }
+@utility bg-marca-suave { background-image: var(--marca-gradiente-suave); }
+@utility bg-secao-fundo { background: var(--secao-fundo); }
+@utility texto-gradiente { background-image: var(--marca-gradiente); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+@utility px-margem { padding-inline: var(--marca-margem); }
+@utility py-secao { padding-block: var(--marca-secao); }
+@utility gap-vao { gap: var(--marca-vao); }

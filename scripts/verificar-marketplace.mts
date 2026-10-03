@@ -63,7 +63,7 @@ ok('busca ignora acento e maiuscula', buscar('PLACA DE AVALIACAO').some((p) => p
 ok('busca por secao', buscar('', 'casa').every((p) => p.secao === 'casa') && buscar('', 'casa').length > 0);
 
 // Cor filha: cada secao tem os tokens completos e --secao-forte legivel (AA) sobre branco.
-const css = fs.readFileSync('styles/marca.css', 'utf8');
+const css = fs.readFileSync('styles/marca.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 const luzRel = (hex: string) => { const n = parseInt(hex.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!; };
 const contraste = (a: string, b: string) => { const [x, y] = [luzRel(a), luzRel(b)].sort((m, n) => n - m); return (x! + 0.05) / (y! + 0.05); };
 for (const s of ORDEM_SECOES) {

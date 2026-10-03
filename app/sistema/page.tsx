@@ -451,7 +451,7 @@ export default function PaginaSistema() {
             </Amostra>
           </div>
         </Bloco>
-        <Bloco titulo="Marca (loja e catálogo)" descricao="Tema claro da Scarprint: tokens --marca-* em styles/marca.css e primitivos em components/marca. O app e o editor seguem no tema escuro acima.">
+        <Bloco titulo="Marca (loja, catálogo e personalização)" descricao="Um sistema com dois contextos: loja, catálogo e entrada de personalização usam os tokens claros --marca-* e os mesmos componentes; a área de edição 3D usa os tokens escuros de ferramenta. Cores filhas das seções mudam apenas acentos locais.">
           <VitrineMarca />
         </Bloco>
       </div>

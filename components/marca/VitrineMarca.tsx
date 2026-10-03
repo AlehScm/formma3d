@@ -1,37 +1,43 @@
-/** Referencia viva da marca (tokens e primitivos) para a pagina /sistema. */
-import { BotaoMarca, BotaoWhatsapp, CartaoMarca, SecaoMarca, SeloMarca, Wordmark } from '.';
+/** Referencia viva da marca (tokens e primitivos) para a pagina /sistema. So Tailwind. */
+import { BotaoMarca, BotaoWhatsapp, CampoMarca, CartaoMarca, ChipSecao, ESCOPO_MARCA, RotuloMarca, SecaoMarca, SeloMarca, Wordmark } from '.';
 import { ArteSecao } from './ArteSecao';
+import { ComparaFontes } from './ComparaFontes';
+import { cx } from '@/components/ui/cx';
 import { ORDEM_SECOES, SECOES } from '@/lib/marketplace/tipos';
 
-const CORES: [string, string][] = [
-  ['--marca-navy', 'texto forte'], ['--marca-azul', 'ação'], ['--marca-ciano', 'brilho'], ['--marca-profundo', 'faixa escura'],
-  ['--marca-gelo', 'destaque suave'], ['--marca-palido', 'fundo'], ['--marca-linha', 'borda'], ['--marca-texto-2', 'corpo'],
-  ['--marca-texto-3', 'apoio'], ['--marca-atencao', 'em validação'], ['--marca-sucesso', 'nosso'], ['--marca-whatsapp', 'WhatsApp'],
+/** Classe da amostra (estatica, para o Tailwind gerar), token e uso. */
+const CORES: [string, string, string][] = [
+  ['bg-marca-navy', '--marca-navy', 'texto forte'], ['bg-marca-azul', '--marca-azul', 'ação'], ['bg-marca-ciano', '--marca-ciano', 'brilho'],
+  ['bg-marca-profundo', '--marca-profundo', 'faixa escura'], ['bg-marca-gelo', '--marca-gelo', 'destaque suave'], ['bg-marca-palido', '--marca-palido', 'fundo'],
+  ['bg-marca-linha', '--marca-linha', 'borda'], ['bg-marca-texto-2', '--marca-texto-2', 'corpo'], ['bg-marca-texto-3', '--marca-texto-3', 'apoio'],
+  ['bg-marca-atencao', '--marca-atencao', 'em validação'], ['bg-marca-sucesso', '--marca-sucesso', 'nosso'], ['bg-marca-whatsapp', '--marca-whatsapp', 'WhatsApp'],
+  ['bg-marca', '--marca-gradiente', 'ação primária'],
 ];
+const SECAO_AMOSTRAS: [string, string][] = [['bg-secao', '--secao'], ['bg-secao-2', '--secao-2'], ['bg-secao-suave', '--secao-suave'], ['bg-secao-forte', '--secao-forte']];
+const AMOSTRA = 'overflow-hidden rounded-marca-sm border border-marca-linha bg-marca-branco';
 
 export function VitrineMarca() {
   return (
-    <div className="m-escopo overflow-hidden rounded-lg">
-      <div className="flex flex-wrap items-center justify-between gap-4 p-6" style={{ background: 'var(--marca-branco)', borderBottom: '1px solid var(--marca-linha)' }}>
+    <div className={cx(ESCOPO_MARCA, 'overflow-hidden rounded-lg')}>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-marca-linha bg-marca-branco p-6">
         <Wordmark href={null} />
         <Wordmark href={null} tamanho={40} subtitulo={null} />
       </div>
-      <div className="grid gap-3 p-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
-        {CORES.map(([v, uso]) => (
-          <div key={v} className="overflow-hidden rounded-md" style={{ border: '1px solid var(--marca-linha)', background: 'var(--marca-branco)' }}>
-            <div style={{ height: 44, background: `var(${v})` }} />
-            <div className="p-2" style={{ fontSize: 12, color: 'var(--marca-texto-2)' }}>
-              <code style={{ color: 'var(--marca-navy)' }}>{v}</code>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-6">
+        {CORES.map(([cls, token, uso]) => (
+          <div key={token} className={AMOSTRA}>
+            <div className={cx('h-11', cls)} />
+            <div className="p-2 text-xs text-marca-texto-2">
+              <code className="text-marca-navy">{token}</code>
               <div>{uso}</div>
             </div>
           </div>
         ))}
-        <div className="overflow-hidden rounded-md" style={{ border: '1px solid var(--marca-linha)', background: 'var(--marca-branco)' }}>
-          <div style={{ height: 44, background: 'var(--marca-gradiente)' }} />
-          <div className="p-2" style={{ fontSize: 12, color: 'var(--marca-texto-2)' }}><code style={{ color: 'var(--marca-navy)' }}>--marca-gradiente</code><div>ação primária</div></div>
-        </div>
       </div>
-      <SecaoMarca sobretitulo="Seção" titulo={<>Título de seção em <span style={{ color: 'var(--marca-azul)' }}>display</span></>} texto="Corpo em 16px, linha 1,6, cor --marca-texto-2. Sobretítulo em caixa alta com o ponto ciano." acao={<BotaoMarca variante="contorno">Ação da seção</BotaoMarca>}>
+
+      <ComparaFontes />
+
+      <SecaoMarca sobretitulo="Seção" titulo={<>Título de seção em <span className="text-marca-azul">display</span></>} texto="Corpo em 16px, linha 1,6, cor marca-texto-2. Sobretítulo em caixa alta com o ponto da seção." acao={<BotaoMarca variante="contorno">Ação da seção</BotaoMarca>}>
         <div className="flex flex-wrap items-center gap-3">
           <BotaoMarca>Primário</BotaoMarca>
           <BotaoMarca variante="contorno">Contorno</BotaoMarca>
@@ -46,42 +52,50 @@ export function VitrineMarca() {
           <SeloMarca tom="nosso">Projeto nosso</SeloMarca>
           <SeloMarca tom="novo">Novo</SeloMarca>
           <SeloMarca>Neutro</SeloMarca>
+          <ChipSecao>Chip da seção</ChipSecao>
         </div>
-        <div className="mt-6 grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+        <div className="mt-6 max-w-[420px]">
+          <RotuloMarca htmlFor="vitrine-campo">Campo de texto</RotuloMarca>
+          <CampoMarca id="vitrine-campo" className="mt-2" placeholder="Seu texto" />
+        </div>
+        <div className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
           <CartaoMarca href="#">
-            <div style={{ aspectRatio: '4 / 3', background: 'var(--marca-gradiente-suave)' }} />
+            <div className="aspect-[4/3] bg-marca-suave" />
             <div className="p-4">
               <SeloMarca tom="personalizavel">Personalizável</SeloMarca>
-              <h3 style={{ margin: '10px 0 4px', fontSize: 'var(--marca-t-titulo-3)', fontWeight: 800 }}>Cartão com link</h3>
-              <p style={{ margin: 0, color: 'var(--marca-texto-2)', fontSize: 14 }}>Sobe e ganha sombra no hover.</p>
+              <h3 className="mt-2.5 mb-1 text-marca-titulo-3 font-extrabold">Cartão com link</h3>
+              <p className="m-0 text-sm text-marca-texto-2">Sobe e ganha sombra no hover.</p>
             </div>
           </CartaoMarca>
           <CartaoMarca>
             <div className="p-4">
-              <h3 style={{ margin: '0 0 4px', fontSize: 'var(--marca-t-titulo-3)', fontWeight: 800 }}>Cartão estático</h3>
-              <p style={{ margin: 0, color: 'var(--marca-texto-2)', fontSize: 14 }}>Mesma borda, raio 18 e sombra 1.</p>
+              <h3 className="mt-0 mb-1 text-marca-titulo-3 font-extrabold">Cartão estático</h3>
+              <p className="m-0 text-sm text-marca-texto-2">Mesma borda, raio 18 e sombra 1.</p>
             </div>
           </CartaoMarca>
         </div>
       </SecaoMarca>
-      <SecaoMarca fundo="gelo" sobretitulo="Seções da loja" titulo="Cor filha por seção" texto="A marca (azul, gradiente, wordmark, botão primário) não muda. Dentro de [data-secao], só os acentos usam --secao-*: topo, ponto, chip, borda do card e a ilustração (ArteSecao).">
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))' }}>
+
+      <SecaoMarca fundo="gelo" sobretitulo="Seções da loja" titulo="Cor filha por seção" texto="A marca (azul, gradiente, wordmark, botão primário) não muda. Dentro de [data-secao], só os acentos usam as cores secao-*: topo, ponto, chip, borda do card e a ilustração.">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-4">
           {ORDEM_SECOES.map((s) => (
-            <div key={s} data-secao={s} className="m-cartao">
-              <div style={{ aspectRatio: '6 / 5' }}><ArteSecao secao={s} /></div>
-              <div className="flex flex-col gap-2 p-3">
-                <strong style={{ fontSize: 15 }}>{SECOES[s].nome}</strong>
-                <div className="flex gap-1.5">
-                  {['--secao', '--secao-2', '--secao-suave', '--secao-forte'].map((v) => <span key={v} title={v} style={{ width: 22, height: 22, borderRadius: 6, background: `var(${v})`, border: '1px solid var(--marca-linha)' }} />)}
+            <div key={s} data-secao={s}>
+              <CartaoMarca>
+                <div className="aspect-[6/5]"><ArteSecao secao={s} /></div>
+                <div className="flex flex-col gap-2 p-3">
+                  <strong className="text-[15px]">{SECOES[s].nome}</strong>
+                  <div className="flex gap-1.5">
+                    {SECAO_AMOSTRAS.map(([cls, token]) => <span key={token} title={token} className={cx('size-[22px] rounded-md border border-marca-linha', cls)} />)}
+                  </div>
+                  <ChipSecao className="self-start">Chip da seção</ChipSecao>
+                  <BotaoMarca pequeno>Botão da marca</BotaoMarca>
                 </div>
-                <span className="m-chip" style={{ alignSelf: 'flex-start' }}>Chip da seção</span>
-                <BotaoMarca pequeno>Botão da marca</BotaoMarca>
-              </div>
+              </CartaoMarca>
             </div>
           ))}
         </div>
       </SecaoMarca>
-      <SecaoMarca fundo="escura" sobretitulo="Faixa escura" titulo="Para chamadas fortes" texto="Fundo --marca-profundo, texto claro com contraste AA." acao={<BotaoMarca>Chamada</BotaoMarca>} />
+      <SecaoMarca fundo="escura" sobretitulo="Faixa escura" titulo="Para chamadas fortes" texto="Fundo marca-profundo, texto claro com contraste AA." acao={<BotaoMarca>Chamada</BotaoMarca>} />
     </div>
   );
 }
