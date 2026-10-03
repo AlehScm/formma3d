@@ -66,9 +66,9 @@ export function BotaoAdicionar({ slug, extra, grande, className }: { slug: strin
       type="button"
       onClick={() => { adicionar(slug, extra); setFeito(true); }}
       className={cx(
-        'inline-flex w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-colors',
+        'inline-flex w-full items-center justify-center gap-2 rounded-lg font-semibold transition-colors',
         grande ? 'min-h-12 px-5 text-base' : 'min-h-10 px-3 text-sm',
-        feito ? 'bg-marca-sucesso' : 'bg-marca-azul hover:bg-marca-azul-forte',
+        feito ? 'bg-marca-sucesso text-white' : 'bg-secao-botao text-secao-botao-texto hover:bg-secao-botao-forte',
         className,
       )}
     >
@@ -82,23 +82,23 @@ export function CardProduto({ produto: p, nivel = 'h3' }: { produto: Produto; ni
   const Titulo = nivel;
   const personalizavel = !!geradorDe(p) || !!p.personalizar;
   return (
-    <article data-secao={p.secao} className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-marca-linha bg-marca-branco transition-shadow hover:shadow-marca-2 focus-within:shadow-marca-2">
+    <article data-secao={p.secao} className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-secao-linha bg-secao-superficie transition-shadow hover:shadow-marca-2 focus-within:shadow-marca-2">
       <div className="relative aspect-square overflow-hidden bg-secao-suave">
         <ImagemProduto produto={p} className="transition-transform duration-300 group-hover:scale-[1.03]" />
         {p.jaImpresso ? (
-          <span className="absolute top-2 left-2 rounded-md bg-marca-navy px-2 py-1 text-[11px] font-semibold text-white">Já feito para clientes</span>
+          <span className="absolute top-2 left-2 rounded-md bg-secao-tinta px-2 py-1 text-[11px] font-semibold text-secao-superficie">Já feito para clientes</span>
         ) : personalizavel ? (
-          <span className="absolute top-2 left-2 rounded-md bg-marca-branco px-2 py-1 text-[11px] font-semibold text-secao-forte shadow-marca-1">Personalizável</span>
+          <span className="absolute top-2 left-2 rounded-md bg-secao-superficie px-2 py-1 text-[11px] font-semibold text-secao-forte shadow-marca-1">Personalizável</span>
         ) : null}
         <BotaoFavorito slug={p.slug} nome={p.nome} className="absolute top-2 right-2 z-10" />
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <span className="text-xs text-marca-texto-3">{SECOES[p.secao].nome}</span>
-        <Titulo className="m-0 line-clamp-2 min-h-[2.5em] text-sm leading-tight font-semibold text-marca-navy">
+        <span className="text-xs text-secao-tinta-2">{SECOES[p.secao].nome}</span>
+        <Titulo className="m-0 line-clamp-2 min-h-[2.5em] text-sm leading-tight font-semibold text-secao-tinta">
           <Link href={`/produto/${p.slug}`} className="text-inherit no-underline after:absolute after:inset-0 after:content-[''] hover:underline">{p.nome}</Link>
         </Titulo>
-        <p className="m-0 mt-1 text-base font-bold text-marca-navy">{rotuloPreco(p)}</p>
-        {personalizavel && <p className="m-0 text-xs font-medium text-marca-sucesso">Personalize em 3D antes de pedir</p>}
+        <p className="m-0 mt-1 text-base font-bold text-secao-tinta">{rotuloPreco(p)}</p>
+        {personalizavel && <p className="m-0 text-xs font-medium text-secao-nota">Personalize em 3D antes de pedir</p>}
         <div className="relative z-10 mt-auto pt-2"><BotaoAdicionar slug={p.slug} /></div>
       </div>
     </article>

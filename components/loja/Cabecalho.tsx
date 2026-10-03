@@ -82,7 +82,7 @@ export function CabecalhoLoja({ secaoAtual }: { secaoAtual?: Secao }) {
               <Link
                 href={`/secao/${s}`}
                 aria-current={s === secaoAtual ? 'page' : undefined}
-                className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap text-marca-texto no-underline before:size-2 before:rounded-full before:bg-secao before:content-[''] hover:bg-secao-suave hover:text-secao-forte aria-[current=page]:bg-secao-suave aria-[current=page]:font-semibold aria-[current=page]:text-secao-forte"
+                className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap text-marca-texto no-underline before:size-2 before:rounded-full before:bg-secao before:content-[''] hover:bg-secao-suave hover:text-secao-forte aria-[current=page]:bg-secao-suave aria-[current=page]:font-semibold aria-[current=page]:text-secao-forte aria-[current=page]:shadow-[inset_0_-2px_0_var(--secao)]"
               >
                 {SECOES[s].nome}
               </Link>

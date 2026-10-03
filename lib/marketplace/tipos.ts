@@ -7,12 +7,13 @@
 
 export type Secao = 'casa' | 'colecionaveis' | 'empresa' | 'presentes' | 'sensoriais';
 
-export const SECOES: Record<Secao, { nome: string; chamada: string; resumo: string }> = {
-  casa: { nome: 'Casa', chamada: 'Para deixar a casa com a sua cara', resumo: 'Organizadores, porta-retratos, luminárias e peças de decoração.' },
-  colecionaveis: { nome: 'Colecionáveis', chamada: 'Peças para expor e guardar', resumo: 'Bases, miniaturas e peças de coleção.' },
-  empresa: { nome: 'Para sua empresa', chamada: 'A sua marca em 3D', resumo: 'Letreiros, placas, QR code, Pix e cartões para o seu negócio.' },
-  presentes: { nome: 'Presentes e festas', chamada: 'Com nome, data e carinho', resumo: 'Chaveiros, topos de bolo, lembrancinhas e presentes personalizados.' },
-  sensoriais: { nome: 'Sensoriais', chamada: 'Para mexer nas mãos', resumo: 'Peças articuladas e de girar, para relaxar e concentrar.' },
+/** `universo`: nome do tema visual da secao (cores e textura), nao o material da peca. */
+export const SECOES: Record<Secao, { nome: string; universo: string; chamada: string; resumo: string }> = {
+  casa: { nome: 'Casa', universo: 'Tons de madeira', chamada: 'Para deixar a casa com a sua cara', resumo: 'Organizadores, porta-retratos, luminárias e peças de decoração.' },
+  colecionaveis: { nome: 'Colecionáveis', universo: 'Brilho de vitrine', chamada: 'Peças para expor e guardar', resumo: 'Bases, miniaturas e peças de coleção.' },
+  empresa: { nome: 'Para sua empresa', universo: 'Oficina técnica', chamada: 'A sua marca em 3D', resumo: 'Letreiros, placas, QR code, Pix e cartões para o seu negócio.' },
+  presentes: { nome: 'Presentes e festas', universo: 'Festa multicor', chamada: 'Com nome, data e carinho', resumo: 'Chaveiros, topos de bolo, lembrancinhas e presentes personalizados.' },
+  sensoriais: { nome: 'Sensoriais', universo: 'Toque e brilho', chamada: 'Para mexer nas mãos', resumo: 'Peças articuladas e de girar, para relaxar e concentrar.' },
 };
 
 /** Ordem das secoes na loja. */

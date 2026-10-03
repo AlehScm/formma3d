@@ -71,46 +71,111 @@
   --secao-fundo: var(--marca-gradiente-suave);
   --secao-forte: var(--marca-azul-forte);
   --secao-borda: var(--marca-linha-forte);
+  --secao-universo: var(--marca-gradiente-suave);
+  --secao-universo-base: #e8f6ff;
+  --secao-universo-texto: #091a34;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  /* Botao sobre o palco: azul da marca em palco claro, acento da secao em palco escuro. */
+  --secao-acao: var(--marca-azul);
+  --secao-acao-texto: #ffffff;
+  /* Pagina de um universo: fundo, superficies, tinta e botao. Fora dele, os da marca. */
+  --secao-pagina: var(--marca-palido);
+  --secao-superficie: var(--marca-branco);
+  --secao-linha: var(--marca-linha);
+  --secao-tinta: var(--marca-navy);
+  --secao-tinta-2: var(--marca-texto-2);
+  --secao-nota: var(--marca-sucesso);
+  --secao-botao: var(--marca-azul);
+  --secao-botao-forte: var(--marca-azul-forte);
+  --secao-botao-texto: #ffffff;
 }
+/* Cada secao e um universo da impressao 3D: cor principal, acento, fundo e uma textura
+   propria no "palco" (faixas de topo, banner, circulos). Tema visual, nao material. */
+
+/* Casa: areia, cobre e cafe -- sofisticado e aconchegante, papel liso sem textura. */
 [data-secao='casa'] {
-  --secao: #8fb8a0;        /* salvia */
-  --secao-2: #f2c9c0;      /* rosa-claro */
-  --secao-suave: #f6efe4;  /* creme */
-  --secao-fundo: linear-gradient(135deg, #f6efe4 0%, #eef5ee 100%);
-  --secao-forte: #3f6b52;
-  --secao-borda: #d9e6dc;
+  --secao: #c27a57;
+  --secao-2: #3b2a22;
+  --secao-suave: #efe3d5;
+  --secao-fundo: linear-gradient(135deg, #f3e8dc 0%, #ead9c7 100%);
+  --secao-forte: #8a4a2c;
+  --secao-borda: #e3d3c2;
+  --secao-universo: linear-gradient(160deg, #f3e8dc 0%, #ead8c5 100%);
+  --secao-universo-base: #efe2d3;
+  --secao-universo-texto: #3b2a22;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #3b2a22;
+  --secao-acao-texto: #fbf6f0;
 }
+/* Dentro da pagina da Casa, a loja inteira veste o universo (so a pagina, nao os cards da home). */
+[data-universo='casa'] {
+  --secao-pagina: #f3e9de;
+  --secao-superficie: #fbf6f0;
+  --secao-linha: #e6d8c8;
+  --secao-tinta: #3b2a22;
+  --secao-tinta-2: #6f5a4c;
+  --secao-nota: #8a4a2c;
+  --secao-botao: #3b2a22;
+  --secao-botao-forte: #22170f;
+  --secao-botao-texto: #fbf6f0;
+}
+/* Colecionaveis: brilho de vitrine -- violeta e ouro silk; palco escuro com holofote. */
 [data-secao='colecionaveis'] {
-  --secao: #6b4fc0;        /* roxo */
-  --secao-2: #c9a227;      /* dourado */
-  --secao-suave: #f1edfa;
-  --secao-fundo: linear-gradient(135deg, #f1edfa 0%, #fbf6e6 100%);
-  --secao-forte: #3d2a78;
-  --secao-borda: #dcd3f2;
+  --secao: #6a4bd1;
+  --secao-2: #d9a930;
+  --secao-suave: #f1ecfb;
+  --secao-fundo: linear-gradient(135deg, #f1ecfb 0%, #e9e1f8 100%);
+  --secao-forte: #4b2fa8;
+  --secao-borda: #dcd1f5;
+  --secao-universo: linear-gradient(160deg, #17122b 0%, #2a1f4f 100%);
+  --secao-universo-base: #1f1840;
+  --secao-universo-texto: #f6f1ff;
+  --secao-padrao: radial-gradient(ellipse 60% 70% at 50% -10%, #d9a93047 0%, transparent 70%);
+  --secao-acao: #d9a930;
+  --secao-acao-texto: #17122b;
 }
+/* Para sua empresa: oficina tecnica -- grafite e laranja sinal; grade de planta tecnica. */
 [data-secao='empresa'] {
-  --secao: #2f4157;        /* grafite-azul */
-  --secao-2: #6c8db3;
-  --secao-suave: #eef2f6;
-  --secao-fundo: linear-gradient(135deg, #eef2f6 0%, #e3eaf2 100%);
-  --secao-forte: #1f2d3d;
-  --secao-borda: #d3dce6;
+  --secao: #2d3a4a;
+  --secao-2: #f26a1f;
+  --secao-suave: #eef1f4;
+  --secao-fundo: linear-gradient(135deg, #eef1f4 0%, #e3e8ee 100%);
+  --secao-forte: #1f2933;
+  --secao-borda: #d5dbe2;
+  --secao-universo: linear-gradient(160deg, #1f2a37 0%, #2b3a4c 100%);
+  --secao-universo-base: #243140;
+  --secao-universo-texto: #f4f7fa;
+  --secao-padrao: linear-gradient(#ffffff0f 1px, transparent 1px) 0 0 / 28px 28px, linear-gradient(90deg, #ffffff0f 1px, transparent 1px) 0 0 / 28px 28px;
+  --secao-acao: #f26a1f;
+  --secao-acao-texto: #1f2a37;
 }
+/* Presentes e festas: festa multicor -- magenta e amarelo; confete. */
 [data-secao='presentes'] {
-  --secao: #f06a5d;        /* coral */
-  --secao-2: #ffc24b;      /* amarelo festa */
-  --secao-suave: #fff0ed;
-  --secao-fundo: linear-gradient(135deg, #fff0ed 0%, #fff7e3 100%);
-  --secao-forte: #a8322a;
-  --secao-borda: #f6d3cd;
+  --secao: #e3346f;
+  --secao-2: #ffc233;
+  --secao-suave: #fff0f4;
+  --secao-fundo: linear-gradient(135deg, #fff0f4 0%, #fff6e0 100%);
+  --secao-forte: #b0174e;
+  --secao-borda: #f8cfdb;
+  --secao-universo: linear-gradient(135deg, #ffe3ec 0%, #fff4d6 100%);
+  --secao-universo-base: #ffecdf;
+  --secao-universo-texto: #3a0f22;
+  --secao-padrao: radial-gradient(circle at 12px 14px, #e3346f40 3px, transparent 4px) 0 0 / 46px 46px, radial-gradient(circle at 34px 30px, #ffc23366 3px, transparent 4px) 0 0 / 46px 46px, radial-gradient(circle at 26px 6px, #17b8903d 2px, transparent 3px) 0 0 / 46px 46px;
 }
+/* Sensoriais: toque e brilho -- menta e lilas; palco escuro com luzes de brilho no escuro. */
 [data-secao='sensoriais'] {
-  --secao: #5cc6b4;        /* menta */
-  --secao-2: #a99bea;      /* lavanda */
-  --secao-suave: #eefaf7;
-  --secao-fundo: linear-gradient(135deg, #eefaf7 0%, #f3f0fd 100%);
-  --secao-forte: #1f6f62;
-  --secao-borda: #cdebe5;
+  --secao: #17b890;
+  --secao-2: #8c7bf2;
+  --secao-suave: #e9faf5;
+  --secao-fundo: linear-gradient(135deg, #e9faf5 0%, #efedfd 100%);
+  --secao-forte: #0e7a60;
+  --secao-borda: #c6eee3;
+  --secao-universo: linear-gradient(160deg, #0d2028 0%, #13303a 100%);
+  --secao-universo-base: #10262f;
+  --secao-universo-texto: #e9fff8;
+  --secao-padrao: radial-gradient(circle at 18% 30%, #17b89052 0%, transparent 32%), radial-gradient(circle at 82% 72%, #8c7bf247 0%, transparent 34%);
+  --secao-acao: #17b890;
+  --secao-acao-texto: #0d2028;
 }
 
 /*
@@ -149,9 +214,24 @@
   --color-secao-suave: var(--secao-suave);
   --color-secao-forte: var(--secao-forte);
   --color-secao-borda: var(--secao-borda);
+  --color-secao-universo-texto: var(--secao-universo-texto);
+  --color-secao-universo-base: var(--secao-universo-base);
+  --color-secao-acao: var(--secao-acao);
+  --color-secao-acao-texto: var(--secao-acao-texto);
+  --color-secao-pagina: var(--secao-pagina);
+  --color-secao-superficie: var(--secao-superficie);
+  --color-secao-linha: var(--secao-linha);
+  --color-secao-tinta: var(--secao-tinta);
+  --color-secao-tinta-2: var(--secao-tinta-2);
+  --color-secao-nota: var(--secao-nota);
+  --color-secao-botao: var(--secao-botao);
+  --color-secao-botao-forte: var(--secao-botao-forte);
+  --color-secao-botao-texto: var(--secao-botao-texto);
 
   --font-display: var(--marca-fonte-display);
   --font-marca: var(--marca-fonte);
+  /* Geometrica fina, em caixa alta espacada: a voz da Casa. */
+  --font-fina: var(--fonte-fina), 'Segoe UI', Arial, sans-serif;
 
   --text-marca-mini: var(--marca-t-mini);
   --text-marca-pequeno: var(--marca-t-pequeno);
@@ -176,6 +256,8 @@
 @utility bg-marca { background-image: var(--marca-gradiente); }
 @utility bg-marca-suave { background-image: var(--marca-gradiente-suave); }
 @utility bg-secao-fundo { background: var(--secao-fundo); }
+/* Palco do universo da secao: textura por cima do gradiente. */
+@utility bg-universo { background: var(--secao-padrao), var(--secao-universo); }
 @utility texto-gradiente { background-image: var(--marca-gradiente); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 @utility px-margem { padding-inline: var(--marca-margem); }
 @utility py-secao { padding-block: var(--marca-secao); }

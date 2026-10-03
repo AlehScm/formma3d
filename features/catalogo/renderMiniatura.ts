@@ -16,7 +16,8 @@ const LARGURA = 720, ALTURA = 540, FOV = 28;
 const OCUPACAO = 0.88;
 let renderizador: THREE.WebGLRenderer | null = null;
 
-export async function renderizarMiniatura(id: string): Promise<string> {
+/** `paleta`: pinta as cores da peca, na ordem em que aparecem, com estas (o tema da secao). */
+export async function renderizarMiniatura(id: string, paleta?: string[]): Promise<string> {
   const receita = receitaPorId(id);
   if (!receita) throw new Error('Gerador desconhecido: ' + id);
   const v = { ...valoresPadrao(receita), ...(ficha(id).exemplo ?? {}) };
@@ -35,12 +36,18 @@ export async function renderizarMiniatura(id: string): Promise<string> {
   contra.position.set(-2, 1, 1);
   cena.add(sol, contra);
   const descartar: { dispose(): void }[] = [];
+  const ordemCores: unknown[] = [];
+  const cor = (c: unknown) => {
+    if (!paleta?.length) return corDe(res, c as never);
+    if (!ordemCores.includes(c)) ordemCores.push(c);
+    return paleta[ordemCores.indexOf(c) % paleta.length]!;
+  };
   for (const [i, it] of res.itens.entries()) {
     for (const [j, p] of it.pecas.entries()) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(malhas[i]![j]!.posicoes, 3));
       g.setAttribute('normal', new THREE.BufferAttribute(malhas[i]![j]!.normais, 3));
-      const m = new THREE.MeshStandardMaterial({ color: corDe(res, p.cor), roughness: 0.5, metalness: 0.02 });
+      const m = new THREE.MeshStandardMaterial({ color: cor(p.cor), roughness: 0.5, metalness: 0.02 });
       cena.add(new THREE.Mesh(g, m));
       descartar.push(g, m);
     }

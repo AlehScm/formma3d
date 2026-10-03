@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Bricolage_Grotesque, Inter, JetBrains_Mono } from 'next/font/google';
+import { Bricolage_Grotesque, Inter, JetBrains_Mono, Jost } from 'next/font/google';
 import './globals.css';
 import { ProvedorDicas } from '@/components/ui';
 
@@ -29,6 +29,13 @@ const marca = Bricolage_Grotesque({
   display: 'swap',
 });
 
+// Geometrica fina para os titulos da secao Casa (caixa alta, bem espacada).
+const fina = Jost({
+  subsets: ['latin'],
+  variable: '--fonte-fina',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'Scarprint | Formma3D',
   description: 'Catálogo de moldes Scarprint com editor 3D de letreiros e composição 2D de placas.',
@@ -36,7 +43,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${mono.variable} ${marca.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${mono.variable} ${marca.variable} ${fina.variable}`}>
       <body className="antialiased">
         <ProvedorDicas>{children}</ProvedorDicas>
       </body>

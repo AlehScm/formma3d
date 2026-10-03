@@ -76,12 +76,15 @@ export function VitrineMarca() {
         </div>
       </SecaoMarca>
 
-      <SecaoMarca fundo="gelo" sobretitulo="Seções da loja" titulo="Cor filha por seção" texto="A marca (azul, gradiente, wordmark, botão primário) não muda. Dentro de [data-secao], só os acentos usam as cores secao-*: topo, ponto, chip, borda do card e a ilustração.">
+      <SecaoMarca fundo="gelo" sobretitulo="Seções da loja" titulo="Cada seção, um universo" texto="A marca (azul, wordmark, botão primário) não muda. Dentro de [data-secao], o palco (bg-universo, com textura própria) e os acentos secao-* mudam: banner, portal da seção, categorias, prateleiras e a galeria 3D.">
         <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-4">
           {ORDEM_SECOES.map((s) => (
             <div key={s} data-secao={s}>
               <CartaoMarca>
-                <div className="aspect-[6/5]"><ArteSecao secao={s} /></div>
+                <div className="flex aspect-[6/5] flex-col justify-between bg-universo p-3 text-secao-universo-texto">
+                  <span className="text-xs font-semibold">{SECOES[s].universo}</span>
+                  <div className="mx-auto w-3/5"><ArteSecao secao={s} /></div>
+                </div>
                 <div className="flex flex-col gap-2 p-3">
                   <strong className="text-[15px]">{SECOES[s].nome}</strong>
                   <div className="flex gap-1.5">

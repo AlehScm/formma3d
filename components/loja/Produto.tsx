@@ -23,10 +23,9 @@ export function GaleriaProduto({ produto: p }: { produto: Produto }) {
   const aba3d = aba === '3d' && gerador;
   return (
     <div className="flex flex-col gap-3">
-      <div data-secao={p.secao} className="relative aspect-square overflow-hidden rounded-2xl bg-secao-suave">
+      <div data-secao={p.secao} className={cx('relative aspect-square overflow-hidden rounded-2xl', aba3d ? 'bg-universo' : 'bg-secao-suave')}>
         {aba3d ? (
           <>
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-camadas" />
             <div className="absolute inset-0"><PecaViva id={gerador} nome="Modelo 3D" interativo reserva={<ArteSecao secao={p.secao} />} /></div>
             <span className="pointer-events-none absolute top-3 left-3 rounded-md bg-marca-branco px-2 py-1 text-xs font-semibold text-marca-texto-2 shadow-marca-1">Arraste para girar</span>
           </>
