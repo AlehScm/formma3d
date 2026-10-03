@@ -35,6 +35,14 @@ ok('texto do preco em validacao', publicos.every((p) => textoDoPreco(p) === 'Pre
 ok('sem fotos de terceiros e sem midia faltando', PRODUTOS.every((p) => p.midias.every((m) => fs.existsSync(`public/${m.replace(/^\//, '')}`))) && terceirosSemLicenca.every((p) => !p.midias.length));
 ok('fotos so de produto publico (pasta public/marketplace/<slug>)', Object.keys(FOTOS).every((slug) => publicos.some((p) => p.slug === slug)), Object.keys(FOTOS).filter((slug) => !publicos.some((p) => p.slug === slug)).join(', '));
 ok('url da foto com o prefixo do site', urlDaMidia('marketplace/x/a.jpg') === `${process.env.NEXT_PUBLIC_BASE ?? ''}/marketplace/x/a.jpg`);
+ok('url da foto codifica nome com espacos', urlDaMidia('marketplace/x/foto 1.jpg') === `${process.env.NEXT_PUBLIC_BASE ?? ''}/marketplace/x/foto%201.jpg`);
+const pastaFotos = 'public/marketplace';
+const entradasFotos = fs.existsSync(pastaFotos) ? fs.readdirSync(pastaFotos, { withFileTypes: true }) : [];
+ok('pasta publica de fotos nao inclui itens ocultos ou desconhecidos', entradasFotos.every((entrada) =>
+  (entrada.name === '.gitkeep' && entrada.isFile()) ||
+  (entrada.isDirectory() && publicos.some((p) => p.slug === entrada.name) &&
+    fs.readdirSync(`${pastaFotos}/${entrada.name}`, { withFileTypes: true }).every((foto) => foto.isFile() && /\.(jpe?g|png|webp|avif)$/i.test(foto.name)))
+));
 
 const rotas = new Set(['/editor', '/placas', '/criar']);
 const linkValido = (p: Produto) => {

@@ -27,6 +27,7 @@ const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit'
 const node = (bin, args = [], opts = {}) => run(process.execPath, [bin, ...args], opts);
 
 console.log('\n1/4  conferindo tipos');
+node(BIN.tsx, ['scripts/fotos-marketplace.mts']);
 node(BIN.tsc, ['--noEmit']);
 
 console.log('\n2/4  rodando os testes');

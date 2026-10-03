@@ -48,6 +48,7 @@
   .p-galeria { position: static; }
 }
 @media (max-width: 520px) {
-  .p-nav > a { display: none; }
+  .p-topo { flex-wrap: wrap; }
+  .p-nav { width: 100%; justify-content: space-between; }
   .p-acoes > * { flex: 1 1 100%; }
 }

@@ -31,4 +31,4 @@ export function buscar(termo: string, categoria: Categoria | 'todas' = 'todas', 
 export const textoDoPreco = (p: Produto) => (p.preco.status === 'validacao' ? 'Preço em validação' : p.preco.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 
 /** Endereco de uma foto (`marketplace/<slug>/x.jpg`) com o prefixo do site (GitHub Pages usa /formma3d). */
-export const urlDaMidia = (m: string) => `${process.env.NEXT_PUBLIC_BASE ?? ''}/${m.replace(/^\//, '')}`;
+export const urlDaMidia = (m: string) => `${process.env.NEXT_PUBLIC_BASE ?? ''}/${m.replace(/^\//, '').split('/').map(encodeURIComponent).join('/')}`;

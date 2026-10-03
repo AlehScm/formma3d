@@ -9,6 +9,7 @@ const base = '/formma3d';
 
 const nextConfig = {
   output: 'export',
+  ...(process.env.FORMMA_BUILD_DIR ? { distDir: process.env.FORMMA_BUILD_DIR } : {}),
   ...(paraPages ? { basePath: base, assetPrefix: `${base}/` } : {}),
   // Caminho de arquivos de public/ (fontes) no navegador.
   env: { NEXT_PUBLIC_BASE: paraPages ? base : '' },

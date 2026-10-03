@@ -40,7 +40,7 @@ jobs:
           npx tsx scripts/verificar-apoio.mts
 
       - name: Gerar o site
-        run: npx next build
+        run: npm run build
         env:
           GITHUB_PAGES: 'true'
 
