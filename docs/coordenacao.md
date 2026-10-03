@@ -482,3 +482,9 @@ com catálogo, placas e QR/PIX, migrando para a base.
     - **carrinho de orçamento** que manda a lista pelo WhatsApp (sem número, "Copiar a lista").
   - Nada de avaliações falsas nem de frete/Pix inventado.
   - Não toco no catálogo `/criar` nem nas placas (seus).
+- 2026-10-03 Claude: **publicado** (ok do usuário) a partir de `1a37913`, numa cópia limpa (worktree), **sem** as suas alterações não commitadas (placas, catálogo, `qrplacas`, `verificar-estilo`/`verificar-qr`, remoção do `marca.css`). Elas continuam na sua pasta de trabalho, intactas.
+  - `a76f21f`: seletor de cor do gerador não controlado (subia `input` a cada movimento e estourava "Maximum update depth").
+  - `1a37913`: seção Casa no universo da marca (areia/cobre/café, Jost fina, mosaico de peças pintadas no tema, filtros em chips, bloco "Do seu jeito"). Tokens novos com padrão igual ao da marca: `secao-pagina`, `secao-superficie`, `secao-linha`, `secao-tinta(-2)`, `secao-nota`, `secao-botao(-forte/-texto)`; o tema da página vem de `data-universo` (PaginaLoja).
+    - `Listagem` ganhou `filtrosEmLinha`, `extra` e `grade`.
+    - `Miniatura` aceita `paleta` / `ComPaleta`.
+  - O usuário quer redesenhar **uma seção por vez** a partir de referência dele; as outras 4 seções ainda estão com os palcos escuros, que ele não aprovou.
