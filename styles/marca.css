@@ -33,7 +33,7 @@
   --marca-gradiente-suave: radial-gradient(circle at 85% 0%, #d7efff 0, transparent 34%), radial-gradient(circle at 0% 100%, #e3f4ff 0, transparent 30%), linear-gradient(135deg, #fff 0%, #f4faff 60%, #eaf6ff 100%);
 
   /* Tipo: display em Arial Black (o wordmark), texto na fonte da interface. */
-  --marca-fonte-display: 'Arial Black', 'Segoe UI Black', 'Segoe UI', Arial, sans-serif;
+  --marca-fonte-display: var(--fonte-marca), 'Segoe UI', Arial, sans-serif;
   --marca-fonte: var(--fonte-ui), 'Segoe UI', Arial, sans-serif;
   --marca-t-mini: 11px;   /* sobretitulo, selo */
   --marca-t-pequeno: 13px;
@@ -180,3 +180,10 @@
 @utility px-margem { padding-inline: var(--marca-margem); }
 @utility py-secao { padding-block: var(--marca-secao); }
 @utility gap-vao { gap: var(--marca-vao); }
+
+/* Linhas de camada: a textura da impressao 3D (filetes horizontais finos) sobre a cor da secao. */
+@utility bg-camadas {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 7px, color-mix(in oklab, var(--secao-forte) 5%, transparent) 7px 8px);
+}
+@utility gap-x-vao { column-gap: var(--marca-vao); }
+@utility gap-y-vao { row-gap: var(--marca-vao); }

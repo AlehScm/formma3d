@@ -16,8 +16,8 @@ export function Wordmark({ tamanho = 24, subtitulo = 'DESIGN STUDIO', href = '/'
   const corpo = (
     <>
       {/* o tamanho vem da prop: variavel CSS (unico estilo inline permitido) */}
-      <b className="flex -skew-x-[7deg] font-display text-(length:--wordmark) font-black italic tracking-[-0.105em]" style={{ '--wordmark': `${tamanho}px` } as CSSProperties}>
-        SCAR<span className="texto-gradiente pr-[0.08em]">PRINT</span>
+      <b className="flex -skew-x-[7deg] font-display text-(length:--wordmark) font-extrabold italic tracking-[-0.06em]" style={{ '--wordmark': `${tamanho}px` } as CSSProperties}>
+        SCAR<span className="texto-gradiente pr-[0.18em]">PRINT</span>
       </b>
       {subtitulo && <small className="mt-1.5 pl-0.5 text-[8px] font-extrabold tracking-[0.23em] text-marca-texto-3">{subtitulo}</small>}
     </>

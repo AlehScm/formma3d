@@ -30,8 +30,8 @@ function deTerceiro(slug: string, nome: string, secao: Secao, tipo: string, resu
 
 const CADASTRO: Produto[] = [
   // ---- Casa ----
-  doGerador('porta-retrato-suspenso', 'Porta-retrato suspenso', 'casa', 'Porta-retrato', 'A foto parece flutuar dentro da moldura.', 'Porta-retrato com a foto presa no meio da moldura, de pé na mesa ou na estante.', 'porta-retrato', ['Tamanho da foto', 'Moldura', 'Cores'], true),
   doGerador('luminaria-letra', 'Luminária de letra', 'casa', 'Luminária', 'Letra iluminada por dentro, com frente translúcida.', 'Luminária em forma de letra, com espaço para fita de LED e frente que difunde a luz.', 'luminaria-letra', ['Letra', 'Tamanho', 'Cores'], true),
+  doGerador('porta-retrato-suspenso', 'Porta-retrato suspenso', 'casa', 'Porta-retrato', 'A foto parece flutuar dentro da moldura.', 'Porta-retrato com a foto presa no meio da moldura, de pé na mesa ou na estante.', 'porta-retrato', ['Tamanho da foto', 'Moldura', 'Cores'], true),
   doGerador('cumbuca', 'Cumbuca decorativa', 'casa', 'Decoração', 'Tigela com o seu desenho no contorno.', 'Cumbuca para chaves, joias ou miudezas, com o contorno que você escolher.', 'cumbuca', ['Desenho', 'Tamanho', 'Cor']),
   doGerador('quadro-tecido', 'Quadro de tecido', 'casa', 'Quadro', 'O desenho flutua sobre um tecido fino na moldura.', 'Quadro com o desenho impresso sobre tule ou organza preso na moldura, com pé e ímãs.', 'quadro-tecido', ['Texto ou desenho', 'Tamanho', 'Cores']),
   doGerador('string-art', 'String art', 'casa', 'Decoração', 'Coração ou nome com linhas esticadas.', 'Quadro de string art já com os pinos impressos: é só passar a linha.', 'string-art', ['Forma', 'Nome', 'Cores']),
@@ -66,6 +66,7 @@ const CADASTRO: Produto[] = [
     personalizavel: ['Letra', 'Tamanho', 'Cor da moldura'],
     personalizar: { href: '/editor', rotulo: 'Montar no editor' },
   }),
+  doGerador('arroba-social', '@ da sua rede social', 'empresa', 'Display', 'O seu @ em 3D, para a vitrine ou o balcão.', 'O @ da loja ou do perfil em camadas coloridas, para divulgar nas redes e no ponto de venda.', 'social-camadas', ['@', 'Fonte', 'Cores'], true),
   nosso({
     slug: 'placa-com-marca', nome: 'Placa com a sua marca', secao: 'empresa', tipo: 'Placa', destaque: true,
     resumo: 'Sua logo em relevo numa placa, para balcão, porta ou parede.',
@@ -84,7 +85,6 @@ const CADASTRO: Produto[] = [
   doGerador('placa-pix', 'Placa de Pix', 'empresa', 'QR code', 'QR do Pix para o caixa, com a chave escrita.', 'Placa com o QR do Pix estático (com ou sem valor), a chave escrita embaixo e o seu logo.', 'placa-pix-logo', ['Chave Pix', 'Logo', 'Cores']),
   doGerador('placa-avaliacao-google', 'Placa de avaliação no Google', 'empresa', 'QR code', 'Leva o cliente direto à página de avaliação.', 'Placa com QR para a avaliação da sua empresa, com estrelas, título e pés de mesa.', 'placa-google-review', ['Link', 'Textos', 'Cores']),
   doGerador('lista-qr', 'Display com vários QR', 'empresa', 'QR code', 'Site, Wi-Fi, WhatsApp, redes e Pix numa peça só.', 'Display em arco com até nove QR, cada um com o seu ícone, e suporte para ficar de pé.', 'lista-qr-vertical', ['QR codes', 'Ícones', 'Cores']),
-  doGerador('arroba-social', '@ da sua rede social', 'empresa', 'Display', 'O seu @ em 3D, para a vitrine ou o balcão.', 'O @ da loja ou do perfil em camadas coloridas, para divulgar nas redes e no ponto de venda.', 'social-camadas', ['@', 'Fonte', 'Cores']),
   doGerador('cartao-visita-3d', 'Cartão de visita em 3D', 'empresa', 'Cartão', 'Cartão impresso com QR e porta-cartões.', 'Cartão de visita com nome, contatos e QR em relevo, e porta-cartões com o seu texto.', 'cartao-visita', ['Textos', 'QR', 'Cores']),
 
   // ---- Presentes e festas ----

@@ -6,6 +6,7 @@
 import fs from 'fs';
 import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
 import { FOTOS } from '../lib/marketplace/fotos';
+import { BANNERS, VANTAGENS } from '../lib/marketplace/loja';
 import { receitaPorId } from '../lib/gerador/receitas';
 
 let falhas = 0, total = 0;
@@ -83,6 +84,14 @@ const fonte = fs.readFileSync('lib/marketplace/produtos.ts', 'utf8');
 ok('sem valores em reais no cadastro (custos ficam fora do repo)', !/R\$\s*\d/.test(fonte));
 ok('sem nomes de arquivo da Downloads no cadastro (repo publico)', !/\.(3mf|stl|zip|ai|pdf|obj|step)/i.test(fonte) && PRODUTOS.every((p) => !p.ref || /^[TN]\d{2}$/.test(p.ref)));
 ok('sem personagem com marca registrada', !/aranha|spider|marvel|disney|pokemon|mario/i.test(fonte));
+
+// Carrinho de orcamento e textos comerciais
+const msg = MENSAGENS.orcamento([{ nome: 'Chaveiro com nome', quantidade: 3, cor: 'azul', observacao: 'nome Ana' }, { nome: 'Topo de bolo', quantidade: 1 }]);
+ok('mensagem do orçamento lista peça, quantidade, cor e observação', msg.includes('1. Chaveiro com nome (3 un.) - cor: azul; obs.: nome Ana') && msg.includes('2. Topo de bolo (1 un.)') && !msg.includes('2. Topo de bolo (1 un.) -'), msg);
+// As promessas da loja ficam nas vantagens (os banners citam produtos, como a placa de Pix).
+const lojaTxt = JSON.stringify(VANTAGENS);
+ok('vantagens sem frete, pagamento, prazo ou avaliação inventados', !/frete|gr[aá]tis|\bpix\b|cart[aã]o de cr[eé]dito|entrega em|avalia[cç][aã]o|estrelas|★|mais vendid|garantia/i.test(lojaTxt));
+ok('banners apontam para peças públicas', BANNERS.every((b) => !!porSlug(b.produto)));
 
 console.log(`\n${total - falhas}/${total} passaram\n`);
 if (falhas) process.exit(1);

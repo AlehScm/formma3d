@@ -9,3 +9,6 @@ export const textoDoPreco = (p: Produto) => (p.preco.status === 'validacao' ? 'P
 
 /** Endereco de uma foto (`marketplace/<slug>/x.jpg`) com o prefixo do site (GitHub Pages usa /formma3d). */
 export const urlDaMidia = (m: string) => `${process.env.NEXT_PUBLIC_BASE ?? ''}/${m.replace(/^\//, '').split('/').map(encodeURIComponent).join('/')}`;
+
+/** Gerador da peca (`/moldes/<id>`), se houver: e dele que sai a previa 3D real. */
+export const geradorDe = (p: Produto): string | undefined => p.personalizar?.href.match(/^\/moldes\/([a-z0-9-]+)$/)?.[1];

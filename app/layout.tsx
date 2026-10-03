@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Bricolage_Grotesque, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ProvedorDicas } from '@/components/ui';
 
@@ -20,6 +20,15 @@ const mono = JetBrains_Mono({
   display: 'swap',
 });
 
+// Fonte da marca (loja e catalogo): uma familia so, com tamanho otico (opsz) e largura
+// (wdth) variaveis -- display apertado e corpo legivel saem da mesma fonte.
+const marca = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--fonte-marca',
+  axes: ['opsz', 'wdth'],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'Scarprint | Formma3D',
   description: 'Catálogo de moldes Scarprint com editor 3D de letreiros e composição 2D de placas.',
@@ -27,7 +36,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${mono.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${mono.variable} ${marca.variable}`}>
       <body className="antialiased">
         <ProvedorDicas>{children}</ProvedorDicas>
       </body>

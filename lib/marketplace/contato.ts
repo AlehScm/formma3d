@@ -20,4 +20,10 @@ export const MENSAGENS = {
   arquivo: () => 'Olá, Scarprint! Tenho um arquivo 3D (ou uma ideia) e quero um orçamento de impressão.',
   apoiador: () => 'Olá, Scarprint! Quero saber como ser apoiador e usar os geradores de vocês.',
   geral: () => 'Olá, Scarprint! Vim pelo site.',
+  /** Lista do carrinho de orcamento, uma linha por peca. */
+  orcamento: (linhas: { nome: string; quantidade: number; cor?: string; observacao?: string }[]) =>
+    ['Olá, Scarprint! Quero um orçamento destas peças:', ...linhas.map((l, i) => {
+      const extras = [l.cor?.trim() && `cor: ${l.cor.trim()}`, l.observacao?.trim() && `obs.: ${l.observacao.trim()}`].filter(Boolean).join('; ');
+      return `${i + 1}. ${l.nome} (${l.quantidade} un.)${extras ? ` - ${extras}` : ''}`;
+    })].join('\n'),
 };

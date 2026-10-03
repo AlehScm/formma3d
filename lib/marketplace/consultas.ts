@@ -1,6 +1,7 @@
 /** Consultas da loja: so o que pode aparecer, por secao, busca e destaques. */
 import { ORDEM_SECOES, type Produto, type Secao } from './tipos';
 import { filtrarPorTexto } from './busca';
+import { geradorDe } from './formato';
 import { PRODUTOS } from './produtos';
 
 /** Pode aparecer ao publico: publico e, se for de terceiro, com licenca comercial confirmada. */
@@ -30,4 +31,11 @@ export const ehSecao = (s: string): s is Secao => (ORDEM_SECOES as string[]).inc
 export const buscar = (termo: string, secao: Secao | 'todas' = 'todas', lista: Produto[] = PRODUTOS): Produto[] =>
   filtrarPorTexto(produtosPublicos(lista).filter((p) => secao === 'todas' || p.secao === secao), termo);
 
-export { textoDoPreco, urlDaMidia } from './formato';
+export { geradorDe, textoDoPreco, urlDaMidia } from './formato';
+
+/** Peca que representa a secao na vitrine 3D: a primeira publica com gerador (destaques antes). */
+export function pecaDaSecao(secao: Secao, lista: Produto[] = PRODUTOS): { gerador: string; nome: string; slug: string } | null {
+  const ps = porSecao(secao, lista);
+  const p = [...ps.filter((x) => x.destaque), ...ps.filter((x) => !x.destaque)].find((x) => geradorDe(x));
+  return p ? { gerador: geradorDe(p)!, nome: p.nome, slug: p.slug } : null;
+}

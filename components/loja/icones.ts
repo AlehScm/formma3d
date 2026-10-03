@@ -1,0 +1,21 @@
+/** Icones da loja (lucide, o mesmo conjunto do app). Importar daqui, nao do pacote. */
+export {
+  Box as IconeTridimensional,
+  Check as IconeOk,
+  ChevronLeft as IconeAnterior,
+  ChevronRight as IconeProximo,
+  Copy as IconeCopiar,
+  Heart as IconeFavorito,
+  Menu as IconeMenu,
+  MessageCircle as IconeConversa,
+  Minus as IconeMenos,
+  Palette as IconePersonalizar,
+  Plus as IconeMais,
+  Printer as IconeImpressora,
+  Ruler as IconeMedida,
+  Search as IconeBusca,
+  ShoppingCart as IconeCarrinho,
+  SlidersHorizontal as IconeFiltros,
+  Trash2 as IconeRemover,
+  X as IconeFechar,
+} from 'lucide-react';
