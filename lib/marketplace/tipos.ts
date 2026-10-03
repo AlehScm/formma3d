@@ -1,20 +1,22 @@
 /**
- * Dominio do marketplace Scarprint: o que e um produto da loja, sem nada de tela.
+ * Dominio da loja Scarprint: pecas impressas em 3D organizadas em secoes. Cada secao tem
+ * a sua cor filha (tokens `[data-secao]` em styles/marca.css); a cor da marca nao muda.
  * Preco e licenca comecam "em validacao"; produto de terceiro so aparece com licenca
- * comercial confirmada.
+ * comercial confirmada. Sem secao de brinquedos (restricao legal).
  */
 
-export type Categoria = 'letreiros' | 'placas' | 'personalizados' | 'decoracao' | 'cozinha' | 'brinquedos' | 'utilidades';
+export type Secao = 'casa' | 'colecionaveis' | 'empresa' | 'presentes' | 'sensoriais';
 
-export const CATEGORIAS: Record<Categoria, { nome: string; resumo: string }> = {
-  letreiros: { nome: 'Letreiros e fachadas', resumo: 'Letra caixa, ACM e letreiros de parede.' },
-  placas: { nome: 'Placas e QR', resumo: 'Sinalização, QR code, Pix e avaliação.' },
-  personalizados: { nome: 'Personalizados', resumo: 'Com o seu nome, a sua marca, o seu @.' },
-  decoracao: { nome: 'Decoração', resumo: 'Para presentear e enfeitar.' },
-  cozinha: { nome: 'Confeitaria', resumo: 'Cortadores, carimbos e topos de bolo.' },
-  brinquedos: { nome: 'Brinquedos e fidgets', resumo: 'Para brincar e mexer nas mãos.' },
-  utilidades: { nome: 'Utilidades', resumo: 'Suportes, organizadores e acessórios.' },
+export const SECOES: Record<Secao, { nome: string; chamada: string; resumo: string }> = {
+  casa: { nome: 'Casa', chamada: 'Para deixar a casa com a sua cara', resumo: 'Organizadores, porta-retratos, luminárias e peças de decoração.' },
+  colecionaveis: { nome: 'Colecionáveis', chamada: 'Peças para expor e guardar', resumo: 'Bases, miniaturas e peças de coleção.' },
+  empresa: { nome: 'Para sua empresa', chamada: 'A sua marca em 3D', resumo: 'Letreiros, placas, QR code, Pix e cartões para o seu negócio.' },
+  presentes: { nome: 'Presentes e festas', chamada: 'Com nome, data e carinho', resumo: 'Chaveiros, topos de bolo, lembrancinhas e presentes personalizados.' },
+  sensoriais: { nome: 'Sensoriais', chamada: 'Para mexer nas mãos', resumo: 'Peças articuladas e de girar, para relaxar e concentrar.' },
 };
+
+/** Ordem das secoes na loja. */
+export const ORDEM_SECOES: Secao[] = ['casa', 'colecionaveis', 'empresa', 'presentes', 'sensoriais'];
 
 /** De quem e o projeto 3D: nosso (feito aqui, inclusive pelos geradores) ou de terceiro. */
 export type Origem = 'nosso' | 'terceiros';
@@ -31,7 +33,9 @@ export interface Produto {
   resumo: string;
   /** Paragrafo da pagina do produto. */
   descricao: string;
-  categoria: Categoria;
+  secao: Secao;
+  /** Subcategoria livre dentro da secao ("Organizador", "Letreiro"...), mostrada no card. */
+  tipo: string;
   origem: Origem;
   licenca: Licenca;
   visibilidade: Visibilidade;
@@ -42,7 +46,7 @@ export interface Produto {
   midias: string[];
   /** Onde a pessoa mesma monta a peca (um gerador ou o editor). */
   personalizar?: { href: string; rotulo: string };
-  /** Ja impresso para clientes (portfolio), sem dizer quem. */
+  /** Ja impresso para clientes (portfolio), sem dizer quem. So o que esta confirmado. */
   jaImpresso?: boolean;
   /** Referencia opaca para a conferencia de licenca (a tabela ref -> arquivo fica fora do repo). */
   ref?: string;

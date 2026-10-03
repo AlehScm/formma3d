@@ -56,8 +56,12 @@ a.m-cartao:hover, .m-cartao-interativo:hover { transform: translateY(-3px); box-
 .m-secao-cabeca { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 32px; margin-bottom: clamp(24px, 3vw, 40px); }
 .m-sobretitulo { display: flex; align-items: center; gap: 9px; color: #075cb7; font: 850 var(--marca-t-mini)/1 var(--marca-fonte); letter-spacing: 0.18em; text-transform: uppercase; }
 .m-secao-escura .m-sobretitulo { color: #7fd0ff; }
-.m-sobretitulo::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--marca-ciano); box-shadow: 0 0 0 4px #d9f1ff; }
+.m-sobretitulo::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--secao-2); box-shadow: 0 0 0 4px var(--secao-suave); }
 .m-secao-escura .m-sobretitulo::before { box-shadow: 0 0 0 4px #1d4a7f; }
 .m-titulo { margin: 14px 0 0; font: 900 var(--marca-t-titulo-2)/1.04 var(--marca-fonte-display); letter-spacing: -0.05em; }
 .m-texto { max-width: 620px; margin: 12px 0 0; color: var(--marca-texto-2); font-size: var(--marca-t-corpo); line-height: 1.6; }
 .m-secao-escura .m-texto { color: #c5d6ea; }
+
+/* Chip da secao: cor filha (fora de secao, cai na cor da marca). */
+.m-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--marca-r-pilula); background: var(--secao-suave); color: var(--secao-forte); font: 800 var(--marca-t-mini)/1 var(--marca-fonte); white-space: nowrap; }
+.m-chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--secao); }

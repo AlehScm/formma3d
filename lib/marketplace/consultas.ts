@@ -1,5 +1,6 @@
-/** Consultas da loja: so o que pode aparecer, busca e filtros. */
-import { CATEGORIAS, type Categoria, type Produto } from './tipos';
+/** Consultas da loja: so o que pode aparecer, por secao, busca e destaques. */
+import { ORDEM_SECOES, type Produto, type Secao } from './tipos';
+import { filtrarPorTexto } from './busca';
 import { PRODUTOS } from './produtos';
 
 /** Pode aparecer ao publico: publico e, se for de terceiro, com licenca comercial confirmada. */
@@ -9,26 +10,24 @@ export const produtosPublicos = (lista: Produto[] = PRODUTOS): Produto[] => list
 
 export const porSlug = (slug: string, lista: Produto[] = PRODUTOS): Produto | undefined => produtosPublicos(lista).find((p) => p.slug === slug);
 
-export const destaques = (lista: Produto[] = PRODUTOS): Produto[] => produtosPublicos(lista).filter((p) => p.destaque);
+export const porSecao = (secao: Secao, lista: Produto[] = PRODUTOS): Produto[] => produtosPublicos(lista).filter((p) => p.secao === secao);
 
-/** Categorias que tem algo publico, na ordem do cadastro de categorias. */
-export const categoriasComProdutos = (lista: Produto[] = PRODUTOS): Categoria[] => {
-  const usadas = new Set(produtosPublicos(lista).map((p) => p.categoria));
-  return (Object.keys(CATEGORIAS) as Categoria[]).filter((c) => usadas.has(c));
-};
+/** Todas as secoes, na ordem da loja, com quantas pecas publicas cada uma tem (zero = "em breve"). */
+export const secoesComContagem = (lista: Produto[] = PRODUTOS): { secao: Secao; total: number }[] =>
+  ORDEM_SECOES.map((secao) => ({ secao, total: porSecao(secao, lista).length }));
 
-const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('pt-BR');
-
-/** Busca sem acento nem maiuscula em nome, resumo, categoria e no que da para personalizar. */
-export function buscar(termo: string, categoria: Categoria | 'todas' = 'todas', lista: Produto[] = PRODUTOS): Produto[] {
-  const t = normalizar(termo.trim());
-  return produtosPublicos(lista).filter(
-    (p) => (categoria === 'todas' || p.categoria === categoria) && (!t || normalizar([p.nome, p.resumo, CATEGORIAS[p.categoria].nome, ...p.personalizavel].join(' ')).includes(t)),
-  );
+/** Ate `n` pecas por secao para a vitrine: primeiro as marcadas como destaque. */
+export function destaquesPorSecao(n = 4, lista: Produto[] = PRODUTOS): { secao: Secao; produtos: Produto[] }[] {
+  return ORDEM_SECOES.map((secao) => {
+    const ps = porSecao(secao, lista);
+    return { secao, produtos: [...ps.filter((p) => p.destaque), ...ps.filter((p) => !p.destaque)].slice(0, n) };
+  });
 }
 
-/** Texto do preco para a tela. */
-export const textoDoPreco = (p: Produto) => (p.preco.status === 'validacao' ? 'Preço em validação' : p.preco.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+export const ehSecao = (s: string): s is Secao => (ORDEM_SECOES as string[]).includes(s);
 
-/** Endereco de uma foto (`marketplace/<slug>/x.jpg`) com o prefixo do site (GitHub Pages usa /formma3d). */
-export const urlDaMidia = (m: string) => `${process.env.NEXT_PUBLIC_BASE ?? ''}/${m.replace(/^\//, '').split('/').map(encodeURIComponent).join('/')}`;
+/** Busca sem acento nem maiuscula, so entre os publicos (ver busca.ts). */
+export const buscar = (termo: string, secao: Secao | 'todas' = 'todas', lista: Produto[] = PRODUTOS): Produto[] =>
+  filtrarPorTexto(produtosPublicos(lista).filter((p) => secao === 'todas' || p.secao === secao), termo);
+
+export { textoDoPreco, urlDaMidia } from './formato';

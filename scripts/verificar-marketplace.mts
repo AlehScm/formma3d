@@ -4,7 +4,7 @@
  *   npx tsx scripts/verificar-marketplace.mts
  */
 import fs from 'fs';
-import { CATEGORIAS, MENSAGENS, PRODUTOS, buscar, categoriasComProdutos, linkWhatsapp, porSlug, produtosPublicos, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
+import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
 import { FOTOS } from '../lib/marketplace/fotos';
 import { receitaPorId } from '../lib/gerador/receitas';
 
@@ -18,7 +18,8 @@ const ok = (nome: string, cond: boolean, detalhe = '') => {
 const slugs = PRODUTOS.map((p) => p.slug);
 ok('slugs unicos', new Set(slugs).size === slugs.length);
 ok('slugs so com letras minusculas, numeros e hifen', slugs.every((s) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(s)), slugs.filter((s) => !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(s)).join(', '));
-ok('categorias validas', PRODUTOS.every((p) => p.categoria in CATEGORIAS));
+ok('toda peca numa secao valida, com tipo', PRODUTOS.every((p) => ORDEM_SECOES.includes(p.secao) && p.secao in SECOES && p.tipo.trim().length > 0));
+ok('nao existe secao de brinquedos (restricao legal)', !ORDEM_SECOES.some((s) => /brinqued/i.test(s + SECOES[s].nome)) && !PRODUTOS.some((p) => /brinqued/i.test(p.slug + p.nome + p.resumo + p.descricao + p.tipo)));
 ok('todo produto tem nome, resumo e descricao', PRODUTOS.every((p) => p.nome.trim() && p.resumo.trim() && p.descricao.trim()));
 
 const publicos = produtosPublicos();
@@ -28,7 +29,11 @@ ok('terceiro sem licenca confirmada esta oculto e fora da vitrine', terceirosSem
 ok('terceiro publico so com licenca comercial confirmada (mesmo se marcado publico)', produtosPublicos([{ ...terceirosSemLicenca[0]!, visibilidade: 'publico' }]).length === 0);
 ok('porSlug nao acha produto oculto', terceirosSemLicenca.every((p) => !porSlug(p.slug)));
 ok('busca nao devolve oculto', buscar('polvo').length === 0 && buscar('fidget').length === 0);
-ok('ha produtos publicos em pelo menos 4 categorias', categoriasComProdutos().length >= 4, categoriasComProdutos().join(', '));
+ok('as 5 secoes existem, na ordem da loja', ORDEM_SECOES.join() === 'casa,colecionaveis,empresa,presentes,sensoriais');
+ok('Casa, Colecionaveis, Empresa e Presentes tem pecas publicas', secoesComContagem().filter((c) => c.secao !== 'sensoriais').every((c) => c.total > 0), secoesComContagem().map((c) => `${c.secao}=${c.total}`).join(' '));
+ok('Sensoriais: todos de terceiros, ocultos ate a licenca (0 publicos)', porSecao('sensoriais').length === 0 && PRODUTOS.filter((p) => p.secao === 'sensoriais').every((p) => p.origem === 'terceiros' && p.visibilidade === 'oculto'));
+ok('porSecao e destaques so devolvem publicos', ORDEM_SECOES.every((s) => porSecao(s).every((p) => publicos.includes(p))) && destaquesPorSecao(4).every((d) => d.produtos.length <= 4 && d.produtos.every((p) => publicos.includes(p))));
+ok('destaques vem primeiro na vitrine da secao', destaquesPorSecao(4).every((d) => { const i = d.produtos.findIndex((p) => !p.destaque); return i < 0 || d.produtos.slice(i).every((p) => !p.destaque); }));
 
 ok('nenhum preco publicado antes da validacao', PRODUTOS.every((p) => p.preco.status === 'validacao'));
 ok('texto do preco em validacao', publicos.every((p) => textoDoPreco(p) === 'Preço em validação'));
@@ -55,7 +60,20 @@ ok('todo "personalizar" leva a um gerador ou rota que existe', PRODUTOS.every(li
 ok('rotas do editor e das placas existem', fs.existsSync('app/editor/page.tsx') && fs.existsSync('app/placas/page.tsx'));
 
 ok('busca ignora acento e maiuscula', buscar('PLACA DE AVALIACAO').some((p) => p.slug === 'placa-avaliacao-google'));
-ok('busca por categoria', buscar('', 'cozinha').every((p) => p.categoria === 'cozinha') && buscar('', 'cozinha').length > 0);
+ok('busca por secao', buscar('', 'casa').every((p) => p.secao === 'casa') && buscar('', 'casa').length > 0);
+
+// Cor filha: cada secao tem os tokens completos e --secao-forte legivel (AA) sobre branco.
+const css = fs.readFileSync('styles/marca.css', 'utf8');
+const luzRel = (hex: string) => { const n = parseInt(hex.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!; };
+const contraste = (a: string, b: string) => { const [x, y] = [luzRel(a), luzRel(b)].sort((m, n) => n - m); return (x! + 0.05) / (y! + 0.05); };
+for (const s of ORDEM_SECOES) {
+  const bloco = css.match(new RegExp(String.raw`\[data-secao='${s}'\]\s*\{([^}]*)\}`))?.[1] ?? '';
+  const tok = (n: string) => bloco.match(new RegExp(String.raw`--${n}:\s*(#[0-9a-fA-F]{6})`))?.[1];
+  const completos = ['secao', 'secao-2', 'secao-suave', 'secao-forte', 'secao-borda'].every((n) => tok(n)) && /--secao-fundo:/.test(bloco);
+  const c = tok('secao-forte') ? contraste(tok('secao-forte')!, '#ffffff') : 0;
+  ok(`cor filha de ${SECOES[s].nome}: tokens completos e texto AA (${c.toFixed(1)}:1)`, completos && c >= 4.5 && contraste(tok('secao-forte')!, tok('secao-suave')!) >= 4.5);
+}
+ok('a cor da marca nao muda dentro das secoes', !/\[data-secao[^\]]*\][^{]*\{[^}]*--marca-/.test(css));
 
 ok('WhatsApp sem numero: sem link (botao em breve)', linkWhatsapp('oi', '') === null);
 const l = linkWhatsapp(MENSAGENS.produto(publicos[0]!), '+55 (19) 99999-0000');

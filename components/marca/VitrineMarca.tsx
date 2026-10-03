@@ -1,7 +1,7 @@
 /** Referencia viva da marca (tokens e primitivos) para a pagina /sistema. */
 import { BotaoMarca, BotaoWhatsapp, CartaoMarca, SecaoMarca, SeloMarca, Wordmark } from '.';
-import { ArteCategoria } from './ArteCategoria';
-import { CATEGORIAS, type Categoria } from '@/lib/marketplace/tipos';
+import { ArteSecao } from './ArteSecao';
+import { ORDEM_SECOES, SECOES } from '@/lib/marketplace/tipos';
 
 const CORES: [string, string][] = [
   ['--marca-navy', 'texto forte'], ['--marca-azul', 'ação'], ['--marca-ciano', 'brilho'], ['--marca-profundo', 'faixa escura'],
@@ -64,13 +64,20 @@ export function VitrineMarca() {
           </CartaoMarca>
         </div>
       </SecaoMarca>
-      <SecaoMarca fundo="gelo" sobretitulo="Sem foto" titulo="Arte por categoria" texto="Desenho nosso enquanto a foto do produto não chega (components/marca/ArteCategoria).">
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
-          {(Object.keys(CATEGORIAS) as Categoria[]).map((c) => (
-            <CartaoMarca key={c}>
-              <div style={{ aspectRatio: '6 / 5' }}><ArteCategoria categoria={c} /></div>
-              <div className="p-3" style={{ fontSize: 13, fontWeight: 700 }}>{CATEGORIAS[c].nome}</div>
-            </CartaoMarca>
+      <SecaoMarca fundo="gelo" sobretitulo="Seções da loja" titulo="Cor filha por seção" texto="A marca (azul, gradiente, wordmark, botão primário) não muda. Dentro de [data-secao], só os acentos usam --secao-*: topo, ponto, chip, borda do card e a ilustração (ArteSecao).">
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))' }}>
+          {ORDEM_SECOES.map((s) => (
+            <div key={s} data-secao={s} className="m-cartao">
+              <div style={{ aspectRatio: '6 / 5' }}><ArteSecao secao={s} /></div>
+              <div className="flex flex-col gap-2 p-3">
+                <strong style={{ fontSize: 15 }}>{SECOES[s].nome}</strong>
+                <div className="flex gap-1.5">
+                  {['--secao', '--secao-2', '--secao-suave', '--secao-forte'].map((v) => <span key={v} title={v} style={{ width: 22, height: 22, borderRadius: 6, background: `var(${v})`, border: '1px solid var(--marca-linha)' }} />)}
+                </div>
+                <span className="m-chip" style={{ alignSelf: 'flex-start' }}>Chip da seção</span>
+                <BotaoMarca pequeno>Botão da marca</BotaoMarca>
+              </div>
+            </div>
           ))}
         </div>
       </SecaoMarca>

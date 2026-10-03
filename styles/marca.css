@@ -49,3 +49,58 @@
   --marca-secao: clamp(56px, 8vw, 112px);
   --marca-vao: clamp(14px, 1.6vw, 24px);
 }
+
+/*
+ * Cor filha por secao. A marca (--marca-*) nao muda: a secao so tinge os acentos dela
+ * (topo da secao, ponto do sobretitulo, borda/hover do card, chips, selo, ilustracao).
+ * --secao-forte e o tom para texto: contraste AA sobre branco (conferido no teste).
+ * Fora de uma secao, os tokens caem na cor da marca.
+ */
+:root {
+  --secao: var(--marca-azul);
+  --secao-2: var(--marca-ciano);
+  --secao-suave: var(--marca-gelo);
+  --secao-fundo: var(--marca-gradiente-suave);
+  --secao-forte: var(--marca-azul-forte);
+  --secao-borda: var(--marca-linha-forte);
+}
+[data-secao='casa'] {
+  --secao: #8fb8a0;        /* salvia */
+  --secao-2: #f2c9c0;      /* rosa-claro */
+  --secao-suave: #f6efe4;  /* creme */
+  --secao-fundo: linear-gradient(135deg, #f6efe4 0%, #eef5ee 100%);
+  --secao-forte: #3f6b52;
+  --secao-borda: #d9e6dc;
+}
+[data-secao='colecionaveis'] {
+  --secao: #6b4fc0;        /* roxo */
+  --secao-2: #c9a227;      /* dourado */
+  --secao-suave: #f1edfa;
+  --secao-fundo: linear-gradient(135deg, #f1edfa 0%, #fbf6e6 100%);
+  --secao-forte: #3d2a78;
+  --secao-borda: #dcd3f2;
+}
+[data-secao='empresa'] {
+  --secao: #2f4157;        /* grafite-azul */
+  --secao-2: #6c8db3;
+  --secao-suave: #eef2f6;
+  --secao-fundo: linear-gradient(135deg, #eef2f6 0%, #e3eaf2 100%);
+  --secao-forte: #1f2d3d;
+  --secao-borda: #d3dce6;
+}
+[data-secao='presentes'] {
+  --secao: #f06a5d;        /* coral */
+  --secao-2: #ffc24b;      /* amarelo festa */
+  --secao-suave: #fff0ed;
+  --secao-fundo: linear-gradient(135deg, #fff0ed 0%, #fff7e3 100%);
+  --secao-forte: #a8322a;
+  --secao-borda: #f6d3cd;
+}
+[data-secao='sensoriais'] {
+  --secao: #5cc6b4;        /* menta */
+  --secao-2: #a99bea;      /* lavanda */
+  --secao-suave: #eefaf7;
+  --secao-fundo: linear-gradient(135deg, #eefaf7 0%, #f3f0fd 100%);
+  --secao-forte: #1f6f62;
+  --secao-borda: #cdebe5;
+}
