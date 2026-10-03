@@ -7,7 +7,7 @@
  */
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alerta,
   Botao,
@@ -70,7 +70,7 @@ export function TelaGerador({ id }: { id: string }) {
   // A geracao (e a malha da previa) roda num worker: a tela nao trava em receita pesada.
   const { resultado, malhas, erro, erroFonte, gerando } = useGeracao(receita.id, valores, idsFonte, tentativa);
 
-  const mudar = (id: string, v: Valores[string]) => setValores((s) => ({ ...s, [id]: v }));
+  const mudar = (id: string, v: Valores[string]) => setValores((s) => (s[id] === v ? s : { ...s, [id]: v }));
   const nomeArquivo = nomeSeguro(`${receita.id}-${resultado?.itens[0]?.nome ?? ''}`);
   const temPecas = !!resultado?.itens.length;
   const podeExportar = temPecas && !gerando && !erro && !erroFonte;
@@ -190,6 +190,30 @@ export function TelaGerador({ id }: { id: string }) {
   );
 }
 
+/**
+ * Seletor de cor nao controlado: arrastando no seletor nativo, o Chrome dispara `input` a
+ * cada movimento, e com o campo controlado cada um virava um render sincrono (o React
+ * acusava "Maximum update depth exceeded"). Aqui o valor sobe no maximo uma vez por quadro.
+ */
+function CampoCor({ id, valor, set }: { id: string; valor: string; set: (v: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const pendente = useRef<string | null>(null);
+  const quadro = useRef(0);
+  useEffect(() => {
+    if (ref.current && ref.current.value !== valor) ref.current.value = valor;
+  }, [valor]);
+  useEffect(() => () => cancelAnimationFrame(quadro.current), []);
+  const subir = (v: string) => {
+    pendente.current = v;
+    if (quadro.current) return;
+    quadro.current = requestAnimationFrame(() => {
+      quadro.current = 0;
+      if (pendente.current !== null) set(pendente.current);
+    });
+  };
+  return <input ref={ref} id={id} type="color" defaultValue={valor} onInput={(e) => subir(e.currentTarget.value)} className="h-8 w-14 cursor-pointer rounded-md border border-borda bg-superficie-2 p-0.5" />;
+}
+
 function CampoDoParametro({ p, valor, set }: { p: Parametro; valor: Valores[string]; set: (v: Valores[string]) => void }) {
   switch (p.tipo) {
     case 'numero':
@@ -220,7 +244,7 @@ function CampoDoParametro({ p, valor, set }: { p: Parametro; valor: Valores[stri
     case 'cor':
       return (
         <Campo rotulo={p.rotulo} dica={p.dica} layout="linha" htmlFor={`g-${p.id}`}>
-          <input id={`g-${p.id}`} type="color" value={String(valor)} onChange={(e) => set(e.target.value)} className="h-8 w-14 cursor-pointer rounded-md border border-borda bg-superficie-2 p-0.5" />
+          <CampoCor id={`g-${p.id}`} valor={String(valor)} set={set} />
         </Campo>
       );
     case 'svg':
