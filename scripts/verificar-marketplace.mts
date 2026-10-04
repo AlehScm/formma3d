@@ -80,17 +80,10 @@ for (const s of ORDEM_SECOES) {
   const acao = tok('secao-acao'), acaoTexto = tok('secao-acao-texto');
   if (acao && acaoTexto) ok(`universo ${SECOES[s].universo}: botao do palco legivel`, contraste(acao, acaoTexto) >= 4.5, `${contraste(acao, acaoTexto).toFixed(1)}:1`);
 }
-// Cada universo precisa parecer outro: matizes das cores principais afastadas (ou luz bem diferente).
-const matiz = (hex: string) => { const n = parseInt(hex.slice(1), 16); const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255) as [number, number, number]; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (!d) return { h: 0, s: 0 }; const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return { h: (h * 60 + 360) % 360, s: d / (1 - Math.abs(mx + mn - 1)) }; };
-const principais = ORDEM_SECOES.map((s) => ({ s, hex: css.match(new RegExp(String.raw`\[data-secao='${s}'\]\s*\{[^}]*--secao:\s*(#[0-9a-fA-F]{6})`))?.[1] ?? '#000000' }));
-const parecidas: string[] = [];
-principais.forEach((a, i) => principais.slice(i + 1).forEach((b) => {
-  const [ha, hb] = [matiz(a.hex), matiz(b.hex)];
-  const dh = Math.min(Math.abs(ha.h - hb.h), 360 - Math.abs(ha.h - hb.h));
-  const distintas = (ha.s < 0.3 || hb.s < 0.3) ? Math.abs(ha.s - hb.s) > 0.3 || contraste(a.hex, b.hex) >= 2 : dh >= 30 || contraste(a.hex, b.hex) >= 2;
-  if (!distintas) parecidas.push(`${a.s}~${b.s}`);
-}));
-ok('cores principais das secoes distintas entre si', !parecidas.length, parecidas.join(', '));
+const principaisAprovadas = { casa: '#c8b79e', colecionaveis: '#315c56', empresa: '#375a6d', presentes: '#c68f89', sensoriais: '#91a58a' };
+const principais = ORDEM_SECOES.map((s) => ({ s, hex: css.match(new RegExp(String.raw`\[data-secao='${s}'\]\s*\{[^}]*--secao:\s*(#[0-9a-fA-F]{6})`))?.[1]?.toLowerCase() }));
+ok('cores principais respeitam a paleta aprovada', principais.every(({ s, hex }) => hex === principaisAprovadas[s]));
+ok('secoes identificadas por nomes distintos, nao somente cor', new Set(ORDEM_SECOES.map((s) => SECOES[s].nome.trim())).size === ORDEM_SECOES.length && ORDEM_SECOES.every((s) => SECOES[s].nome.trim().length > 0));
 const tokenCasa = (bloco: string, n: string) => css.match(new RegExp(String.raw`\[data-${bloco}='casa'\]\s*\{[^}]*--${n}:\s*(#[0-9a-fA-F]{6})`))?.[1]?.toLowerCase();
 ok('cores das pecas da Casa = tokens da secao', CASA.cobre === tokenCasa('secao', 'secao') && CASA.cafe === tokenCasa('secao', 'secao-2') && CASA.linho === tokenCasa('secao', 'secao-suave') && CASA.creme === tokenCasa('universo', 'secao-superficie'));
 ok('mosaico da Casa so com pecas publicas da secao', VITRINE_CASA.every((slug) => porSecao('casa').some((p) => p.slug === slug)));

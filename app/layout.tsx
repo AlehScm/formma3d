@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Bricolage_Grotesque, Inter, JetBrains_Mono, Jost } from 'next/font/google';
+import { Inter, JetBrains_Mono, Manrope } from 'next/font/google';
 import './globals.css';
 import { ProvedorDicas } from '@/components/ui';
 
@@ -20,19 +20,9 @@ const mono = JetBrains_Mono({
   display: 'swap',
 });
 
-// Fonte da marca (loja e catalogo): uma familia so, com tamanho otico (opsz) e largura
-// (wdth) variaveis -- display apertado e corpo legivel saem da mesma fonte.
-const marca = Bricolage_Grotesque({
+const marca = Manrope({
   subsets: ['latin'],
   variable: '--fonte-marca',
-  axes: ['opsz', 'wdth'],
-  display: 'swap',
-});
-
-// Geometrica fina para os titulos da secao Casa (caixa alta, bem espacada).
-const fina = Jost({
-  subsets: ['latin'],
-  variable: '--fonte-fina',
   display: 'swap',
 });
 
@@ -43,7 +33,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${mono.variable} ${marca.variable} ${fina.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${mono.variable} ${marca.variable}`}>
       <body className="antialiased">
         <ProvedorDicas>{children}</ProvedorDicas>
       </body>

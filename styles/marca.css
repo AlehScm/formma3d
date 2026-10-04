@@ -4,35 +4,35 @@
  */
 :root {
   /* Cor */
-  --marca-navy: #091a34;      /* texto forte, titulos */
-  --marca-profundo: #102b51;  /* fundo escuro de faixa */
-  --marca-azul: #0868ee;      /* acao, link */
-  --marca-azul-forte: #0557c7;/* hover da acao */
-  --marca-ciano: #00a8f7;     /* brilho, destaque */
-  --marca-gelo: #e8f6ff;      /* fundo de destaque suave */
-  --marca-palido: #f4f9fe;    /* fundo da pagina */
+  --marca-navy: #18212e;
+  --marca-profundo: #18212e;
+  --marca-azul: #2760a2;
+  --marca-azul-forte: #1f4d83;
+  --marca-ciano: #2760a2;
+  --marca-gelo: #f7f8fa;
+  --marca-palido: #f7f8fa;
   --marca-branco: #ffffff;    /* cartoes */
-  --marca-linha: #d8e6f3;     /* bordas */
-  --marca-linha-forte: #a9d6f8;
-  --marca-texto: #091a34;
-  --marca-texto-2: #3e5670;   /* corpo (AA sobre branco e palido) */
-  --marca-texto-3: #5d7389;   /* apoio (AA sobre branco) */
+  --marca-linha: #c2c3c4;
+  --marca-linha-forte: #9fa1a4;
+  --marca-texto: #18212e;
+  --marca-texto-2: #5e6061;
+  --marca-texto-3: #5e6061;
   --marca-sucesso: #0b7a55;
   --marca-atencao: #8a5a00;
   --marca-atencao-fundo: #fff4d6;
   --marca-whatsapp: #128c4a;
   --marca-whatsapp-forte: #0e7a40;
   --marca-sucesso-fundo: #e3f7ef;
-  --marca-neutro-fundo: #edf2f7;
-  --marca-sobretitulo: #075cb7;         /* sobretitulo sobre claro */
-  --marca-escura-texto: #c5d6ea;        /* corpo sobre a faixa escura */
-  --marca-escura-sobretitulo: #7fd0ff;  /* sobretitulo sobre a faixa escura */
+  --marca-neutro-fundo: #f7f8fa;
+  --marca-sobretitulo: #2760a2;
+  --marca-escura-texto: #f7f8fa;
+  --marca-escura-sobretitulo: #c2c3c4;
   --marca-vidro: #ffffffeb;             /* cabecalho translucido */
-  --marca-sombra-acao: 0 10px 24px -10px #0868eeaa;
-  --marca-gradiente: linear-gradient(115deg, #00a8f7 0%, #0877f4 45%, #103cba 100%);
-  --marca-gradiente-suave: radial-gradient(circle at 85% 0%, #d7efff 0, transparent 34%), radial-gradient(circle at 0% 100%, #e3f4ff 0, transparent 30%), linear-gradient(135deg, #fff 0%, #f4faff 60%, #eaf6ff 100%);
+  --marca-sombra-acao: 0 10px 24px -10px #2760a240;
+  --marca-gradiente: linear-gradient(#2760a2, #2760a2);
+  --marca-gradiente-suave: linear-gradient(#f7f8fa, #f7f8fa);
 
-  /* Tipo: display em Arial Black (o wordmark), texto na fonte da interface. */
+  /* Tipo */
   --marca-fonte-display: var(--fonte-marca), 'Segoe UI', Arial, sans-serif;
   --marca-fonte: var(--fonte-ui), 'Segoe UI', Arial, sans-serif;
   --marca-t-mini: 11px;   /* sobretitulo, selo */
@@ -48,13 +48,12 @@
   --marca-r-md: 12px;
   --marca-r-lg: 18px;
   --marca-r-pilula: 999px;
-  --marca-sombra-1: 0 1px 2px #0c376512, 0 6px 18px #0c37650d;
-  --marca-sombra-2: 0 18px 40px -14px #0c376540;
-  --marca-foco: 0 0 0 3px #ffffff, 0 0 0 5px #49baff;
+  --marca-sombra-1: 0 1px 2px #18212e0d, 0 6px 18px #18212e0a;
+  --marca-sombra-2: 0 18px 40px -14px #18212e30;
+  --marca-foco: 0 0 0 3px #ffffff, 0 0 0 5px #2760a2;
 
   /* Espaco: margem lateral fluida (largura total) e respiro entre secoes. */
-  --marca-margem: clamp(16px, 4vw, 72px);
-  --marca-largura-loja: 1600px;
+  --marca-margem: clamp(16px, 2vw, 48px);
   --marca-secao: clamp(56px, 8vw, 112px);
   --marca-vao: clamp(14px, 1.6vw, 24px);
 }
@@ -67,117 +66,125 @@
  */
 :root {
   --secao: var(--marca-azul);
-  --secao-2: var(--marca-ciano);
+  --secao-2: var(--marca-texto-2);
   --secao-suave: var(--marca-gelo);
-  --secao-fundo: var(--marca-gradiente-suave);
+  --secao-fundo: var(--marca-palido);
   --secao-forte: var(--marca-azul-forte);
-  --secao-borda: var(--marca-linha-forte);
-  --secao-universo: var(--marca-gradiente-suave);
-  --secao-universo-base: #e8f6ff;
-  --secao-universo-texto: #091a34;
+  --secao-borda: var(--marca-linha);
+  --secao-apoio: var(--marca-texto-2);
+  --secao-universo: var(--marca-palido);
+  --secao-universo-base: #f7f8fa;
+  --secao-universo-texto: #18212e;
   --secao-padrao: linear-gradient(transparent, transparent);
-  /* Botao sobre o palco: azul da marca em palco claro, acento da secao em palco escuro. */
+  /* Acao azul da marca sobre os palcos claros. */
   --secao-acao: var(--marca-azul);
   --secao-acao-texto: #ffffff;
   /* Pagina de um universo: fundo, superficies, tinta e botao. Fora dele, os da marca. */
   --secao-pagina: var(--marca-palido);
   --secao-superficie: var(--marca-branco);
   --secao-linha: var(--marca-linha);
-  --secao-tinta: var(--marca-navy);
+  --secao-tinta: var(--marca-texto);
   --secao-tinta-2: var(--marca-texto-2);
   --secao-nota: var(--marca-sucesso);
   --secao-botao: var(--marca-azul);
   --secao-botao-forte: var(--marca-azul-forte);
   --secao-botao-texto: #ffffff;
 }
-/* Cada secao e um universo da impressao 3D: cor principal, acento, fundo e uma textura
-   propria no "palco" (faixas de topo, banner, circulos). Tema visual, nao material. */
-
-/* Casa: areia, cobre e cafe -- sofisticado e aconchegante, papel liso sem textura. */
+/* Casa */
 [data-secao='casa'] {
-  --secao: #c27a57;
-  --secao-2: #3b2a22;
-  --secao-suave: #efe3d5;
-  --secao-fundo: linear-gradient(135deg, #f3e8dc 0%, #ead9c7 100%);
-  --secao-forte: #8a4a2c;
-  --secao-borda: #e3d3c2;
-  --secao-universo: linear-gradient(160deg, #f3e8dc 0%, #ead8c5 100%);
-  --secao-universo-base: #efe2d3;
-  --secao-universo-texto: #3b2a22;
+  --secao: #c8b79e;
+  --secao-2: #8e7b66;
+  --secao-suave: #f3eee6;
+  --secao-fundo: #f3eee6;
+  --secao-forte: #3f3933;
+  --secao-borda: #d9cbb9;
+  --secao-apoio: #8e7b66;
+  --secao-universo: #f3eee6;
+  --secao-universo-base: #f3eee6;
+  --secao-universo-texto: #3f3933;
   --secao-padrao: linear-gradient(transparent, transparent);
-  --secao-acao: #3b2a22;
-  --secao-acao-texto: #fbf6f0;
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
 }
-/* Dentro da pagina da Casa, a loja inteira veste o universo (so a pagina, nao os cards da home). */
 [data-universo='casa'] {
-  --secao-pagina: #f3e9de;
-  --secao-superficie: #fbf6f0;
-  --secao-linha: #e6d8c8;
-  --secao-tinta: #3b2a22;
-  --secao-tinta-2: #6f5a4c;
-  --secao-nota: #8a4a2c;
-  --secao-botao: #3b2a22;
-  --secao-botao-forte: #22170f;
-  --secao-botao-texto: #fbf6f0;
+  --secao-pagina: #f3eee6;
+  --secao-superficie: #f7f8fa;
+  --secao-linha: #d9cbb9;
+  --secao-tinta: #3f3933;
+  --secao-tinta-2: #3f3933;
+  --secao-nota: #3f3933;
+  --secao-botao: #2760a2;
+  --secao-botao-forte: #1f4d83;
+  --secao-botao-texto: #ffffff;
 }
-/* Colecionaveis: brilho de vitrine -- violeta e ouro silk; palco escuro com holofote. */
+/* Colecionaveis */
 [data-secao='colecionaveis'] {
-  --secao: #6a4bd1;
-  --secao-2: #d9a930;
-  --secao-suave: #f1ecfb;
-  --secao-fundo: linear-gradient(135deg, #f1ecfb 0%, #e9e1f8 100%);
-  --secao-forte: #4b2fa8;
-  --secao-borda: #dcd1f5;
-  --secao-universo: linear-gradient(160deg, #17122b 0%, #2a1f4f 100%);
-  --secao-universo-base: #1f1840;
-  --secao-universo-texto: #f6f1ff;
-  --secao-padrao: radial-gradient(ellipse 60% 70% at 50% -10%, #d9a93047 0%, transparent 70%);
-  --secao-acao: #d9a930;
-  --secao-acao-texto: #17122b;
+  --secao: #315c56;
+  --secao-2: #547f78;
+  --secao-suave: #eef2f0;
+  --secao-fundo: #eef2f0;
+  --secao-forte: #24312f;
+  --secao-borda: #c8d7d1;
+  --secao-apoio: #547f78;
+  --secao-universo: #eef2f0;
+  --secao-universo-base: #eef2f0;
+  --secao-universo-texto: #24312f;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
 }
-/* Para sua empresa: oficina tecnica -- grafite e laranja sinal; grade de planta tecnica. */
+/* Para sua empresa */
 [data-secao='empresa'] {
-  --secao: #2d3a4a;
-  --secao-2: #f26a1f;
-  --secao-suave: #eef1f4;
-  --secao-fundo: linear-gradient(135deg, #eef1f4 0%, #e3e8ee 100%);
-  --secao-forte: #1f2933;
-  --secao-borda: #d5dbe2;
-  --secao-universo: linear-gradient(160deg, #1f2a37 0%, #2b3a4c 100%);
-  --secao-universo-base: #243140;
-  --secao-universo-texto: #f4f7fa;
-  --secao-padrao: linear-gradient(#ffffff0f 1px, transparent 1px) 0 0 / 28px 28px, linear-gradient(90deg, #ffffff0f 1px, transparent 1px) 0 0 / 28px 28px;
-  --secao-acao: #f26a1f;
-  --secao-acao-texto: #1f2a37;
+  --secao: #375a6d;
+  --secao-2: #66859a;
+  --secao-suave: #eef2f5;
+  --secao-fundo: #eef2f5;
+  --secao-forte: #253640;
+  --secao-borda: #c8d4dc;
+  --secao-apoio: #66859a;
+  --secao-universo: #eef2f5;
+  --secao-universo-base: #eef2f5;
+  --secao-universo-texto: #253640;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
 }
-/* Presentes e festas: festa multicor -- magenta e amarelo; confete. */
+/* Presentes e festas */
 [data-secao='presentes'] {
-  --secao: #e3346f;
-  --secao-2: #ffc233;
-  --secao-suave: #fff0f4;
-  --secao-fundo: linear-gradient(135deg, #fff0f4 0%, #fff6e0 100%);
-  --secao-forte: #b0174e;
-  --secao-borda: #f8cfdb;
-  --secao-universo: linear-gradient(135deg, #ffe3ec 0%, #fff4d6 100%);
-  --secao-universo-base: #ffecdf;
-  --secao-universo-texto: #3a0f22;
-  --secao-padrao: radial-gradient(circle at 12px 14px, #e3346f40 3px, transparent 4px) 0 0 / 46px 46px, radial-gradient(circle at 34px 30px, #ffc23366 3px, transparent 4px) 0 0 / 46px 46px, radial-gradient(circle at 26px 6px, #17b8903d 2px, transparent 3px) 0 0 / 46px 46px;
+  --secao: #c68f89;
+  --secao-2: #a86e68;
+  --secao-suave: #f7efee;
+  --secao-fundo: #f7efee;
+  --secao-forte: #493737;
+  --secao-borda: #e4cdca;
+  --secao-apoio: #a86e68;
+  --secao-universo: #f7efee;
+  --secao-universo-base: #f7efee;
+  --secao-universo-texto: #493737;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
 }
-/* Sensoriais: toque e brilho -- menta e lilas; palco escuro com luzes de brilho no escuro. */
+/* Sensoriais */
 [data-secao='sensoriais'] {
-  --secao: #17b890;
-  --secao-2: #8c7bf2;
-  --secao-suave: #e9faf5;
-  --secao-fundo: linear-gradient(135deg, #e9faf5 0%, #efedfd 100%);
-  --secao-forte: #0e7a60;
-  --secao-borda: #c6eee3;
-  --secao-universo: linear-gradient(160deg, #0d2028 0%, #13303a 100%);
-  --secao-universo-base: #10262f;
-  --secao-universo-texto: #e9fff8;
-  --secao-padrao: radial-gradient(circle at 18% 30%, #17b89052 0%, transparent 32%), radial-gradient(circle at 82% 72%, #8c7bf247 0%, transparent 34%);
-  --secao-acao: #17b890;
-  --secao-acao-texto: #0d2028;
+  --secao: #91a58a;
+  --secao-2: #6f866a;
+  --secao-suave: #eff3ec;
+  --secao-fundo: #eff3ec;
+  --secao-forte: #354234;
+  --secao-borda: #d2dccd;
+  --secao-apoio: #6f866a;
+  --secao-universo: #eff3ec;
+  --secao-universo-base: #eff3ec;
+  --secao-universo-texto: #354234;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
 }
+[data-universo='colecionaveis'] { --secao-pagina: #eef2f0; --secao-superficie: #f7f8fa; --secao-linha: #c8d7d1; --secao-tinta: #24312f; --secao-tinta-2: #24312f; }
+[data-universo='empresa'] { --secao-pagina: #eef2f5; --secao-superficie: #f7f8fa; --secao-linha: #c8d4dc; --secao-tinta: #253640; --secao-tinta-2: #253640; }
+[data-universo='presentes'] { --secao-pagina: #f7efee; --secao-superficie: #f7f8fa; --secao-linha: #e4cdca; --secao-tinta: #493737; --secao-tinta-2: #493737; }
+[data-universo='sensoriais'] { --secao-pagina: #eff3ec; --secao-superficie: #f7f8fa; --secao-linha: #d2dccd; --secao-tinta: #354234; --secao-tinta-2: #354234; }
 
 /*
  * Marca e secoes no Tailwind. `inline`: a classe usa a variavel, entao a cor filha muda
@@ -212,6 +219,7 @@
 
   --color-secao: var(--secao);
   --color-secao-2: var(--secao-2);
+  --color-secao-apoio: var(--secao-apoio);
   --color-secao-suave: var(--secao-suave);
   --color-secao-forte: var(--secao-forte);
   --color-secao-borda: var(--secao-borda);
@@ -231,8 +239,7 @@
 
   --font-display: var(--marca-fonte-display);
   --font-marca: var(--marca-fonte);
-  /* Geometrica fina, em caixa alta espacada: a voz da Casa. */
-  --font-fina: var(--fonte-fina), 'Segoe UI', Arial, sans-serif;
+  --font-fina: var(--marca-fonte-display);
 
   --text-marca-mini: var(--marca-t-mini);
   --text-marca-pequeno: var(--marca-t-pequeno);
@@ -257,11 +264,11 @@
 @utility bg-marca { background-image: var(--marca-gradiente); }
 @utility bg-marca-suave { background-image: var(--marca-gradiente-suave); }
 @utility bg-secao-fundo { background: var(--secao-fundo); }
-/* Palco do universo da secao: textura por cima do gradiente. */
+/* Palco do universo da secao. */
 @utility bg-universo { background: var(--secao-padrao), var(--secao-universo); }
 @utility texto-gradiente { background-image: var(--marca-gradiente); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 @utility px-margem { padding-inline: var(--marca-margem); }
-@utility conteiner-loja { width: 100%; max-width: var(--marca-largura-loja); margin-inline: auto; }
+@utility conteiner-loja { width: 100%; min-width: 0; }
 @utility py-secao { padding-block: var(--marca-secao); }
 @utility gap-vao { gap: var(--marca-vao); }
 

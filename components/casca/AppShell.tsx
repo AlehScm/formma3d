@@ -50,7 +50,7 @@ export function AppShell() {
       <div className="flex h-screen flex-col overflow-hidden bg-fundo max-xl:h-[100dvh]">
         <BarraTopo />
 
-        <div className={cx('relative flex min-h-0 flex-1 xl:static', orcamento ? 'w-full' : 'mx-auto w-full max-w-[2400px]')}>
+        <div className="relative flex min-h-0 w-full flex-1 xl:static">
           <aside
             aria-label="Configurações"
             className={cx(

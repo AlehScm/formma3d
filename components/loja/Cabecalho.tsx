@@ -27,7 +27,7 @@ function Busca() {
     router.push(`/busca?q=${encodeURIComponent(q.trim())}`);
   };
   return (
-    <form role="search" onSubmit={enviar} className="flex h-11 w-full items-center overflow-hidden rounded-full border-2 border-marca-azul bg-marca-branco focus-within:shadow-marca-foco">
+    <form role="search" onSubmit={enviar} className="flex h-12 w-full items-center overflow-hidden rounded-marca-md border border-marca-linha bg-marca-palido focus-within:border-marca-azul focus-within:shadow-marca-foco">
       <label htmlFor="busca-loja" className="sr-only">Buscar peças</label>
       <input
         id="busca-loja"
@@ -51,13 +51,13 @@ export function CabecalhoLoja({ secaoAtual }: { secaoAtual?: Secao }) {
   const icone = cx(ICONE_MARCA, 'relative text-marca-navy no-underline');
   return (
     <header className="sticky top-0 z-30 bg-marca-branco shadow-marca-1">
-      <div className="bg-marca-navy px-margem py-1.5 text-center text-xs text-white/90">
-        Peças impressas em 3D sob medida. <Link href="/criar" className="font-semibold text-white underline underline-offset-2">Monte a sua peça</Link>
+      <div className="bg-marca-palido px-margem py-2 text-center text-xs text-marca-texto-2">
+        Peças impressas em 3D sob medida. <Link href="/criar" className="font-semibold text-marca-azul underline underline-offset-2">Monte a sua peça</Link>
       </div>
       <div className="conteiner-loja flex flex-wrap items-center gap-x-6 gap-y-3 px-margem py-3 md:flex-nowrap">
         <Wordmark />
-        <div className="order-3 w-full md:order-none md:max-w-[680px] md:flex-1">
-          <Suspense fallback={<div className="h-11 w-full rounded-full border-2 border-marca-azul" />}>
+        <div className="order-3 w-full min-w-0 md:order-none md:flex-1">
+          <Suspense fallback={<div className="h-12 w-full rounded-marca-md border border-marca-linha" />}>
             <Busca />
           </Suspense>
         </div>

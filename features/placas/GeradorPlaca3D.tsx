@@ -152,7 +152,7 @@ export function GeradorPlaca3D({ moldeId, initialText, onSwitchTo2D }: GeradorPl
         <BotaoMarca variante="fantasma" pequeno href="/criar">Catálogo</BotaoMarca>
       </div>
     </header>
-    <div className="mx-auto max-w-[1800px] px-margem py-6 max-sm:px-3.5 max-sm:py-3.5">
+    <div className="w-full px-margem py-6 max-sm:px-3.5 max-sm:py-3.5">
       <div className="mb-4 flex items-end justify-between gap-5 max-[850px]:flex-col max-[850px]:items-start"><div><p className="mb-1.5 text-marca-mini font-extrabold tracking-[0.17em] text-marca-azul-forte">SCARPRINT / GERADOR 3D</p><h1 className="m-0 font-display text-marca-titulo-2 leading-tight font-black tracking-[-0.04em] text-marca-navy">{nomeMolde}</h1></div><span className="max-w-[460px] text-marca-pequeno leading-relaxed text-marca-texto-2 max-[850px]:max-w-none">Configure a base e as letras. A prévia mostra a posição de montagem na placa.</span></div>
       <div className="grid grid-cols-[minmax(275px,350px)_minmax(0,1fr)] items-stretch gap-4 max-[850px]:grid-cols-1">
         <aside className="rounded-marca-lg border border-marca-linha bg-marca-branco p-[18px] shadow-marca-1 max-sm:p-3.5">

@@ -23,7 +23,7 @@ export function GaleriaProduto({ produto: p }: { produto: Produto }) {
   const aba3d = aba === '3d' && gerador;
   return (
     <div className="flex flex-col gap-3">
-      <div data-secao={p.secao} className={cx('relative aspect-square overflow-hidden rounded-2xl', aba3d ? 'bg-universo' : 'bg-secao-suave')}>
+      <div data-secao={p.secao} className={cx('relative aspect-square overflow-hidden rounded-2xl lg:aspect-auto lg:h-[min(70dvh,800px)] lg:min-h-96', aba3d ? 'bg-universo' : 'bg-secao-suave')}>
         {aba3d ? (
           <>
             <div className="absolute inset-0"><PecaViva id={gerador} nome="Modelo 3D" interativo reserva={<ReservaProduto produto={p} />} /></div>
@@ -64,7 +64,7 @@ export function CompraProduto({ produto: p }: { produto: Produto }) {
   return (
     <div className="flex flex-col gap-4 rounded-2xl bg-marca-branco p-5 shadow-marca-1">
       <div>
-        <p className="m-0 text-2xl font-bold text-marca-navy">{rotuloPreco(p)}</p>
+        <p className="m-0 font-display text-2xl font-bold text-marca-navy">{rotuloPreco(p)}</p>
         {p.preco.status === 'validacao' && <p className="m-0 mt-1 text-sm text-marca-texto-2">O valor depende do tamanho, das cores e da quantidade. Adicione ao orçamento e envie a lista.</p>}
       </div>
       <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">

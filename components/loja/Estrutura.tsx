@@ -33,12 +33,12 @@ export function FaixaVantagens() {
   );
 }
 
-const LINK_RODAPE = 'text-sm text-white/75 no-underline hover:text-white hover:underline';
+const LINK_RODAPE = 'text-sm text-marca-texto-2 no-underline hover:text-marca-azul hover:underline';
 
 export function RodapeLoja() {
   const whatsapp = linkWhatsapp(MENSAGENS.geral());
   return (
-    <footer className="mt-12 bg-marca-navy pt-12 pb-8 text-white">
+    <footer className="mt-12 border-t border-marca-linha bg-marca-branco pt-12 pb-8 text-marca-navy">
       <div className="conteiner-loja grid grid-cols-2 gap-8 px-margem md:grid-cols-4">
         <div>
           <h2 className="mt-0 mb-3 text-sm font-semibold">Seções</h2>
@@ -54,7 +54,7 @@ export function RodapeLoja() {
         </div>
         <div>
           <h2 className="mt-0 mb-3 text-sm font-semibold">Como pedir</h2>
-          <ol className="m-0 flex flex-col gap-2 pl-4 text-sm text-white/75">
+          <ol className="m-0 flex flex-col gap-2 pl-4 text-sm text-marca-texto-2">
             <li>Escolha as peças e adicione ao orçamento.</li>
             <li>Diga cor, quantidade e o que quiser mudar.</li>
             <li>Envie a lista: respondemos com preço e prazo.</li>
@@ -62,11 +62,11 @@ export function RodapeLoja() {
         </div>
         <div>
           <h2 className="mt-0 mb-3 text-sm font-semibold">Atendimento</h2>
-          {whatsapp ? <a href={whatsapp} className={LINK_RODAPE} target="_blank" rel="noopener noreferrer">Falar pelo WhatsApp</a> : <p className="m-0 text-sm text-white/75">WhatsApp em breve.</p>}
+          {whatsapp ? <a href={whatsapp} className={LINK_RODAPE} target="_blank" rel="noopener noreferrer">Falar pelo WhatsApp</a> : <p className="m-0 text-sm text-marca-texto-2">WhatsApp em breve.</p>}
         </div>
       </div>
-      <div className="conteiner-loja mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-white/15 px-margem pt-6 text-xs text-white/60">
-        <span className="[&_b]:text-white [&_small]:text-white/60"><Wordmark tamanho={18} subtitulo={null} href={null} /></span>
+      <div className="conteiner-loja mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-marca-linha px-margem pt-6 text-xs text-marca-texto-2">
+        <Wordmark tamanho={22} subtitulo={null} href={null} />
         <span>Peças impressas em 3D sob medida. Preços sob consulta.</span>
       </div>
     </footer>
@@ -76,8 +76,7 @@ export function RodapeLoja() {
 /** `cru`: o conteudo cuida do proprio espacamento (paginas que nao sao da loja, como o catalogo). */
 export function PaginaLoja({ secaoAtual, children, className, cru }: { secaoAtual?: Secao; children: ReactNode; className?: string; cru?: boolean }) {
   return (
-    // Dentro de uma secao, a pagina veste o universo dela (fundo, superficies, botao).
-    <div data-secao={secaoAtual} data-universo={secaoAtual} className={cx(ESCOPO_MARCA, 'flex min-h-screen flex-col', secaoAtual && 'bg-secao-pagina!')}>
+    <div data-secao={secaoAtual} className={cx(ESCOPO_MARCA, 'flex min-h-screen flex-col')}>
       <a className="absolute -left-[9999px] top-2 z-50 rounded-md bg-marca-navy px-3.5 py-2.5 font-bold text-white focus:left-2" href="#conteudo">Pular para o conteúdo</a>
       <CabecalhoLoja secaoAtual={secaoAtual} />
       <main id="conteudo" className={cru ? className : cx('conteiner-loja flex min-w-0 flex-1 flex-col gap-6 px-margem pt-6', className)}>{children}</main>

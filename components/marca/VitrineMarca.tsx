@@ -2,19 +2,18 @@
 import { BotaoIconeMarca, BotaoMarca, BotaoWhatsapp, CampoMarca, CartaoMarca, ChipSecao, ESCOPO_MARCA, RotuloMarca, SecaoMarca, SeloMarca, Wordmark } from '.';
 import { IconeFavorito } from '@/components/loja/icones';
 import { ArteSecao } from './ArteSecao';
-import { ComparaFontes } from './ComparaFontes';
 import { cx } from '@/components/ui/cx';
 import { ORDEM_SECOES, SECOES } from '@/lib/marketplace/tipos';
 
 /** Classe da amostra (estatica, para o Tailwind gerar), token e uso. */
 const CORES: [string, string, string][] = [
-  ['bg-marca-navy', '--marca-navy', 'texto forte'], ['bg-marca-azul', '--marca-azul', 'ação'], ['bg-marca-ciano', '--marca-ciano', 'brilho'],
-  ['bg-marca-profundo', '--marca-profundo', 'faixa escura'], ['bg-marca-gelo', '--marca-gelo', 'destaque suave'], ['bg-marca-palido', '--marca-palido', 'fundo'],
-  ['bg-marca-linha', '--marca-linha', 'borda'], ['bg-marca-texto-2', '--marca-texto-2', 'corpo'], ['bg-marca-texto-3', '--marca-texto-3', 'apoio'],
+  ['bg-marca-navy', '--marca-navy', 'títulos e texto forte'], ['bg-marca-azul', '--marca-azul', 'ação principal'], ['bg-marca-ciano', '--marca-ciano', 'alias do azul'],
+  ['bg-marca-profundo', '--marca-profundo', 'neutro escuro'], ['bg-marca-gelo', '--marca-gelo', 'fundo claro'], ['bg-marca-palido', '--marca-palido', 'fundo da loja'],
+  ['bg-marca-linha', '--marca-linha', 'bordas'], ['bg-marca-texto-2', '--marca-texto-2', 'corpo'], ['bg-marca-texto-3', '--marca-texto-3', 'apoio'],
   ['bg-marca-atencao', '--marca-atencao', 'em validação'], ['bg-marca-sucesso', '--marca-sucesso', 'nosso'], ['bg-marca-whatsapp', '--marca-whatsapp', 'WhatsApp'],
-  ['bg-marca', '--marca-gradiente', 'ação primária'],
+  ['bg-marca', '--marca-gradiente', 'alias da ação azul'],
 ];
-const SECAO_AMOSTRAS: [string, string][] = [['bg-secao', '--secao'], ['bg-secao-2', '--secao-2'], ['bg-secao-suave', '--secao-suave'], ['bg-secao-forte', '--secao-forte']];
+const SECAO_AMOSTRAS: [string, string][] = [['bg-secao', 'principal'], ['bg-secao-2', 'apoio'], ['bg-secao-suave', 'fundo'], ['bg-secao-forte', 'texto']];
 const AMOSTRA = 'overflow-hidden rounded-marca-sm border border-marca-linha bg-marca-branco';
 
 export function VitrineMarca() {
@@ -24,6 +23,17 @@ export function VitrineMarca() {
         <Wordmark href={null} />
         <Wordmark href={null} tamanho={40} subtitulo={null} />
       </div>
+      <SecaoMarca titulo="Uma marca, cinco seções" texto="A identidade Scarprint permanece no cabeçalho, nas ações e na navegação. A composição usa aproximadamente 70% branco/off-white, 20% neutros e 10% cor da categoria, sem transformar cada seção em um site diferente.">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {([['completo', 'Composição completa'], ['logotipo', 'Cabeçalho'], ['simbolo', 'Símbolo e favicon'], ['risco', 'Assinatura gráfica']] as const).map(([arquivo, nome]) => (
+            <div key={arquivo} className="flex flex-col gap-4 rounded-marca-md border border-marca-linha bg-marca-branco p-5">
+              {/* eslint-disable-next-line @next/next/no-img-element -- variantes vetoriais locais */}
+              <img src={`${process.env.NEXT_PUBLIC_BASE ?? ''}/marca/scarprint-${arquivo}.svg`} alt={nome} className="h-28 w-full object-contain" />
+              <p className="m-0 font-display text-sm font-semibold text-marca-navy">{nome}</p>
+            </div>
+          ))}
+        </div>
+      </SecaoMarca>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 p-6">
         {CORES.map(([cls, token, uso]) => (
           <div key={token} className={AMOSTRA}>
@@ -36,9 +46,22 @@ export function VitrineMarca() {
         ))}
       </div>
 
-      <ComparaFontes />
+      <SecaoMarca titulo="Tipografia da marca" texto="Manrope nos títulos, categorias, preços, botões e banners. Inter no corpo, navegação, filtros e dados técnicos. O editor mantém sua fonte monoespaçada para medidas.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-marca-md border border-marca-linha bg-marca-branco p-5">
+            <p className="m-0 text-xs text-marca-texto-2">Manrope</p>
+            <p className="mt-3 mb-0 font-display text-3xl font-semibold text-marca-navy">Peças para a sua casa</p>
+            <p className="mt-2 mb-0 font-display text-lg font-semibold text-marca-azul">Preço sob consulta</p>
+          </div>
+          <div className="rounded-marca-md border border-marca-linha bg-marca-branco p-5">
+            <p className="m-0 text-xs text-marca-texto-2">Inter</p>
+            <p className="mt-3 mb-0 font-marca text-base leading-relaxed text-marca-texto-2">Escolha uma peça, ajuste as opções e acompanhe seu orçamento.</p>
+            <p className="mt-2 mb-0 font-marca text-sm text-marca-texto-2">Buscar por categoria · Filtrar produtos</p>
+          </div>
+        </div>
+      </SecaoMarca>
 
-      <SecaoMarca titulo="Controles da loja" texto="Conteúdo centralizado em até 1600 px. Controles compactos com pelo menos 44 px de toque e ações principais com 48 px. Foco, bordas e estados são compartilhados; as cores acompanham o universo da seção.">
+      <SecaoMarca titulo="Controles da loja" texto="Conteúdo distribuído pela largura disponível, com margens fluidas e grades que ganham colunas conforme o espaço. Controles com pelo menos 44 px de toque e ações principais com 48 px. Foco, bordas e estados são compartilhados.">
         <div className="grid gap-6 md:grid-cols-2">
           {(['marca', 'casa'] as const).map((tema) => (
             <div key={tema} data-secao={tema === 'casa' ? tema : undefined} data-universo={tema === 'casa' ? tema : undefined} className="rounded-marca-md border border-secao-linha bg-secao-superficie p-5 text-secao-tinta">
@@ -57,7 +80,7 @@ export function VitrineMarca() {
         </div>
       </SecaoMarca>
 
-      <SecaoMarca sobretitulo="Seção" titulo={<>Título de seção em <span className="text-marca-azul">display</span></>} texto="Corpo em 16px, linha 1,6, cor marca-texto-2. Sobretítulo em caixa alta com o ponto da seção." acao={<BotaoMarca variante="contorno">Ação da seção</BotaoMarca>}>
+      <SecaoMarca sobretitulo="Seção" titulo={<>Título de seção em <span className="text-marca-azul">Manrope</span></>} texto="Corpo em Inter, 16px, com contraste legível sobre os fundos claros." acao={<BotaoMarca variante="contorno">Ação da seção</BotaoMarca>}>
         <div className="flex flex-wrap items-center gap-3">
           <BotaoMarca>Primário</BotaoMarca>
           <BotaoMarca variante="contorno">Contorno</BotaoMarca>
@@ -96,19 +119,19 @@ export function VitrineMarca() {
         </div>
       </SecaoMarca>
 
-      <SecaoMarca fundo="gelo" sobretitulo="Seções da loja" titulo="Cada seção, um universo" texto="A marca (azul, wordmark, botão primário) não muda. Dentro de [data-secao], o palco (bg-universo, com textura própria) e os acentos secao-* mudam: banner, portal da seção, categorias, prateleiras e a galeria 3D.">
+      <SecaoMarca fundo="gelo" sobretitulo="Seções da loja" titulo="Cada seção, um universo" texto="A marca azul não muda. As seções usam fundos claros e cores próprias para produto, categoria e detalhes; texto permanece escuro e as ações principais continuam azuis.">
         <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-4">
           {ORDEM_SECOES.map((s) => (
             <div key={s} data-secao={s}>
               <CartaoMarca>
                 <div className="flex aspect-[6/5] flex-col justify-between bg-universo p-3 text-secao-universo-texto">
-                  <span className="text-xs font-semibold">{SECOES[s].universo}</span>
+                  <span className="font-display text-sm font-semibold">{SECOES[s].universo}</span>
                   <div className="mx-auto w-3/5"><ArteSecao secao={s} /></div>
                 </div>
                 <div className="flex flex-col gap-2 p-3">
                   <strong className="text-[15px]">{SECOES[s].nome}</strong>
                   <div className="flex gap-1.5">
-                    {SECAO_AMOSTRAS.map(([cls, token]) => <span key={token} title={token} className={cx('size-[22px] rounded-md border border-marca-linha', cls)} />)}
+                    {SECAO_AMOSTRAS.map(([cls, rotulo]) => <span key={rotulo} title={rotulo} className={cx('size-[22px] rounded-md border border-marca-linha', cls)} />)}
                   </div>
                   <ChipSecao className="self-start">Chip da seção</ChipSecao>
                   <BotaoMarca pequeno>Botão da marca</BotaoMarca>
@@ -118,7 +141,6 @@ export function VitrineMarca() {
           ))}
         </div>
       </SecaoMarca>
-      <SecaoMarca fundo="escura" sobretitulo="Faixa escura" titulo="Para chamadas fortes" texto="Fundo marca-profundo, texto claro com contraste AA." acao={<BotaoMarca>Chamada</BotaoMarca>} />
     </div>
   );
 }

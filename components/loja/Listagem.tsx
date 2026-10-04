@@ -17,7 +17,7 @@ import { IconeFechar, IconeFiltros } from './icones';
 type Ordem = 'relevancia' | 'nome' | 'personalizaveis';
 const personalizavel = (p: Produto) => !!geradorDe(p) || !!p.personalizar;
 
-const GRADE_PADRAO = 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
+const GRADE_PADRAO = 'grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]';
 
 export function Listagem({ produtos, vazio, filtrosEmLinha, extra, grade = GRADE_PADRAO }: { produtos: Produto[]; vazio?: React.ReactNode; filtrosEmLinha?: boolean; extra?: React.ReactNode; grade?: string }) {
   const tipos = useMemo(() => [...new Set(produtos.map((p) => p.tipo))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [produtos]);
@@ -91,13 +91,13 @@ export function Listagem({ produtos, vazio, filtrosEmLinha, extra, grade = GRADE
         )}
         <div className={cx('flex flex-wrap items-center justify-between gap-3', filtrosEmLinha ? 'border-b border-secao-linha pb-3' : 'rounded-2xl bg-secao-superficie px-4 py-3 shadow-marca-1')}>
           <p role="status" className="m-0 text-sm text-secao-tinta-2"><b className="text-secao-tinta tabular-nums">{lista.length}</b> {lista.length === 1 ? 'produto' : 'produtos'}</p>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto sm:gap-3">
             {!filtrosEmLinha && <Dialog.Trigger className={cx(classeBotaoMarca('contorno', true, 'controle'), 'lg:hidden')}>
               <IconeFiltros className="size-4" aria-hidden />Filtrar{filtrando ? ' (ativo)' : ''}
             </Dialog.Trigger>}
-            <label className="flex min-w-0 items-center gap-2 text-sm text-secao-tinta-2">
-              <span className="max-sm:sr-only">Ordenar por</span>
-              <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={cx(CAMPO_MARCA, 'max-w-full')}>
+            <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-secao-tinta-2">
+              <span className="whitespace-nowrap max-sm:sr-only">Ordenar por</span>
+              <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={cx(CAMPO_MARCA, 'min-w-0 max-w-full')}>
                 <option value="relevancia">Relevância</option>
                 <option value="nome">Nome (A–Z)</option>
                 <option value="personalizaveis">Personalizáveis primeiro</option>

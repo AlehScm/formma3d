@@ -11,23 +11,21 @@ import { linkWhatsapp } from '@/lib/marketplace/contato';
 /** Fundo, texto, fonte e anel de foco da marca para a pagina inteira. */
 export const ESCOPO_MARCA = 'bg-marca-palido text-marca-texto font-marca [&_:focus-visible]:outline-none [&_:focus-visible]:shadow-marca-foco';
 
-export function Wordmark({ tamanho = 24, subtitulo = 'DESIGN STUDIO', href = '/' }: { tamanho?: number; subtitulo?: string | null; href?: string | null }) {
+export function Wordmark({ tamanho = 24, subtitulo = null, href = '/' }: { tamanho?: number; subtitulo?: string | null; href?: string | null }) {
   const corpo = (
     <>
-      {/* o tamanho vem da prop: variavel CSS (unico estilo inline permitido) */}
-      <b className="flex -skew-x-[7deg] font-display text-(length:--wordmark) font-extrabold italic tracking-[-0.06em]" style={{ '--wordmark': `${tamanho}px` } as CSSProperties}>
-        SCAR<span className="texto-gradiente pr-[0.18em]">PRINT</span>
-      </b>
+      {/* eslint-disable-next-line @next/next/no-img-element -- SVG vetorial local, sem otimizacao raster */}
+      <img src={`${process.env.NEXT_PUBLIC_BASE ?? ''}/marca/scarprint-logotipo.svg`} alt={href ? '' : 'Scarprint'} width={53600} height={8500} className="block h-auto w-[min(42vw,var(--wordmark))] max-w-full" style={{ '--wordmark': `${tamanho * 7}px` } as CSSProperties} />
       {subtitulo && <small className="mt-1.5 pl-0.5 text-[8px] font-extrabold tracking-[0.23em] text-marca-texto-3">{subtitulo}</small>}
     </>
   );
-  const cls = 'inline-flex flex-col leading-none whitespace-nowrap text-marca-navy no-underline';
-  return href ? <Link href={href} className={cls} aria-label="Scarprint, início">{corpo}</Link> : <span className={cls} aria-label="Scarprint">{corpo}</span>;
+  const cls = 'inline-flex min-h-11 max-w-full shrink-0 flex-col justify-center leading-none whitespace-nowrap text-marca-navy no-underline';
+  return href ? <Link href={href} className={cls} aria-label="Scarprint, início">{corpo}</Link> : <span className={cls}>{corpo}</span>;
 }
 
 type Variante = 'primario' | 'contorno' | 'fantasma' | 'whatsapp' | 'secao' | 'sucesso';
 export const FOCO_MARCA = 'focus-visible:outline-none focus-visible:shadow-marca-foco';
-const BOTAO_BASE = 'inline-flex min-w-0 items-center justify-center gap-2 border border-transparent font-marca no-underline cursor-pointer transition-[box-shadow,background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 motion-reduce:transition-none';
+const BOTAO_BASE = 'inline-flex min-w-0 items-center justify-center gap-2 border border-transparent font-display no-underline cursor-pointer transition-[box-shadow,background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 motion-reduce:transition-none';
 const BOTAO_VARIANTE: Record<Variante, string> = {
   primario: 'bg-marca text-white shadow-marca-acao hover:shadow-marca-2',
   contorno: 'bg-marca-branco text-marca-navy border-marca-linha hover:border-marca-linha-forte hover:bg-marca-gelo',

@@ -1,12 +1,10 @@
 'use client';
 
 /**
- * Pecas da home de marketplace: banner rotativo, prateleira com setas e os circulos de
- * categoria. Recebem so produtos publicos.
+ * Pecas da home de marketplace: banner rotativo, prateleira e categorias.
  */
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArteSecao } from '@/components/marca/ArteSecao';
 import { BotaoIconeMarca, FOCO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
@@ -34,31 +32,33 @@ export function BannerRotativo({ slides }: { slides: Slide[] }) {
       onMouseEnter={() => setPausado(true)}
       onMouseLeave={() => setPausado(false)}
       onFocusCapture={() => setPausado(true)}
-      onBlurCapture={() => setPausado(false)}
-      className="relative"
+      onBlurCapture={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setPausado(false); }}
+      className="overflow-hidden rounded-2xl border border-marca-linha bg-marca-branco"
     >
-      <div data-secao={s.secao} className="grid min-h-[320px] grid-cols-1 items-center overflow-hidden rounded-2xl bg-universo text-secao-universo-texto md:grid-cols-2" aria-live={pausado || pausaManual ? 'polite' : 'off'}>
-        <div className="order-2 px-8 pb-16 md:order-none md:pt-10 md:pl-14">
-          <p className="m-0 mb-3 inline-flex items-center gap-2 rounded-full border border-current/20 px-3 py-1 text-xs font-semibold"><span aria-hidden="true" className="size-2 rounded-full bg-secao-2" />{SECOES[s.secao].universo}</p>
-          <h2 className="m-0 font-display text-[clamp(28px,3.2vw,44px)] leading-[1.02] font-extrabold tracking-[-0.03em]">{s.titulo}</h2>
-          <p className="mt-3 mb-6 max-w-[42ch] text-base opacity-85">{s.texto}</p>
-          <Link href={s.href} className="inline-flex min-h-12 items-center rounded-lg bg-secao-acao px-6 font-semibold text-secao-acao-texto no-underline hover:brightness-110">{s.acao}</Link>
+      <div data-secao={s.secao} className="grid min-h-[252px] grid-cols-[minmax(0,1fr)_minmax(96px,32%)] items-center overflow-hidden bg-universo text-secao-universo-texto md:h-[236px] md:min-h-0 md:grid-cols-[minmax(0,1fr)_minmax(180px,35%)]" aria-live={pausado || pausaManual ? 'polite' : 'off'}>
+        <div className="min-w-0 px-4 py-5 sm:px-7 md:px-10">
+          <p className="m-0 mb-2 font-display text-xs font-semibold text-secao-forte">{SECOES[s.secao].nome}</p>
+          <h2 className="m-0 font-display text-[clamp(23px,2.6vw,35px)] leading-[1.08] font-bold tracking-[-0.025em]">{s.titulo}</h2>
+          <p className="mt-2 mb-4 max-w-[44ch] text-sm leading-snug text-secao-universo-texto md:text-base">{s.texto}</p>
+          <Link href={s.href} className="inline-flex min-h-11 items-center rounded-lg bg-secao-acao px-4 font-display text-sm font-semibold text-secao-acao-texto no-underline hover:bg-marca-azul-forte">{s.acao}</Link>
         </div>
-        <div className="relative order-1 h-[220px] md:order-none md:h-[320px]">
-          {s.produto ? <ImagemProduto key={s.produto.slug} produto={s.produto} className="[&_.miniatura]:scale-[1.35]" /> : <ArteSecao secao={s.secao} />}
+        <div className="relative h-full min-h-[180px] overflow-hidden bg-secao-suave">
+          {s.produto ? <ImagemProduto key={s.produto.slug} produto={s.produto} className="absolute inset-0 [&_img]:object-contain" /> : <div className="grid size-full place-items-center p-3 text-center text-xs text-secao-forte">Imagem em preparação</div>}
         </div>
       </div>
       {slides.length > 1 && (
-        <>
-          <BotaoIconeMarca onClick={() => ir(i - 1)} rotulo="Destaque anterior" className="absolute top-[110px] left-3 -translate-y-1/2 bg-marca-branco text-marca-navy shadow-marca-1 md:top-1/2"><IconeAnterior className="size-5" aria-hidden /></BotaoIconeMarca>
-          <BotaoIconeMarca onClick={() => ir(i + 1)} rotulo="Próximo destaque" className="absolute top-[110px] right-3 -translate-y-1/2 bg-marca-branco text-marca-navy shadow-marca-1 md:top-1/2"><IconeProximo className="size-5" aria-hidden /></BotaoIconeMarca>
-          <div data-secao={s.secao} className="absolute bottom-2 left-1/2 flex -translate-x-1/2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-marca-linha px-3 py-1 md:px-6">
+          <div data-secao={s.secao} className="flex items-center">
             {slides.map((sl, n) => (
-              <button key={sl.titulo} type="button" onClick={() => ir(n)} aria-label={`Destaque ${n + 1} de ${slides.length}: ${sl.titulo}`} aria-current={n === i ? 'true' : undefined} className={cx('grid size-11 place-items-center rounded-marca-sm', FOCO_MARCA)}><span className={cx('h-2 rounded-full', n === i ? 'w-6 bg-secao-universo-texto' : 'w-2 bg-secao-universo-texto/35')} /></button>
+              <button key={sl.titulo} type="button" onClick={() => ir(n)} aria-label={`Destaque ${n + 1} de ${slides.length}: ${sl.titulo}`} aria-current={n === i ? 'true' : undefined} className={cx('grid size-11 place-items-center rounded-marca-sm', FOCO_MARCA)}><span className={cx('h-2 rounded-full', n === i ? 'w-6 bg-secao-forte' : 'w-2 bg-marca-linha')} /></button>
             ))}
           </div>
-          <button type="button" onClick={() => setPausaManual((p) => !p)} aria-pressed={pausaManual} aria-label={pausaManual ? 'Retomar rotação dos destaques' : 'Pausar rotação dos destaques'} className={cx('absolute right-3 bottom-2 min-h-11 rounded-marca-sm bg-marca-vidro px-3 text-xs font-semibold text-marca-navy', FOCO_MARCA)}>{pausaManual ? 'Retomar' : 'Pausar'}</button>
-        </>
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={() => setPausaManual((p) => !p)} aria-pressed={pausaManual} aria-label={pausaManual ? 'Retomar rotação dos destaques' : 'Pausar rotação dos destaques'} className={cx('min-h-11 rounded-marca-sm px-3 text-xs font-semibold text-marca-navy', FOCO_MARCA)}>{pausaManual ? 'Retomar' : 'Pausar'}</button>
+            <BotaoIconeMarca onClick={() => ir(i - 1)} rotulo="Destaque anterior" className="border border-marca-linha text-marca-navy"><IconeAnterior className="size-4" aria-hidden /></BotaoIconeMarca>
+            <BotaoIconeMarca onClick={() => ir(i + 1)} rotulo="Próximo destaque" className="border border-marca-linha text-marca-navy"><IconeProximo className="size-4" aria-hidden /></BotaoIconeMarca>
+          </div>
+        </div>
       )}
     </section>
   );
@@ -75,7 +75,6 @@ export function Prateleira({ titulo, verTodos, produtos, secao }: { titulo: stri
         <h2 id={id} className="m-0 flex min-w-0 flex-wrap items-center gap-2.5 font-display text-[22px] leading-tight font-bold text-marca-navy">
           {secao && <span aria-hidden="true" className="size-2.5 rounded-full bg-secao" />}
           {titulo}
-          {secao && <span className="rounded-full bg-secao-suave px-2.5 py-0.5 font-marca text-xs font-semibold text-secao-forte">{SECOES[secao].universo}</span>}
         </h2>
         <div className="flex items-center gap-2">
           {verTodos && <Link href={verTodos.href} className="text-sm font-semibold text-marca-azul no-underline hover:underline">{verTodos.rotulo}</Link>}
@@ -92,17 +91,20 @@ export function Prateleira({ titulo, verTodos, produtos, secao }: { titulo: stri
 
 export function CategoriasCirculos({ itens }: { itens: { secao: Secao; nome: string; total: number; gerador: string | null }[] }) {
   return (
-    <section aria-labelledby="categorias-titulo" className="rounded-2xl bg-marca-branco p-4 shadow-marca-1 md:p-6">
-      <h2 id="categorias-titulo" className="mt-0 mb-4 font-display text-[22px] leading-tight font-bold text-marca-navy">Compre por categoria</h2>
-      <ul className="m-0 grid list-none grid-cols-3 gap-4 p-0 sm:grid-cols-5">
+    <section aria-labelledby="categorias-titulo" className="rounded-2xl bg-marca-branco p-4 shadow-marca-1 md:p-5">
+      <h2 id="categorias-titulo" className="mt-0 mb-3 font-display text-lg leading-tight font-bold text-marca-navy">Compre por categoria</h2>
+      <ul className="-mx-4 m-0 flex list-none gap-2 overflow-x-auto px-4 pb-1 snap-x snap-mandatory [scrollbar-width:thin] md:-mx-5 md:px-5 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
         {itens.map((c) => (
-          <li key={c.secao} data-secao={c.secao}>
-            <Link href={`/secao/${c.secao}`} className="group flex flex-col items-center gap-2 text-center no-underline">
-              <span className="relative block aspect-square w-full max-w-[140px] overflow-hidden rounded-full bg-universo ring-[3px] ring-secao/25 transition group-hover:ring-secao [&_.miniatura]:size-full [&_.miniatura]:object-contain [&_.miniatura]:p-[14%] [&_.miniatura-reserva]:size-full">
-                {c.gerador ? <Miniatura id={c.gerador} alt="" reserva={<ArteSecao secao={c.secao} />} /> : <ArteSecao secao={c.secao} />}
+          <li key={c.secao} data-secao={c.secao} className="w-44 shrink-0 snap-start lg:w-auto">
+            <Link href={`/secao/${c.secao}`} className="group flex min-h-16 items-center gap-3 rounded-marca-md border border-secao-borda bg-secao-suave px-3 no-underline hover:border-secao-forte">
+              <span aria-hidden="true" className="hidden size-11 shrink-0 overflow-hidden rounded-md bg-secao-fundo sm:block [&_.miniatura]:size-full [&_.miniatura]:object-contain [&_.miniatura-reserva]:size-full">
+                {c.gerador ? <Miniatura id={c.gerador} alt="" reserva={<span className="block size-full bg-secao-suave" />} /> : <span className="grid size-full place-items-center"><span className="size-3 rounded-full bg-secao" /></span>}
               </span>
-              <span className="text-sm font-semibold text-secao-forte">{c.nome}</span>
-              <span className="-mt-1.5 text-xs text-marca-texto-3">{c.total ? `${c.total} ${c.total === 1 ? 'peça' : 'peças'}` : 'Em breve'}</span>
+              <span aria-hidden="true" className="size-3 shrink-0 rounded-full bg-secao sm:hidden" />
+              <span className="min-w-0">
+                <span className="block font-display text-sm font-semibold leading-tight text-secao-forte">{c.nome}</span>
+                <span className="block text-xs text-marca-texto-2">{c.total ? `${c.total} ${c.total === 1 ? 'peça' : 'peças'}` : 'Em breve'}</span>
+              </span>
             </Link>
           </li>
         ))}

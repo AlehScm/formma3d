@@ -123,8 +123,8 @@ export function TelaGerador({ id }: { id: string }) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside aria-label="Opções do modelo" className="border-borda bg-superficie lg:w-[380px] lg:shrink-0 lg:overflow-y-auto lg:border-r">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
+        <aside aria-label="Opções do modelo" className="min-w-0 border-borda bg-superficie lg:w-[380px] lg:shrink-0 lg:overflow-y-auto lg:border-r">
           <div className="space-y-6 p-4">
             {grupos.map(([nome, ps]) => (
               <section key={nome} className="space-y-3">
@@ -137,7 +137,7 @@ export function TelaGerador({ id }: { id: string }) {
           </div>
         </aside>
 
-        <main className="relative flex min-h-[60vh] flex-1 flex-col">
+        <main className="relative flex min-h-[60vh] min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
             {resultado && temPecas ? (
               <PreviaGerador resultado={resultado} malhas={malhas} />
