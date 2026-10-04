@@ -7,6 +7,15 @@ import { EditorPlacas } from '@/features/placas/EditorPlacas';
 import { GeradorPlaca3D } from '@/features/placas/GeradorPlaca3D';
 import { moldes, type MoldeId } from '@/features/catalogo/catalogo';
 import { iniciarTextoModelo } from '@/features/catalogo/iniciarTextoModelo';
+import { PaginaLoja } from '@/components/marketplace/Loja';
+import { BotaoMarca, CampoMarca, RotuloMarca } from '@/components/marca';
+
+const ENTRADA = 'grid min-h-[min(70vh,700px)] place-items-center bg-marca-suave px-margem py-10 md:py-16 max-sm:place-items-start';
+const CARTAO = 'w-full max-w-[680px] rounded-marca-lg border border-marca-linha bg-marca-branco p-6 shadow-marca-2 md:p-10';
+const VOLTAR = 'text-marca-pequeno font-extrabold text-marca-azul-forte no-underline hover:underline underline-offset-4';
+const SOBRETITULO = 'mt-8 mb-3 text-marca-mini font-black tracking-[0.18em] text-marca-azul-forte';
+const TITULO = 'm-0 font-display text-marca-titulo-2 leading-[1.05] font-black tracking-[-0.05em] text-marca-navy';
+const RESUMO = 'mt-3.5 mb-0 text-marca-corpo leading-relaxed text-marca-texto-2';
 
 type IdPlaca = 'placa-personalizada' | 'placa-profissional';
 const CHAVE_TEXTO = 'scarprint:moldes:texto:';
@@ -28,15 +37,17 @@ export function MoldeAtivo({ id }: { id: MoldeId }) {
 
   if (!molde.ativo) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#f5f8fb] px-6 py-12 text-slate-900">
-        <section className="max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <Link href="/criar" className="text-sm font-semibold text-cyan-700">← Catálogo</Link>
-          <p className="mt-8 text-sm font-bold uppercase tracking-[.18em] text-cyan-600">Scarprint</p>
-          <h1 className="mt-3 text-3xl font-bold text-[#123a63]">{molde.title}</h1>
-          <p className="mt-3 text-slate-600">{molde.summary}</p>
-          <p className="mt-6 rounded-xl bg-cyan-50 px-4 py-3 font-semibold text-cyan-900">Este molde está em desenvolvimento.</p>
-        </section>
-      </main>
+      <PaginaLoja>
+        <div className={ENTRADA}>
+          <section className={CARTAO}>
+            <Link href="/criar" className={VOLTAR}>← Biblioteca de moldes</Link>
+            <p className={SOBRETITULO}>SCARPRINT / EM BREVE</p>
+            <h1 className={TITULO}>{molde.title}</h1>
+            <p className={RESUMO}>{molde.summary}</p>
+            <p className="mt-6 mb-0 rounded-marca-md bg-marca-atencao-fundo px-4 py-3.5 font-bold text-marca-atencao">Este molde está em desenvolvimento.</p>
+          </section>
+        </div>
+      </PaginaLoja>
     );
   }
 
@@ -64,18 +75,20 @@ export function MoldeAtivo({ id }: { id: MoldeId }) {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f5f8fb] px-6 py-12 text-slate-900">
-      <section className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-7 shadow-sm sm:p-10">
-        <Link href="/criar" className="text-sm font-semibold text-cyan-700">← Catálogo</Link>
-        <p className="mt-8 text-sm font-bold uppercase tracking-[.18em] text-cyan-600">Scarprint / Personalizar</p>
-        <h1 className="mt-3 text-3xl font-bold text-[#123a63]">{molde.title}</h1>
-        <p className="mt-3 text-slate-600">{molde.summary}</p>
-        <form className="mt-8 space-y-4" onSubmit={personalizar}>
-          <label className="block text-sm font-semibold text-slate-700" htmlFor="texto-molde">Texto</label>
-          <input id="texto-molde" name="texto" autoComplete="off" maxLength={160} required value={texto} onChange={(event) => { textoEditado.current = true; setTexto(event.target.value); }} placeholder="Digite o texto do seu modelo" className="h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-100" />
-          <button type="submit" className="h-12 w-full rounded-xl bg-cyan-600 px-5 font-semibold text-white hover:bg-cyan-700">Abrir editor</button>
-        </form>
-      </section>
-    </main>
+    <PaginaLoja>
+      <div className={ENTRADA}>
+        <section className={CARTAO}>
+          <Link href="/criar" className={VOLTAR}>← Biblioteca de moldes</Link>
+          <p className={SOBRETITULO}>SCARPRINT / PERSONALIZAR</p>
+          <h1 className={TITULO}>{molde.title}</h1>
+          <p className={RESUMO}>{molde.summary}</p>
+          <form className="mt-8 grid gap-3" onSubmit={personalizar}>
+            <RotuloMarca htmlFor="texto-molde">Seu texto</RotuloMarca>
+            <CampoMarca id="texto-molde" name="texto" autoComplete="off" maxLength={160} required value={texto} onChange={(event) => { textoEditado.current = true; setTexto(event.target.value); }} placeholder="Digite o texto do seu modelo" />
+            <BotaoMarca type="submit" className="mt-2 justify-self-start max-sm:justify-self-stretch">Abrir editor</BotaoMarca>
+          </form>
+        </section>
+      </div>
+    </PaginaLoja>
   );
 }

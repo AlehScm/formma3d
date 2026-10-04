@@ -1,9 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import styles from './EditorPlacas.module.css';
+import { BotaoMarca, CampoMarca, ESCOPO_MARCA, Wordmark } from '@/components/marca';
 import { exportSvg } from './exportSvg';
 import { alignObjects, distributeObjects, fitObjectsToBoard } from './layoutCommands';
 import { objectBounds, sceneBounds, layoutWord, placeWordInOpenSpace, wordBounds } from './layout';
@@ -12,6 +11,40 @@ import { initialScene, isWordObject, makeGroup, makeWord, uid } from './model';
 import type { BoardObject, Scene, SceneObject, WordObject } from './model';
 import { serializeScene, validateScene } from './projectIO';
 import { TransferirFormma3D } from './TransferirFormma3D';
+
+const ui = {
+  shell: 'flex min-h-screen flex-col bg-marca-palido font-marca text-marca-texto',
+  topbar: 'flex min-h-16 flex-wrap items-center justify-between gap-5 border-b border-marca-linha bg-marca-branco px-margem py-2.5 max-[760px]:items-start max-[760px]:flex-col',
+  brand: 'inline-flex items-center gap-2.5 text-marca-pequeno font-extrabold tracking-[0.08em] text-marca-navy no-underline',
+  brandMark: 'grid size-8 place-items-center rounded-marca-sm bg-marca text-white',
+  actions: 'flex flex-wrap items-center gap-2 max-[760px]:w-full max-[760px]:flex-nowrap max-[760px]:overflow-x-auto max-[760px]:pb-1 max-[760px]:[scrollbar-width:none] max-[760px]:[&::-webkit-scrollbar]:hidden max-[760px]:[&>*]:shrink-0',
+  quiet: 'inline-flex min-h-9 cursor-pointer items-center justify-center rounded-marca-md border border-marca-linha bg-marca-branco px-3 text-xs font-bold text-marca-texto-2 no-underline hover:border-marca-linha-forte hover:bg-marca-gelo disabled:cursor-not-allowed disabled:opacity-45',
+  primary: 'inline-flex min-h-9 cursor-pointer items-center justify-center rounded-marca-md border border-marca-azul bg-marca px-3 text-xs font-bold text-white',
+  secondary: 'mt-3.5 inline-flex min-h-9 w-full cursor-pointer items-center justify-center rounded-marca-md border border-marca-linha-forte bg-marca-branco px-3 text-xs font-bold text-marca-azul-forte hover:bg-marca-gelo',
+  notice: 'flex items-center justify-between gap-4 border-b border-marca-linha-forte bg-marca-gelo px-margem py-3 text-xs text-marca-azul-forte max-[760px]:flex-col max-[760px]:items-start',
+  workspace: 'mx-auto flex min-h-0 w-full max-w-[2400px] flex-1 max-[760px]:flex-col',
+  panel: 'w-[318px] shrink-0 overflow-y-auto border-r border-marca-linha bg-marca-branco px-5 py-5.5 max-[760px]:w-auto max-[760px]:border-r-0 max-[760px]:border-b',
+  kicker: 'mt-5 mb-2 text-marca-mini font-extrabold tracking-[0.13em] text-marca-texto-3',
+  muted: 'mt-0 mb-5 text-xs leading-relaxed text-marca-texto-3',
+  field: 'flex min-w-0 flex-col gap-1.5 text-marca-mini font-extrabold tracking-[0.07em] text-marca-texto-3 [&_input]:min-w-0 [&_input]:rounded-marca-sm [&_input]:border [&_input]:border-marca-linha [&_input]:bg-marca-palido [&_input]:px-2.5 [&_input]:py-2 [&_input]:text-[13px] [&_input]:font-medium [&_input]:tracking-normal [&_input]:text-marca-texto [&_textarea]:resize-y [&_textarea]:rounded-marca-sm [&_textarea]:border [&_textarea]:border-marca-linha [&_textarea]:bg-marca-palido [&_textarea]:px-2.5 [&_textarea]:py-2 [&_textarea]:text-[13px] [&_textarea]:font-medium [&_textarea]:tracking-normal [&_textarea]:text-marca-texto',
+  grid: 'mt-3.5 grid grid-cols-2 gap-x-2.5 gap-y-3',
+  helper: 'mt-2.5 min-h-[30px] text-marca-mini leading-relaxed text-marca-texto-3',
+  canvasArea: 'flex min-w-0 flex-1 flex-col px-6 pt-5 pb-3 max-[760px]:min-h-[420px] max-[760px]:px-3 max-[760px]:pt-4',
+  canvasHeader: 'flex justify-between text-marca-mini font-extrabold tracking-[0.1em] text-marca-texto-3',
+  canvasFooter: 'flex justify-between text-marca-mini font-extrabold tracking-[0.1em] text-marca-texto-3',
+  canvas: 'my-3.5 grid min-h-[340px] flex-1 place-items-center overflow-auto rounded-marca-md border border-marca-linha bg-marca-branco bg-[radial-gradient(var(--marca-linha)_0.75px,transparent_0.75px)] bg-[length:16px_16px] max-[760px]:min-h-[300px]',
+  preview: 'block max-h-[75vh] w-[min(88%,920px)] drop-shadow-lg max-[760px]:w-[94%]',
+  selectionBox: 'pointer-events-none fill-marca-gelo stroke-marca-azul [stroke-dasharray:3_2] [stroke-width:1]',
+  footer: 'flex min-h-[34px] items-center justify-between border-t border-marca-linha bg-marca-branco px-[18px] text-marca-mini text-marca-texto-3 [&_span]:tracking-[0.12em]',
+  hidden: 'hidden',
+  addRow: 'my-4 flex gap-2 [&_input]:min-w-0 [&_input]:flex-1 [&_input]:rounded-marca-sm [&_input]:border [&_input]:border-marca-linha [&_input]:px-2 [&_input]:text-marca-texto [&_button]:cursor-pointer [&_button]:rounded-marca-sm [&_button]:border [&_button]:border-marca-linha [&_button]:bg-marca-palido [&_button]:px-2.5 [&_button]:text-marca-mini [&_button]:text-marca-texto-2',
+  objectList: 'my-3 flex max-h-[150px] flex-col gap-1 overflow-auto',
+  objectRow: 'flex cursor-pointer items-center gap-2 rounded-marca-sm border border-transparent bg-transparent p-2 text-left text-marca-texto-2 [&_span]:font-mono [&_span]:text-marca-mini [&_strong]:min-w-0 [&_strong]:flex-1 [&_strong]:truncate [&_strong]:text-xs [&_small]:text-[9px]',
+  activeRow: 'border-marca-linha-forte bg-marca-gelo',
+  arrange: 'mt-3',
+  layoutGrid: 'grid grid-cols-2 gap-1.5 [&_button]:cursor-pointer [&_button]:rounded-marca-sm [&_button]:border [&_button]:border-marca-linha [&_button]:bg-marca-palido [&_button]:px-2 [&_button]:py-2 [&_button]:text-marca-mini [&_button]:text-marca-texto-2',
+  transfer: 'mt-3.5 flex flex-col gap-1.5 [&_button]:min-h-[38px] [&_button]:rounded-marca-sm [&_button]:bg-marca [&_button]:p-2 [&_button]:text-xs [&_button]:font-bold [&_button]:text-white [&_small]:text-marca-mini [&_small]:leading-relaxed [&_small]:text-marca-texto-3',
+} as const;
 
 const STORAGE_KEY = 'scarprint:placas:scene:v2';
 const clone = (scene: Scene) => structuredClone(scene);
@@ -179,18 +212,18 @@ export function EditorPlacas({ templateId, initialText = '', onSwitchTo3D }: { t
     const char = Array.from(value.replace(/[\r\n]/g, ' ')).slice(0, 1).join('');
     updateWord(selectedId, word => { const item = word.glyphs.find(candidate => candidate.id === selectedGlyph); if (item) item.char = char; word.text = word.glyphs.map(candidate => candidate.char).join(''); word.name = word.text || 'Texto'; });
   };
-  const numberField = (label: string, value: number, onChange: (value: number) => void, min = -1000, max = 2000, step = 1) => <label className={styles.field} key={label}><span>{label}</span><input type="number" min={min} max={max} step={step} value={value} onChange={event => { const next = Number(event.target.value); if (Number.isFinite(next) && next >= min && next <= max) onChange(next); }}/></label>;
+  const numberField = (label: string, value: number, onChange: (value: number) => void, min = -1000, max = 2000, step = 1) => <label className={ui.field} key={label}><span>{label}</span><CampoMarca type="number" min={min} max={max} step={step} value={value} onChange={event => { const next = Number(event.target.value); if (Number.isFinite(next) && next >= min && next <= max) onChange(next); }}/></label>;
   const drawObject = (object: SceneObject) => {
     if (!object.visible || object.type === 'group') return null;
     if (object.type === 'text') {
       const selection = wordBounds(object);
       return <g key={object.id} onClick={event => { event.stopPropagation(); select(object.id, event.ctrlKey || event.metaKey); }} opacity={object.material.opacity}>
-        {selectedId === object.id && <rect x={selection.x - 4} y={selection.y - 4} width={selection.width + 8} height={selection.height + 8} className={styles.selectionBox}/>}
+        {selectedId === object.id && <rect x={selection.x - 4} y={selection.y - 4} width={selection.width + 8} height={selection.height + 8} className={ui.selectionBox}/>}
         {layoutWord(object).map(item => <text key={item.id} x={item.x} y={item.y} fontSize={item.fontSize} fontFamily={object.fontFamily} fill={object.material.color} transform={`translate(${item.x} ${item.y}) rotate(${item.rotation}) scale(${item.scaleX} ${item.scaleY}) translate(${-item.x} ${-item.y})`} onClick={event => { event.stopPropagation(); setSelectedId(object.id); setSelectedGlyph(item.id); setMulti(current => event.ctrlKey || event.metaKey ? [...new Set([...current, object.id])] : [object.id]); }}>{item.char || ' '}</text>)}
       </g>;
     }
     const b = objectBounds(scene, object);
-    return <rect key={object.id} x={b.x} y={b.y} width={b.width} height={b.height} rx={object.type === 'board' ? object.cornerRadius : 0} fill={object.material.color} stroke={selectedId === object.id ? '#0877b9' : 'none'} strokeWidth="2" onClick={event => { event.stopPropagation(); select(object.id, event.ctrlKey || event.metaKey); }}/>
+    return <rect key={object.id} x={b.x} y={b.y} width={b.width} height={b.height} rx={object.type === 'board' ? object.cornerRadius : 0} fill={object.material.color} stroke={selectedId === object.id ? 'var(--marca-azul)' : 'none'} strokeWidth="2" onClick={event => { event.stopPropagation(); select(object.id, event.ctrlKey || event.metaKey); }}/>
   };
   const renderObjects = [...scene.objects].sort((a, b) => Number(b.type === 'board') - Number(a.type === 'board'));
   const transferWords = (multi.length ? multi : selectedId ? [selectedId] : []).flatMap(id => {
@@ -201,60 +234,60 @@ export function EditorPlacas({ templateId, initialText = '', onSwitchTo3D }: { t
   });
   const transferText = [...new Set(transferWords)].join(' ').trim();
 
-  return <main className={styles.shell}>
-    <header className={styles.topbar}>
-      <Link className={styles.brand} href="/" aria-label="Scarprint, início"><span className={styles.brandMark}>S</span><span>SCARPRINT <small>COMPOSIÇÃO 2D</small></span></Link>
-      <div className={styles.actions}>
-        <Link className={styles.quiet} href="/criar">← Catálogo</Link>
-        {onSwitchTo3D && <button className={styles.quiet} type="button" onClick={onSwitchTo3D}>Gerador 3D</button>}
-        <button className={styles.quiet} type="button" onClick={() => setHistory(undoHistory)} disabled={!history.past.length}>Desfazer</button>
-        <button className={styles.quiet} type="button" onClick={() => setHistory(redoHistory)} disabled={!history.future.length}>Refazer</button>
-        <button className={styles.quiet} type="button" onClick={() => fileRef.current?.click()}>Abrir JSON</button>
-        <button className={styles.quiet} type="button" onClick={() => download('composicao-2d.json', serializeScene(scene), 'application/json')}>Salvar JSON</button>
-        <button className={styles.primary} type="button" onClick={() => download('composicao-2d.svg', exportSvg(scene), 'image/svg+xml')}>Exportar SVG ↗</button>
-        <input ref={fileRef} className={styles.hidden} type="file" accept="application/json,.json" onChange={loadFile}/>
+  return <main className={`${ESCOPO_MARCA} ${ui.shell}`}>
+    <header className={ui.topbar}>
+      <div className="flex items-center gap-4"><Wordmark tamanho={22} subtitulo={null} /><span className="text-marca-mini font-extrabold tracking-[0.14em] text-marca-texto-3">COMPOSIÇÃO 2D</span></div>
+      <div className={ui.actions}>
+        <BotaoMarca variante="fantasma" pequeno href="/criar">← Catálogo</BotaoMarca>
+        {onSwitchTo3D && <BotaoMarca variante="contorno" pequeno onClick={onSwitchTo3D}>Gerador 3D</BotaoMarca>}
+        <BotaoMarca variante="contorno" pequeno onClick={() => setHistory(undoHistory)} disabled={!history.past.length}>Desfazer</BotaoMarca>
+        <BotaoMarca variante="contorno" pequeno onClick={() => setHistory(redoHistory)} disabled={!history.future.length}>Refazer</BotaoMarca>
+        <BotaoMarca variante="contorno" pequeno onClick={() => fileRef.current?.click()}>Abrir JSON</BotaoMarca>
+        <BotaoMarca variante="contorno" pequeno onClick={() => download('composicao-2d.json', serializeScene(scene), 'application/json')}>Salvar JSON</BotaoMarca>
+        <BotaoMarca pequeno className="max-[760px]:order-first" onClick={() => download('composicao-2d.svg', exportSvg(scene), 'image/svg+xml')}>Exportar SVG ↗</BotaoMarca>
+        <input ref={fileRef} className={ui.hidden} type="file" accept="application/json,.json" onChange={loadFile}/>
       </div>
     </header>
-    <div className={styles.notice}><strong>Composição 2D / SVG; não gera malha 3D imprimível.</strong><span>O SVG mantém o texto como fonte visual, não como contorno de corte.</span></div>
-    <div className={styles.workspace}>
-      <aside className={styles.panel}>
-        <p className={styles.kicker}>PROJETO 2D</p><h1>Placa personalizada</h1><p className={styles.muted}>Adicione palavras, edite glifos e organize a composição em milímetros.</p>
-        <div className={styles.addRow}><input aria-label="Nova palavra" value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => event.key === 'Enter' && addWord()}/><button type="button" onClick={addWord}>Adicionar palavra</button></div>
-        <div className={styles.objectList}>{scene.objects.filter(object => object.type === 'board' || object.type === 'text' || object.type === 'group').map((object, index) => <button type="button" key={object.id} className={`${styles.objectRow} ${selectedId === object.id ? styles.activeRow : ''}`} onClick={event => select(object.id, event.ctrlKey || event.metaKey)}><span>{String(index + 1).padStart(2, '0')}</span><strong>{object.name}</strong><small>{object.type === 'text' ? 'Aa' : object.type === 'group' ? 'GRUPO' : 'PLACA'}</small></button>)}</div>
-        <p className={styles.kicker}>DIMENSÕES DA PLACA</p><div className={styles.grid}>
+    <div className={ui.notice}><strong>Composição 2D / SVG; não gera malha 3D imprimível.</strong><span>O SVG mantém o texto como fonte visual, não como contorno de corte.</span></div>
+    <div className={ui.workspace}>
+      <aside className={ui.panel}>
+        <p className={ui.kicker}>PROJETO 2D</p><h1 className="mb-2 font-display text-xl font-black tracking-tight text-marca-navy">Placa personalizada</h1><p className={ui.muted}>Adicione palavras, edite glifos e organize a composição em milímetros.</p>
+        <div className={ui.addRow}><input aria-label="Nova palavra" value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => event.key === 'Enter' && addWord()}/><button type="button" onClick={addWord}>Adicionar palavra</button></div>
+        <div className={ui.objectList}>{scene.objects.filter(object => object.type === 'board' || object.type === 'text' || object.type === 'group').map((object, index) => <button type="button" key={object.id} className={`${ui.objectRow} ${selectedId === object.id ? ui.activeRow : ''}`} onClick={event => select(object.id, event.ctrlKey || event.metaKey)}><span>{String(index + 1).padStart(2, '0')}</span><strong>{object.name}</strong><small>{object.type === 'text' ? 'Aa' : object.type === 'group' ? 'GRUPO' : 'PLACA'}</small></button>)}</div>
+        <p className={ui.kicker}>DIMENSÕES DA PLACA</p><div className={ui.grid}>
           {board && numberField('LARGURA (mm)', board.width, value => updateBoard(item => { item.width = Math.max(value, 2 * scene.plate.padding + 1); }), 20, 2000)}
           {board && numberField('ALTURA (mm)', board.height, value => updateBoard(item => { item.height = Math.max(value, 2 * scene.plate.padding + 1); }), 20, 1000)}
           {numberField('MARGEM (mm)', scene.plate.padding, value => setScene(current => ({ ...current, plate: { ...current.plate, padding: Math.max(0, Math.min(value, (Math.min(board?.width ?? 300, board?.height ?? 100) - 1) / 2)) } })), 0, 500)}
           {numberField('FONTE (mm)', selected?.fontSize ?? 42, value => selected && updateWord(selected.id, word => { word.fontSize = value; }), 1, 500)}
         </div>
-        <button className={styles.secondary} type="button" onClick={() => applyLayout('fit')}>Ajustar seleção à placa</button>
+        <button className={ui.secondary} type="button" onClick={() => applyLayout('fit')}>Ajustar seleção à placa</button>
         {selected && <>
-          <p className={styles.kicker}>TEXTO SELECIONADO</p>
-          <label className={styles.field}><span>CONTEÚDO</span><textarea rows={2} value={selected.text} onChange={event => editText(event.target.value)}/></label>
-          <div className={styles.grid}>
+          <p className={ui.kicker}>TEXTO SELECIONADO</p>
+          <label className={ui.field}><span>CONTEÚDO</span><textarea rows={2} value={selected.text} onChange={event => editText(event.target.value)}/></label>
+          <div className={ui.grid}>
             {numberField('X (mm)', glyph ? glyph.offset.x : selected.transform.x, value => glyph ? changeGlyph('x', value) : updateWord(selected.id, word => { word.transform.x = value; }))}
             {numberField('Y (mm)', glyph ? glyph.offset.y : selected.transform.y, value => glyph ? changeGlyph('y', value) : updateWord(selected.id, word => { word.transform.y = value; }))}
             {numberField(glyph ? 'ESCALA DO GLIFO' : 'ESCALA', glyph ? glyph.scale : selected.transform.scaleX, value => glyph ? changeGlyph('scale', value) : updateWord(selected.id, word => { word.transform.scaleX = word.transform.scaleY = word.transform.scaleZ = value; }), 0.1, 10, 0.1)}
             {numberField('ESPAÇAMENTO (mm)', selected.spacing, value => updateWord(selected.id, word => { word.spacing = value; }), -100, 300, 0.5)}
           </div>
-          {glyph && <><label className={styles.field}><span>CARACTERE SELECIONADO</span><input maxLength={2} value={glyph.char} onChange={event => changeGlyphChar(event.target.value)}/></label><button type="button" className={styles.secondary} onClick={() => setSelectedGlyph('')}>Selecionar palavra inteira</button></>}
+          {glyph && <><label className={ui.field}><span>CARACTERE SELECIONADO</span><input maxLength={2} value={glyph.char} onChange={event => changeGlyphChar(event.target.value)}/></label><button type="button" className={ui.secondary} onClick={() => setSelectedGlyph('')}>Selecionar palavra inteira</button></>}
         </>}
-        {selectedObject && <div className={styles.arrange}><p className={styles.kicker}>ALINHAR / DISTRIBUIR</p><div className={styles.layoutGrid}>{(['left', 'centerX', 'right', 'top', 'centerY', 'bottom', 'distributeX', 'distributeY'] as const).map((action, index) => <button type="button" key={action} onClick={() => applyLayout(action)}>{['Esquerda', 'Centro X', 'Direita', 'Topo', 'Centro Y', 'Base', 'Distribuir X', 'Distribuir Y'][index]}</button>)}</div></div>}
-        <button type="button" className={styles.secondary} onClick={groupSelected}>Agrupar palavras selecionadas</button>
-        {Boolean(selectedObject?.type === 'group' || selectedObject?.parentId) && <button type="button" className={styles.secondary} onClick={ungroup}>Desagrupar</button>}
-        {transferText && <div className={styles.transfer}><TransferirFormma3D text={transferText}/><small>Só o texto selecionado é levado. A placa, as posições, os grupos e a composição SVG não viram geometria 3D.</small></div>}
-        <p className={styles.helper}>{selectedGlyph ? 'Edite o caractere selecionado ou escolha a palavra inteira.' : 'Use Ctrl/⌘+clique para selecionar várias palavras.'}</p>
+        {selectedObject && <div className={ui.arrange}><p className={ui.kicker}>ALINHAR / DISTRIBUIR</p><div className={ui.layoutGrid}>{(['left', 'centerX', 'right', 'top', 'centerY', 'bottom', 'distributeX', 'distributeY'] as const).map((action, index) => <button type="button" key={action} onClick={() => applyLayout(action)}>{['Esquerda', 'Centro X', 'Direita', 'Topo', 'Centro Y', 'Base', 'Distribuir X', 'Distribuir Y'][index]}</button>)}</div></div>}
+        <button type="button" className={ui.secondary} onClick={groupSelected}>Agrupar palavras selecionadas</button>
+        {Boolean(selectedObject?.type === 'group' || selectedObject?.parentId) && <button type="button" className={ui.secondary} onClick={ungroup}>Desagrupar</button>}
+        {transferText && <div className={ui.transfer}><TransferirFormma3D text={transferText}/><small>Só o texto selecionado é levado. A placa, as posições, os grupos e a composição SVG não viram geometria 3D.</small></div>}
+        <p className={ui.helper}>{selectedGlyph ? 'Edite o caractere selecionado ou escolha a palavra inteira.' : 'Use Ctrl/⌘+clique para selecionar várias palavras.'}</p>
       </aside>
-      <section className={styles.canvasArea} aria-label="Prévia da composição 2D">
-        <div className={styles.canvasHeader}><span>ÁREA DE COMPOSIÇÃO</span><span>{board?.width ?? Math.round(bounds.width)} × {board?.height ?? Math.round(bounds.height)} mm</span></div>
-        <div className={styles.canvas}><svg className={styles.preview} viewBox={`0 0 ${board?.width ?? bounds.width} ${board?.height ?? bounds.height}`} role="img" aria-label={`Prévia 2D da placa ${board?.width ?? Math.round(bounds.width)} por ${board?.height ?? Math.round(bounds.height)} milímetros`} onClick={() => { setSelectedId(''); setSelectedGlyph(''); setMulti([]); }}>
-          <rect x="0.5" y="0.5" width={(board?.width ?? bounds.width) - 1} height={(board?.height ?? bounds.height) - 1} rx={board?.cornerRadius ?? 8} fill="white" stroke="#9bb2d0" strokeWidth="1"/>
-          <rect x={scene.plate.padding} y={scene.plate.padding} width={Math.max(0, (board?.width ?? bounds.width) - 2 * scene.plate.padding)} height={Math.max(0, (board?.height ?? bounds.height) - 2 * scene.plate.padding)} fill="none" stroke="#22c7d9" strokeDasharray="3 3" strokeWidth="0.6"/>
+      <section className={ui.canvasArea} aria-label="Prévia da composição 2D">
+        <div className={ui.canvasHeader}><span>ÁREA DE COMPOSIÇÃO</span><span>{board?.width ?? Math.round(bounds.width)} × {board?.height ?? Math.round(bounds.height)} mm</span></div>
+        <div className={ui.canvas}><svg className={ui.preview} viewBox={`0 0 ${board?.width ?? bounds.width} ${board?.height ?? bounds.height}`} role="img" aria-label={`Prévia 2D da placa ${board?.width ?? Math.round(bounds.width)} por ${board?.height ?? Math.round(bounds.height)} milímetros`} onClick={() => { setSelectedId(''); setSelectedGlyph(''); setMulti([]); }}>
+          <rect x="0.5" y="0.5" width={(board?.width ?? bounds.width) - 1} height={(board?.height ?? bounds.height) - 1} rx={board?.cornerRadius ?? 8} fill="var(--marca-branco)" stroke="var(--marca-linha-forte)" strokeWidth="1"/>
+          <rect x={scene.plate.padding} y={scene.plate.padding} width={Math.max(0, (board?.width ?? bounds.width) - 2 * scene.plate.padding)} height={Math.max(0, (board?.height ?? bounds.height) - 2 * scene.plate.padding)} fill="none" stroke="var(--marca-ciano)" strokeDasharray="3 3" strokeWidth="0.6"/>
           {renderObjects.map(drawObject)}
         </svg></div>
-        <div className={styles.canvasFooter}><span>VISUALIZAÇÃO SVG</span><span>{words.length} PALAVRAS · {scene.objects.reduce((sum, item) => sum + (item.type === 'text' ? item.glyphs.length : 0), 0)} GLIFOS</span></div>
+        <div className={ui.canvasFooter}><span>VISUALIZAÇÃO SVG</span><span>{words.length} PALAVRAS · {scene.objects.reduce((sum, item) => sum + (item.type === 'text' ? item.glyphs.length : 0), 0)} GLIFOS</span></div>
       </section>
     </div>
-    <footer className={styles.footer}>{notice || 'Rascunho salvo automaticamente neste navegador.'}<span>COMPOSIÇÃO 2D · SVG</span></footer>
+    <footer className={ui.footer}>{notice || 'Rascunho salvo automaticamente neste navegador.'}<span>COMPOSIÇÃO 2D · SVG</span></footer>
   </main>;
 }

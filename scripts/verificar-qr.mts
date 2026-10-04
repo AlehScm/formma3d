@@ -163,5 +163,8 @@ assert.ok(cartaoTecido.gerar({ ...valoresPadrao(cartaoTecido), linkQr: 'javascri
 const qrCortado = placaGoogleReview.gerar({ ...valoresPadrao(placaGoogleReview), largura: 60, tamQr: 120 }, contexto);
 assert.equal(qrCortado.itens.length, 0, 'QR que não cabe na placa bloqueia exportação');
 assert.match(qrCortado.avisos.join(' '), /não cabe na placa/);
+const qrLogoCortado = placaQrLogo.gerar({ ...valoresPadrao(placaQrLogo), posLogo: 'centro', largura: 60, tamQr: 120 }, contexto);
+assert.equal(qrLogoCortado.itens.length, 0, 'QR com logo central que não cabe bloqueia exportação');
+assert.match(qrLogoCortado.avisos.join(' '), /não cabe na placa/);
 
 console.log('QR/PIX: payloads, vetor oficial do Pix, geometria e exportações passaram.');

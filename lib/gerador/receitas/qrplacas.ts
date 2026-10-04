@@ -336,6 +336,7 @@ export const placaQrLogo: Receita = {
       ? [linha(ctx, txt(v, 'titulo'), txt(v, 'fonteTitulo'), num(v, 'tamTitulo'), W), bq, linha(ctx, txt(v, 'subtitulo'), txt(v, 'fonteSub'), num(v, 'tamSub'), W)]
       : [blocoLogo, linha(ctx, txt(v, 'titulo'), txt(v, 'fonteTitulo'), num(v, 'tamTitulo'), W), bq, linha(ctx, txt(v, 'subtitulo'), txt(v, 'fonteSub'), num(v, 'tamSub'), W)];
     const r = placaEmPilha(blocos, lerPlaca(v), coresPlaca(v));
+    if (!r.itens.length) return { ...r, avisos: [...avisos, ...r.avisos] };
     if (centro && blocoLogo.regiao.length) {
       // O logo vai no meio do QR (que ja foi posto na pilha): acha o centro do QR.
       const pecaQr = r.itens[0]!.pecas.find((p) => p.nome === 'QR Code');

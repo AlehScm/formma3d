@@ -34,13 +34,11 @@ const arquivos = (ext: RegExp) => {
 
 /** CSS permitido: base e tokens. */
 const CSS_PERMITIDO = new Set(['app/globals.css']);
+const CSS_EXCECAO: Record<string, string> = {
+  'components/catalogo/catalogo.css': 'ilustracoes e composicoes especificas das miniaturas do catalogo',
+};
 /** Ainda a migrar para Tailwind (dono e motivo). Sai daqui ao migrar. */
 const CSS_PENDENTE: Record<string, string> = {
-  'components/catalogo/catalogo.css': 'catálogo /criar (ChatGPT em andamento)',
-  'components/catalogo/molde-ativo.css': 'catálogo /criar (ChatGPT em andamento)',
-  'components/marca/marca.css': 'compatibilidade m-cartao/m-rotulo/m-campo até o catálogo migrar',
-  'features/placas/EditorPlacas.module.css': 'editor de placas (migração pendente)',
-  'features/placas/GeradorPlaca3D.css': 'gerador de placa 3D (migração pendente)',
 };
 
 /** Hex permitido em codigo: nao e estilo de interface (motivo). */
@@ -49,25 +47,19 @@ const HEX_EXCECAO: Record<string, string> = {
   'features/gerador/PreviaGerador.tsx': 'fundo da cena 3D (WebGL)',
   'features/placas/model.ts': 'cor padrão dos dados da placa',
   'features/placas/exportSvg.ts': 'cores no SVG exportado (arquivo do usuário)',
+  'features/placas/GeradorPlaca3D.tsx': 'cores dos materiais e fundo da cena 3D (WebGL), nao CSS',
   'app/sistema/page.tsx': 'valor de reserva ao ler o token na vitrine',
 };
 const HEX_PENDENTE: Record<string, string> = {
-  'components/catalogo/MoldeAtivo.tsx': 'catálogo /criar (ChatGPT em andamento)',
-  'features/placas/EditorPlacas.tsx': 'editor de placas (migração pendente)',
-  'features/placas/GeradorPlaca3D.tsx': 'gerador de placa 3D (migração pendente)',
 };
 /** Cor arbitraria no Tailwind ainda a migrar. */
-const ARBITRARIA_PENDENTE: Record<string, string> = {
-  'components/catalogo/MoldeAtivo.tsx': 'catálogo /criar (ChatGPT em andamento)',
-};
+const ARBITRARIA_PENDENTE: Record<string, string> = {};
 /** `style={{}}` literal ainda a migrar. */
-const ESTILO_PENDENTE: Record<string, string> = {
-  'features/placas/GeradorPlaca3D.tsx': 'gerador de placa 3D (migração pendente)',
-};
+const ESTILO_PENDENTE: Record<string, string> = {};
 
 // 1. Arquivos CSS
 const css = arquivos(/\.css$/);
-const cssFora = css.filter((f) => !CSS_PERMITIDO.has(f) && !(f in CSS_PENDENTE));
+const cssFora = css.filter((f) => !CSS_PERMITIDO.has(f) && !(f in CSS_EXCECAO) && !(f in CSS_PENDENTE));
 ok('CSS só em globals.css e styles/ (fora as pendências listadas)', !cssFora.length, cssFora.join(', '));
 ok('tokens nos arquivos de tema', fs.existsSync('styles/tokens.css') && fs.existsSync('styles/marca.css'));
 const cssSobra = Object.keys(CSS_PENDENTE).filter((f) => !css.includes(f));
