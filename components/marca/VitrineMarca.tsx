@@ -1,5 +1,6 @@
 /** Referencia viva da marca (tokens e primitivos) para a pagina /sistema. So Tailwind. */
-import { BotaoMarca, BotaoWhatsapp, CampoMarca, CartaoMarca, ChipSecao, ESCOPO_MARCA, RotuloMarca, SecaoMarca, SeloMarca, Wordmark } from '.';
+import { BotaoIconeMarca, BotaoMarca, BotaoWhatsapp, CampoMarca, CartaoMarca, ChipSecao, ESCOPO_MARCA, RotuloMarca, SecaoMarca, SeloMarca, Wordmark } from '.';
+import { IconeFavorito } from '@/components/loja/icones';
 import { ArteSecao } from './ArteSecao';
 import { ComparaFontes } from './ComparaFontes';
 import { cx } from '@/components/ui/cx';
@@ -36,6 +37,25 @@ export function VitrineMarca() {
       </div>
 
       <ComparaFontes />
+
+      <SecaoMarca titulo="Controles da loja" texto="Conteúdo centralizado em até 1600 px. Controles compactos com pelo menos 44 px de toque e ações principais com 48 px. Foco, bordas e estados são compartilhados; as cores acompanham o universo da seção.">
+        <div className="grid gap-6 md:grid-cols-2">
+          {(['marca', 'casa'] as const).map((tema) => (
+            <div key={tema} data-secao={tema === 'casa' ? tema : undefined} data-universo={tema === 'casa' ? tema : undefined} className="rounded-marca-md border border-secao-linha bg-secao-superficie p-5 text-secao-tinta">
+              <h3 className="mt-0 mb-4 text-lg font-semibold">{tema === 'casa' ? 'Universo Casa' : 'Marca principal'}</h3>
+              <div className="flex flex-wrap items-center gap-3">
+                <BotaoMarca formato="controle" variante="secao">Adicionar ao orçamento</BotaoMarca>
+                <BotaoMarca formato="controle" variante="contorno" pequeno>Personalizar</BotaoMarca>
+                <BotaoIconeMarca rotulo="Exemplo de favorito"><IconeFavorito className="size-5" aria-hidden /></BotaoIconeMarca>
+                <BotaoMarca formato="controle" variante="sucesso" pequeno>Adicionado</BotaoMarca>
+                <BotaoMarca formato="controle" variante="secao" disabled>Indisponível</BotaoMarca>
+              </div>
+              <label htmlFor={`campo-loja-${tema}`} className="mt-5 mb-2 block text-sm font-semibold">Cor desejada</label>
+              <CampoMarca id={`campo-loja-${tema}`} placeholder="Ex.: azul e branco" />
+            </div>
+          ))}
+        </div>
+      </SecaoMarca>
 
       <SecaoMarca sobretitulo="Seção" titulo={<>Título de seção em <span className="text-marca-azul">display</span></>} texto="Corpo em 16px, linha 1,6, cor marca-texto-2. Sobretítulo em caixa alta com o ponto da seção." acao={<BotaoMarca variante="contorno">Ação da seção</BotaoMarca>}>
         <div className="flex flex-wrap items-center gap-3">

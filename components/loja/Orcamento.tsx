@@ -6,6 +6,7 @@
  */
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { BotaoIconeMarca, BotaoMarca, CAMPO_MARCA } from '@/components/marca';
 import { useMontado, useOrcamento } from '@/features/loja/estado';
 import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
 import type { Produto } from '@/lib/marketplace/tipos';
@@ -40,12 +41,12 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
         <IconeCarrinho className="size-10 text-marca-texto-3" aria-hidden />
         <p className="m-0 text-lg font-semibold text-marca-navy">Seu orçamento está vazio.</p>
         <p className="m-0 text-marca-texto-2">Escolha as peças e use "Adicionar ao orçamento".</p>
-        <Link href="/" className="mt-2 inline-flex min-h-11 items-center rounded-lg bg-marca-azul px-6 font-semibold text-white no-underline hover:bg-marca-azul-forte">Ver as peças</Link>
+        <BotaoMarca href="/" formato="controle" variante="secao" className="mt-2">Ver as peças</BotaoMarca>
       </div>
     );
   }
 
-  const campo = 'w-full rounded-lg border border-marca-linha bg-marca-branco px-3 py-2 text-sm text-marca-texto focus:border-marca-azul focus:outline-none';
+  const campo = CAMPO_MARCA;
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <ul className="m-0 flex list-none flex-col gap-3 p-0">
@@ -58,13 +59,13 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
                   <Link href={`/produto/${p.slug}`} className="font-semibold text-marca-navy no-underline hover:underline">{p.nome}</Link>
                   <p className="m-0 text-sm text-marca-texto-2">{rotuloPreco(p)}</p>
                 </div>
-                <button type="button" onClick={() => remover(p.slug)} aria-label={`Remover ${p.nome}`} className="grid size-9 shrink-0 place-items-center rounded-full text-marca-texto-3 hover:bg-marca-gelo hover:text-marca-navy"><IconeRemover className="size-4" aria-hidden /></button>
+                <BotaoIconeMarca onClick={() => remover(p.slug)} rotulo={`Remover ${p.nome}`} className="text-marca-texto-3 hover:text-marca-navy"><IconeRemover className="size-4" aria-hidden /></BotaoIconeMarca>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr]">
-                <div className="flex h-10 w-fit items-center rounded-lg border border-marca-linha" role="group" aria-label={`Quantidade de ${p.nome}`}>
-                  <button type="button" onClick={() => alterar(p.slug, { quantidade: item.quantidade - 1 })} aria-label="Menos uma" className="grid h-full w-9 place-items-center hover:bg-marca-gelo"><IconeMenos className="size-4" aria-hidden /></button>
+                <div className="flex w-fit items-center rounded-marca-sm border border-marca-linha" role="group" aria-label={`Quantidade de ${p.nome}`}>
+                  <BotaoIconeMarca onClick={() => alterar(p.slug, { quantidade: item.quantidade - 1 })} disabled={item.quantidade <= 1} rotulo="Menos uma"><IconeMenos className="size-4" aria-hidden /></BotaoIconeMarca>
                   <span className="w-10 text-center font-semibold tabular-nums">{item.quantidade}</span>
-                  <button type="button" onClick={() => alterar(p.slug, { quantidade: item.quantidade + 1 })} aria-label="Mais uma" className="grid h-full w-9 place-items-center hover:bg-marca-gelo"><IconeMais className="size-4" aria-hidden /></button>
+                  <BotaoIconeMarca onClick={() => alterar(p.slug, { quantidade: item.quantidade + 1 })} disabled={item.quantidade >= 999} rotulo="Mais uma"><IconeMais className="size-4" aria-hidden /></BotaoIconeMarca>
                 </div>
                 <input aria-label={`Cor de ${p.nome}`} placeholder="Cor desejada" value={item.cor ?? ''} onChange={(e) => alterar(p.slug, { cor: e.target.value })} className={campo} />
               </div>
@@ -82,19 +83,19 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
           <div className="flex justify-between border-t border-marca-linha pt-2"><dt className="text-marca-texto-2">Preço</dt><dd className="m-0 font-semibold">a combinar</dd></div>
         </dl>
         {whatsapp ? (
-          <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center rounded-lg bg-marca-whatsapp px-5 font-semibold text-white no-underline hover:bg-marca-whatsapp-forte">Pedir orçamento pelo WhatsApp</a>
+          <BotaoMarca href={whatsapp} formato="controle" variante="whatsapp">Pedir orçamento pelo WhatsApp</BotaoMarca>
         ) : (
           <p className="m-0 rounded-lg bg-marca-atencao-fundo px-3 py-2 text-sm text-marca-atencao">O envio pelo WhatsApp abre em breve. Copie a lista e mande pelo canal que preferir.</p>
         )}
-        <button type="button" onClick={copiar} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border-2 border-marca-azul px-5 font-semibold text-marca-azul hover:bg-marca-gelo">
+        <BotaoMarca onClick={copiar} formato="controle" variante="contorno" rotulo={copiado ? 'Lista copiada' : 'Copiar a lista'}>
           {copiado ? <IconeOk className="size-4" aria-hidden /> : <IconeCopiar className="size-4" aria-hidden />}
           <span role="status">{copiado ? 'Lista copiada' : 'Copiar a lista'}</span>
-        </button>
+        </BotaoMarca>
         <details className="text-sm text-marca-texto-2">
           <summary className="cursor-pointer font-semibold text-marca-navy">Ver a mensagem</summary>
           <pre className="mt-2 max-h-56 overflow-auto rounded-lg bg-marca-palido p-3 text-xs whitespace-pre-wrap">{mensagem}</pre>
         </details>
-        <button type="button" onClick={limpar} className="self-start text-sm text-marca-texto-3 hover:text-marca-navy hover:underline">Esvaziar o orçamento</button>
+        <BotaoMarca onClick={limpar} formato="controle" variante="fantasma" pequeno className="self-start">Esvaziar o orçamento</BotaoMarca>
       </aside>
     </div>
   );

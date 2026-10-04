@@ -6,16 +6,26 @@
  */
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArteSecao } from '@/components/marca/ArteSecao';
+import { BotaoIconeMarca, BotaoMarca } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
 import { geradorDe, urlDaMidia } from '@/lib/marketplace/formato';
 import { SECOES, type Produto } from '@/lib/marketplace/tipos';
-import { IconeCarrinho, IconeFavorito, IconeOk } from './icones';
+import { IconeCarrinho, IconeFavorito, IconeImpressora, IconeOk } from './icones';
 
 /** Preco no card: enquanto o valor esta em validacao, "sob consulta". */
 export const rotuloPreco = (p: Produto) => (p.preco.status === 'validacao' ? 'Preço sob consulta' : p.preco.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+
+export function ReservaProduto({ produto: p }: { produto: Produto }) {
+  return (
+    <div className="flex size-full flex-col items-center justify-center gap-1 bg-secao-suave p-2 text-center text-secao-forte">
+      <IconeImpressora className="size-6 shrink-0 opacity-60" aria-hidden />
+      <span className="text-xs font-medium">{p.tipo}</span>
+      <span className="text-[11px] leading-tight">Imagem em preparação</span>
+    </div>
+  );
+}
 
 /** Foto, render 3D real do gerador ou a arte da secao. */
 export function ImagemProduto({ produto: p, className }: { produto: Produto; className?: string }) {
@@ -26,9 +36,9 @@ export function ImagemProduto({ produto: p, className }: { produto: Produto; cla
         // eslint-disable-next-line @next/next/no-img-element -- export estatico sem otimizador de imagem
         <img src={urlDaMidia(p.midias[0])} alt="" loading="lazy" className="size-full object-cover" />
       ) : gerador ? (
-        <Miniatura id={gerador} alt={p.nome} reserva={<div className="grid size-full place-items-center text-xs font-medium text-secao-forte/70">{p.tipo}</div>} />
+        <Miniatura id={gerador} alt={p.nome} reserva={<ReservaProduto produto={p} />} />
       ) : (
-        <ArteSecao secao={p.secao} />
+        <ReservaProduto produto={p} />
       )}
     </div>
   );
@@ -40,15 +50,14 @@ export function BotaoFavorito({ slug, nome, className }: { slug: string; nome: s
   const alternar = useFavoritos((s) => s.alternar);
   const ativo = montado && favorito;
   return (
-    <button
-      type="button"
+    <BotaoIconeMarca
       onClick={() => alternar(slug)}
       aria-pressed={ativo}
-      aria-label={ativo ? `Tirar ${nome} dos favoritos` : `Favoritar ${nome}`}
-      className={cx('grid size-9 place-items-center rounded-full bg-marca-branco text-marca-texto-2 shadow-marca-1 transition-colors hover:text-secao-forte', ativo && 'text-secao-forte', className)}
+      rotulo={ativo ? `Tirar ${nome} dos favoritos` : `Favoritar ${nome}`}
+      className={cx('bg-marca-branco shadow-marca-1 hover:text-secao-forte', ativo ? 'text-secao-forte' : 'text-marca-texto-2', className)}
     >
       <IconeFavorito className={cx('size-[18px]', ativo && 'fill-current')} aria-hidden />
-    </button>
+    </BotaoIconeMarca>
   );
 }
 
@@ -62,19 +71,17 @@ export function BotaoAdicionar({ slug, extra, grande, className }: { slug: strin
     return () => clearTimeout(t);
   }, [feito]);
   return (
-    <button
-      type="button"
+    <BotaoMarca
+      formato="controle"
+      rotulo={feito ? 'Adicionado ao orçamento' : 'Adicionar ao orçamento'}
+      variante={feito ? 'sucesso' : 'secao'}
+      pequeno={!grande}
       onClick={() => { adicionar(slug, extra); setFeito(true); }}
-      className={cx(
-        'inline-flex w-full items-center justify-center gap-2 rounded-lg font-semibold transition-colors',
-        grande ? 'min-h-12 px-5 text-base' : 'min-h-10 px-3 text-sm',
-        feito ? 'bg-marca-sucesso text-white' : 'bg-secao-botao text-secao-botao-texto hover:bg-secao-botao-forte',
-        className,
-      )}
+      className={cx('w-full [&_svg]:shrink-0', className)}
     >
       {feito ? <IconeOk className="size-4" aria-hidden /> : <IconeCarrinho className="size-4" aria-hidden />}
-      <span role="status">{feito ? 'Adicionado ao orçamento' : 'Adicionar ao orçamento'}</span>
-    </button>
+      <span role="status">{feito ? 'Adicionado' : grande ? 'Adicionar ao orçamento' : 'Adicionar'}</span>
+    </BotaoMarca>
   );
 }
 
@@ -82,9 +89,9 @@ export function CardProduto({ produto: p, nivel = 'h3' }: { produto: Produto; ni
   const Titulo = nivel;
   const personalizavel = !!geradorDe(p) || !!p.personalizar;
   return (
-    <article data-secao={p.secao} className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-secao-linha bg-secao-superficie transition-shadow hover:shadow-marca-2 focus-within:shadow-marca-2">
+    <article data-secao={p.secao} className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-marca-md border border-secao-linha bg-secao-superficie transition-shadow hover:shadow-marca-2 focus-within:shadow-marca-2">
       <div className="relative aspect-square overflow-hidden bg-secao-suave">
-        <ImagemProduto produto={p} className="transition-transform duration-300 group-hover:scale-[1.03]" />
+        <ImagemProduto produto={p} className="transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transform-none motion-reduce:transition-none" />
         {p.jaImpresso ? (
           <span className="absolute top-2 left-2 rounded-md bg-secao-tinta px-2 py-1 text-[11px] font-semibold text-secao-superficie">Já feito para clientes</span>
         ) : personalizavel ? (

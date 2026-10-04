@@ -7,6 +7,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArteSecao } from '@/components/marca/ArteSecao';
+import { BotaoIconeMarca, FOCO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import { SECOES, type Produto, type Secao } from '@/lib/marketplace/tipos';
@@ -18,12 +19,13 @@ export interface Slide { secao: Secao; titulo: string; texto: string; acao: stri
 export function BannerRotativo({ slides }: { slides: Slide[] }) {
   const [i, setI] = useState(0);
   const [pausado, setPausado] = useState(false);
+  const [pausaManual, setPausaManual] = useState(false);
   const ir = useCallback((n: number) => setI((n + slides.length) % slides.length), [slides.length]);
   useEffect(() => {
-    if (pausado || slides.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (pausado || pausaManual || slides.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const t = setTimeout(() => ir(i + 1), 6000);
     return () => clearTimeout(t);
-  }, [i, pausado, ir, slides.length]);
+  }, [i, pausado, pausaManual, ir, slides.length]);
   const s = slides[i]!;
   return (
     <section
@@ -35,8 +37,8 @@ export function BannerRotativo({ slides }: { slides: Slide[] }) {
       onBlurCapture={() => setPausado(false)}
       className="relative"
     >
-      <div data-secao={s.secao} className="grid min-h-[320px] grid-cols-1 items-center overflow-hidden rounded-2xl bg-universo text-secao-universo-texto md:grid-cols-2" aria-live="polite">
-        <div className="order-2 px-8 pb-8 md:order-none md:py-10 md:pl-14">
+      <div data-secao={s.secao} className="grid min-h-[320px] grid-cols-1 items-center overflow-hidden rounded-2xl bg-universo text-secao-universo-texto md:grid-cols-2" aria-live={pausado || pausaManual ? 'polite' : 'off'}>
+        <div className="order-2 px-8 pb-16 md:order-none md:pt-10 md:pl-14">
           <p className="m-0 mb-3 inline-flex items-center gap-2 rounded-full border border-current/20 px-3 py-1 text-xs font-semibold"><span aria-hidden="true" className="size-2 rounded-full bg-secao-2" />{SECOES[s.secao].universo}</p>
           <h2 className="m-0 font-display text-[clamp(28px,3.2vw,44px)] leading-[1.02] font-extrabold tracking-[-0.03em]">{s.titulo}</h2>
           <p className="mt-3 mb-6 max-w-[42ch] text-base opacity-85">{s.texto}</p>
@@ -48,13 +50,14 @@ export function BannerRotativo({ slides }: { slides: Slide[] }) {
       </div>
       {slides.length > 1 && (
         <>
-          <button type="button" onClick={() => ir(i - 1)} aria-label="Destaque anterior" className="absolute top-1/2 left-3 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-marca-branco text-marca-navy shadow-marca-1 hover:bg-marca-gelo"><IconeAnterior className="size-5" aria-hidden /></button>
-          <button type="button" onClick={() => ir(i + 1)} aria-label="Próximo destaque" className="absolute top-1/2 right-3 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-marca-branco text-marca-navy shadow-marca-1 hover:bg-marca-gelo"><IconeProximo className="size-5" aria-hidden /></button>
-          <div data-secao={s.secao} className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-2">
+          <BotaoIconeMarca onClick={() => ir(i - 1)} rotulo="Destaque anterior" className="absolute top-[110px] left-3 -translate-y-1/2 bg-marca-branco text-marca-navy shadow-marca-1 md:top-1/2"><IconeAnterior className="size-5" aria-hidden /></BotaoIconeMarca>
+          <BotaoIconeMarca onClick={() => ir(i + 1)} rotulo="Próximo destaque" className="absolute top-[110px] right-3 -translate-y-1/2 bg-marca-branco text-marca-navy shadow-marca-1 md:top-1/2"><IconeProximo className="size-5" aria-hidden /></BotaoIconeMarca>
+          <div data-secao={s.secao} className="absolute bottom-2 left-1/2 flex -translate-x-1/2">
             {slides.map((sl, n) => (
-              <button key={sl.titulo} type="button" onClick={() => ir(n)} aria-label={`Destaque ${n + 1} de ${slides.length}: ${sl.titulo}`} aria-current={n === i ? 'true' : undefined} className={cx('h-2 rounded-full transition-all', n === i ? 'w-6 bg-secao-universo-texto' : 'w-2 bg-secao-universo-texto/35')} />
+              <button key={sl.titulo} type="button" onClick={() => ir(n)} aria-label={`Destaque ${n + 1} de ${slides.length}: ${sl.titulo}`} aria-current={n === i ? 'true' : undefined} className={cx('grid size-11 place-items-center rounded-marca-sm', FOCO_MARCA)}><span className={cx('h-2 rounded-full', n === i ? 'w-6 bg-secao-universo-texto' : 'w-2 bg-secao-universo-texto/35')} /></button>
             ))}
           </div>
+          <button type="button" onClick={() => setPausaManual((p) => !p)} aria-pressed={pausaManual} aria-label={pausaManual ? 'Retomar rotação dos destaques' : 'Pausar rotação dos destaques'} className={cx('absolute right-3 bottom-2 min-h-11 rounded-marca-sm bg-marca-vidro px-3 text-xs font-semibold text-marca-navy', FOCO_MARCA)}>{pausaManual ? 'Retomar' : 'Pausar'}</button>
         </>
       )}
     </section>
@@ -63,24 +66,24 @@ export function BannerRotativo({ slides }: { slides: Slide[] }) {
 
 export function Prateleira({ titulo, verTodos, produtos, secao }: { titulo: string; verTodos?: { href: string; rotulo: string }; produtos: Produto[]; secao?: Secao }) {
   const trilho = useRef<HTMLUListElement>(null);
-  const rolar = (dir: 1 | -1) => trilho.current?.scrollBy({ left: dir * trilho.current.clientWidth * 0.9, behavior: 'smooth' });
+  const rolar = (dir: 1 | -1) => trilho.current?.scrollBy({ left: dir * trilho.current.clientWidth * 0.9, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   if (!produtos.length) return null;
   const id = `prateleira-${titulo.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   return (
     <section aria-labelledby={id} data-secao={secao} className={cx('rounded-2xl bg-marca-branco p-4 shadow-marca-1 md:p-6', secao && 'border-t-[3px] border-secao')}>
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 id={id} className="m-0 flex items-center gap-2.5 font-display text-[22px] leading-tight font-bold text-marca-navy">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <h2 id={id} className="m-0 flex min-w-0 flex-wrap items-center gap-2.5 font-display text-[22px] leading-tight font-bold text-marca-navy">
           {secao && <span aria-hidden="true" className="size-2.5 rounded-full bg-secao" />}
           {titulo}
           {secao && <span className="rounded-full bg-secao-suave px-2.5 py-0.5 font-marca text-xs font-semibold text-secao-forte">{SECOES[secao].universo}</span>}
         </h2>
         <div className="flex items-center gap-2">
           {verTodos && <Link href={verTodos.href} className="text-sm font-semibold text-marca-azul no-underline hover:underline">{verTodos.rotulo}</Link>}
-          <button type="button" onClick={() => rolar(-1)} aria-label={`Rolar ${titulo} para trás`} className="hidden size-9 place-items-center rounded-full border border-marca-linha text-marca-navy hover:bg-marca-gelo md:grid"><IconeAnterior className="size-4" aria-hidden /></button>
-          <button type="button" onClick={() => rolar(1)} aria-label={`Rolar ${titulo} para frente`} className="hidden size-9 place-items-center rounded-full border border-marca-linha text-marca-navy hover:bg-marca-gelo md:grid"><IconeProximo className="size-4" aria-hidden /></button>
+          <BotaoIconeMarca onClick={() => rolar(-1)} rotulo={`Rolar ${titulo} para trás`} className="border border-marca-linha text-marca-navy max-md:hidden"><IconeAnterior className="size-4" aria-hidden /></BotaoIconeMarca>
+          <BotaoIconeMarca onClick={() => rolar(1)} rotulo={`Rolar ${titulo} para frente`} className="border border-marca-linha text-marca-navy max-md:hidden"><IconeProximo className="size-4" aria-hidden /></BotaoIconeMarca>
         </div>
       </div>
-      <ul ref={trilho} className="m-0 grid list-none auto-cols-[minmax(170px,1fr)] grid-flow-col gap-3 overflow-x-auto p-0 pb-1 [scrollbar-width:thin] snap-x snap-mandatory sm:auto-cols-[210px] md:auto-cols-[calc((100%-4*0.75rem)/5)]">
+      <ul ref={trilho} className="m-0 grid list-none auto-cols-[minmax(170px,1fr)] grid-flow-col gap-3 overflow-x-auto p-0 pb-1 [scrollbar-width:thin] snap-x snap-mandatory sm:auto-cols-[210px] lg:auto-cols-[calc((100%-3*0.75rem)/4)] xl:auto-cols-[calc((100%-4*0.75rem)/5)]">
         {produtos.map((p) => <li key={p.slug} className="snap-start"><CardProduto produto={p} /></li>)}
       </ul>
     </section>

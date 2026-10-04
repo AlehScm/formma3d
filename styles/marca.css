@@ -54,6 +54,7 @@
 
   /* Espaco: margem lateral fluida (largura total) e respiro entre secoes. */
   --marca-margem: clamp(16px, 4vw, 72px);
+  --marca-largura-loja: 1600px;
   --marca-secao: clamp(56px, 8vw, 112px);
   --marca-vao: clamp(14px, 1.6vw, 24px);
 }
@@ -260,6 +261,7 @@
 @utility bg-universo { background: var(--secao-padrao), var(--secao-universo); }
 @utility texto-gradiente { background-image: var(--marca-gradiente); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 @utility px-margem { padding-inline: var(--marca-margem); }
+@utility conteiner-loja { width: 100%; max-width: var(--marca-largura-loja); margin-inline: auto; }
 @utility py-secao { padding-block: var(--marca-secao); }
 @utility gap-vao { gap: var(--marca-vao); }
 

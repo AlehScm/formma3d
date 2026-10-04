@@ -4,10 +4,9 @@
  * rotulo/campo e o botao de WhatsApp. Envolva a pagina em `ESCOPO_MARCA`.
  */
 import Link from 'next/link';
-import type { CSSProperties, InputHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode } from 'react';
 import { cx } from '@/components/ui/cx';
 import { linkWhatsapp } from '@/lib/marketplace/contato';
-import './marca.css';
 
 /** Fundo, texto, fonte e anel de foco da marca para a pagina inteira. */
 export const ESCOPO_MARCA = 'bg-marca-palido text-marca-texto font-marca [&_:focus-visible]:outline-none [&_:focus-visible]:shadow-marca-foco';
@@ -26,21 +25,24 @@ export function Wordmark({ tamanho = 24, subtitulo = 'DESIGN STUDIO', href = '/'
   return href ? <Link href={href} className={cls} aria-label="Scarprint, início">{corpo}</Link> : <span className={cls} aria-label="Scarprint">{corpo}</span>;
 }
 
-type Variante = 'primario' | 'contorno' | 'fantasma' | 'whatsapp';
-// `m-botao`: so marcador (sem estilo) para o CSS do catalogo ainda em migracao.
-const BOTAO_BASE = 'm-botao inline-flex items-center justify-center gap-2.5 rounded-marca-pilula border border-transparent font-marca font-extrabold leading-none whitespace-nowrap no-underline cursor-pointer transition-[transform,box-shadow,background-color,border-color] duration-150 hover:-translate-y-px active:translate-y-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 aria-disabled:translate-y-0';
+type Variante = 'primario' | 'contorno' | 'fantasma' | 'whatsapp' | 'secao' | 'sucesso';
+export const FOCO_MARCA = 'focus-visible:outline-none focus-visible:shadow-marca-foco';
+const BOTAO_BASE = 'inline-flex min-w-0 items-center justify-center gap-2 border border-transparent font-marca no-underline cursor-pointer transition-[box-shadow,background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 motion-reduce:transition-none';
 const BOTAO_VARIANTE: Record<Variante, string> = {
   primario: 'bg-marca text-white shadow-marca-acao hover:shadow-marca-2',
   contorno: 'bg-marca-branco text-marca-navy border-marca-linha hover:border-marca-linha-forte hover:bg-marca-gelo',
-  fantasma: 'bg-transparent text-marca-azul px-1.5 hover:text-marca-azul-forte hover:underline underline-offset-4',
+  fantasma: 'bg-transparent text-marca-azul hover:text-marca-azul-forte hover:underline underline-offset-4',
   whatsapp: 'bg-marca-whatsapp text-white hover:bg-marca-whatsapp-forte',
+  secao: 'bg-secao-botao text-secao-botao-texto hover:bg-secao-botao-forte',
+  sucesso: 'bg-marca-sucesso text-white',
 };
-const botaoClasse = (variante: Variante, pequeno?: boolean) =>
-  cx(BOTAO_BASE, BOTAO_VARIANTE[variante], variante === 'fantasma' ? 'min-h-10 text-sm' : pequeno ? 'min-h-9 px-3.5 text-[13px]' : 'min-h-[46px] px-5 text-sm');
+export const classeBotaoMarca = (variante: Variante = 'primario', pequeno = false, formato: 'pilula' | 'controle' = 'pilula') =>
+  cx(BOTAO_BASE, FOCO_MARCA, BOTAO_VARIANTE[variante], pequeno ? 'min-h-11 px-3 text-sm' : 'min-h-12 px-5 text-sm', formato === 'controle' ? 'rounded-marca-sm py-2 text-center font-semibold leading-snug whitespace-normal' : 'rounded-marca-pilula font-extrabold leading-none whitespace-nowrap');
 
 interface PropsBotao {
   variante?: Variante;
   pequeno?: boolean;
+  formato?: 'pilula' | 'controle';
   type?: 'button' | 'submit';
   /** Interno (`/criar`), externo (`https://`) ou ancora (`#loja`). Sem href vira <button>. */
   href?: string;
@@ -52,13 +54,19 @@ interface PropsBotao {
   children: ReactNode;
 }
 
-export function BotaoMarca({ variante = 'primario', pequeno, type = 'button', href, onClick, desabilitado, disabled, rotulo, className, children }: PropsBotao) {
-  const cls = cx(botaoClasse(variante, pequeno), className);
+export function BotaoMarca({ variante = 'primario', pequeno, formato = 'pilula', type = 'button', href, onClick, desabilitado, disabled, rotulo, className, children }: PropsBotao) {
+  const cls = cx(classeBotaoMarca(variante, pequeno, formato), className);
   if (desabilitado || (disabled && href)) return <span className={cls} aria-disabled="true" aria-label={rotulo}>{children}</span>;
   if (href && /^https?:\/\//.test(href)) return <a className={cls} href={href} target="_blank" rel="noopener noreferrer" aria-label={rotulo}>{children}</a>;
   if (href && href.startsWith('#')) return <a className={cls} href={href} aria-label={rotulo}>{children}</a>;
   if (href) return <Link className={cls} href={href} aria-label={rotulo}>{children}</Link>;
   return <button type={type} className={cls} onClick={onClick} disabled={disabled} aria-label={rotulo}>{children}</button>;
+}
+
+export const ICONE_MARCA = cx('inline-grid size-11 shrink-0 place-items-center rounded-marca-sm cursor-pointer transition-colors hover:bg-marca-gelo disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none', FOCO_MARCA);
+
+export function BotaoIconeMarca({ rotulo, className, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { rotulo: string }) {
+  return <button {...props} type={type} aria-label={rotulo} className={cx(ICONE_MARCA, className)} />;
 }
 
 export type TomSelo = 'validacao' | 'personalizavel' | 'nosso' | 'novo' | 'neutro';
@@ -128,8 +136,10 @@ export function RotuloMarca({ htmlFor, children }: { htmlFor: string; children: 
   return <label htmlFor={htmlFor} className="block text-marca-pequeno leading-snug font-extrabold text-marca-texto">{children}</label>;
 }
 
+export const CAMPO_MARCA = cx('min-h-11 w-full min-w-0 rounded-marca-sm border border-secao-linha bg-secao-superficie px-3 py-2 text-base text-secao-tinta placeholder:text-secao-tinta-2 focus:border-marca-azul disabled:cursor-not-allowed disabled:opacity-50', FOCO_MARCA);
+
 export function CampoMarca({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cx('min-h-12 w-full rounded-marca-md border border-marca-linha bg-marca-branco px-4 text-marca-corpo font-medium text-marca-texto placeholder:text-marca-texto-3 focus:border-marca-azul', className)} />;
+  return <input {...props} className={cx(CAMPO_MARCA, className)} />;
 }
 
 /** WhatsApp com a mensagem pronta; sem numero configurado vira "em breve" (desabilitado). */

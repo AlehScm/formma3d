@@ -38,8 +38,8 @@ const LINK_RODAPE = 'text-sm text-white/75 no-underline hover:text-white hover:u
 export function RodapeLoja() {
   const whatsapp = linkWhatsapp(MENSAGENS.geral());
   return (
-    <footer className="mt-12 bg-marca-navy px-margem pt-12 pb-8 text-white">
-      <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+    <footer className="mt-12 bg-marca-navy pt-12 pb-8 text-white">
+      <div className="conteiner-loja grid grid-cols-2 gap-8 px-margem md:grid-cols-4">
         <div>
           <h2 className="mt-0 mb-3 text-sm font-semibold">Seções</h2>
           <ul className="m-0 flex list-none flex-col gap-2 p-0">{ORDEM_SECOES.map((s) => <li key={s}><Link href={`/secao/${s}`} className={LINK_RODAPE}>{SECOES[s].nome}</Link></li>)}</ul>
@@ -65,7 +65,7 @@ export function RodapeLoja() {
           {whatsapp ? <a href={whatsapp} className={LINK_RODAPE} target="_blank" rel="noopener noreferrer">Falar pelo WhatsApp</a> : <p className="m-0 text-sm text-white/75">WhatsApp em breve.</p>}
         </div>
       </div>
-      <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-white/15 pt-6 text-xs text-white/60">
+      <div className="conteiner-loja mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-white/15 px-margem pt-6 text-xs text-white/60">
         <span className="[&_b]:text-white [&_small]:text-white/60"><Wordmark tamanho={18} subtitulo={null} href={null} /></span>
         <span>Peças impressas em 3D sob medida. Preços sob consulta.</span>
       </div>
@@ -80,7 +80,7 @@ export function PaginaLoja({ secaoAtual, children, className, cru }: { secaoAtua
     <div data-secao={secaoAtual} data-universo={secaoAtual} className={cx(ESCOPO_MARCA, 'flex min-h-screen flex-col', secaoAtual && 'bg-secao-pagina!')}>
       <a className="absolute -left-[9999px] top-2 z-50 rounded-md bg-marca-navy px-3.5 py-2.5 font-bold text-white focus:left-2" href="#conteudo">Pular para o conteúdo</a>
       <CabecalhoLoja secaoAtual={secaoAtual} />
-      <main id="conteudo" className={cru ? className : cx('flex w-full flex-col gap-6 px-margem pt-6', className)}>{children}</main>
+      <main id="conteudo" className={cru ? className : cx('conteiner-loja flex min-w-0 flex-1 flex-col gap-6 px-margem pt-6', className)}>{children}</main>
       <RodapeLoja />
     </div>
   );

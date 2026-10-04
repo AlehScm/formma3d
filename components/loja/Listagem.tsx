@@ -6,6 +6,8 @@
  * por chips acima da grade; `extra` entra como ultimo bloco da grade.
  */
 import { useMemo, useState } from 'react';
+import { Dialog } from 'radix-ui';
+import { BotaoMarca, CAMPO_MARCA, classeBotaoMarca, FOCO_MARCA, ICONE_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { geradorDe } from '@/lib/marketplace/formato';
 import type { Produto } from '@/lib/marketplace/tipos';
@@ -35,7 +37,7 @@ export function Listagem({ produtos, vazio, filtrosEmLinha, extra, grade = GRADE
   const limpar = () => { setMarcados([]); setSoPersonalizaveis(false); setSoJaFeitos(false); };
 
   const caixa = 'size-4 accent-secao-botao';
-  const chip = (ativo: boolean) => cx('inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors', ativo ? 'border-secao-tinta bg-secao-tinta text-secao-superficie' : 'border-secao-linha bg-secao-superficie text-secao-tinta hover:border-secao-tinta');
+  const chip = (ativo: boolean) => cx('inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-marca-pilula border px-4 text-sm font-medium whitespace-nowrap transition-colors motion-reduce:transition-none', FOCO_MARCA, ativo ? 'border-secao-tinta bg-secao-tinta text-secao-superficie' : 'border-secao-linha bg-secao-superficie text-secao-tinta hover:border-secao-tinta');
   const filtros = (
     <div className="flex flex-col gap-6">
       {tipos.length > 1 && (
@@ -43,7 +45,7 @@ export function Listagem({ produtos, vazio, filtrosEmLinha, extra, grade = GRADE
           <legend className="mb-2 text-sm font-semibold text-secao-tinta">Tipo de peça</legend>
           <div className="flex flex-col gap-2">
             {tipos.map((t) => (
-              <label key={t} className="flex cursor-pointer items-center gap-2 text-sm text-secao-tinta">
+              <label key={t} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-secao-tinta">
                 <input type="checkbox" className={caixa} checked={marcados.includes(t)} onChange={() => setMarcados((m) => (m.includes(t) ? m.filter((x) => x !== t) : [...m, t]))} />
                 {t}
                 <span className="ml-auto text-xs text-marca-texto-3 tabular-nums">{produtos.filter((p) => p.tipo === t).length}</span>
@@ -55,15 +57,16 @@ export function Listagem({ produtos, vazio, filtrosEmLinha, extra, grade = GRADE
       <fieldset className="m-0 border-0 p-0">
         <legend className="mb-2 text-sm font-semibold text-secao-tinta">Mostrar só</legend>
         <div className="flex flex-col gap-2">
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-secao-tinta"><input type="checkbox" className={caixa} checked={soPersonalizaveis} onChange={(e) => setSoPersonalizaveis(e.target.checked)} />Personalizáveis em 3D</label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-secao-tinta"><input type="checkbox" className={caixa} checked={soJaFeitos} onChange={(e) => setSoJaFeitos(e.target.checked)} />Já feitos para clientes</label>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-secao-tinta"><input type="checkbox" className={caixa} checked={soPersonalizaveis} onChange={(e) => setSoPersonalizaveis(e.target.checked)} />Personalizáveis em 3D</label>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-secao-tinta"><input type="checkbox" className={caixa} checked={soJaFeitos} onChange={(e) => setSoJaFeitos(e.target.checked)} />Já feitos para clientes</label>
         </div>
       </fieldset>
-      {filtrando && <button type="button" onClick={limpar} className="self-start text-sm font-semibold text-secao-forte hover:underline">Limpar filtros</button>}
+      {filtrando && <BotaoMarca onClick={limpar} formato="controle" variante="fantasma" pequeno className="self-start">Limpar filtros</BotaoMarca>}
     </div>
   );
 
   return (
+    <Dialog.Root open={aberto} onOpenChange={setAberto}>
     <div className={cx('grid grid-cols-1 gap-6', !filtrosEmLinha && 'lg:grid-cols-[240px_minmax(0,1fr)]')}>
       {!filtrosEmLinha && (
         <aside aria-label="Filtros" className="hidden self-start rounded-2xl bg-secao-superficie p-5 shadow-marca-1 lg:sticky lg:top-40 lg:block">
@@ -89,12 +92,12 @@ export function Listagem({ produtos, vazio, filtrosEmLinha, extra, grade = GRADE
         <div className={cx('flex flex-wrap items-center justify-between gap-3', filtrosEmLinha ? 'border-b border-secao-linha pb-3' : 'rounded-2xl bg-secao-superficie px-4 py-3 shadow-marca-1')}>
           <p role="status" className="m-0 text-sm text-secao-tinta-2"><b className="text-secao-tinta tabular-nums">{lista.length}</b> {lista.length === 1 ? 'produto' : 'produtos'}</p>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <button type="button" onClick={() => setAberto(true)} className={cx('inline-flex items-center gap-2 rounded-lg border border-secao-linha px-3 py-2 text-sm font-semibold text-secao-tinta lg:hidden', filtrosEmLinha && 'hidden')}>
+            {!filtrosEmLinha && <Dialog.Trigger className={cx(classeBotaoMarca('contorno', true, 'controle'), 'lg:hidden')}>
               <IconeFiltros className="size-4" aria-hidden />Filtrar{filtrando ? ' (ativo)' : ''}
-            </button>
+            </Dialog.Trigger>}
             <label className="flex min-w-0 items-center gap-2 text-sm text-secao-tinta-2">
               <span className="max-sm:sr-only">Ordenar por</span>
-              <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className="max-w-full min-w-0 rounded-lg border border-secao-linha bg-secao-superficie px-3 py-2 text-sm font-medium text-secao-tinta">
+              <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={cx(CAMPO_MARCA, 'max-w-full')}>
                 <option value="relevancia">Relevância</option>
                 <option value="nome">Nome (A–Z)</option>
                 <option value="personalizaveis">Personalizáveis primeiro</option>
@@ -112,25 +115,24 @@ export function Listagem({ produtos, vazio, filtrosEmLinha, extra, grade = GRADE
           vazio ?? (
             <div className="rounded-2xl bg-secao-superficie p-8 text-center shadow-marca-1">
               <p className="m-0 font-semibold text-secao-tinta">Nenhum produto com esses filtros.</p>
-              <button type="button" onClick={limpar} className="mt-3 text-sm font-semibold text-secao-forte hover:underline">Limpar filtros</button>
+              <BotaoMarca onClick={limpar} formato="controle" variante="fantasma" pequeno className="mt-3">Limpar filtros</BotaoMarca>
             </div>
           )
         )}
       </div>
 
-      {aberto && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Filtros">
-          <button type="button" aria-label="Fechar filtros" onClick={() => setAberto(false)} className="absolute inset-0 bg-marca-navy/40" />
-          <div className="absolute inset-y-0 right-0 flex w-[min(320px,88vw)] flex-col gap-4 overflow-y-auto bg-marca-branco p-5">
+      <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-marca-navy/40" />
+          <Dialog.Content aria-describedby={undefined} className="fixed inset-y-0 right-0 z-50 flex w-[min(320px,88vw)] flex-col gap-4 overflow-y-auto bg-marca-branco p-5 font-marca text-marca-texto [&_:focus-visible]:outline-none [&_:focus-visible]:shadow-marca-foco">
             <div className="flex items-center justify-between">
-              <h2 className="m-0 text-base font-bold text-marca-navy">Filtrar</h2>
-              <button type="button" onClick={() => setAberto(false)} aria-label="Fechar" className="grid size-9 place-items-center rounded-full hover:bg-marca-gelo"><IconeFechar className="size-5" aria-hidden /></button>
+              <Dialog.Title className="m-0 text-base font-bold text-marca-navy">Filtrar</Dialog.Title>
+              <Dialog.Close aria-label="Fechar filtros" className={ICONE_MARCA}><IconeFechar className="size-5" aria-hidden /></Dialog.Close>
             </div>
             {filtros}
-            <button type="button" onClick={() => setAberto(false)} className={cx('mt-auto min-h-12 rounded-lg bg-marca-azul font-semibold text-white')}>Ver {lista.length} {lista.length === 1 ? 'produto' : 'produtos'}</button>
-          </div>
-        </div>
-      )}
+            <BotaoMarca onClick={() => setAberto(false)} formato="controle" variante="secao" className="mt-auto">Ver {lista.length} {lista.length === 1 ? 'produto' : 'produtos'}</BotaoMarca>
+          </Dialog.Content>
+      </Dialog.Portal>
     </div>
+    </Dialog.Root>
   );
 }
