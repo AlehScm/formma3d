@@ -7,13 +7,15 @@
  */
 import dynamic from 'next/dynamic';
 import { useEffect, useState, type ReactNode } from 'react';
+import type { Valores } from '@/lib/gerador/tipos';
 import type { PecaCarregada } from './carregarPeca';
 
 const CenaPeca = dynamic(() => import('./CenaPeca'), { ssr: false });
 
 const mm = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 
-export function PecaViva({ id, nome, reserva, interativo = false }: { id: string | null; nome?: string; reserva: ReactNode; interativo?: boolean }) {
+/** `extras`: valores que a pessoa mudou (personalizar no produto); sem eles, o exemplo da ficha. */
+export function PecaViva({ id, nome, reserva, interativo = false, extras }: { id: string | null; nome?: string; reserva: ReactNode; interativo?: boolean; extras?: Valores }) {
   const [peca, setPeca] = useState<{ id: string; dados: PecaCarregada } | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [calmo, setCalmo] = useState(false);
@@ -26,18 +28,21 @@ export function PecaViva({ id, nome, reserva, interativo = false }: { id: string
     return () => m.removeEventListener('change', ouvir);
   }, []);
 
+  const assinatura = extras ? JSON.stringify(extras) : '';
   useEffect(() => {
     if (!id) return;
     let vivo = true;
     setFalhou(false);
-    import('./carregarPeca')
-      .then(({ carregarPeca }) => carregarPeca(id))
+    const carregar = assinatura
+      ? import('./pecaPersonalizada').then(({ carregarPecaCom }) => carregarPecaCom(id, JSON.parse(assinatura) as Valores))
+      : import('./carregarPeca').then(({ carregarPeca }) => carregarPeca(id));
+    carregar
       .then((dados) => vivo && setPeca({ id, dados }))
       .catch(() => vivo && setFalhou(true));
     return () => {
       vivo = false;
     };
-  }, [id]);
+  }, [id, assinatura]);
 
   const pronta = peca && peca.id === id && !falhou;
   return (

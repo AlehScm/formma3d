@@ -8,6 +8,7 @@ import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, p
 import { FOTOS } from '../lib/marketplace/fotos';
 import { BANNERS, COMO_FUNCIONA, PERGUNTAS, VANTAGENS } from '../lib/marketplace/loja';
 import { CASA, VITRINE_CASA } from '../lib/marketplace/universos';
+import { camposPrincipais, resumoPersonalizacao, valoresIniciais } from '../lib/marketplace/personalizar';
 import { receitaPorId } from '../lib/gerador/receitas';
 
 let falhas = 0, total = 0;
@@ -107,6 +108,15 @@ ok('vantagens sem frete, pagamento, prazo ou avaliação inventados', !/frete|gr
 ok('como funciona: 3 passos, cada um com título e texto', COMO_FUNCIONA.length === 3 && COMO_FUNCIONA.every((p) => p.titulo.trim() && p.texto.trim()));
 ok('perguntas frequentes sem frete, pagamento, prazo ou avaliação inventados', PERGUNTAS.length > 0 && !/frete|gr[aá]tis|\bpix\b|cart[aã]o de cr[eé]dito|entrega em|\d+\s*dias|avalia[cç][aã]o|estrelas|★|mais vendid|garantia/i.test(JSON.stringify(PERGUNTAS)));
 ok('peça de cada categoria da home é pública', ORDEM_SECOES.every((s) => { const p = pecaDaSecao(s); return !p || !!porSlug(p.slug); }));
+// Personalizar no produto: toda peca com gerador mostra campos; resumo legivel; vai na mensagem.
+const comGerador = publicos.filter((p) => p.personalizar?.href.startsWith('/moldes/'));
+const semCampos = comGerador.filter((p) => { const g = p.personalizar!.href.split('/').pop()!; return camposPrincipais(g, valoresIniciais(g)).length === 0; });
+ok('toda peça com gerador tem campos para personalizar no produto', comGerador.length > 0 && !semCampos.length, semCampos.map((p) => p.slug).join(', '));
+const camposChaveiro = camposPrincipais('chaveiro-nome', valoresIniciais('chaveiro-nome'));
+const resumo = resumoPersonalizacao(camposChaveiro, { ...valoresIniciais('chaveiro-nome'), nomes: 'Maria', prefixo: '' });
+ok('resumo da personalização: rótulo, fonte pelo nome, cor em HEX e sem campo vazio', resumo.includes('Nomes: Maria') && /Fonte: Lobster/.test(resumo) && /#[0-9A-F]{6}/.test(resumo) && !/Antes do nome:/.test(resumo), resumo);
+ok('campos principais sem ajuste técnico (só texto, fonte, cor e medida)', camposChaveiro.every((p) => ['texto', 'fonte', 'cor', 'numero'].includes(p.tipo)) && camposChaveiro.filter((p) => p.tipo === 'numero').length <= 1);
+ok('personalização vai na mensagem do orçamento', MENSAGENS.orcamento([{ nome: 'Chaveiro', quantidade: 2, personalizacao: 'Nomes: Maria' }]).includes('1. Chaveiro (2 un.) - personalização: Nomes: Maria'));
 ok('banners apontam para peças públicas', BANNERS.every((b) => !!porSlug(b.produto)));
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

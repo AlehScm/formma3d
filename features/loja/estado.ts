@@ -20,11 +20,15 @@ export interface ItemOrcamento {
   quantidade: number;
   cor?: string;
   observacao?: string;
+  /** Resumo legivel do que a pessoa montou na pagina do produto ("Nomes: Ana; Fonte: Lobster"). */
+  personalizacao?: string;
+  /** Valores do gerador por tras do resumo (para reabrir a peca depois). */
+  valores?: Record<string, string | number | boolean>;
 }
 
 interface Orcamento {
   itens: ItemOrcamento[];
-  adicionar: (slug: string, extra?: Partial<Pick<ItemOrcamento, 'quantidade' | 'cor' | 'observacao'>>) => void;
+  adicionar: (slug: string, extra?: Partial<Pick<ItemOrcamento, 'quantidade' | 'cor' | 'observacao' | 'personalizacao' | 'valores'>>) => void;
   alterar: (id: string, mudanca: Partial<Omit<ItemOrcamento, 'id' | 'slug'>>) => void;
   remover: (id: string) => void;
   limpar: () => void;
@@ -51,7 +55,11 @@ export function migrarOrcamento(estado: unknown): Pick<Orcamento, 'itens'> {
       let id = typeof item.id === 'string' && item.id ? item.id : `migrado-${indice}-${item.slug}`;
       while (ids.has(id)) id = `${id}-${indice}`;
       ids.add(id);
-      return [{ id, slug: item.slug, quantidade: limitar(Number(item.quantidade) || 1), cor: typeof item.cor === 'string' ? item.cor : '', observacao: typeof item.observacao === 'string' ? item.observacao : '' }];
+      return [{
+        id, slug: item.slug, quantidade: limitar(Number(item.quantidade) || 1), cor: typeof item.cor === 'string' ? item.cor : '', observacao: typeof item.observacao === 'string' ? item.observacao : '',
+        ...(typeof item.personalizacao === 'string' && item.personalizacao ? { personalizacao: item.personalizacao } : {}),
+        ...(item.valores && typeof item.valores === 'object' ? { valores: item.valores } : {}),
+      }];
     }),
   };
 }
@@ -63,15 +71,17 @@ export function criarStoreOrcamento(storage: StateStorage = armazenamento) {
   persist(
     (set) => ({
       itens: [],
-      // Mesma configuracao soma; cores e observacoes diferentes ficam em linhas separadas.
+      // Mesma configuracao soma; cor, observacao ou personalizacao diferente fica em outra linha.
       adicionar: (slug, extra = {}) =>
         set((s) => {
           const cor = normalizarOpcao(extra.cor);
           const observacao = normalizarOpcao(extra.observacao);
           const quantidadeNova = limitar(extra.quantidade ?? 1);
-          const ja = s.itens.find((i) => i.slug === slug && normalizarOpcao(i.cor) === cor && normalizarOpcao(i.observacao) === observacao);
+          const personalizacao = normalizarOpcao(extra.personalizacao);
+          const ja = s.itens.find((i) => i.slug === slug && normalizarOpcao(i.cor) === cor && normalizarOpcao(i.observacao) === observacao && normalizarOpcao(i.personalizacao) === personalizacao);
           if (ja) return { itens: s.itens.map((i) => (i.id === ja.id ? { ...i, quantidade: limitar(i.quantidade + quantidadeNova) } : i)) };
-          return { itens: [...s.itens, { id: novoId(), slug, quantidade: quantidadeNova, cor, observacao }] };
+          const novo: ItemOrcamento = { id: novoId(), slug, quantidade: quantidadeNova, cor, observacao, ...(personalizacao ? { personalizacao, valores: extra.valores } : {}) };
+          return { itens: [...s.itens, novo] };
         }),
       alterar: (id, mudanca) =>
         set((s) => ({ itens: s.itens.map((i) => (i.id === id ? { ...i, ...mudanca, quantidade: limitar(mudanca.quantidade ?? i.quantidade) } : i)) })),

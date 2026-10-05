@@ -21,7 +21,7 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
   const porSlug = useMemo(() => new Map(produtos.map((p) => [p.slug, p])), [produtos]);
   // Peca que saiu da loja (ficou oculta) nao entra na lista.
   const linhas = montado ? itens.flatMap((i) => { const p = porSlug.get(i.slug); return p ? [{ item: i, produto: p }] : []; }) : [];
-  const mensagem = MENSAGENS.orcamento(linhas.map(({ item, produto }) => ({ nome: produto.nome, quantidade: item.quantidade, cor: item.cor, observacao: item.observacao })));
+  const mensagem = MENSAGENS.orcamento(linhas.map(({ item, produto }) => ({ nome: produto.nome, quantidade: item.quantidade, cor: item.cor, observacao: item.observacao, personalizacao: item.personalizacao })));
   const whatsapp = linkWhatsapp(mensagem);
   const total = linhas.reduce((t, l) => t + l.item.quantidade, 0);
 
@@ -59,6 +59,7 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
                 <div className="min-w-0">
                   <Link href={`/produto/${p.slug}`} className="font-semibold text-marca-navy no-underline hover:underline">{p.nome}</Link>
                   <p className="m-0 text-sm text-marca-texto-2">{rotuloPreco(p)}</p>
+                  {item.personalizacao && <p className="m-0 mt-1 text-sm text-marca-texto"><span className="font-semibold">Montado em 3D:</span> {item.personalizacao}</p>}
                 </div>
                 <BotaoIconeMarca onClick={() => remover(item.id)} rotulo={`Remover ${p.nome}`} className="text-marca-texto-3 hover:text-marca-navy"><IconeRemover className="size-4" aria-hidden /></BotaoIconeMarca>
               </div>

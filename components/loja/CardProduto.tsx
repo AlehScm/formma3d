@@ -59,7 +59,7 @@ export function BotaoFavorito({ slug, nome, className }: { slug: string; nome: s
 }
 
 /** Botao de adicionar ao orcamento, com retorno "Adicionado" por um instante. */
-export function BotaoAdicionar({ slug, extra, grande, className }: { slug: string; extra?: { quantidade?: number; cor?: string; observacao?: string }; grande?: boolean; className?: string }) {
+export function BotaoAdicionar({ slug, extra, grande, className }: { slug: string; extra?: { quantidade?: number; cor?: string; observacao?: string; personalizacao?: string; valores?: Record<string, string | number | boolean> }; grande?: boolean; className?: string }) {
   const adicionar = useOrcamento((s) => s.adicionar);
   const [feito, setFeito] = useState(false);
   useEffect(() => {

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PaginaLoja } from '@/components/loja/Estrutura';
-import { CompraProduto, GaleriaProduto } from '@/components/loja/Produto';
+import { ProdutoInterativo } from '@/components/loja/Produto';
 import { Prateleira } from '@/components/loja/Vitrine';
 import { porSecao, porSlug, produtosPublicos } from '@/lib/marketplace/consultas';
 import { SECOES } from '@/lib/marketplace/tipos';
@@ -34,9 +34,9 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
         <span aria-current="page">{p.nome}</span>
       </nav>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <GaleriaProduto produto={p} />
-        <div className="flex flex-col gap-4 lg:sticky lg:top-40">
+      <ProdutoInterativo
+        produto={p}
+        cabecalho={
           <div>
             <p className="m-0 text-sm text-marca-texto-3">{secao.nome} / {p.tipo}</p>
             <h1 className="mt-1 mb-2 font-display text-[clamp(26px,2.8vw,36px)] leading-tight font-extrabold text-marca-navy">{p.nome}</h1>
@@ -47,9 +47,8 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
               {p.jaImpresso && <span className="rounded-md bg-marca-navy px-2 py-1 text-white">Já feito para clientes</span>}
             </div>
           </div>
-          <CompraProduto produto={p} />
-        </div>
-      </div>
+        }
+      />
 
       <section aria-labelledby="descricao-titulo" className="grid grid-cols-1 gap-6 rounded-2xl bg-marca-branco p-6 shadow-marca-1 md:grid-cols-2">
         <div>

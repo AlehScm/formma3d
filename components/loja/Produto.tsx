@@ -1,32 +1,38 @@
 'use client';
 
 /**
- * Partes interativas da pagina de produto: galeria com abas Foto / Ver em 3D e o bloco
- * de compra (cor, quantidade, observacao, adicionar ao orcamento).
+ * Partes interativas da pagina de produto: galeria com abas Foto / Ver em 3D, o painel de
+ * personalizar (pecas com gerador) e o bloco de compra (quantidade, cor, observacao,
+ * adicionar ao orcamento). `ProdutoInterativo` junta os tres e divide o estado.
  */
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { BotaoIconeMarca, BotaoMarca, CAMPO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { PecaViva } from '@/features/marketplace/PecaViva';
 import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
 import { geradorDe, rotuloPreco, urlDaMidia } from '@/lib/marketplace/formato';
 import type { Produto } from '@/lib/marketplace/tipos';
+import type { Valores } from '@/lib/gerador/tipos';
 import { BotaoAdicionar, BotaoFavorito, ImagemProduto, ReservaProduto } from './CardProduto';
+import { PainelPersonalizar, usePersonalizacao } from './Personalizar';
 import { IconeMais, IconeMenos } from './icones';
 
-export function GaleriaProduto({ produto: p }: { produto: Produto }) {
+export function GaleriaProduto({ produto: p, extras }: { produto: Produto; extras?: Valores }) {
   const gerador = geradorDe(p);
   const temFoto = p.midias.length > 0;
   const [aba, setAba] = useState<'foto' | '3d'>(temFoto || !gerador ? 'foto' : '3d');
   const [foto, setFoto] = useState(0);
+  // Mexeu na personalizacao: mostra o 3D, que e onde a mudanca aparece.
+  const personalizou = !!extras;
+  useEffect(() => { if (personalizou && gerador) setAba('3d'); }, [personalizou, extras, gerador]);
   const aba3d = aba === '3d' && gerador;
   return (
     <div className="flex flex-col gap-3">
       <div data-secao={p.secao} className={cx('relative aspect-square overflow-hidden rounded-2xl lg:aspect-auto lg:h-[min(70dvh,800px)] lg:min-h-96', aba3d ? 'bg-universo' : 'bg-secao-suave')}>
         {aba3d ? (
           <>
-            <div className="absolute inset-0"><PecaViva id={gerador} nome="Modelo 3D" interativo reserva={<ReservaProduto produto={p} />} /></div>
+            <div className="absolute inset-0"><PecaViva id={gerador} nome={extras ? 'Sua peça' : 'Modelo 3D'} interativo extras={extras} reserva={<ReservaProduto produto={p} />} /></div>
             <span className="pointer-events-none absolute top-3 left-3 rounded-md bg-marca-branco px-2 py-1 text-xs font-semibold text-marca-texto-2 shadow-marca-1">Arraste para girar</span>
           </>
         ) : temFoto ? (
@@ -55,11 +61,11 @@ export function GaleriaProduto({ produto: p }: { produto: Produto }) {
   );
 }
 
-export function CompraProduto({ produto: p }: { produto: Produto }) {
+export function CompraProduto({ produto: p, pedido, semPersonalizar }: { produto: Produto; pedido?: { personalizacao: string; valores: Valores }; semPersonalizar?: boolean }) {
   const [quantidade, setQuantidade] = useState(1);
   const [cor, setCor] = useState('');
   const [observacao, setObservacao] = useState('');
-  const whatsapp = linkWhatsapp(MENSAGENS.orcamento([{ nome: p.nome, quantidade, cor, observacao }]));
+  const whatsapp = linkWhatsapp(MENSAGENS.orcamento([{ nome: p.nome, quantidade, cor, observacao, personalizacao: pedido?.personalizacao }]));
   const campo = CAMPO_MARCA;
   return (
     <div className="flex flex-col gap-4 rounded-2xl bg-marca-branco p-5 shadow-marca-1">
@@ -76,17 +82,21 @@ export function CompraProduto({ produto: p }: { produto: Produto }) {
             <BotaoIconeMarca onClick={() => setQuantidade((q) => Math.min(999, q + 1))} disabled={quantidade >= 999} rotulo="Mais uma"><IconeMais className="size-4" aria-hidden /></BotaoIconeMarca>
           </div>
         </div>
-        <div>
-          <label htmlFor="cor-produto" className="mb-1 block text-sm font-semibold text-marca-navy">Cor desejada</label>
-          <input id="cor-produto" value={cor} onChange={(e) => setCor(e.target.value)} placeholder="Ex.: azul e branco" className={cx(campo, 'h-11')} />
-        </div>
+        {/* com o painel de personalizar, as cores ja sao escolhidas la */}
+        {!semPersonalizar && (
+          <div>
+            <label htmlFor="cor-produto" className="mb-1 block text-sm font-semibold text-marca-navy">Cor desejada</label>
+            <input id="cor-produto" value={cor} onChange={(e) => setCor(e.target.value)} placeholder="Ex.: azul e branco" className={cx(campo, 'h-11')} />
+          </div>
+        )}
       </div>
       <div>
         <label htmlFor="obs-produto" className="mb-1 block text-sm font-semibold text-marca-navy">Observação (texto, tamanho, prazo...)</label>
         <textarea id="obs-produto" value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} className={campo} />
       </div>
-      <BotaoAdicionar slug={p.slug} extra={{ quantidade, cor, observacao }} grande />
-      {p.personalizar && (
+      {pedido && <p className="m-0 rounded-marca-sm bg-marca-gelo px-3 py-2 text-sm text-marca-navy"><span className="font-semibold">Vai junto:</span> {pedido.personalizacao}</p>}
+      <BotaoAdicionar slug={p.slug} extra={{ quantidade, cor, observacao, ...pedido }} grande />
+      {p.personalizar && !semPersonalizar && (
         <BotaoMarca href={p.personalizar.href} formato="controle" variante="contorno">
           {p.personalizar.rotulo}
         </BotaoMarca>
@@ -96,6 +106,22 @@ export function CompraProduto({ produto: p }: { produto: Produto }) {
       ) : (
         <Link href="/orcamento" className="text-center text-sm font-semibold text-marca-azul no-underline hover:underline">Ver o meu orçamento</Link>
       )}
+    </div>
+  );
+}
+
+/** Galeria + cabecalho + personalizar + compra, com a personalizacao dividida entre o 3D e o pedido. */
+export function ProdutoInterativo({ produto: p, cabecalho }: { produto: Produto; cabecalho: ReactNode }) {
+  const gerador = geradorDe(p);
+  const pz = usePersonalizacao(gerador ?? null);
+  return (
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className="lg:sticky lg:top-40"><GaleriaProduto produto={p} extras={pz.extras3d} /></div>
+      <div className="flex flex-col gap-4">
+        {cabecalho}
+        {gerador && <PainelPersonalizar pz={pz} maisOpcoes={p.personalizar} />}
+        <CompraProduto produto={p} pedido={pz.pedido} semPersonalizar={!!gerador} />
+      </div>
     </div>
   );
 }
