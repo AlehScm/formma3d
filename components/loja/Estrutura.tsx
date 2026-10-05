@@ -6,6 +6,8 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ESCOPO_MARCA, Wordmark } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
+import { EstrelaNatal } from '@/features/marketplace/Natal';
+import { campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
 import { ORDEM_SECOES, SECOES, type Secao } from '@/lib/marketplace/tipos';
 import { CabecalhoLoja } from './Cabecalho';
@@ -45,7 +47,14 @@ export function RodapeLoja() {
       </div>
       <div className="conteiner-loja mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-marca-linha px-margem pt-6 text-apoio text-marca-texto-2">
         <Wordmark tamanho={22} subtitulo={null} href={null} />
-        <span>Peças impressas em 3D sob medida. Preços sob consulta.</span>
+        {campanhaAtiva('natal') ? (
+          <span className="flex items-center gap-1.5 font-semibold text-natal-vermelho">
+            <EstrelaNatal />
+            Boas festas da Scarprint!
+          </span>
+        ) : (
+          <span>Peças impressas em 3D sob medida. Preços sob consulta.</span>
+        )}
       </div>
     </footer>
   );

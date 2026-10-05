@@ -11,6 +11,7 @@ import { SECOES, type Produto, type Secao } from '@/lib/marketplace/tipos';
 import { CardProduto, ImagemProduto } from './CardProduto';
 import { IconeAnterior, IconeProximo } from './icones';
 import { Modulo } from './Modulo';
+import { GorroNoel } from '@/features/marketplace/Natal';
 
 const idDe = (t: string) => `bloco-${t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
@@ -34,16 +35,18 @@ export function Prateleira({ titulo, verTodos, produtos, secao, tema, id }: { ti
 }
 
 /** Atalhos de categoria: a peca que representa cada secao + o nome, todos do mesmo tamanho. */
-export function AtalhosCategoria({ itens }: { itens: { secao: Secao; total: number; produto?: Produto }[] }) {
+/** `natal`: com a campanha ligada, cada circulo ganha um gorro de Papai Noel. */
+export function AtalhosCategoria({ itens, natal }: { itens: { secao: Secao; total: number; produto?: Produto }[]; natal?: boolean }) {
   return (
     <nav aria-label="Categorias">
       <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 sm:grid-cols-5">
         {itens.map(({ secao, total, produto }) => (
           <li key={secao} data-secao={secao}>
-            <Link href={`/secao/${secao}`} className="group flex flex-col items-center gap-2 text-center no-underline">
+            <Link href={`/secao/${secao}`} className="group relative flex flex-col items-center gap-2 text-center no-underline">
               <span className="relative block aspect-square w-full max-w-36 overflow-hidden rounded-full bg-secao-suave ring-1 ring-marca-linha transition-shadow group-hover:ring-2 group-hover:ring-secao [&_.miniatura]:p-[4%]!">
                 {produto ? <ImagemProduto produto={produto} /> : <span className="grid size-full place-items-center text-apoio text-secao-forte">Em breve</span>}
               </span>
+              {natal && <GorroNoel className="absolute -top-2 left-[calc(50%+min(18%,2.25rem))] w-[min(34%,3rem)] rotate-12" />}
               <span className="text-item text-marca-navy group-hover:underline">{SECOES[secao].nome}</span>
               {total > 0 && <span className="-mt-1.5 text-apoio text-marca-texto-2">{total} {total === 1 ? 'peça' : 'peças'}</span>}
             </Link>

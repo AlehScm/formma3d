@@ -9,7 +9,7 @@ import { FOTOS } from '../lib/marketplace/fotos';
 import { BANNERS, COMO_FUNCIONA, PERGUNTAS, VANTAGENS } from '../lib/marketplace/loja';
 import { CASA, VITRINE_CASA } from '../lib/marketplace/universos';
 import { camposPrincipais, resumoPersonalizacao, valoresIniciais } from '../lib/marketplace/personalizar';
-import { PRESETS_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva, diasAteONatal } from '../lib/marketplace/campanhas';
+import { PRESETS_NATAL, SLUGS_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva, diasAteONatal, pecaDeNatal } from '../lib/marketplace/campanhas';
 import { receitaPorId } from '../lib/gerador/receitas';
 
 let falhas = 0, total = 0;
@@ -131,6 +131,11 @@ ok('Natal: todo preset usa gerador e parâmetro que existem', !presetsRuins.leng
 ok('Natal: vitrines só com peças cadastradas', VITRINES_NATAL.every((v) => v.slugs.every((s) => PRODUTOS.some((p) => p.slug === s))));
 ok('Natal: textos sem prazo, frete ou promessa de entrega', !/frete|gr[aá]tis|\bpix\b|chega antes|entrega|\d+\s*dias|garantia|prazo de/i.test(JSON.stringify(TEXTOS_NATAL)));
 ok('Natal: contagem certa (5/out → 81, 25/dez → 0, 26/dez → 364)', diasAteONatal(new Date(2026, 9, 5)) === 81 && diasAteONatal(new Date(2026, 11, 25)) === 0 && diasAteONatal(new Date(2026, 11, 26)) === 364);
+ok('Natal no site: peças de Natal cadastradas e sem fitinha com a chave desligada', SLUGS_NATAL.length > 0 && SLUGS_NATAL.every((s) => PRODUTOS.some((p) => p.slug === s)) && !pecaDeNatal('chaveiro-nome', () => false) && pecaDeNatal('chaveiro-nome', () => true) && !pecaDeNatal('placa-pix', () => true));
+const homeNatal = fs.readFileSync('features/marketplace/MarketplaceHome.tsx', 'utf8');
+ok('Natal no site: a home só troca o topo e abre com presentes de Natal com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(homeNatal) && /natal \? .*<TopoNatal \/>.* : <TopoPersonalize \/>/.test(homeNatal) && /\{natal && \(/.test(homeNatal));
+const cabecalho = fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8');
+ok('Natal no site: luzes, gorro e faixa do cabeçalho só com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(cabecalho) && /\{natal && <FioDeLuzes \/>\}/.test(cabecalho) && /\{natal && <GorroNoel/.test(cabecalho));
 const paginaNatal = fs.readFileSync('app/natal/page.tsx', 'utf8');
 ok('Natal: com a chave desligada a página vira 404', /if \(!campanhaAtiva\('natal'\)\) notFound\(\)/.test(paginaNatal));
 ok('banners apontam para peças públicas', BANNERS.every((b) => !!porSlug(b.produto)));

@@ -62,3 +62,9 @@ export function diasAteONatal(hoje: Date): number {
   const dia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   return Math.round((natal.getTime() - dia.getTime()) / 86_400_000);
 }
+
+/** Todas as pecas das vitrines de Natal (ganham a fitinha "Presente de Natal" pela loja). */
+export const SLUGS_NATAL: string[] = [...new Set(VITRINES_NATAL.flatMap((v) => v.slugs))];
+
+/** A peca e destaque de Natal agora? So com a campanha ligada (`ativa` troca a chave nos testes). */
+export const pecaDeNatal = (slug: string, ativa: (c: Campanha) => boolean = campanhaAtiva): boolean => ativa('natal') && SLUGS_NATAL.includes(slug);

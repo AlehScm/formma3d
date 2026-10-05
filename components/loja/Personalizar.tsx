@@ -10,6 +10,7 @@ import { CAMPO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import type { Parametro, Valores } from '@/lib/gerador/tipos';
 import { FONTES_WEB } from '@/lib/text/fontes';
+import { EstrelaNatal } from '@/features/marketplace/Natal';
 import { PRESETS_NATAL, campanhaAtiva } from '@/lib/marketplace/campanhas';
 
 type Modulo = typeof import('@/lib/marketplace/personalizar');
@@ -63,6 +64,14 @@ export function usePersonalizacao(gerador: string | null) {
     valores,
     mudar: (id: string, v: Valores[string]) => setValores((s) => (s[id] === v ? s : { ...s, [id]: v })),
     desfazer: () => setValores(iniciais),
+    /** Natal ligado e gerador com preset: o botao "Ver com cara de Natal" aplica o preset. */
+    presetNatal: gerador && campanhaAtiva('natal') ? PRESETS_NATAL[gerador] : undefined,
+    aplicarNatal: () => {
+      const preset = gerador ? PRESETS_NATAL[gerador] : undefined;
+      if (!preset) return;
+      setValores((s) => ({ ...s, ...preset }));
+      setTemaNatal(true);
+    },
     alterado,
     /** Valores para o 3D (com pausa), ou undefined sem mudanca: o 3D usa o exemplo. */
     extras3d: Object.keys(diferenca(atrasados, iniciais)).length ? diferenca(atrasados, iniciais) : undefined,
@@ -138,6 +147,12 @@ export function PainelPersonalizar({ pz, maisOpcoes }: { pz: ReturnType<typeof u
         {pz.alterado && <button type="button" onClick={pz.desfazer} className="text-item font-semibold text-marca-azul hover:underline">Voltar ao exemplo</button>}
       </div>
       <p className="m-0 -mt-2 text-apoio text-marca-texto-2">O 3D ao lado muda enquanto você escolhe.</p>
+      {pz.presetNatal && !pz.temaNatal && (
+        <button type="button" onClick={pz.aplicarNatal} className="flex w-fit items-center gap-2 rounded-marca-pilula border border-natal-vermelho/30 bg-natal-vermelho/10 px-3 py-1.5 text-apoio font-semibold text-natal-vermelho hover:bg-natal-vermelho/15">
+          <EstrelaNatal />
+          Ver com cara de Natal
+        </button>
+      )}
       {pz.temaNatal && pz.alterado && <p className="m-0 w-fit rounded-marca-pilula bg-natal-vermelho/10 px-3 py-1 text-apoio font-semibold text-natal-vermelho">Com cara de Natal: texto e cores já escolhidos, é só ajustar.</p>}
       {outros.map((p) => <Campo key={p.id} p={p} valor={pz.valores[p.id] ?? p.padrao} set={(v) => pz.mudar(p.id, v)} />)}
       {cores.length > 0 && (

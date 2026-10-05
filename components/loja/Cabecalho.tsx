@@ -11,6 +11,7 @@ import { ICONE_MARCA, Wordmark } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
 import { CAMPANHAS, campanhaAtiva } from '@/lib/marketplace/campanhas';
+import { ContagemNatal, EstrelaNatal, FioDeLuzes, GorroNoel, Neve } from '@/features/marketplace/Natal';
 import { ORDEM_SECOES, SECOES, type Secao } from '@/lib/marketplace/tipos';
 import { IconeBusca, IconeCarrinho, IconeFavorito } from './icones';
 
@@ -51,11 +52,21 @@ export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas
   const qtdOrcamento = useOrcamento((s) => s.itens.reduce((t, i) => t + i.quantidade, 0));
   const qtdFavoritos = useFavoritos((s) => s.slugs.length);
   const icone = cx(ICONE_MARCA, 'relative text-marca-navy no-underline');
+  const natal = campanhaAtiva('natal');
   return (
     <header className="sticky top-0 z-30 bg-marca-branco shadow-marca-1">
-      <div className="bg-marca-palido px-margem py-2 text-center text-apoio text-marca-texto-2">
-        Peças impressas em 3D sob medida. <Link href="/criar" className="font-semibold text-marca-azul underline underline-offset-2">Monte a sua peça</Link>
-      </div>
+      {natal ? (
+        <div data-campanha="natal" className="relative flex flex-wrap items-center justify-center gap-x-3 gap-y-1 overflow-hidden bg-natal-verde-noite px-margem py-2 text-center text-apoio text-natal-creme">
+          <Neve className="opacity-50" />
+          <span className="relative max-sm:hidden">Especial de Natal: presentes com nome, monte e veja em 3D.</span>
+          <span className="relative"><ContagemNatal claro /></span>
+          <Link href={CAMPANHAS.natal.href} className="relative font-semibold text-natal-dourado underline underline-offset-2">Ver o especial</Link>
+        </div>
+      ) : (
+        <div className="bg-marca-palido px-margem py-2 text-center text-apoio text-marca-texto-2">
+          Peças impressas em 3D sob medida. <Link href="/criar" className="font-semibold text-marca-azul underline underline-offset-2">Monte a sua peça</Link>
+        </div>
+      )}
       <div className="conteiner-loja flex flex-wrap items-center gap-x-6 gap-y-3 px-margem py-3 md:flex-nowrap">
         <Wordmark />
         <div className="order-3 w-full min-w-0 md:order-none md:flex-1">
@@ -71,6 +82,7 @@ export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas
           <Link href="/orcamento" className={cx(icone, 'w-auto gap-2 px-3 sm:flex')} aria-label={`Orçamento${montado && qtdOrcamento ? ` (${qtdOrcamento} peças)` : ''}`}>
             <span className="relative">
               <IconeCarrinho className="size-6" aria-hidden />
+              {natal && <GorroNoel className="absolute -top-3 -left-2.5 w-5 -rotate-12" />}
               {montado && <Contador n={qtdOrcamento} />}
             </span>
             <span className="hidden text-item font-semibold sm:inline">Orçamento</span>
@@ -82,7 +94,7 @@ export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas
           {campanhaAtiva('natal') && (
             <li className="shrink-0">
               <Link href={CAMPANHAS.natal.href} className="inline-flex min-h-11 items-center gap-1.5 rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-natal-vermelho no-underline hover:bg-natal-vermelho/10">
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-natal-dourado"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z" /></svg>
+                <EstrelaNatal />
                 Natal
               </Link>
             </li>
@@ -106,6 +118,7 @@ export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas
           </li>
         </ul>
       </nav>
+      {natal && <FioDeLuzes />}
     </header>
   );
 }

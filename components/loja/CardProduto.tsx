@@ -11,6 +11,7 @@ import { cx } from '@/components/ui/cx';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
 import { geradorDe, urlDaMidia } from '@/lib/marketplace/formato';
+import { pecaDeNatal } from '@/lib/marketplace/campanhas';
 import type { Produto } from '@/lib/marketplace/tipos';
 import { IconeCarrinho, IconeFavorito, IconeImpressora, IconeOk } from './icones';
 
@@ -91,6 +92,7 @@ export function CardProduto({ produto: p, nivel = 'h3', tema }: { produto: Produ
     <article data-secao={p.secao} className="group relative flex h-full min-w-0 flex-col">
       <div className="relative aspect-square overflow-hidden rounded-marca-md bg-secao-suave">
         <ImagemProduto produto={p} className="transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transform-none motion-reduce:transition-none" />
+        {pecaDeNatal(p.slug) && <span className="absolute top-2 left-2 rounded-marca-pilula bg-natal-vermelho px-2.5 py-1 text-apoio font-semibold text-natal-creme shadow-marca-1">Presente de Natal</span>}
         <BotaoFavorito slug={p.slug} nome={p.nome} className="absolute top-2 right-2 z-10" />
       </div>
       <div className="flex flex-col gap-0.5 pt-2.5">
