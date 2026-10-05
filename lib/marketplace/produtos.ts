@@ -97,6 +97,7 @@ const CADASTRO: Produto[] = [
   doGerador('plaquinha-pet', 'Plaquinha de pet', 'presentes', 'Pet', 'Nome do pet na frente e telefone no verso.', 'Plaquinha para coleira em vários formatos, com frente e verso.', 'plaquinha-pet', ['Nome', 'Telefone', 'Formato', 'Cores']),
   doGerador('cortador-biscoito', 'Cortador de biscoito', 'presentes', 'Confeitaria', 'Do seu desenho para o cortador.', 'Cortador de biscoito ou massa a partir de um desenho ou imagem, com a borda de corte e o pegador.', 'cortador-biscoito', ['Desenho', 'Tamanho']),
   doGerador('carimbo-doce', 'Carimbo para doces', 'presentes', 'Confeitaria', 'A sua marca carimbada no doce.', 'Carimbo com o seu logo ou desenho para marcar doces e biscoitos.', 'carimbo-imagem', ['Imagem', 'Tamanho']),
+  { ...doGerador('enfeite-floco-neve', 'Enfeite floco de neve com nome', 'presentes', 'Enfeite de Natal', 'Floco de neve com o nome no meio, para a árvore.', 'Enfeite de Natal em forma de floco de neve com o nome no centro, em duas cores. Dá para fazer vários nomes numa impressão só.', 'floco-neve', ['Nome', 'Fonte', 'Tamanho', 'Cores'], true), campanha: 'natal' },
 
   // ---- Sensoriais (terceiros; ocultos ate a licenca de cada um) ----
   deTerceiro('tomate-fidget', 'Tomate de girar', 'sensoriais', 'Para girar', 'Tomate que gira, para mexer nas mãos.', 'T03', true),

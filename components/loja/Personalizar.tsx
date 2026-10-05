@@ -10,6 +10,7 @@ import { CAMPO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import type { Parametro, Valores } from '@/lib/gerador/tipos';
 import { FONTES_WEB } from '@/lib/text/fontes';
+import { PRESETS_NATAL, campanhaAtiva } from '@/lib/marketplace/campanhas';
 
 type Modulo = typeof import('@/lib/marketplace/personalizar');
 
@@ -23,6 +24,7 @@ export function usePersonalizacao(gerador: string | null) {
   const [iniciais, setIniciais] = useState<Valores>({});
   const [valores, setValores] = useState<Valores>({});
   const [atrasados, setAtrasados] = useState<Valores>({});
+  const [temaNatal, setTemaNatal] = useState(false);
 
   useEffect(() => {
     if (!gerador) return;
@@ -30,10 +32,15 @@ export function usePersonalizacao(gerador: string | null) {
     import('@/lib/marketplace/personalizar').then((m) => {
       if (!vivo) return;
       const v = m.valoresIniciais(gerador);
+      // ?tema=natal (vindo do especial): comeca com o preset da campanha por cima do exemplo.
+      const tema = new URLSearchParams(window.location.search).get('tema');
+      const preset = tema === 'natal' && campanhaAtiva('natal') ? PRESETS_NATAL[gerador] : undefined;
+      const comTema = preset ? { ...v, ...preset } : v;
       setModulo(m);
       setIniciais(v);
-      setValores(v);
-      setAtrasados(v);
+      setValores(comTema);
+      setAtrasados(comTema);
+      setTemaNatal(!!preset);
     });
     return () => {
       vivo = false;
@@ -51,6 +58,7 @@ export function usePersonalizacao(gerador: string | null) {
   const alterado = Object.keys(mudou).length > 0;
   return {
     pronto: !!modulo,
+    temaNatal,
     campos,
     valores,
     mudar: (id: string, v: Valores[string]) => setValores((s) => (s[id] === v ? s : { ...s, [id]: v })),
@@ -130,6 +138,7 @@ export function PainelPersonalizar({ pz, maisOpcoes }: { pz: ReturnType<typeof u
         {pz.alterado && <button type="button" onClick={pz.desfazer} className="text-item font-semibold text-marca-azul hover:underline">Voltar ao exemplo</button>}
       </div>
       <p className="m-0 -mt-2 text-apoio text-marca-texto-2">O 3D ao lado muda enquanto você escolhe.</p>
+      {pz.temaNatal && pz.alterado && <p className="m-0 w-fit rounded-marca-pilula bg-natal-vermelho/10 px-3 py-1 text-apoio font-semibold text-natal-vermelho">Com cara de Natal: texto e cores já escolhidos, é só ajustar.</p>}
       {outros.map((p) => <Campo key={p.id} p={p} valor={pz.valores[p.id] ?? p.padrao} set={(v) => pz.mudar(p.id, v)} />)}
       {cores.length > 0 && (
         <fieldset className="m-0 border-0 p-0">

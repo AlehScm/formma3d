@@ -4,11 +4,12 @@
  *   npx tsx scripts/verificar-marketplace.mts
  */
 import fs from 'fs';
-import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, pecaDaSecao, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
+import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, pecaDaSecao, podeAparecer, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
 import { FOTOS } from '../lib/marketplace/fotos';
 import { BANNERS, COMO_FUNCIONA, PERGUNTAS, VANTAGENS } from '../lib/marketplace/loja';
 import { CASA, VITRINE_CASA } from '../lib/marketplace/universos';
 import { camposPrincipais, resumoPersonalizacao, valoresIniciais } from '../lib/marketplace/personalizar';
+import { PRESETS_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva, diasAteONatal } from '../lib/marketplace/campanhas';
 import { receitaPorId } from '../lib/gerador/receitas';
 
 let falhas = 0, total = 0;
@@ -121,6 +122,17 @@ ok('personalização vai na mensagem do orçamento', MENSAGENS.orcamento([{ nome
 const home = fs.readFileSync('features/marketplace/MarketplaceHome.tsx', 'utf8');
 ok('home sem o catálogo inteiro (vitrines + "Ver todas" para /pecas)', !/<Listagem[\s/>]/.test(home) && /href: '\/pecas'/.test(home) && fs.existsSync('app/pecas/page.tsx'));
 ok('card sem botão de adicionar (o card inteiro leva à peça)', !/BotaoAdicionar slug=\{p\.slug\} \/>/.test(fs.readFileSync('components/loja/CardProduto.tsx', 'utf8')));
+// Especial de Natal: chave manual em lib/marketplace/campanhas.ts.
+const enfeite = PRODUTOS.find((p) => p.slug === 'enfeite-floco-neve');
+ok('Natal: o enfeite é peça da campanha e some com a chave desligada', !!enfeite && enfeite.campanha === 'natal' && !podeAparecer(enfeite, () => false) && podeAparecer(enfeite, () => true));
+ok('Natal: a chave decide se o enfeite está na loja agora', publicos.some((p) => p.slug === 'enfeite-floco-neve') === campanhaAtiva('natal'));
+const presetsRuins = Object.entries(PRESETS_NATAL).flatMap(([g, v]) => { const r = receitaPorId(g); return !r ? [g] : Object.keys(v).filter((k) => !r.parametros.some((p) => p.id === k)).map((k) => `${g}.${k}`); });
+ok('Natal: todo preset usa gerador e parâmetro que existem', !presetsRuins.length, presetsRuins.join(', '));
+ok('Natal: vitrines só com peças cadastradas', VITRINES_NATAL.every((v) => v.slugs.every((s) => PRODUTOS.some((p) => p.slug === s))));
+ok('Natal: textos sem prazo, frete ou promessa de entrega', !/frete|gr[aá]tis|\bpix\b|chega antes|entrega|\d+\s*dias|garantia|prazo de/i.test(JSON.stringify(TEXTOS_NATAL)));
+ok('Natal: contagem certa (5/out → 81, 25/dez → 0, 26/dez → 364)', diasAteONatal(new Date(2026, 9, 5)) === 81 && diasAteONatal(new Date(2026, 11, 25)) === 0 && diasAteONatal(new Date(2026, 11, 26)) === 364);
+const paginaNatal = fs.readFileSync('app/natal/page.tsx', 'utf8');
+ok('Natal: com a chave desligada a página vira 404', /if \(!campanhaAtiva\('natal'\)\) notFound\(\)/.test(paginaNatal));
 ok('banners apontam para peças públicas', BANNERS.every((b) => !!porSlug(b.produto)));
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

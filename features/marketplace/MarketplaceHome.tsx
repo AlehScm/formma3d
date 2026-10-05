@@ -3,9 +3,11 @@ import { PaginaLoja } from '@/components/loja/Estrutura';
 import { Modulo } from '@/components/loja/Modulo';
 import { AtalhosCategoria, Prateleira } from '@/components/loja/Vitrine';
 import { destaquesPorSecao, pecaDaSecao, porSlug, produtosPublicos, secoesComContagem } from '@/lib/marketplace/consultas';
+import { campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { COMO_FUNCIONA, PERGUNTAS } from '@/lib/marketplace/loja';
 import { SECOES, type Secao } from '@/lib/marketplace/tipos';
-import { TopoPersonalize } from './TopoPersonalize';
+import { FaixaNatal } from './Natal';
+import { TopoPersonalize } from './TopoAoVivo';
 
 const ICONES_PASSOS = [IconeBusca, IconeTridimensional, IconeConversa];
 /** Ordem das vitrines na home: o que mais sai primeiro. */
@@ -28,6 +30,7 @@ export function MarketplaceHome() {
   return (
     <PaginaLoja>
       <TopoPersonalize />
+      {campanhaAtiva('natal') && <FaixaNatal />}
       <AtalhosCategoria itens={categorias} />
 
       <Prateleira titulo="Mais pedidas" produtos={maisPedidas} verTodos={{ href: '/pecas', rotulo: 'Ver todas as peças' }} />

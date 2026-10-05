@@ -49,6 +49,8 @@ export interface Produto {
   personalizar?: { href: string; rotulo: string };
   /** Ja impresso para clientes (portfolio), sem dizer quem. So o que esta confirmado. */
   jaImpresso?: boolean;
+  /** Peca sazonal: so aparece com a campanha ligada (lib/marketplace/campanhas.ts). */
+  campanha?: 'natal';
   /** Referencia opaca para a conferencia de licenca (a tabela ref -> arquivo fica fora do repo). */
   ref?: string;
   destaque?: boolean;

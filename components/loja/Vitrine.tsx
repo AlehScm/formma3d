@@ -14,7 +14,7 @@ import { Modulo } from './Modulo';
 
 const idDe = (t: string) => `bloco-${t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
-export function Prateleira({ titulo, verTodos, produtos, secao }: { titulo: string; verTodos?: { href: string; rotulo: string }; produtos: Produto[]; secao?: Secao }) {
+export function Prateleira({ titulo, verTodos, produtos, secao, tema, id }: { titulo: string; verTodos?: { href: string; rotulo: string }; produtos: Produto[]; secao?: Secao; tema?: string; id?: string }) {
   const trilho = useRef<HTMLUListElement>(null);
   const rolar = (dir: 1 | -1) => trilho.current?.scrollBy({ left: dir * trilho.current.clientWidth * 0.9, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   if (!produtos.length) return null;
@@ -25,9 +25,9 @@ export function Prateleira({ titulo, verTodos, produtos, secao }: { titulo: stri
     </span>
   );
   return (
-    <Modulo id={idDe(titulo)} titulo={titulo} verTodos={verTodos} secao={secao} acoes={produtos.length > 4 ? setas : undefined}>
+    <Modulo id={id ?? idDe(titulo)} titulo={titulo} verTodos={verTodos} secao={secao} acoes={produtos.length > 4 ? setas : undefined}>
       <ul ref={trilho} className="m-0 grid list-none auto-cols-[minmax(150px,44%)] grid-flow-col gap-4 overflow-x-auto p-0 pb-1 [scrollbar-width:none]! snap-x snap-mandatory sm:auto-cols-[200px] lg:auto-cols-[calc((100%-4*1rem)/5)] 2xl:auto-cols-[calc((100%-5*1rem)/6)] [&::-webkit-scrollbar]:hidden">
-        {produtos.map((p) => <li key={p.slug} className="snap-start"><CardProduto produto={p} /></li>)}
+        {produtos.map((p) => <li key={p.slug} className="snap-start"><CardProduto produto={p} tema={tema} /></li>)}
       </ul>
     </Modulo>
   );

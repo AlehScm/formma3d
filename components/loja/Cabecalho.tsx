@@ -10,6 +10,7 @@ import { Suspense, useState, type FormEvent } from 'react';
 import { ICONE_MARCA, Wordmark } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
+import { CAMPANHAS, campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { ORDEM_SECOES, SECOES, type Secao } from '@/lib/marketplace/tipos';
 import { IconeBusca, IconeCarrinho, IconeFavorito } from './icones';
 
@@ -78,6 +79,14 @@ export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas
       </div>
       <nav aria-label="Categorias" className="border-t border-marca-linha">
         <ul className="conteiner-loja my-0 flex list-none gap-1 overflow-x-auto px-margem py-1 [scrollbar-width:none] max-md:[mask-image:linear-gradient(to_right,black_88%,transparent)] [&::-webkit-scrollbar]:hidden">
+          {campanhaAtiva('natal') && (
+            <li className="shrink-0">
+              <Link href={CAMPANHAS.natal.href} className="inline-flex min-h-11 items-center gap-1.5 rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-natal-vermelho no-underline hover:bg-natal-vermelho/10">
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-natal-dourado"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z" /></svg>
+                Natal
+              </Link>
+            </li>
+          )}
           <li className="shrink-0">
             <Link href="/pecas" aria-current={secaoAtual === undefined && todas ? 'page' : undefined} className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-navy no-underline hover:bg-marca-gelo aria-[current=page]:bg-marca-gelo">Todas as peças</Link>
           </li>

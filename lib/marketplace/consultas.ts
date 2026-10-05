@@ -3,11 +3,16 @@ import { ORDEM_SECOES, type Produto, type Secao } from './tipos';
 import { filtrarPorTexto } from './busca';
 import { geradorDe } from './formato';
 import { PRODUTOS } from './produtos';
+import { campanhaAtiva, type Campanha } from './campanhas';
 
-/** Pode aparecer ao publico: publico e, se for de terceiro, com licenca comercial confirmada. */
-export const podeAparecer = (p: Produto) => p.visibilidade === 'publico' && (p.origem === 'nosso' || p.licenca === 'comercial-ok');
+/**
+ * Pode aparecer ao publico: publico, de terceiro so com licenca comercial confirmada, e peca
+ * de campanha so com a campanha ligada (`ativa` troca a chave nos testes).
+ */
+export const podeAparecer = (p: Produto, ativa: (c: Campanha) => boolean = campanhaAtiva) =>
+  p.visibilidade === 'publico' && (p.origem === 'nosso' || p.licenca === 'comercial-ok') && (!p.campanha || ativa(p.campanha));
 
-export const produtosPublicos = (lista: Produto[] = PRODUTOS): Produto[] => lista.filter(podeAparecer);
+export const produtosPublicos = (lista: Produto[] = PRODUTOS): Produto[] => lista.filter((p) => podeAparecer(p));
 
 export const porSlug = (slug: string, lista: Produto[] = PRODUTOS): Produto | undefined => produtosPublicos(lista).find((p) => p.slug === slug);
 

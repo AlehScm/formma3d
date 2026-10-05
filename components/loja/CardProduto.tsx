@@ -84,7 +84,8 @@ export function BotaoAdicionar({ slug, extra, grande, className }: { slug: strin
 
 /** Card no padrao das grandes lojas: foto grande, nome e uma linha de apoio. O card inteiro
  *  leva a peca; adicionar ao orcamento fica na pagina do produto. */
-export function CardProduto({ produto: p, nivel = 'h3' }: { produto: Produto; nivel?: 'h2' | 'h3' }) {
+/** `tema`: abre a peca ja com o tema da campanha no painel de personalizar (?tema=natal). */
+export function CardProduto({ produto: p, nivel = 'h3', tema }: { produto: Produto; nivel?: 'h2' | 'h3'; tema?: string }) {
   const Titulo = nivel;
   return (
     <article data-secao={p.secao} className="group relative flex h-full min-w-0 flex-col">
@@ -94,7 +95,7 @@ export function CardProduto({ produto: p, nivel = 'h3' }: { produto: Produto; ni
       </div>
       <div className="flex flex-col gap-0.5 pt-2.5">
         <Titulo className="m-0 line-clamp-2 text-item text-marca-navy">
-          <Link href={`/produto/${p.slug}`} className="text-inherit no-underline after:absolute after:inset-0 after:content-[''] group-hover:underline">{p.nome}</Link>
+          <Link href={`/produto/${p.slug}${tema ? `?tema=${tema}` : ''}`} className="text-inherit no-underline after:absolute after:inset-0 after:content-[''] group-hover:underline">{p.nome}</Link>
         </Titulo>
         <p className="m-0 text-apoio text-marca-texto-2">{p.tipo}</p>
         {p.jaImpresso && <p className="m-0 text-apoio font-semibold text-secao-forte">Já feito para clientes</p>}

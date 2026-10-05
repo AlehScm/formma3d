@@ -191,6 +191,16 @@
  * dentro de [data-secao] sem classe nova (bg-secao, text-secao-forte, border-secao-borda).
  * Regra igual a do tema escuro: componente nenhum usa hex nem valor arbitrario de cor.
  */
+/* Campanha de Natal (lib/marketplace/campanhas.ts): cores so dentro de [data-campanha='natal'].
+   Os mesmos tons pintam as pecas (CORES_NATAL). */
+:root {
+  --natal-vermelho: #b3261e;
+  --natal-verde: #1f6b45;
+  --natal-verde-noite: #10301f;
+  --natal-dourado: #d9b24c;
+  --natal-creme: #fbf6ec;
+}
+
 @theme inline {
   --color-marca-navy: var(--marca-navy);
   --color-marca-profundo: var(--marca-profundo);
@@ -236,6 +246,11 @@
   --color-secao-botao: var(--secao-botao);
   --color-secao-botao-forte: var(--secao-botao-forte);
   --color-secao-botao-texto: var(--secao-botao-texto);
+  --color-natal-vermelho: var(--natal-vermelho);
+  --color-natal-verde: var(--natal-verde);
+  --color-natal-verde-noite: var(--natal-verde-noite);
+  --color-natal-dourado: var(--natal-dourado);
+  --color-natal-creme: var(--natal-creme);
 
   --font-display: var(--marca-fonte-display);
   --font-marca: var(--marca-fonte);
@@ -300,3 +315,33 @@
 }
 @utility gap-x-vao { column-gap: var(--marca-vao); }
 @utility gap-y-vao { row-gap: var(--marca-vao); }
+
+/* Natal: neve caindo (tres camadas de pontos em velocidades diferentes) e pisca-pisca (cada
+   lampada acende num tempo). So decoracao; quem pede menos movimento ve tudo parado. */
+@keyframes natal-neve {
+  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
+  to { background-position: 40px 628px, -30px 422px, 20px 678px, -50px 534px, 10px 362px, -20px 458px; }
+}
+@keyframes natal-piscar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@utility natal-neve {
+  /* Seis camadas com tamanhos primos e pontos fora de alinhamento: a neve nao forma grade. */
+  background-image:
+    radial-gradient(circle at 13% 21%, rgb(255 255 255 / 0.95) 0 1.8px, transparent 2.8px),
+    radial-gradient(circle at 71% 63%, rgb(255 255 255 / 0.8) 0 1.3px, transparent 2.3px),
+    radial-gradient(circle at 37% 88%, rgb(255 255 255 / 0.6) 0 1px, transparent 2px),
+    radial-gradient(circle at 86% 9%, rgb(255 255 255 / 0.7) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 54% 41%, rgb(255 255 255 / 0.5) 0 0.9px, transparent 1.9px),
+    radial-gradient(circle at 24% 57%, rgb(255 255 255 / 0.65) 0 1.2px, transparent 2.2px);
+  background-size: 157px 157px, 211px 211px, 113px 113px, 263px 263px, 89px 89px, 181px 181px;
+  animation: natal-neve 22s linear infinite;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+@utility natal-pisca {
+  & > * { animation: natal-piscar 2.4s ease-in-out infinite; }
+  & > :nth-child(3n + 2) { animation-delay: 0.8s; }
+  & > :nth-child(3n) { animation-delay: 1.6s; }
+  @media (prefers-reduced-motion: reduce) { & > * { animation: none; } }
+}
