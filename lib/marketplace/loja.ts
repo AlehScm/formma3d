@@ -17,3 +17,18 @@ export const BANNERS: { secao: Secao; titulo: string; texto: string; produto: st
   { secao: 'presentes', titulo: 'Presentes com nome', texto: 'Chaveiros, topos de bolo e lembrancinhas personalizadas para festas.', produto: 'chaveiro-nome', acao: 'Ver presentes', href: '/secao/presentes' },
   { secao: 'casa', titulo: 'Decoração para a sua casa', texto: 'Luminárias de letra, porta-retratos e organizadores sob medida.', produto: 'luminaria-letra', acao: 'Ver peças para casa', href: '/secao/casa' },
 ];
+
+/** Como pedir, na ordem real do pedido (por isso numerado na home). */
+export const COMO_FUNCIONA: { titulo: string; texto: string }[] = [
+  { titulo: 'Escolha a peça', texto: 'Navegue pelas seções ou busque pelo que você precisa.' },
+  { titulo: 'Personalize e veja em 3D', texto: 'Nas peças personalizáveis, ajuste nome, cores e tamanho e confira a peça girando na tela.' },
+  { titulo: 'Peça o orçamento', texto: 'Adicione ao orçamento e envie a lista. Combinamos valor e detalhes com você antes de imprimir.' },
+];
+
+/** Perguntas frequentes: so fatos de hoje (o teste barra frete, pagamento, prazo e avaliacao). */
+export const PERGUNTAS: { pergunta: string; resposta: string }[] = [
+  { pergunta: 'Quanto custa uma peça?', resposta: 'O valor depende do tamanho, das cores e da quantidade. Adicione as peças ao orçamento e envie a lista: respondemos com o valor de cada uma.' },
+  { pergunta: 'Posso escolher as cores?', resposta: 'Sim. Diga as cores no orçamento ou, nas peças personalizáveis, escolha as cores e veja o resultado em 3D.' },
+  { pergunta: 'Dá para mudar o texto e o tamanho?', resposta: 'Sim. Cada peça é impressa sob medida: nome, frase e tamanho saem do seu jeito.' },
+  { pergunta: 'Não achei a peça que eu queria. E agora?', resposta: 'Monte a sua nos geradores de peças ou descreva a ideia no orçamento. A gente avalia e responde.' },
+];

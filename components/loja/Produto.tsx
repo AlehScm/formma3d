@@ -10,9 +10,9 @@ import { BotaoIconeMarca, BotaoMarca, CAMPO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { PecaViva } from '@/features/marketplace/PecaViva';
 import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
-import { geradorDe, urlDaMidia } from '@/lib/marketplace/formato';
+import { geradorDe, rotuloPreco, urlDaMidia } from '@/lib/marketplace/formato';
 import type { Produto } from '@/lib/marketplace/tipos';
-import { BotaoAdicionar, BotaoFavorito, ImagemProduto, ReservaProduto, rotuloPreco } from './CardProduto';
+import { BotaoAdicionar, BotaoFavorito, ImagemProduto, ReservaProduto } from './CardProduto';
 import { IconeMais, IconeMenos } from './icones';
 
 export function GaleriaProduto({ produto: p }: { produto: Produto }) {

@@ -10,12 +10,9 @@ import { BotaoIconeMarca, BotaoMarca } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
-import { geradorDe, urlDaMidia } from '@/lib/marketplace/formato';
+import { geradorDe, rotuloPreco, urlDaMidia } from '@/lib/marketplace/formato';
 import { SECOES, type Produto } from '@/lib/marketplace/tipos';
 import { IconeCarrinho, IconeFavorito, IconeImpressora, IconeOk } from './icones';
-
-/** Preco no card: enquanto o valor esta em validacao, "sob consulta". */
-export const rotuloPreco = (p: Produto) => (p.preco.status === 'validacao' ? 'Preço sob consulta' : p.preco.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 
 export function ReservaProduto({ produto: p }: { produto: Produto }) {
   return (
@@ -92,16 +89,16 @@ export function CardProduto({ produto: p, nivel = 'h3' }: { produto: Produto; ni
     <article data-secao={p.secao} className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-marca-md border border-secao-linha bg-secao-superficie transition-shadow hover:shadow-marca-2 focus-within:shadow-marca-2">
       <div className="relative aspect-square overflow-hidden bg-secao-suave">
         <ImagemProduto produto={p} className="transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transform-none motion-reduce:transition-none" />
+        {personalizavel && <span className="absolute bottom-2 left-2 rounded-full bg-marca-branco/95 px-2.5 py-1 text-[11px] font-semibold text-secao-forte shadow-marca-1">Personalizável em 3D</span>}
         <BotaoFavorito slug={p.slug} nome={p.nome} className="absolute top-2 right-2 z-10" />
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
         <span className="text-xs text-secao-tinta-2">{SECOES[p.secao].nome}</span>
         {p.jaImpresso && <span className="text-xs font-semibold text-secao-forte">Já feito para clientes</span>}
-        <Titulo className="m-0 line-clamp-2 min-h-[2.5em] font-display text-sm leading-tight font-semibold text-secao-tinta">
+        <Titulo className="m-0 line-clamp-2 min-h-[2.5em] font-display text-[15px] leading-tight font-semibold text-secao-tinta">
           <Link href={`/produto/${p.slug}`} className="text-inherit no-underline after:absolute after:inset-0 after:content-[''] hover:underline">{p.nome}</Link>
         </Titulo>
-        <p className="m-0 mt-1 font-display text-base font-bold text-secao-tinta">{rotuloPreco(p)}</p>
-        {personalizavel && <p className="m-0 text-xs font-medium text-secao-nota">Personalize em 3D antes de pedir</p>}
+        <p className="m-0 mt-1 text-sm text-secao-tinta-2">{rotuloPreco(p)}</p>
         <div className="relative z-10 mt-auto pt-2"><BotaoAdicionar slug={p.slug} /></div>
       </div>
     </article>

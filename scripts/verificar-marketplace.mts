@@ -4,9 +4,9 @@
  *   npx tsx scripts/verificar-marketplace.mts
  */
 import fs from 'fs';
-import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
+import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, pecaDaSecao, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
 import { FOTOS } from '../lib/marketplace/fotos';
-import { BANNERS, VANTAGENS } from '../lib/marketplace/loja';
+import { BANNERS, COMO_FUNCIONA, PERGUNTAS, VANTAGENS } from '../lib/marketplace/loja';
 import { CASA, VITRINE_CASA } from '../lib/marketplace/universos';
 import { receitaPorId } from '../lib/gerador/receitas';
 
@@ -95,7 +95,7 @@ ok('WhatsApp com numero: so digitos e mensagem codificada', l === `https://wa.me
 
 const fonte = fs.readFileSync('lib/marketplace/produtos.ts', 'utf8');
 ok('sem valores em reais no cadastro (custos ficam fora do repo)', !/R\$\s*\d/.test(fonte));
-ok('sem nomes de arquivo da Downloads no cadastro (repo publico)', !/\.(3mf|stl|zip|ai|pdf|obj|step)/i.test(fonte) && PRODUTOS.every((p) => !p.ref || /^[TN]\d{2}$/.test(p.ref)));
+ok('sem nomes de arquivo da Downloads no cadastro (repo publico)', !/\.(3mf|stl|zip|ai|pdf|obj|step)\b/i.test(fonte) && PRODUTOS.every((p) => !p.ref || /^[TN]\d{2}$/.test(p.ref)));
 ok('sem personagem com marca registrada', !/aranha|spider|marvel|disney|pokemon|mario/i.test(fonte));
 
 // Carrinho de orcamento e textos comerciais
@@ -104,6 +104,9 @@ ok('mensagem do orçamento lista peça, quantidade, cor e observação', msg.inc
 // As promessas da loja ficam nas vantagens (os banners citam produtos, como a placa de Pix).
 const lojaTxt = JSON.stringify(VANTAGENS);
 ok('vantagens sem frete, pagamento, prazo ou avaliação inventados', !/frete|gr[aá]tis|\bpix\b|cart[aã]o de cr[eé]dito|entrega em|avalia[cç][aã]o|estrelas|★|mais vendid|garantia/i.test(lojaTxt));
+ok('como funciona: 3 passos, cada um com título e texto', COMO_FUNCIONA.length === 3 && COMO_FUNCIONA.every((p) => p.titulo.trim() && p.texto.trim()));
+ok('perguntas frequentes sem frete, pagamento, prazo ou avaliação inventados', PERGUNTAS.length > 0 && !/frete|gr[aá]tis|\bpix\b|cart[aã]o de cr[eé]dito|entrega em|\d+\s*dias|avalia[cç][aã]o|estrelas|★|mais vendid|garantia/i.test(JSON.stringify(PERGUNTAS)));
+ok('peça de cada categoria da home é pública', ORDEM_SECOES.every((s) => { const p = pecaDaSecao(s); return !p || !!porSlug(p.slug); }));
 ok('banners apontam para peças públicas', BANNERS.every((b) => !!porSlug(b.produto)));
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

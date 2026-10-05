@@ -76,7 +76,8 @@ export function RodapeLoja() {
 /** `cru`: o conteudo cuida do proprio espacamento (paginas que nao sao da loja, como o catalogo). */
 export function PaginaLoja({ secaoAtual, children, className, cru }: { secaoAtual?: Secao; children: ReactNode; className?: string; cru?: boolean }) {
   return (
-    <div data-secao={secaoAtual} className={cx(ESCOPO_MARCA, 'flex min-h-screen flex-col')}>
+    // scheme-light: o :root do app e escuro (editor); sem isto checkbox e select da loja saem pretos.
+    <div data-secao={secaoAtual} className={cx(ESCOPO_MARCA, 'flex min-h-screen flex-col scheme-light')}>
       <a className="absolute -left-[9999px] top-2 z-50 rounded-md bg-marca-navy px-3.5 py-2.5 font-bold text-white focus:left-2" href="#conteudo">Pular para o conteúdo</a>
       <CabecalhoLoja secaoAtual={secaoAtual} />
       <main id="conteudo" className={cru ? className : cx('conteiner-loja flex min-w-0 flex-1 flex-col gap-6 px-margem pt-6', className)}>{children}</main>
