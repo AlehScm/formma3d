@@ -3,9 +3,7 @@
  * devolve a malha da peca principal (item 0), as cores e as medidas em mm. Carregado
  * sob demanda (puxa as receitas), como as miniaturas do catalogo; cada peca uma vez.
  */
-import { receitaPorId } from '@/lib/gerador/receitas';
-import { ficha } from '@/lib/gerador/receitas/fichas';
-import { valoresPadrao } from '@/lib/gerador/tipos';
+import { prepararExemplo } from '@/lib/gerador/exemplo';
 import { caixaDoItem, corDe } from '@/lib/gerador/malha';
 import { gerarNoWorker } from '@/features/gerador/clienteWorker';
 
@@ -30,14 +28,8 @@ export function carregarPeca(id: string): Promise<PecaCarregada> {
 }
 
 async function gerar(id: string): Promise<PecaCarregada> {
-  const receita = receitaPorId(id);
-  if (!receita) throw new Error('Gerador desconhecido: ' + id);
-  const v = { ...valoresPadrao(receita), ...(ficha(id).exemplo ?? {}) };
-  const fontes = new Set([
-    ...receita.parametros.filter((p) => p.tipo === 'fonte' && (!p.visivel || p.visivel(v))).map((p) => String(v[p.id])),
-    ...(receita.fontes?.(v) ?? []),
-  ]);
-  const { resultado, malhas } = await gerarNoWorker(id, v, [...fontes]);
+  const { valores, idsFonte } = prepararExemplo(id);
+  const { resultado, malhas } = await gerarNoWorker(id, valores, idsFonte);
   const item = resultado.itens[0];
   if (!item) throw new Error('O gerador não devolveu peça.');
   const c = caixaDoItem(item);

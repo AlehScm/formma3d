@@ -9,8 +9,9 @@ import { useMemo, useState } from 'react';
 import { BotaoIconeMarca, BotaoMarca, CAMPO_MARCA } from '@/components/marca';
 import { useMontado, useOrcamento } from '@/features/loja/estado';
 import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
+import { rotuloPreco } from '@/lib/marketplace/formato';
 import type { Produto } from '@/lib/marketplace/tipos';
-import { ImagemProduto, rotuloPreco } from './CardProduto';
+import { ImagemProduto } from './CardProduto';
 import { IconeCarrinho, IconeCopiar, IconeMais, IconeMenos, IconeOk, IconeRemover } from './icones';
 
 export function Orcamento({ produtos }: { produtos: Produto[] }) {
@@ -51,7 +52,7 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {linhas.map(({ item, produto: p }) => (
-          <li key={p.slug} data-secao={p.secao} className="grid grid-cols-[96px_minmax(0,1fr)] gap-4 rounded-2xl bg-marca-branco p-4 shadow-marca-1 sm:grid-cols-[120px_minmax(0,1fr)]">
+          <li key={item.id} data-secao={p.secao} className="grid grid-cols-[96px_minmax(0,1fr)] gap-4 rounded-2xl bg-marca-branco p-4 shadow-marca-1 sm:grid-cols-[120px_minmax(0,1fr)]">
             <Link href={`/produto/${p.slug}`} className="block aspect-square overflow-hidden rounded-xl bg-secao-suave" aria-label={p.nome}><ImagemProduto produto={p} /></Link>
             <div className="flex min-w-0 flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
@@ -59,17 +60,17 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
                   <Link href={`/produto/${p.slug}`} className="font-semibold text-marca-navy no-underline hover:underline">{p.nome}</Link>
                   <p className="m-0 text-sm text-marca-texto-2">{rotuloPreco(p)}</p>
                 </div>
-                <BotaoIconeMarca onClick={() => remover(p.slug)} rotulo={`Remover ${p.nome}`} className="text-marca-texto-3 hover:text-marca-navy"><IconeRemover className="size-4" aria-hidden /></BotaoIconeMarca>
+                <BotaoIconeMarca onClick={() => remover(item.id)} rotulo={`Remover ${p.nome}`} className="text-marca-texto-3 hover:text-marca-navy"><IconeRemover className="size-4" aria-hidden /></BotaoIconeMarca>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr]">
                 <div className="flex w-fit items-center rounded-marca-sm border border-marca-linha" role="group" aria-label={`Quantidade de ${p.nome}`}>
-                  <BotaoIconeMarca onClick={() => alterar(p.slug, { quantidade: item.quantidade - 1 })} disabled={item.quantidade <= 1} rotulo="Menos uma"><IconeMenos className="size-4" aria-hidden /></BotaoIconeMarca>
+                  <BotaoIconeMarca onClick={() => alterar(item.id, { quantidade: item.quantidade - 1 })} disabled={item.quantidade <= 1} rotulo="Menos uma"><IconeMenos className="size-4" aria-hidden /></BotaoIconeMarca>
                   <span className="w-10 text-center font-semibold tabular-nums">{item.quantidade}</span>
-                  <BotaoIconeMarca onClick={() => alterar(p.slug, { quantidade: item.quantidade + 1 })} disabled={item.quantidade >= 999} rotulo="Mais uma"><IconeMais className="size-4" aria-hidden /></BotaoIconeMarca>
+                  <BotaoIconeMarca onClick={() => alterar(item.id, { quantidade: item.quantidade + 1 })} disabled={item.quantidade >= 999} rotulo="Mais uma"><IconeMais className="size-4" aria-hidden /></BotaoIconeMarca>
                 </div>
-                <input aria-label={`Cor de ${p.nome}`} placeholder="Cor desejada" value={item.cor ?? ''} onChange={(e) => alterar(p.slug, { cor: e.target.value })} className={campo} />
+                <input aria-label={`Cor de ${p.nome}`} placeholder="Cor desejada" value={item.cor ?? ''} onChange={(e) => alterar(item.id, { cor: e.target.value })} className={campo} />
               </div>
-              <textarea aria-label={`Observação para ${p.nome}`} placeholder="Observação (texto, tamanho, prazo...)" rows={2} value={item.observacao ?? ''} onChange={(e) => alterar(p.slug, { observacao: e.target.value })} className={campo} />
+              <textarea aria-label={`Observação para ${p.nome}`} placeholder="Observação (texto, tamanho, prazo...)" rows={2} value={item.observacao ?? ''} onChange={(e) => alterar(item.id, { observacao: e.target.value })} className={campo} />
             </div>
           </li>
         ))}

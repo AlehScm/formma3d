@@ -5,16 +5,16 @@
  * ficha), uma por vez, depois que a pagina aparece; fica guardada na memoria e no
  * navegador para a proxima visita. Sem WebGL, o card fica com o desenho de reserva.
  */
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ficha, FICHAS } from '@/lib/gerador/receitas/fichas';
+import { criarFilaSerial } from './filaSerial';
 
 /** Mudou a geometria das receitas de um jeito que muda a foto: suba o numero. */
 const VERSAO = 3;
-/** Foto que demora mais que isto (fonte que nao chega, WebGL travado) fica no desenho de reserva. */
-const TEMPO_MAX = 20000; // ms
+const TEMPO_MAX = 20000;
 const memoria = new Map<string, string>();
-const pendentes = new Map<string, Promise<string>>();
-let fila: Promise<unknown> = Promise.resolve();
+const pendentes = new Map<string, { promessa: Promise<string>; cancelar: () => void; ouvintes: number; iniciada: boolean }>();
+const enfileirar = criarFilaSerial();
 
 function chave(id: string, paleta?: string[]): string {
   const texto = JSON.stringify(ficha(id));
@@ -50,29 +50,47 @@ function guardada(id: string, paleta?: string[]): string | null {
   }
 }
 
-function pedir(id: string, paleta?: string[]): Promise<string> {
+function pedir(id: string, paleta?: string[]): { promessa: Promise<string>; liberar: () => void } {
   const k = chave(id, paleta);
-  const emAndamento = pendentes.get(k);
-  if (emAndamento) return emAndamento;
-  const vez = fila.then(async () => {
-    const pronta = guardada(id, paleta);
-    if (pronta) return pronta;
+  const existente = pendentes.get(k);
+  if (existente) {
+    existente.ouvintes++;
+    return { promessa: existente.promessa, liberar: () => liberar(k, existente) };
+  }
+  const estado = { promessa: Promise.resolve(''), cancelar: () => {}, ouvintes: 1, iniciada: false };
+  const trabalho = enfileirar(async () => {
+    estado.iniciada = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const url = await Promise.race([
-      import('./renderMiniatura').then(({ renderizarMiniatura }) => renderizarMiniatura(id, paleta)),
-      new Promise<never>((_, falha) => { timer = setTimeout(() => falha(new Error('Miniatura demorou demais')), TEMPO_MAX); }),
-    ]).finally(() => { if (timer) clearTimeout(timer); });
-    memoria.set(k, url);
     try {
-      localStorage.setItem(k, url);
-    } catch {
-      // sem espaco ou sem armazenamento: so vale nesta visita
+      const pronta = guardada(id, paleta);
+      if (pronta) return pronta;
+      const modulo = await Promise.race([import('./renderMiniatura'), new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Carregamento da miniatura demorou demais')), TEMPO_MAX);
+      })]);
+      if (timer) clearTimeout(timer);
+      const url = await modulo.renderizarMiniatura(id, paleta);
+      memoria.set(k, url);
+      try { localStorage.setItem(k, url); } catch { /* armazenamento opcional */ }
+      return url;
+    } finally {
+      if (timer) clearTimeout(timer);
+      pendentes.delete(k);
     }
-    return url;
-  }).finally(() => { pendentes.delete(k); });
-  pendentes.set(k, vez);
-  fila = vez.catch(() => undefined);
-  return vez;
+  });
+  estado.promessa = trabalho.promessa;
+  estado.cancelar = trabalho.cancelar;
+  pendentes.set(k, estado);
+  return { promessa: estado.promessa, liberar: () => liberar(k, estado) };
+}
+
+function liberar(k: string, esperado: { promessa: Promise<string>; cancelar: () => void; ouvintes: number; iniciada: boolean }): void {
+  const estado = pendentes.get(k);
+  if (!estado || estado !== esperado) return;
+  estado.ouvintes--;
+  if (estado.ouvintes <= 0 && !estado.iniciada) {
+    estado.cancelar();
+    if (pendentes.get(k) === esperado) pendentes.delete(k);
+  }
 }
 
 const Paleta = createContext<string[] | undefined>(undefined);
@@ -87,20 +105,37 @@ export function Miniatura({ id, alt, reserva, paleta }: { id: string; alt: strin
   const doTema = useContext(Paleta);
   const cores = paleta ?? doTema;
   const assinatura = cores?.join('-') ?? '';
+  const elemento = useRef<HTMLDivElement>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [falhou, setFalhou] = useState(false);
+  const [visivel, setVisivel] = useState(false);
+  useEffect(() => {
+    const alvo = elemento.current;
+    if (!alvo || typeof IntersectionObserver === 'undefined') { setVisivel(true); return; }
+    const observador = new IntersectionObserver(([entrada]) => {
+      if (entrada?.isIntersecting) { setVisivel(true); observador.disconnect(); }
+    }, { rootMargin: '160px' });
+    observador.observe(alvo);
+    return () => observador.disconnect();
+  }, []);
   useEffect(() => {
     let vivo = true;
+    let liberar: (() => void) | undefined;
     const lista = assinatura ? assinatura.split('-') : undefined;
     const pronta = guardada(id, lista);
     setUrl(pronta);
     setFalhou(false);
-    if (!pronta) pedir(id, lista).then((u) => vivo && setUrl(u)).catch(() => vivo && setFalhou(true));
+    if (!pronta && visivel) {
+      const trabalho = pedir(id, lista);
+      liberar = trabalho.liberar;
+      trabalho.promessa.then((u) => vivo && setUrl(u)).catch(() => vivo && setFalhou(true));
+    }
     return () => {
       vivo = false;
+      liberar?.();
     };
-  }, [id, assinatura]);
-  if (!url) return <div className="miniatura-reserva" role="img" aria-label={falhou ? `Ilustração de ${alt}` : `Ilustração de ${alt}; prévia 3D carregando`}>{reserva}</div>;
+  }, [id, assinatura, visivel]);
+  if (!url) return <div ref={elemento} className="miniatura-reserva" role="img" aria-label={falhou ? `Ilustração de ${alt}` : `Ilustração de ${alt}; prévia 3D carregando`}>{reserva}</div>;
   // eslint-disable-next-line @next/next/no-img-element
   return <img className="miniatura" src={url} alt={alt} draggable={false} />;
 }

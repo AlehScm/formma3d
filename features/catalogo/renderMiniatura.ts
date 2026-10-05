@@ -5,9 +5,7 @@
  * as receitas para a pagina inicial. A geracao e a malha rodam no worker.
  */
 import * as THREE from 'three';
-import { receitaPorId } from '@/lib/gerador/receitas';
-import { ficha } from '@/lib/gerador/receitas/fichas';
-import { valoresPadrao } from '@/lib/gerador/tipos';
+import { prepararExemplo } from '@/lib/gerador/exemplo';
 import { corDe } from '@/lib/gerador/malha';
 import { gerarNoWorker } from '@/features/gerador/clienteWorker';
 
@@ -18,15 +16,9 @@ let renderizador: THREE.WebGLRenderer | null = null;
 
 /** `paleta`: pinta as cores da peca, na ordem em que aparecem, com estas (o tema da secao). */
 export async function renderizarMiniatura(id: string, paleta?: string[]): Promise<string> {
-  const receita = receitaPorId(id);
-  if (!receita) throw new Error('Gerador desconhecido: ' + id);
-  const v = { ...valoresPadrao(receita), ...(ficha(id).exemplo ?? {}) };
-  const ids = new Set([
-    ...receita.parametros.filter((p) => p.tipo === 'fonte' && (!p.visivel || p.visivel(v))).map((p) => String(v[p.id])),
-    ...(receita.fontes?.(v) ?? []),
-  ]);
+  const { valores, idsFonte } = prepararExemplo(id);
   // Geracao e malha no worker: a pagina do catalogo nao engasga enquanto as fotos saem.
-  const { resultado: res, malhas } = await gerarNoWorker(id, v, [...ids]);
+  const { resultado: res, malhas } = await gerarNoWorker(id, valores, idsFonte);
 
   const cena = new THREE.Scene();
   cena.add(new THREE.AmbientLight(0xffffff, 0.6));

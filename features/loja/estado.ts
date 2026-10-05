@@ -15,6 +15,7 @@ const armazenamento: StateStorage = {
 };
 
 export interface ItemOrcamento {
+  id: string;
   slug: string;
   quantidade: number;
   cor?: string;
@@ -23,34 +24,66 @@ export interface ItemOrcamento {
 
 interface Orcamento {
   itens: ItemOrcamento[];
-  adicionar: (slug: string, extra?: Partial<Omit<ItemOrcamento, 'slug'>>) => void;
-  alterar: (slug: string, mudanca: Partial<Omit<ItemOrcamento, 'slug'>>) => void;
-  remover: (slug: string) => void;
+  adicionar: (slug: string, extra?: Partial<Pick<ItemOrcamento, 'quantidade' | 'cor' | 'observacao'>>) => void;
+  alterar: (id: string, mudanca: Partial<Omit<ItemOrcamento, 'id' | 'slug'>>) => void;
+  remover: (id: string) => void;
   limpar: () => void;
 }
 
 const QTD_MAX = 999;
 const limitar = (n: number) => Math.min(QTD_MAX, Math.max(1, Math.round(n) || 1));
+const normalizarOpcao = (valor?: string) => valor?.trim() || '';
+let sequenciaId = 0;
+const novoId = () => {
+  sequenciaId++;
+  return globalThis.crypto?.randomUUID?.() ?? `linha-${Date.now().toString(36)}-${sequenciaId.toString(36)}`;
+};
 
-export const useOrcamento = create<Orcamento>()(
+export function migrarOrcamento(estado: unknown): Pick<Orcamento, 'itens'> {
+  const dados = estado && typeof estado === 'object' ? estado as { itens?: unknown } : {};
+  const itens = Array.isArray(dados.itens) ? dados.itens : [];
+  const ids = new Set<string>();
+  return {
+    itens: itens.flatMap((valor, indice) => {
+      if (!valor || typeof valor !== 'object') return [];
+      const item = valor as Partial<ItemOrcamento>;
+      if (typeof item.slug !== 'string' || !item.slug) return [];
+      let id = typeof item.id === 'string' && item.id ? item.id : `migrado-${indice}-${item.slug}`;
+      while (ids.has(id)) id = `${id}-${indice}`;
+      ids.add(id);
+      return [{ id, slug: item.slug, quantidade: limitar(Number(item.quantidade) || 1), cor: typeof item.cor === 'string' ? item.cor : '', observacao: typeof item.observacao === 'string' ? item.observacao : '' }];
+    }),
+  };
+}
+
+export const VERSAO_ORCAMENTO = 1;
+
+export function criarStoreOrcamento(storage: StateStorage = armazenamento) {
+  return create<Orcamento>()(
   persist(
     (set) => ({
       itens: [],
-      // Mesma peca de novo soma na quantidade (e atualiza cor/observacao se vierem).
+      // Mesma configuracao soma; cores e observacoes diferentes ficam em linhas separadas.
       adicionar: (slug, extra = {}) =>
         set((s) => {
-          const ja = s.itens.find((i) => i.slug === slug);
-          if (ja) return { itens: s.itens.map((i) => (i.slug === slug ? { ...i, ...extra, quantidade: limitar(i.quantidade + (extra.quantidade ?? 1)) } : i)) };
-          return { itens: [...s.itens, { slug, ...extra, quantidade: limitar(extra.quantidade ?? 1) }] };
+          const cor = normalizarOpcao(extra.cor);
+          const observacao = normalizarOpcao(extra.observacao);
+          const quantidadeNova = limitar(extra.quantidade ?? 1);
+          const ja = s.itens.find((i) => i.slug === slug && normalizarOpcao(i.cor) === cor && normalizarOpcao(i.observacao) === observacao);
+          if (ja) return { itens: s.itens.map((i) => (i.id === ja.id ? { ...i, quantidade: limitar(i.quantidade + quantidadeNova) } : i)) };
+          return { itens: [...s.itens, { id: novoId(), slug, quantidade: quantidadeNova, cor, observacao }] };
         }),
-      alterar: (slug, mudanca) =>
-        set((s) => ({ itens: s.itens.map((i) => (i.slug === slug ? { ...i, ...mudanca, quantidade: limitar(mudanca.quantidade ?? i.quantidade) } : i)) })),
-      remover: (slug) => set((s) => ({ itens: s.itens.filter((i) => i.slug !== slug) })),
+      alterar: (id, mudanca) =>
+        set((s) => ({ itens: s.itens.map((i) => (i.id === id ? { ...i, ...mudanca, quantidade: limitar(mudanca.quantidade ?? i.quantidade) } : i)) })),
+      remover: (id) => set((s) => ({ itens: s.itens.filter((i) => i.id !== id) })),
       limpar: () => set({ itens: [] }),
     }),
-    { name: 'scarprint:orcamento:v1', storage: createJSONStorage(() => armazenamento) },
+    { name: 'scarprint:orcamento:v1', storage: createJSONStorage(() => storage), version: VERSAO_ORCAMENTO, migrate: (estado) => migrarOrcamento(estado) },
   ),
-);
+  );
+}
+
+export const useOrcamento = criarStoreOrcamento();
 
 interface Favoritos {
   slugs: string[];
