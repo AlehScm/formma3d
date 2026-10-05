@@ -40,7 +40,7 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl bg-marca-branco p-12 text-center shadow-marca-1">
         <IconeCarrinho className="size-10 text-marca-texto-3" aria-hidden />
-        <p className="m-0 text-lg font-semibold text-marca-navy">Seu orçamento está vazio.</p>
+        <p className="m-0 font-display text-modulo text-marca-navy">Seu orçamento está vazio.</p>
         <p className="m-0 text-marca-texto-2">Escolha as peças e use "Adicionar ao orçamento".</p>
         <BotaoMarca href="/" formato="controle" variante="secao" className="mt-2">Ver as peças</BotaoMarca>
       </div>
@@ -58,8 +58,8 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <Link href={`/produto/${p.slug}`} className="font-semibold text-marca-navy no-underline hover:underline">{p.nome}</Link>
-                  <p className="m-0 text-sm text-marca-texto-2">{rotuloPreco(p)}</p>
-                  {item.personalizacao && <p className="m-0 mt-1 text-sm text-marca-texto"><span className="font-semibold">Montado em 3D:</span> {item.personalizacao}</p>}
+                  <p className="m-0 text-apoio text-marca-texto-2">{rotuloPreco(p)}</p>
+                  {item.personalizacao && <p className="m-0 mt-1 text-apoio text-marca-texto"><span className="font-semibold">Montado em 3D:</span> {item.personalizacao}</p>}
                 </div>
                 <BotaoIconeMarca onClick={() => remover(item.id)} rotulo={`Remover ${p.nome}`} className="text-marca-texto-3 hover:text-marca-navy"><IconeRemover className="size-4" aria-hidden /></BotaoIconeMarca>
               </div>
@@ -78,8 +78,8 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
       </ul>
 
       <aside className="flex flex-col gap-4 rounded-2xl bg-marca-branco p-5 shadow-marca-1 lg:sticky lg:top-40">
-        <h2 className="m-0 text-lg font-bold text-marca-navy">Resumo</h2>
-        <dl className="m-0 flex flex-col gap-2 text-sm">
+        <h2 className="m-0 font-display text-modulo text-marca-navy">Resumo</h2>
+        <dl className="m-0 flex flex-col gap-2 text-item">
           <div className="flex justify-between"><dt className="text-marca-texto-2">Peças diferentes</dt><dd className="m-0 font-semibold tabular-nums">{linhas.length}</dd></div>
           <div className="flex justify-between"><dt className="text-marca-texto-2">Unidades</dt><dd className="m-0 font-semibold tabular-nums">{total}</dd></div>
           <div className="flex justify-between border-t border-marca-linha pt-2"><dt className="text-marca-texto-2">Preço</dt><dd className="m-0 font-semibold">a combinar</dd></div>
@@ -87,15 +87,15 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
         {whatsapp ? (
           <BotaoMarca href={whatsapp} formato="controle" variante="whatsapp">Pedir orçamento pelo WhatsApp</BotaoMarca>
         ) : (
-          <p className="m-0 rounded-lg bg-marca-atencao-fundo px-3 py-2 text-sm text-marca-atencao">O envio pelo WhatsApp abre em breve. Copie a lista e mande pelo canal que preferir.</p>
+          <p className="m-0 rounded-lg bg-marca-atencao-fundo px-3 py-2 text-apoio text-marca-atencao">O envio pelo WhatsApp abre em breve. Copie a lista e mande pelo canal que preferir.</p>
         )}
         <BotaoMarca onClick={copiar} formato="controle" variante="contorno" rotulo={copiado ? 'Lista copiada' : 'Copiar a lista'}>
           {copiado ? <IconeOk className="size-4" aria-hidden /> : <IconeCopiar className="size-4" aria-hidden />}
           <span role="status">{copiado ? 'Lista copiada' : 'Copiar a lista'}</span>
         </BotaoMarca>
-        <details className="text-sm text-marca-texto-2">
+        <details className="text-item text-marca-texto-2">
           <summary className="cursor-pointer font-semibold text-marca-navy">Ver a mensagem</summary>
-          <pre className="mt-2 max-h-56 overflow-auto rounded-lg bg-marca-palido p-3 text-xs whitespace-pre-wrap">{mensagem}</pre>
+          <pre className="mt-2 max-h-56 overflow-auto rounded-lg bg-marca-palido p-3 text-apoio whitespace-pre-wrap">{mensagem}</pre>
         </details>
         <BotaoMarca onClick={limpar} formato="controle" variante="fantasma" pequeno className="self-start">Esvaziar o orçamento</BotaoMarca>
       </aside>

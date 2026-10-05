@@ -51,7 +51,7 @@ export function PecaViva({ id, nome, reserva, interativo = false, extras }: { id
       {/* troca de peca: a anterior fica ate a nova chegar; secao sem peca mostra so a reserva */}
       {id && peca && !falhou && <CenaPeca key={peca.id} peca={peca.dados} girar={!calmo && !interativo} interativo={interativo} />}
       {pronta && nome && (
-        <p className="absolute bottom-4 left-4 m-0 max-w-[calc(100%-2rem)] rounded-marca-md bg-marca-vidro px-3 py-2 text-marca-pequeno leading-snug text-marca-texto backdrop-blur-sm">
+        <p className="absolute bottom-4 left-4 m-0 max-w-[calc(100%-2rem)] rounded-marca-md bg-marca-vidro px-3 py-2 text-apoio text-marca-texto backdrop-blur-sm">
           <strong className="font-bold">{nome}</strong>
           <span className="block tabular-nums text-marca-texto-2">
             {mm(peca.dados.medidas[0])} × {mm(peca.dados.medidas[1])} × {mm(peca.dados.medidas[2])} mm, {peca.dados.cores} {peca.dados.cores === 1 ? 'cor' : 'cores'}

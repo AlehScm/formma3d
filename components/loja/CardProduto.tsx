@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Card de produto no padrao de marketplace: imagem quadrada com favorito e selo, nome em
- * duas linhas, preco, "Personalize em 3D" e o botao de adicionar ao orcamento.
+ * Pecas do card de produto (imagem, favorito, botao de orcamento) e o card enxuto das
+ * vitrines e grades: foto, nome e uma linha de apoio.
  */
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -10,16 +10,16 @@ import { BotaoIconeMarca, BotaoMarca } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
-import { geradorDe, rotuloPreco, urlDaMidia } from '@/lib/marketplace/formato';
-import { SECOES, type Produto } from '@/lib/marketplace/tipos';
+import { geradorDe, urlDaMidia } from '@/lib/marketplace/formato';
+import type { Produto } from '@/lib/marketplace/tipos';
 import { IconeCarrinho, IconeFavorito, IconeImpressora, IconeOk } from './icones';
 
 export function ReservaProduto({ produto: p }: { produto: Produto }) {
   return (
     <div className="flex size-full flex-col items-center justify-center gap-1 bg-secao-suave p-2 text-center text-secao-forte">
       <IconeImpressora className="size-6 shrink-0 opacity-60" aria-hidden />
-      <span className="text-xs font-medium">{p.tipo}</span>
-      <span className="text-[11px] leading-tight">Imagem em preparação</span>
+      <span className="text-apoio font-medium">{p.tipo}</span>
+      <span className="text-apoio">Imagem em preparação</span>
     </div>
   );
 }
@@ -82,24 +82,22 @@ export function BotaoAdicionar({ slug, extra, grande, className }: { slug: strin
   );
 }
 
+/** Card no padrao das grandes lojas: foto grande, nome e uma linha de apoio. O card inteiro
+ *  leva a peca; adicionar ao orcamento fica na pagina do produto. */
 export function CardProduto({ produto: p, nivel = 'h3' }: { produto: Produto; nivel?: 'h2' | 'h3' }) {
   const Titulo = nivel;
-  const personalizavel = !!geradorDe(p) || !!p.personalizar;
   return (
-    <article data-secao={p.secao} className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-marca-md border border-secao-linha bg-secao-superficie transition-shadow hover:shadow-marca-2 focus-within:shadow-marca-2">
-      <div className="relative aspect-square overflow-hidden bg-secao-suave">
+    <article data-secao={p.secao} className="group relative flex h-full min-w-0 flex-col">
+      <div className="relative aspect-square overflow-hidden rounded-marca-md bg-secao-suave">
         <ImagemProduto produto={p} className="transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transform-none motion-reduce:transition-none" />
-        {personalizavel && <span className="absolute bottom-2 left-2 rounded-full bg-marca-branco/95 px-2.5 py-1 text-[11px] font-semibold text-secao-forte shadow-marca-1">Personalizável em 3D</span>}
         <BotaoFavorito slug={p.slug} nome={p.nome} className="absolute top-2 right-2 z-10" />
       </div>
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <span className="text-xs text-secao-tinta-2">{SECOES[p.secao].nome}</span>
-        {p.jaImpresso && <span className="text-xs font-semibold text-secao-forte">Já feito para clientes</span>}
-        <Titulo className="m-0 line-clamp-2 min-h-[2.5em] font-display text-[15px] leading-tight font-semibold text-secao-tinta">
-          <Link href={`/produto/${p.slug}`} className="text-inherit no-underline after:absolute after:inset-0 after:content-[''] hover:underline">{p.nome}</Link>
+      <div className="flex flex-col gap-0.5 pt-2.5">
+        <Titulo className="m-0 line-clamp-2 text-item text-marca-navy">
+          <Link href={`/produto/${p.slug}`} className="text-inherit no-underline after:absolute after:inset-0 after:content-[''] group-hover:underline">{p.nome}</Link>
         </Titulo>
-        <p className="m-0 mt-1 text-sm text-secao-tinta-2">{rotuloPreco(p)}</p>
-        <div className="relative z-10 mt-auto pt-2"><BotaoAdicionar slug={p.slug} /></div>
+        <p className="m-0 text-apoio text-marca-texto-2">{p.tipo}</p>
+        {p.jaImpresso && <p className="m-0 text-apoio font-semibold text-secao-forte">Já feito para clientes</p>}
       </div>
     </article>
   );

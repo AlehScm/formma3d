@@ -117,6 +117,10 @@ const resumo = resumoPersonalizacao(camposChaveiro, { ...valoresIniciais('chavei
 ok('resumo da personalização: rótulo, fonte pelo nome, cor em HEX e sem campo vazio', resumo.includes('Nomes: Maria') && /Fonte: Lobster/.test(resumo) && /#[0-9A-F]{6}/.test(resumo) && !/Antes do nome:/.test(resumo), resumo);
 ok('campos principais sem ajuste técnico (só texto, fonte, cor e medida)', camposChaveiro.every((p) => ['texto', 'fonte', 'cor', 'numero'].includes(p.tipo)) && camposChaveiro.filter((p) => p.tipo === 'numero').length <= 1);
 ok('personalização vai na mensagem do orçamento', MENSAGENS.orcamento([{ nome: 'Chaveiro', quantidade: 2, personalizacao: 'Nomes: Maria' }]).includes('1. Chaveiro (2 un.) - personalização: Nomes: Maria'));
+// Organizacao no padrao das grandes: home com vitrines, catalogo completo em /pecas.
+const home = fs.readFileSync('features/marketplace/MarketplaceHome.tsx', 'utf8');
+ok('home sem o catálogo inteiro (vitrines + "Ver todas" para /pecas)', !/<Listagem[\s/>]/.test(home) && /href: '\/pecas'/.test(home) && fs.existsSync('app/pecas/page.tsx'));
+ok('card sem botão de adicionar (o card inteiro leva à peça)', !/BotaoAdicionar slug=\{p\.slug\} \/>/.test(fs.readFileSync('components/loja/CardProduto.tsx', 'utf8')));
 ok('banners apontam para peças públicas', BANNERS.every((b) => !!porSlug(b.produto)));
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

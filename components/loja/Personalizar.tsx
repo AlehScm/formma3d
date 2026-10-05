@@ -90,7 +90,7 @@ function CampoCor({ id, valor, set }: { id: string; valor: string; set: (v: stri
 
 function Campo({ p, valor, set }: { p: Parametro; valor: Valores[string]; set: (v: Valores[string]) => void }) {
   const id = `pz-${p.id}`;
-  const rotulo = <label htmlFor={id} className="mb-1 block text-sm font-semibold text-marca-navy">{p.rotulo}</label>;
+  const rotulo = <label htmlFor={id} className="mb-1 block text-apoio font-semibold text-marca-navy">{p.rotulo}</label>;
   if (p.tipo === 'texto') {
     return <div>{rotulo}<input id={id} value={String(valor)} maxLength={p.maxCaracteres} placeholder={p.placeholder} onChange={(e) => set(e.target.value)} className={CAMPO_MARCA} /></div>;
   }
@@ -108,7 +108,7 @@ function Campo({ p, valor, set }: { p: Parametro; valor: Valores[string]; set: (
       <div>{rotulo}
         <div className="flex items-center gap-3">
           <input id={id} type="range" min={p.min} max={p.max} step={p.passo ?? 1} value={Number(valor)} onChange={(e) => set(Number(e.target.value))} className="min-w-0 flex-1 accent-marca-azul" />
-          <span className="w-20 text-right text-sm font-semibold text-marca-navy tabular-nums">{String(valor)} {p.unidade}</span>
+          <span className="w-20 text-right text-item font-semibold text-marca-navy tabular-nums">{String(valor)} {p.unidade}</span>
         </div>
       </div>
     );
@@ -126,20 +126,20 @@ export function PainelPersonalizar({ pz, maisOpcoes }: { pz: ReturnType<typeof u
   return (
     <section aria-labelledby="pz-titulo" className="flex flex-col gap-4 rounded-2xl bg-marca-branco p-5 shadow-marca-1">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="pz-titulo" className="m-0 font-display text-lg font-bold text-marca-navy">Personalize a sua peça</h2>
-        {pz.alterado && <button type="button" onClick={pz.desfazer} className="text-sm font-semibold text-marca-azul hover:underline">Voltar ao exemplo</button>}
+        <h2 id="pz-titulo" className="m-0 font-display text-modulo text-marca-navy">Personalize a sua peça</h2>
+        {pz.alterado && <button type="button" onClick={pz.desfazer} className="text-item font-semibold text-marca-azul hover:underline">Voltar ao exemplo</button>}
       </div>
-      <p className="m-0 -mt-2 text-sm text-marca-texto-2">O 3D ao lado muda enquanto você escolhe.</p>
+      <p className="m-0 -mt-2 text-apoio text-marca-texto-2">O 3D ao lado muda enquanto você escolhe.</p>
       {outros.map((p) => <Campo key={p.id} p={p} valor={pz.valores[p.id] ?? p.padrao} set={(v) => pz.mudar(p.id, v)} />)}
       {cores.length > 0 && (
         <fieldset className="m-0 border-0 p-0">
-          <legend className="mb-2 text-sm font-semibold text-marca-navy">Cores</legend>
+          <legend className="mb-2 text-apoio font-semibold text-marca-navy">Cores</legend>
           <div className={cx('grid gap-3', cores.length > 2 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2')}>
             {cores.map((p) => <Campo key={p.id} p={p} valor={pz.valores[p.id] ?? p.padrao} set={(v) => pz.mudar(p.id, v)} />)}
           </div>
         </fieldset>
       )}
-      {maisOpcoes && <a href={maisOpcoes.href} className="text-sm font-semibold text-marca-azul no-underline hover:underline">Mais opções no gerador completo</a>}
+      {maisOpcoes && <a href={maisOpcoes.href} className="text-item font-semibold text-marca-azul no-underline hover:underline">Mais opções no gerador completo</a>}
     </section>
   );
 }

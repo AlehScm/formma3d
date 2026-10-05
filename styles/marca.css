@@ -241,6 +241,28 @@
   --font-marca: var(--marca-fonte);
   --font-fina: var(--marca-fonte-display);
 
+  /* Escala da loja: 6 papeis e so eles (o verificar-estilo barra outros tamanhos na loja).
+     display = topo da home; titulo = titulo da pagina; modulo = titulo de cada bloco;
+     item = nome de peca/categoria e controles; corpo = paragrafo; apoio = informacao secundaria. */
+  --text-display: clamp(32px, 3.6vw, 48px);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 600;
+  --text-titulo: clamp(26px, 2.4vw, 32px);
+  --text-titulo--line-height: 1.15;
+  --text-titulo--letter-spacing: -0.015em;
+  --text-titulo--font-weight: 700;
+  --text-modulo: clamp(19px, 1.5vw, 22px);
+  --text-modulo--line-height: 1.25;
+  --text-modulo--font-weight: 700;
+  --text-item: 15px;
+  --text-item--line-height: 1.35;
+  --text-item--font-weight: 500;
+  --text-corpo: 16px;
+  --text-corpo--line-height: 1.6;
+  --text-apoio: 13px;
+  --text-apoio--line-height: 1.45;
+
   --text-marca-mini: var(--marca-t-mini);
   --text-marca-pequeno: var(--marca-t-pequeno);
   --text-marca-corpo: var(--marca-t-corpo);

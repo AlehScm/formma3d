@@ -15,7 +15,7 @@ import { IconeBusca, IconeCarrinho, IconeFavorito } from './icones';
 
 function Contador({ n }: { n: number }) {
   if (!n) return null;
-  return <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-marca-azul px-1 text-[11px] font-bold leading-none text-white tabular-nums">{n > 99 ? '99+' : n}</span>;
+  return <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-marca-azul px-1 text-apoio font-bold leading-none text-white tabular-nums">{n > 99 ? '99+' : n}</span>;
 }
 
 function Busca() {
@@ -35,7 +35,7 @@ function Busca() {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Buscar peças: chaveiro, letreiro, placa com QR..."
-        className="h-full min-w-0 flex-1 border-0 bg-transparent px-5 text-base text-marca-texto outline-none placeholder:text-marca-texto-3"
+        className="h-full min-w-0 flex-1 border-0 bg-transparent px-5 text-corpo text-marca-texto outline-none placeholder:text-marca-texto-3"
       />
       <button type="submit" className="grid h-full w-14 place-items-center bg-marca-azul text-white hover:bg-marca-azul-forte" aria-label="Buscar">
         <IconeBusca className="size-5" aria-hidden />
@@ -44,14 +44,15 @@ function Busca() {
   );
 }
 
-export function CabecalhoLoja({ secaoAtual }: { secaoAtual?: Secao }) {
+/** `todas`: a pagina e o catalogo completo (/pecas), marcado na barra. */
+export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas?: boolean }) {
   const montado = useMontado();
   const qtdOrcamento = useOrcamento((s) => s.itens.reduce((t, i) => t + i.quantidade, 0));
   const qtdFavoritos = useFavoritos((s) => s.slugs.length);
   const icone = cx(ICONE_MARCA, 'relative text-marca-navy no-underline');
   return (
     <header className="sticky top-0 z-30 bg-marca-branco shadow-marca-1">
-      <div className="bg-marca-palido px-margem py-2 text-center text-xs text-marca-texto-2">
+      <div className="bg-marca-palido px-margem py-2 text-center text-apoio text-marca-texto-2">
         Peças impressas em 3D sob medida. <Link href="/criar" className="font-semibold text-marca-azul underline underline-offset-2">Monte a sua peça</Link>
       </div>
       <div className="conteiner-loja flex flex-wrap items-center gap-x-6 gap-y-3 px-margem py-3 md:flex-nowrap">
@@ -71,25 +72,28 @@ export function CabecalhoLoja({ secaoAtual }: { secaoAtual?: Secao }) {
               <IconeCarrinho className="size-6" aria-hidden />
               {montado && <Contador n={qtdOrcamento} />}
             </span>
-            <span className="hidden text-sm font-semibold sm:inline">Orçamento</span>
+            <span className="hidden text-item font-semibold sm:inline">Orçamento</span>
           </Link>
         </nav>
       </div>
       <nav aria-label="Categorias" className="border-t border-marca-linha">
         <ul className="conteiner-loja my-0 flex list-none gap-1 overflow-x-auto px-margem py-1 [scrollbar-width:none] max-md:[mask-image:linear-gradient(to_right,black_88%,transparent)] [&::-webkit-scrollbar]:hidden">
+          <li className="shrink-0">
+            <Link href="/pecas" aria-current={secaoAtual === undefined && todas ? 'page' : undefined} className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-navy no-underline hover:bg-marca-gelo aria-[current=page]:bg-marca-gelo">Todas as peças</Link>
+          </li>
           {ORDEM_SECOES.map((s) => (
             <li key={s} data-secao={s} className="shrink-0">
               <Link
                 href={`/secao/${s}`}
                 aria-current={s === secaoAtual ? 'page' : undefined}
-                className="inline-flex min-h-11 items-center gap-2 rounded-marca-sm px-3 py-2 text-sm font-medium whitespace-nowrap text-marca-texto no-underline before:size-2 before:rounded-full before:bg-secao before:content-[''] hover:bg-secao-suave hover:text-secao-forte aria-[current=page]:bg-secao-suave aria-[current=page]:font-semibold aria-[current=page]:text-secao-forte aria-[current=page]:shadow-[inset_0_-2px_0_var(--secao)]"
+                className="inline-flex min-h-11 items-center gap-2 rounded-marca-sm px-3 py-2 text-item whitespace-nowrap text-marca-texto no-underline before:size-2 before:rounded-full before:bg-secao before:content-[''] hover:bg-secao-suave hover:text-secao-forte aria-[current=page]:bg-secao-suave aria-[current=page]:font-semibold aria-[current=page]:text-secao-forte aria-[current=page]:shadow-[inset_0_-2px_0_var(--secao)]"
               >
                 {SECOES[s].nome}
               </Link>
             </li>
           ))}
           <li className="ml-auto shrink-0">
-            <Link href="/criar" className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-sm font-semibold whitespace-nowrap text-marca-azul no-underline hover:bg-marca-gelo">Monte a sua peça</Link>
+            <Link href="/criar" className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-azul no-underline hover:bg-marca-gelo">Monte a sua peça</Link>
           </li>
         </ul>
       </nav>

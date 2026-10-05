@@ -91,6 +91,16 @@ for (const f of codigo) {
 const estiloFora = estiloFixo.filter((e) => !(e.split(':')[0]! in ESTILO_PENDENTE));
 ok('style={{}} só com valor de execução (nada fixo inline)', !estiloFora.length, estiloFora.join(' | '));
 
+// 5. Loja: so a escala de 6 papeis (display, titulo, modulo, item, corpo, apoio). Tamanho
+// solto (text-sm, text-[15px], clamp) e o que deixava titulo e texto parecidos.
+const LOJA = /^(components\/loja\/|features\/marketplace\/|app\/(pecas|secao|produto|orcamento|busca)\/)/;
+const foraDaEscala: string[] = [];
+for (const f of codigo.filter((c) => LOJA.test(c))) {
+  const achados = [...fs.readFileSync(f, 'utf8').matchAll(/\btext-(xs|sm|base|lg|[2-9]?xl|\[(?:\d|clamp)[^\]]*\]|marca-(?:mini|pequeno|corpo|destaque|titulo-[23]|display))(?![\w-])/g)].map((m) => m[0]);
+  if (achados.length) foraDaEscala.push(`${f}: ${[...new Set(achados)].join(' ')}`);
+}
+ok('loja só com a escala de letras (text-display/titulo/modulo/item/corpo/apoio)', !foraDaEscala.length, foraDaEscala.join(' | '));
+
 const pendentes = [...Object.entries(CSS_PENDENTE), ...Object.entries(HEX_PENDENTE), ...Object.entries(ARBITRARIA_PENDENTE)];
 console.log(`\nPendências de migração (${pendentes.length}):`);
 for (const [f, motivo] of pendentes) console.log(`  - ${f}: ${motivo}`);

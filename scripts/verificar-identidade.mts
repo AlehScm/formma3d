@@ -61,11 +61,15 @@ conferir('secoes compartilham a mesma composicao, sem excecao para Casa', () => 
   assert.equal((secao.match(/<Listagem\b/g) ?? []).length, 1);
   assert.match(secao, /key=\{slug\}/);
 });
-conferir('home tem uma grade, sem carrossel automatico ou prateleiras repetidas', () => {
+// Padrao das grandes lojas (aprovado em 2026-10-05): vitrines do mesmo bloco na home, sem
+// carrossel automatico; o catalogo completo com filtros fica em /pecas.
+conferir('home com vitrines do mesmo bloco, sem carrossel automatico; catalogo em /pecas', () => {
   const home = fs.readFileSync('features/marketplace/MarketplaceHome.tsx', 'utf8');
-  assert.doesNotMatch(home, /BannerRotativo|<Prateleira\b/);
-  assert.equal((home.match(/<Listagem\b/g) ?? []).length, 1);
-  assert.match(home, /id="produtos"/);
+  assert.doesNotMatch(home, /BannerRotativo/);
+  assert.doesNotMatch(home, /<Listagem\b/);
+  assert.match(home, /<Prateleira\b/);
+  const pecas = fs.readFileSync('app/pecas/page.tsx', 'utf8');
+  assert.equal((pecas.match(/<Listagem\b/g) ?? []).length, 1);
 });
 conferir('fundo institucional da loja permanece igual entre secoes', () => {
   const estrutura = fs.readFileSync('components/loja/Estrutura.tsx', 'utf8');
