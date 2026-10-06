@@ -10,6 +10,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { rmSync, existsSync } from 'node:fs';
+import { achatarPrefetch } from './achatar-prefetch.mjs';
 
 const REPO = 'https://github.com/AlehScm/formma3d.git';
 const BRANCH = 'gh-pages';
@@ -41,6 +42,8 @@ console.log('\n3/4  gerando o site');
 rmSync('out', { recursive: true, force: true });
 node(BIN.next, ['build'], { env: { ...process.env, GITHUB_PAGES: 'true' } });
 if (!existsSync('out/index.html')) throw new Error('o build nao gerou out/index.html');
+// Next 16 grava o pre-carregamento em pastas e o navegador pede o nome achatado (ver o script).
+console.log(`     prefetch: ${achatarPrefetch('out')} copias com o nome que o navegador pede`);
 
 console.log('\n4/4  enviando para o GitHub Pages');
 const git = (...args) => run('git', args, { cwd: 'out', stdio: ['inherit', 'pipe', 'pipe'] });
