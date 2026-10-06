@@ -3,7 +3,7 @@
  * Publica o site no GitHub Pages.
  *   npm run publicar
  *
- * Gera o site estatico e envia a pasta `out/` para a branch `gh-pages`, que e de
+ * Gera o site estatico e envia a pasta `.publicar/` para a branch `gh-pages`, que e de
  * onde o Pages serve. Nao precisa do escopo `workflow` no token -- por isso este
  * caminho existe. Com `gh auth refresh -s workflow` da para usar o
  * .github/workflows/deploy.yml, que publica sozinho a cada push.
@@ -14,6 +14,8 @@ import { achatarPrefetch } from './achatar-prefetch.mjs';
 
 const REPO = 'https://github.com/AlehScm/formma3d.git';
 const BRANCH = 'gh-pages';
+/** Pasta do site gerado (fora do .next do dev). */
+const SAIDA = '.publicar';
 
 // Chamamos o entrypoint .js de cada ferramenta com o proprio node, em vez de `npx`.
 // No Windows o npx e um .cmd, e o Node se recusa a executar .cmd sem shell desde a
@@ -39,21 +41,23 @@ for (const s of ['verificar-ops', 'verificar-pdf', 'verificar-apoio', 'verificar
 }
 
 console.log('\n3/4  gerando o site');
-rmSync('out', { recursive: true, force: true });
-node(BIN.next, ['build'], { env: { ...process.env, GITHUB_PAGES: 'true' } });
-if (!existsSync('out/index.html')) throw new Error('o build nao gerou out/index.html');
+// Build numa pasta propria (nao no .next): rodar junto com o `next dev` no .next travava o
+// cache do dev (Turbopack nao conseguia mais abrir o processo do CSS ate apagar .next/dev).
+rmSync(SAIDA, { recursive: true, force: true });
+node(BIN.next, ['build'], { env: { ...process.env, GITHUB_PAGES: 'true', FORMMA_BUILD_DIR: SAIDA } });
+if (!existsSync(`${SAIDA}/index.html`)) throw new Error(`o build nao gerou ${SAIDA}/index.html`);
 // Next 16 grava o pre-carregamento em pastas e o navegador pede o nome achatado (ver o script).
-console.log(`     prefetch: ${achatarPrefetch('out')} copias com o nome que o navegador pede`);
+console.log(`     prefetch: ${achatarPrefetch(SAIDA)} copias com o nome que o navegador pede`);
 
 console.log('\n4/4  enviando para o GitHub Pages');
-const git = (...args) => run('git', args, { cwd: 'out', stdio: ['inherit', 'pipe', 'pipe'] });
-rmSync('out/.git', { recursive: true, force: true });
+const git = (...args) => run('git', args, { cwd: SAIDA, stdio: ['inherit', 'pipe', 'pipe'] });
+rmSync(`${SAIDA}/.git`, { recursive: true, force: true });
 git('init', '-q', '-b', BRANCH);
 git('add', '-A');
 git('-c', 'user.name=Alejandro', '-c', 'user.email=alehscm@gmail.com', 'commit', '-q', '-m', 'Site gerado a partir de main');
 git('remote', 'add', 'origin', REPO);
 git('push', '-qf', 'origin', BRANCH);
-rmSync('out/.git', { recursive: true, force: true });
+rmSync(`${SAIDA}/.git`, { recursive: true, force: true });
 
 console.log('\npronto: https://alehscm.github.io/formma3d/');
 console.log('(o GitHub leva cerca de um minuto para trocar a versao no ar)\n');

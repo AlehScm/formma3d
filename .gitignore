@@ -1,6 +1,7 @@
 node_modules/
 .next/
 out/
+.publicar/
 build/
 *.tsbuildinfo
 next-env.d.ts
