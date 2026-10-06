@@ -23,6 +23,7 @@ import { carimbosMassinha, portaPente } from './potes';
 import { caixaFigurinhas, portaCanetasDesign } from './caixas';
 import { displayUnhas, miniMicrofone, portaRetrato, quadroTecido } from './quadros';
 import { cartaoTecido, cartaoVisita, listaQrCamadas, listaQrHorizontal, listaQrVertical, placaGoogleReview, placaPixLogo, placaPixTexto, placaQrLogo, placaQrSocial, socialComQr } from './qrplacas';
+import { designLivre } from './designLivre';
 export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparadas, chaveiroNome, chaveiroRetangular, logoCamadas, chaveiroDesenho, chaveiroLogoNome, plaquinhaPet, pingenteFamilia,
   letreiroSobreposto, topoBolo, topoBoloCircular, marcadorPagina, contadorRaspadinha, textoComGuia,
   suporteFoto, suportePalitos, portaCanetasGrade, flocoNeve,
@@ -38,4 +39,7 @@ export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparad
   placaGoogleReview, placaQrSocial, placaQrLogo, placaPixLogo, placaPixTexto, listaQrVertical, listaQrHorizontal, listaQrCamadas, socialComQr, cartaoVisita, cartaoTecido,
 ];
 
-export const receitaPorId = (id: string) => RECEITAS.find((r) => r.id === id);
+/** Receitas que o worker usa mas que nao sao geradores do catalogo (o editor 2D livre). */
+const INTERNAS: Receita[] = [designLivre];
+
+export const receitaPorId = (id: string) => RECEITAS.find((r) => r.id === id) ?? INTERNAS.find((r) => r.id === id);
