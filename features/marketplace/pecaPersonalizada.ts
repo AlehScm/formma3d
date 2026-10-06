@@ -5,9 +5,8 @@
  */
 import { prepararExemplo } from '@/lib/gerador/exemplo';
 import type { Valores } from '@/lib/gerador/tipos';
-import { caixaDoItem, corDe } from '@/lib/gerador/malha';
 import { gerarNoWorker } from '@/features/gerador/clienteWorker';
-import type { PecaCarregada } from './carregarPeca';
+import { montarPeca, type PecaCarregada } from './carregarPeca';
 
 const LIMITE = 12;
 const cache = new Map<string, Promise<PecaCarregada>>();
@@ -32,12 +31,5 @@ async function gerar(id: string, extras: Valores): Promise<PecaCarregada> {
     ...(receita.fontes?.(v) ?? []),
   ]);
   const { resultado, malhas } = await gerarNoWorker(id, v, [...fontes]);
-  const item = resultado.itens[0];
-  if (!item) throw new Error('O gerador não devolveu peça.');
-  const c = caixaDoItem(item);
-  return {
-    partes: item.pecas.map((p, j) => ({ posicoes: malhas[0]![j]!.posicoes, normais: malhas[0]![j]!.normais, cor: corDe(resultado, p.cor) })),
-    medidas: [Math.round(c.maxX - c.minX), Math.round(c.maxY - c.minY), Math.round(c.z1 * 10) / 10],
-    cores: new Set(item.pecas.map((p) => p.cor)).size,
-  };
+  return montarPeca(resultado, malhas);
 }
