@@ -6,24 +6,14 @@
  * tela no vazio. Alcas proprias: arrastar move, cantos escalam (Shift = livre), a alca de
  * cima gira (Shift = de 15 em 15 graus); imã no centro da tela e na grade.
  */
-import { useCallback, useEffect, useRef, useState, type PointerEvent as EventoPonteiro } from 'react';
+import { useRef, useState, type PointerEvent as EventoPonteiro } from 'react';
 import type { Region } from '@/lib/geom/region';
 import { contornar } from '@/lib/gerador/formas';
 import type { Design, Elemento } from '@/lib/design/documento';
 import { caixaDoElemento, regiaoLocal, type Fontes } from '@/lib/design/geometria';
-import { BotaoIcone, IconeEnquadrar, IconeMais, IconeMenos } from '@/components/ui';
-
-/** Region (mm, Y para cima) para o `d` de um <path>. */
-export function caminho(r: Region): string {
-  const pronto = CAMINHOS.get(r);
-  if (pronto !== undefined) return pronto;
-  const anel = (pts: { x: number; y: number }[]) => (pts.length ? `M${pts.map((p) => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`).join('L')}Z` : '');
-  const d = r.map((p) => anel(p.outer) + p.holes.map(anel).join('')).join('');
-  CAMINHOS.set(r, d);
-  return d;
-}
-// As formas dos elementos vem de cache (mesmo objeto enquanto nao mudam): o texto do path tambem.
-const CAMINHOS = new WeakMap<Region, string>();
+import { caminho } from '@/features/visor/caminho';
+import { ControlesZoom } from '@/features/visor/ControlesZoom';
+import { useVista, type Ponto, type Reserva } from '@/features/visor/useVista';
 
 const escalaReal = (e: Elemento) => ({ sx: e.escalaX * (e.espelhar ? -1 : 1), sy: e.escalaY });
 const transformacao = (e: Elemento) => {
@@ -32,7 +22,6 @@ const transformacao = (e: Elemento) => {
 };
 const normalizar = (g: number) => ((((g + 180) % 360) + 360) % 360) - 180;
 
-type Ponto = { x: number; y: number };
 type Gesto =
   | { tipo: 'mover'; inicio: Ponto; originais: { id: string; x: number; y: number }[]; iniciado: boolean }
   | { tipo: 'escala'; el: Elemento; w0: number; h0: number; iniciado: boolean }
@@ -51,54 +40,18 @@ interface Props {
   onSelecionar: (ids: string[]) => void;
   onIniciarGesto: () => void;
   onAlterar: (ids: string[], fn: (e: Elemento) => Elemento) => void;
+  /** No cartao do canto: sem zoom nem etiqueta, sempre enquadrada. */
+  compacto?: boolean;
+  /** Canto ocupado pelo cartao da outra vista (o enquadrar o deixa livre). */
+  reserva?: Reserva;
 }
 
-export function Tela({ design, regioes, fontes, selecao, grade, finos, onSelecionar, onIniciarGesto, onAlterar }: Props) {
-  const caixa = useRef<HTMLDivElement>(null);
-  const [tam, setTam] = useState({ w: 0, h: 0 });
-  const [vista, setVista] = useState({ zoom: 0, cx: 0, cy: 0 });
+export function Tela({ design, regioes, fontes, selecao, grade, finos, onSelecionar, onIniciarGesto, onAlterar, compacto, reserva }: Props) {
+  const W = design.larguraMm, H = design.alturaMm;
+  const { caixa, vista, z, mundo, naTela, transformacao: transformacaoTela, enquadrar, ajustar } = useVista({ minX: -W / 2, minY: -H / 2, w: W, h: H }, { compacto, reserva });
   const gesto = useRef<Gesto | null>(null);
   const [guias, setGuias] = useState<{ x?: number; y?: number }>({});
   const cacheLocal = useRef(new Map<string, Region>());
-
-  const enquadrar = useCallback(() => {
-    if (!tam.w || !tam.h) return;
-    setVista({ zoom: Math.min(tam.w / (design.larguraMm * 1.15), tam.h / (design.alturaMm * 1.15)), cx: 0, cy: 0 });
-  }, [tam.w, tam.h, design.larguraMm, design.alturaMm]);
-
-  useEffect(() => {
-    const el = caixa.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setTam({ w: e!.contentRect.width, h: e!.contentRect.height }));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  useEffect(() => { if (!vista.zoom && tam.w) enquadrar(); }, [tam.w, vista.zoom, enquadrar]);
-
-  const z = vista.zoom || 1;
-  const mundo = useCallback((cliX: number, cliY: number): Ponto => {
-    const r = caixa.current!.getBoundingClientRect();
-    return { x: (cliX - r.left - tam.w / 2) / z + vista.cx, y: -(cliY - r.top - tam.h / 2) / z + vista.cy };
-  }, [tam.w, tam.h, z, vista.cx, vista.cy]);
-
-  // Roda: zoom em volta do cursor (listener nativo, para poder impedir a rolagem da pagina).
-  useEffect(() => {
-    const el = caixa.current;
-    if (!el) return;
-    const roda = (e: WheelEvent) => {
-      e.preventDefault();
-      const r = el.getBoundingClientRect();
-      const px = e.clientX - r.left - tam.w / 2, py = e.clientY - r.top - tam.h / 2;
-      setVista((v) => {
-        const z0 = v.zoom || 1;
-        const z1 = Math.min(40, Math.max(0.3, z0 * Math.exp(-e.deltaY * 0.0015)));
-        const wx = px / z0 + v.cx, wy = -py / z0 + v.cy;
-        return { zoom: z1, cx: wx - px / z1, cy: wy + py / z1 };
-      });
-    };
-    el.addEventListener('wheel', roda, { passive: false });
-    return () => el.removeEventListener('wheel', roda);
-  }, [tam.w, tam.h]);
 
   const localFinal = (e: Elemento): Region => {
     const base = regiaoLocal(e, fontes);
@@ -143,7 +96,7 @@ export function Tela({ design, regioes, fontes, selecao, grade, finos, onSelecio
     const g = gesto.current;
     if (!g) return;
     if (g.tipo === 'pan') {
-      setVista((v) => ({ ...v, cx: g.cx - (ev.clientX - g.inicio.x) / z, cy: g.cy + (ev.clientY - g.inicio.y) / z }));
+      ajustar((v) => ({ ...v, cx: g.cx - (ev.clientX - g.inicio.x) / z, cy: g.cy + (ev.clientY - g.inicio.y) / z }));
       return;
     }
     const p = mundo(ev.clientX, ev.clientY);
@@ -196,15 +149,15 @@ export function Tela({ design, regioes, fontes, selecao, grade, finos, onSelecio
 
   // Etiqueta "L x A mm, camada" abaixo do elemento (em pixels, fora do SVG).
   let etiqueta: { left: number; top: number; texto: string } | null = null;
-  if (unico && caixaUnico) {
+  if (unico && caixaUnico && !compacto) {
     const rad = (unico.giro * Math.PI) / 180;
     const cantos = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => ({ x: unico.x + (a! * caixaUnico.w / 2) * Math.cos(rad) - (b! * caixaUnico.h / 2) * Math.sin(rad), y: unico.y + (a! * caixaUnico.w / 2) * Math.sin(rad) + (b! * caixaUnico.h / 2) * Math.cos(rad) }));
     const baixo = Math.min(...cantos.map((c) => c.y));
     const camada = design.camadas.find((c) => c.id === unico.camadaId)?.nome ?? '';
-    etiqueta = { left: (unico.x - vista.cx) * z + tam.w / 2, top: -(baixo - vista.cy) * z + tam.h / 2 + 10, texto: `${caixaUnico.w.toFixed(1)} × ${caixaUnico.h.toFixed(1)} mm, ${camada}` };
+    const p = naTela(unico.x, baixo);
+    etiqueta = { left: p.x, top: p.y + 10, texto: `${caixaUnico.w.toFixed(1)} × ${caixaUnico.h.toFixed(1)} mm, ${camada}` };
   }
 
-  const W = design.larguraMm, H = design.alturaMm;
   return (
     <div ref={caixa} className="relative size-full touch-none overflow-hidden bg-superficie-2 select-none" onPointerMove={mover} onPointerUp={soltar} onPointerCancel={soltar}>
       <svg className="absolute inset-0 size-full" onPointerDown={noVazio} role="img" aria-label="Tela do design">
@@ -213,7 +166,7 @@ export function Tela({ design, regioes, fontes, selecao, grade, finos, onSelecio
             <path d="M10 0H0V10" fill="none" className="stroke-texto-3" strokeWidth="0.12" strokeOpacity="0.35" />
           </pattern>
         </defs>
-        <g transform={`translate(${tam.w / 2} ${tam.h / 2}) scale(${z} ${-z}) translate(${-vista.cx} ${-vista.cy})`}>
+        <g transform={transformacaoTela}>
           <rect x={-W / 2} y={-H / 2} width={W} height={H} className="fill-white" />
           {grade && <rect x={-W / 2} y={-H / 2} width={W} height={H} fill="url(#grade-mm)" />}
           {design.camadas.map((c) => {
@@ -258,12 +211,7 @@ export function Tela({ design, regioes, fontes, selecao, grade, finos, onSelecio
           {etiqueta.texto}
         </span>
       )}
-      <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-lg border border-borda bg-superficie p-1 shadow-flutuante">
-        <BotaoIcone icone={IconeMenos} rotulo="Diminuir zoom" tamanho="sm" onClick={() => setVista((v) => ({ ...v, zoom: Math.max(0.3, (v.zoom || 1) / 1.25) }))} />
-        <span className="w-12 text-center text-mini tabular-nums text-texto-2">{Math.round((z / 3.78) * 100)}%</span>
-        <BotaoIcone icone={IconeMais} rotulo="Aumentar zoom" tamanho="sm" onClick={() => setVista((v) => ({ ...v, zoom: Math.min(40, (v.zoom || 1) * 1.25) }))} />
-        <BotaoIcone icone={IconeEnquadrar} rotulo="Enquadrar" tamanho="sm" onClick={enquadrar} />
-      </div>
+      {!compacto && <ControlesZoom z={z} ajustar={ajustar} enquadrar={enquadrar} />}
     </div>
   );
 }

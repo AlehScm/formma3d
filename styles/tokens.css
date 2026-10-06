@@ -40,6 +40,9 @@
   --color-atencao: #f4b942;
   --color-perigo: #f0616d;
 
+  /* Prancheta da planta 2D: o mesmo cinza claro do fundo da previa 3D (peca branca aparece). */
+  --color-prancheta: #eef0f3;
+
   /* Eixos do viewport: as mesmas cores do gizmo e do grid. */
   --color-eixo-x: #e06c6c;
   --color-eixo-y: #6cc26c;

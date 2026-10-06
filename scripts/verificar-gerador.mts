@@ -16,6 +16,7 @@ import { FICHAS } from '../lib/gerador/receitas/fichas';
 import { COBERTURA, markdownCobertura } from '../lib/gerador/cobertura';
 import { valoresPadrao, type Peca, type Receita, type Resultado, type Valores } from '../lib/gerador/tipos';
 import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
+import { fatiasDaPlanta, limitesDaPeca } from '../lib/gerador/planta';
 import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
 import { corDe } from '../lib/gerador/malha';
 import { circulo, contornar, retanguloArredondado, textoEmArco, unir } from '../lib/gerador/formas';
@@ -935,6 +936,23 @@ console.log('\n== placas e listas de QR, cartoes ==');
   confere('cartao de visita (QR de 0,6 mm por modulo)', lerItem(gerar(cartaoVisita), 0, { nomeQr: 'Frente' }), [payloadUrl('https://formma3d.com')]);
   confere('cartao face para baixo, visto pela face da mesa', lerItem(gerar(cartaoVisita, { face: 'baixo' }), 0, { nomeQr: 'Frente', espelhar: true }), [payloadUrl('https://formma3d.com')]);
   confere('cartao com tecido (tecido branco)', lerItem(gerar(cartaoTecido), 0, { nomeQr: 'Texto e QR', soPecas: ['Texto e QR'] }), [payloadUrl('https://formma3d.com')]);
+}
+
+console.log('\n== planta 2D (vista de cima) ==');
+{
+  const lote = gerar(receitaPorId('chaveiro-nome')!, { nomes: 'Ana, Pedro, Lu' });
+  const { fatias, limites } = fatiasDaPlanta(lote);
+  const nome = (f: (typeof fatias)[number]) => lote.itens[f.item]!.pecas[f.peca]!.nome;
+  ok('planta: fatias de baixo para cima', fatias.every((f, i) => !i || fatias[i - 1]!.z1 <= f.z1));
+  ok('planta: a base é pintada primeiro e o topo por último', nome(fatias[0]!) === 'Base' && nome(fatias.at(-1)!) === 'Topo', `${nome(fatias[0]!)} … ${nome(fatias.at(-1)!)}`);
+  const cs = lote.itens.map(caixaDoItem);
+  const junto = { minX: Math.min(...cs.map((c) => c.minX)), minY: Math.min(...cs.map((c) => c.minY)), maxX: Math.max(...cs.map((c) => c.maxX)), maxY: Math.max(...cs.map((c) => c.maxY)) };
+  ok('planta: limites = os três chaveiros juntos', perto(limites.minX, junto.minX, 1e-6) && perto(limites.minY, junto.minY, 1e-6) && perto(limites.maxX, junto.maxX, 1e-6) && perto(limites.maxY, junto.maxY, 1e-6));
+  const topo = lote.itens[1]!.pecas.findIndex((p) => p.nome === 'Topo');
+  ok('planta: medida de uma peça só', perto(limitesDaPeca(lote, 1, topo).w, regionBounds(regiaoDe(lote, 1, 'Topo')).w, 1e-6));
+  const cortador = gerar(receitaPorId('cortador-biscoito')!, { forma: 'circulo', tamanho: 60 });
+  const camadas = cortador.itens.reduce((n, it) => n + it.pecas.reduce((m, p) => m + p.camadas.filter((c) => c.region.length).length, 0), 0);
+  ok('planta: peça em degraus entra com todas as camadas', fatiasDaPlanta(cortador).fatias.length === camadas && camadas > 2, `${camadas} camadas`);
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

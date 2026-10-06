@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * Editor 2D livre ("Criar seu design"): ferramentas a esquerda, tela em mm no meio,
- * camadas e a previa 3D ao vivo a direita, barra de contexto do elemento no alto. Usado na
+ * Editor 2D livre ("Criar seu design"): ferramentas a esquerda, tela em mm no meio (com a
+ * previa 3D ao vivo no canto, trocavel por "Visao 3D"), camadas a direita, barra de
+ * contexto do elemento no alto. Usado na
  * pagina /design (exporta 3MF/STL) e numa janela a partir dos geradores com campo de
  * desenho ("Usar no modelo" devolve o desenho com uma cor por camada).
  */
@@ -29,6 +30,7 @@ import { finosDasCamadas, regioesDasCamadas } from '@/lib/design/geometria';
 import { designParaDesenho } from '@/lib/design/saida';
 import { useDesign } from './estado';
 import { useFontes } from './fontes';
+import { VistaDupla } from '@/features/visor/VistaDupla';
 import { Tela } from './Tela';
 
 const ESPERA_3D = 300; // ms parado antes de regerar o 3D
@@ -263,9 +265,19 @@ export function EditorDesign({ janela, onUsar, onFechar }: { janela?: boolean; o
 
         {/* tela */}
         <div className="relative h-[62vh] min-h-80 lg:h-auto">
-          <Tela design={design} regioes={regioes} fontes={fontes} selecao={selecao} grade={grade} finos={finos}
-            onSelecionar={selecionar} onIniciarGesto={iniciarGesto} onAlterar={(ids, fn) => alterarElementos(ids, fn, { historico: false })} />
-          <div className="pointer-events-none absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
+          <VistaDupla
+            dois={(compacto, reserva) => (
+              <Tela design={design} regioes={regioes} fontes={fontes} selecao={selecao} grade={grade} finos={finos} compacto={compacto} reserva={reserva}
+                onSelecionar={selecionar} onIniciarGesto={iniciarGesto} onAlterar={(ids, fn) => alterarElementos(ids, fn, { historico: false })} />
+            )}
+            tres={() => (
+              <div className="relative size-full bg-superficie-2">
+                {resultado && temPecas ? <PreviaGerador resultado={resultado} malhas={malhas} /> : <p className="m-0 grid h-full place-items-center p-4 text-center text-mini text-texto-3">{gerando ? 'Montando o 3D…' : 'Adicione algo na tela para ver em 3D.'}</p>}
+                {gerando && temPecas && <span className="absolute top-2 left-2 rounded bg-superficie px-2 py-0.5 text-micro text-texto-3">atualizando…</span>}
+              </div>
+            )}
+          />
+          <div className="pointer-events-none absolute top-3 left-3 z-20 flex max-w-[calc(100%-10.5rem)] items-center gap-2 sm:max-w-[calc(100%-18.5rem)]">
             {finosPorCamada.length ? (
               <span className="pointer-events-auto flex items-center gap-2 rounded-full border border-atencao/40 bg-superficie px-3 py-1 text-mini text-atencao shadow-flutuante">
                 <IconeAtencao className="size-3.5" aria-hidden /> Trechos mais finos que 0,4 mm
@@ -275,15 +287,11 @@ export function EditorDesign({ janela, onUsar, onFechar }: { janela?: boolean; o
               <span className="flex items-center gap-1.5 rounded-full border border-sucesso/40 bg-superficie px-3 py-1 text-mini text-sucesso shadow-flutuante"><IconeOk className="size-3.5" aria-hidden /> Pronto para imprimir</span>
             )}
           </div>
-          {erro && <p role="alert" className="absolute right-3 bottom-3 m-0 max-w-sm rounded-md border border-perigo/40 bg-superficie px-3 py-2 text-mini text-perigo">{erro}</p>}
+          {erro && <p role="alert" className="absolute bottom-3 left-1/2 z-20 m-0 max-w-sm -translate-x-1/2 rounded-md border border-perigo/40 bg-superficie px-3 py-2 text-mini text-perigo">{erro}</p>}
         </div>
 
-        {/* camadas + 3D */}
+        {/* camadas */}
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto border-t border-borda bg-superficie p-3 lg:border-t-0 lg:border-l">
-          <section aria-label="Prévia 3D" className="relative aspect-square overflow-hidden rounded-lg border border-borda bg-superficie-2">
-            {resultado && temPecas ? <PreviaGerador resultado={resultado} malhas={malhas} /> : <p className="grid h-full place-items-center p-4 text-center text-mini text-texto-3">{gerando ? 'Montando o 3D…' : 'Adicione algo na tela para ver em 3D.'}</p>}
-            {gerando && temPecas && <span className="absolute top-2 left-2 rounded bg-superficie px-2 py-0.5 text-micro text-texto-3">atualizando…</span>}
-          </section>
           <section aria-labelledby="titulo-camadas" className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h2 id="titulo-camadas" className="m-0 flex items-center gap-1.5 text-mini font-semibold text-texto-2"><IconeCamadas className="size-4" aria-hidden /> Camadas (de cima para baixo)</h2>

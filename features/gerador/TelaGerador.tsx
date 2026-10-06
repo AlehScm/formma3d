@@ -2,8 +2,8 @@
 
 /**
  * Tela unica dos geradores do catalogo: o formulario sai do esquema da receita, a
- * previa mostra as pecas montadas com a cor de cada uma, e a exportacao e a mesma
- * para todo modelo. Nenhuma receita tem tela propria.
+ * planta 2D (com o 3D no canto, trocavel) mostra as pecas montadas com a cor de cada
+ * uma, e a exportacao e a mesma para todo modelo. Nenhuma receita tem tela propria.
  */
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -31,6 +31,8 @@ import { imagemParaRegiao } from '@/lib/import/imagem';
 import type { Region } from '@/lib/geom/region';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
+import { VistaDupla } from '@/features/visor/VistaDupla';
+import { Planta } from './Planta';
 import { PreviaGerador } from './PreviaGerador';
 
 // O editor 2D so carrega quando a pessoa abre "Criar seu design".
@@ -143,13 +145,13 @@ export function TelaGerador({ id }: { id: string }) {
 
         <main className="relative flex min-h-[60vh] min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
-            {resultado && temPecas ? (
-              <PreviaGerador resultado={resultado} malhas={malhas} />
-            ) : (
-              <div className="grid h-full place-items-center p-6 text-texto-3">{gerando ? 'Gerando…' : 'Nada para mostrar ainda.'}</div>
-            )}
+            {/* Abre na planta 2D; "Visao 3D" troca com o cartao do canto (fica montada mesmo sem peca, para nao perder a escolha). */}
+            <VistaDupla
+              dois={(compacto, reserva) => (resultado && temPecas ? <Planta resultado={resultado} compacto={compacto} reserva={reserva} /> : <Vazio gerando={gerando} />)}
+              tres={() => (resultado && temPecas ? <PreviaGerador resultado={resultado} malhas={malhas} /> : <Vazio gerando={gerando} />)}
+            />
             {gerando && resultado && (
-              <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-superficie/90 px-2 py-1 text-micro text-texto-2 shadow" role="status">
+              <div className="pointer-events-none absolute right-3 bottom-3 z-20 rounded-md bg-superficie/90 px-2 py-1 text-micro text-texto-2 shadow" role="status">
                 Atualizando…
               </div>
             )}
@@ -192,6 +194,10 @@ export function TelaGerador({ id }: { id: string }) {
       </div>
     </div>
   );
+}
+
+function Vazio({ gerando }: { gerando: boolean }) {
+  return <div className="grid h-full place-items-center bg-superficie-2 p-6 text-center text-mini text-texto-3">{gerando ? 'Gerando…' : 'Nada para mostrar ainda.'}</div>;
 }
 
 /**
