@@ -25,7 +25,7 @@ import { PreviaGerador } from '@/features/gerador/PreviaGerador';
 import { useGeracao } from '@/features/gerador/useGeracao';
 import { DESIGN_LIVRE } from '@/lib/gerador/receitas/designLivre';
 import { FORMAS, camadaDesenhadaPadrao, camadaNova, designNovo, fontesDoDesign, lerDesign, novoId, type CamadaDesign, type Design, type Elemento, type FormaId } from '@/lib/design/documento';
-import { regioesDasCamadas, trechosFinos } from '@/lib/design/geometria';
+import { finosDasCamadas, regioesDasCamadas } from '@/lib/design/geometria';
 import { designParaDesenho } from '@/lib/design/saida';
 import { useDesign } from './estado';
 import { useFontes } from './fontes';
@@ -81,7 +81,7 @@ export function EditorDesign({ janela, onUsar, onFechar }: { janela?: boolean; o
   // Camadas de contorno e trechos finos: calculados atras do gesto (nao travam o arrastar).
   const adiado = useDeferredValue(design);
   const regioes = useMemo(() => regioesDasCamadas(adiado, fontes), [adiado, fontes, versao]); // eslint-disable-line react-hooks/exhaustive-deps
-  const finosPorCamada = useMemo(() => adiado.camadas.filter((c) => !c.oculta).map((c) => ({ c, finos: trechosFinos(regioes.get(c.id) ?? []) })).filter((x) => x.finos.length), [adiado, regioes]);
+  const finosPorCamada = useMemo(() => { const m = finosDasCamadas(adiado, fontes); return adiado.camadas.filter((c) => m.has(c.id)).map((c) => ({ c, finos: m.get(c.id)! })); }, [adiado, fontes, versao]); // eslint-disable-line react-hooks/exhaustive-deps
   const finos: Region = useMemo(() => (mostrarFinos ? finosPorCamada.reduce<Region>((r, x) => unionRegion(r, x.finos), []) : []), [finosPorCamada, mostrarFinos]);
 
   // 3D ao vivo: o mesmo design no worker, depois de uma pausa.

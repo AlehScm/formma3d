@@ -78,59 +78,136 @@ function calcularLocal(el: Elemento, fontes: Fontes): Region {
 /** Engrossar, espelhar, escalar e girar em torno do centro, depois levar para (x, y). */
 export function transformar(r: Region, el: Pick<Elemento, 'x' | 'y' | 'giro' | 'escalaX' | 'escalaY' | 'espelhar' | 'engrossar'>): Region {
   if (!r.length) return r;
+  return posicionar(escalar(r, el), el);
+}
+
+function escalar(r: Region, el: Pick<Elemento, 'escalaX' | 'escalaY' | 'espelhar' | 'engrossar'>): Region {
   let out = el.engrossar ? contornar(r, el.engrossar) : r;
   const sx = el.escalaX * (el.espelhar ? -1 : 1);
   if (sx !== 1 || el.escalaY !== 1) out = scaleRegion(out, sx, el.escalaY);
-  if (el.giro) out = rotateRegion(out, el.giro);
-  return translateRegion(out, el.x, el.y);
+  return out;
 }
 
-export const regiaoDoElemento = (el: Elemento, fontes: Fontes): Region => transformar(regiaoLocal(el, fontes), el);
+function posicionar(r: Region, el: Pick<Elemento, 'x' | 'y' | 'giro'>): Region {
+  if (!r.length) return r;
+  return translateRegion(el.giro ? rotateRegion(r, el.giro) : r, el.x, el.y);
+}
+
+// Engrossar, escalar e contornar custam; mover e girar nao. O contorno de varios elementos
+// e a uniao dos contornos de cada um (offset distribui na uniao), entao cada elemento guarda
+// o seu, e arrastar so reposiciona.
+const CACHE_FORMA = new Map<string, Region>();
+
+const chaveForma = (el: Elemento, fontes: Fontes, folga: number) => `${chaveConteudo(el, fontes)}|${el.engrossar ?? 0}|${el.escalaX}|${el.escalaY}|${el.espelhar ? 1 : 0}|${folga}`;
+
+/** O elemento engrossado, espelhado e escalado (antes de girar e mover), dilatado pela folga. */
+function formaDoElemento(el: Elemento, fontes: Fontes, folga = 0): Region {
+  const k = chaveForma(el, fontes, folga);
+  const pronta = CACHE_FORMA.get(k);
+  if (pronta) return pronta;
+  let r: Region;
+  if (folga) {
+    const base = formaDoElemento(el, fontes);
+    r = base.length ? contornar(base, folga) : base;
+  } else {
+    const local = regiaoLocal(el, fontes);
+    r = local.length ? escalar(local, el) : local;
+  }
+  CACHE_FORMA.set(k, r);
+  if (CACHE_FORMA.size > LIMITE_CACHE) CACHE_FORMA.delete(CACHE_FORMA.keys().next().value!);
+  return r;
+}
+
+export const regiaoDoElemento = (el: Elemento, fontes: Fontes): Region => posicionar(formaDoElemento(el, fontes), el);
 
 /**
  * Caixa do elemento sem o giro (no referencial dele), para as alcas: largura e altura ja
  * escaladas, centro no (x, y). A tela desenha a caixa girada.
  */
 export function caixaDoElemento(el: Elemento, fontes: Fontes): { w: number; h: number } {
-  const r = regiaoLocal(el, fontes);
+  const r = formaDoElemento(el, fontes);
   if (!r.length) return { w: 10, h: 10 };
-  const b = regionBounds(el.engrossar ? contornar(r, el.engrossar) : r);
-  return { w: b.w * Math.abs(el.escalaX), h: b.h * Math.abs(el.escalaY) };
+  const b = regionBounds(r);
+  return { w: b.w, h: b.h };
 }
 
-/**
- * A area de cada camada: desenhada = uniao dos elementos visiveis dela; contorno = a camada
- * de origem dilatada pela folga (mais os elementos proprios, se tiver). Resolve em ordem de
- * dependencia; contorno circular vira vazio.
- */
-export function regioesDasCamadas(d: Design, fontes: Fontes, cache = new Map<string, Region>()): Map<string, Region> {
+type Pedaco = { el: Elemento; folga: number };
+
+/** Cada camada como a lista de (elemento, folga total) que a compoe; contorno de contorno soma as folgas. */
+function pedacosDasCamadas(d: Design): Map<string, Pedaco[]> {
   const porId = new Map(d.camadas.map((c) => [c.id, c]));
-  const elementos = new Map<string, Region>();
-  for (const el of d.elementos) {
-    if (el.oculto) continue;
-    const r = regiaoDoElemento(el, fontes);
-    if (!r.length) continue;
-    elementos.set(el.camadaId, unir([elementos.get(el.camadaId) ?? [], r]));
-  }
+  const proprios = new Map<string, Elemento[]>();
+  for (const el of d.elementos) if (!el.oculto) proprios.set(el.camadaId, [...(proprios.get(el.camadaId) ?? []), el]);
+  const pedacos = new Map<string, Pedaco[]>();
   const calculando = new Set<string>();
-  const resolver = (c: CamadaDesign): Region => {
-    const pronta = cache.get(c.id);
+  const listar = (c: CamadaDesign): Pedaco[] => {
+    const pronta = pedacos.get(c.id);
     if (pronta) return pronta;
     if (calculando.has(c.id)) return [];
     calculando.add(c.id);
-    const proprios = elementos.get(c.id) ?? [];
-    let r = proprios;
+    const lista: Pedaco[] = (proprios.get(c.id) ?? []).map((el) => ({ el, folga: 0 }));
     if (c.origem !== 'desenhada') {
       const origem = porId.get(c.origem.contornoDe);
-      const base = origem ? resolver(origem) : [];
-      r = unir([base.length ? contornar(base, c.origem.folgaMm) : [], proprios]);
+      const folga = c.origem.folgaMm;
+      if (origem) for (const p of listar(origem)) lista.push({ el: p.el, folga: p.folga + folga });
     }
     calculando.delete(c.id);
-    cache.set(c.id, r);
-    return r;
+    pedacos.set(c.id, lista);
+    return lista;
   };
-  for (const c of d.camadas) resolver(c);
+  for (const c of d.camadas) listar(c);
+  return pedacos;
+}
+
+const posicionado = (p: Pedaco, fontes: Fontes) => posicionar(formaDoElemento(p.el, fontes, p.folga), p.el);
+
+/**
+ * A area de cada camada: desenhada = uniao dos elementos visiveis dela; contorno = a camada
+ * de origem dilatada pela folga (mais os elementos proprios, se tiver). Contorno circular
+ * vira vazio.
+ */
+export function regioesDasCamadas(d: Design, fontes: Fontes, cache = new Map<string, Region>()): Map<string, Region> {
+  for (const [id, lista] of pedacosDasCamadas(d)) {
+    if (cache.has(id)) continue;
+    cache.set(id, unir(lista.map((p) => posicionado(p, fontes)).filter((r) => r.length)));
+  }
   return cache;
+}
+
+const CACHE_FINOS = new Map<string, Region>();
+
+/**
+ * Trechos finos de cada camada visivel, rapido o bastante para acompanhar o arrastar: cada
+ * elemento guarda os seus (e so os move), menos o que outro elemento da camada cobre. Pedaco
+ * dilatado por pelo menos meia linha nunca e fino. Pode deixar passar um trecho fino que
+ * encosta de lado em outro elemento; a saida 3D confere a camada inteira.
+ */
+export function finosDasCamadas(d: Design, fontes: Fontes): Map<string, Region> {
+  const out = new Map<string, Region>();
+  const pedacos = pedacosDasCamadas(d);
+  for (const c of d.camadas) {
+    if (c.oculta) continue;
+    const lista = pedacos.get(c.id) ?? [];
+    const finos: Region[] = [];
+    lista.forEach((p, i) => {
+      if (p.folga >= LINHA_MINIMA / 2) return;
+      const forma = formaDoElemento(p.el, fontes, p.folga);
+      const k = chaveForma(p.el, fontes, p.folga);
+      let local = CACHE_FINOS.get(k);
+      if (!local) {
+        local = trechosFinos(forma);
+        CACHE_FINOS.set(k, local);
+        if (CACHE_FINOS.size > LIMITE_CACHE) CACHE_FINOS.delete(CACHE_FINOS.keys().next().value!);
+      }
+      if (!local.length) return;
+      let r = posicionar(local, p.el);
+      const outros = lista.filter((_, j) => j !== i).map((q) => posicionado(q, fontes)).filter((x) => x.length);
+      if (outros.length) r = diffRegion(r, unir(outros));
+      if (r.length) finos.push(r);
+    });
+    if (finos.length) out.set(c.id, unir(finos));
+  }
+  return out;
 }
 
 /** Limites de tudo o que esta visivel (para enquadrar a tela e a previa). */

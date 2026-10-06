@@ -9,9 +9,24 @@ import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { designNovo, lerDesign, type Design, type Elemento } from '@/lib/design/documento';
 
+// Gravar a cada passo do arrastar trava; grava depois de uma pausa curta (ou ao sair da pagina).
+let gravacao: ReturnType<typeof setTimeout> | undefined;
+let pendente: [string, string] | null = null;
+const gravar = () => {
+  clearTimeout(gravacao);
+  if (!pendente) return;
+  const [k, v] = pendente;
+  pendente = null;
+  try { localStorage.setItem(k, v); } catch { /* sem armazenamento: so nao lembra */ }
+};
+if (typeof window !== 'undefined') window.addEventListener('pagehide', gravar);
 const armazenamento: StateStorage = {
   getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
-  setItem: (k, v) => { try { localStorage.setItem(k, v); } catch { /* sem armazenamento: so nao lembra */ } },
+  setItem: (k, v) => {
+    pendente = [k, v];
+    clearTimeout(gravacao);
+    gravacao = setTimeout(gravar, 400);
+  },
   removeItem: (k) => { try { localStorage.removeItem(k); } catch { /* idem */ } },
 };
 

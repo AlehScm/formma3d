@@ -9,7 +9,7 @@ import type { Font } from 'opentype.js';
 import { parseFont } from '../lib/text/glyphs';
 import { regionBounds, type Region } from '../lib/geom/region';
 import { camadasPadrao, designNovo, lerDesign, type Design, type Elemento } from '../lib/design/documento';
-import { regiaoDoElemento, regioesDasCamadas, trechosFinos } from '../lib/design/geometria';
+import { finosDasCamadas, regiaoDoElemento, regioesDasCamadas, trechosFinos } from '../lib/design/geometria';
 import { designParaDesenho, designParaResultado } from '../lib/design/saida';
 import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
 
@@ -80,6 +80,12 @@ const elFino = el({ tipo: 'desenho', nome: 'linha', regiao: fino });
 ok('linha de 0,2 mm é apontada como fina', trechosFinos(regiaoDoElemento(elFino, fontes)).length > 0);
 ok('engrossar 0,2 mm resolve', trechosFinos(regiaoDoElemento({ ...elFino, engrossar: 0.2 }, fontes)).length === 0);
 ok('círculo de 20 mm não tem trecho fino', trechosFinos(topo).length === 0);
+const comFino: Design = { ...designNovo(), elementos: [{ ...elFino, x: 40 }] };
+const finosCam = finosDasCamadas(comFino, fontes);
+ok('rápido: linha fina apontada só na camada desenhada (contornos nunca são finos)', finosCam.has('topo') && !finosCam.has('meio') && !finosCam.has('base'));
+ok('rápido: o trecho fino acompanha o elemento', perto(regionBounds(finosCam.get('topo')!).minX + regionBounds(finosCam.get('topo')!).w / 2, 40, 0.5));
+const coberto: Design = { ...comFino, elementos: [{ ...elFino, x: 40 }, el({ tipo: 'forma', forma: 'quadrado', largura: 30, x: 40 })] };
+ok('rápido: trecho fino coberto por outro elemento não conta', !finosDasCamadas(coberto, fontes).has('topo'));
 
 // JSON e receita
 const ida = JSON.parse(JSON.stringify(d));
