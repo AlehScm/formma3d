@@ -12,10 +12,10 @@ import { BotaoMarca, CampoMarca, RotuloMarca } from '@/components/marca';
 
 const ENTRADA = 'grid min-h-[min(70vh,700px)] place-items-center bg-marca-suave px-margem py-10 md:py-16 max-sm:place-items-start';
 const CARTAO = 'w-full max-w-[680px] rounded-marca-lg border border-marca-linha bg-marca-branco p-6 shadow-marca-2 md:p-10';
-const VOLTAR = 'text-marca-pequeno font-extrabold text-marca-azul-forte no-underline hover:underline underline-offset-4';
-const SOBRETITULO = 'mt-8 mb-3 text-marca-mini font-black tracking-[0.18em] text-marca-azul-forte';
-const TITULO = 'm-0 font-display text-marca-titulo-2 leading-[1.05] font-black tracking-[-0.05em] text-marca-navy';
-const RESUMO = 'mt-3.5 mb-0 text-marca-corpo leading-relaxed text-marca-texto-2';
+const VOLTAR = 'text-apoio font-semibold text-marca-azul-forte no-underline hover:underline underline-offset-4';
+const SOBRETITULO = 'mt-8 mb-3 text-apoio font-semibold text-marca-azul-forte';
+const TITULO = 'm-0 font-display text-titulo text-marca-navy';
+const RESUMO = 'mt-3.5 mb-0 text-corpo text-marca-texto-2';
 
 type IdPlaca = 'placa-personalizada' | 'placa-profissional';
 const CHAVE_TEXTO = 'scarprint:moldes:texto:';
@@ -41,7 +41,7 @@ export function MoldeAtivo({ id }: { id: MoldeId }) {
         <div className={ENTRADA}>
           <section className={CARTAO}>
             <Link href="/criar" className={VOLTAR}>← Biblioteca de moldes</Link>
-            <p className={SOBRETITULO}>SCARPRINT / EM BREVE</p>
+            <p className={SOBRETITULO}>Em breve</p>
             <h1 className={TITULO}>{molde.title}</h1>
             <p className={RESUMO}>{molde.summary}</p>
             <p className="mt-6 mb-0 rounded-marca-md bg-marca-atencao-fundo px-4 py-3.5 font-bold text-marca-atencao">Este molde está em desenvolvimento.</p>
@@ -79,7 +79,7 @@ export function MoldeAtivo({ id }: { id: MoldeId }) {
       <div className={ENTRADA}>
         <section className={CARTAO}>
           <Link href="/criar" className={VOLTAR}>← Biblioteca de moldes</Link>
-          <p className={SOBRETITULO}>SCARPRINT / PERSONALIZAR</p>
+          <p className={SOBRETITULO}>Personalizar</p>
           <h1 className={TITULO}>{molde.title}</h1>
           <p className={RESUMO}>{molde.summary}</p>
           <form className="mt-8 grid gap-3" onSubmit={personalizar}>

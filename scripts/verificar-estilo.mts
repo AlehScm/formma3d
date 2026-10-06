@@ -93,7 +93,7 @@ ok('style={{}} só com valor de execução (nada fixo inline)', !estiloFora.leng
 
 // 5. Loja: so a escala de 6 papeis (display, titulo, modulo, item, corpo, apoio). Tamanho
 // solto (text-sm, text-[15px], clamp) e o que deixava titulo e texto parecidos.
-const LOJA = /^(components\/loja\/|features\/marketplace\/|app\/(pecas|secao|produto|orcamento|busca)\/)/;
+const LOJA = /^(components\/loja\/|components\/catalogo\/[^/]+\.tsx$|features\/marketplace\/|app\/(pecas|secao|produto|orcamento|busca|criar|natal)\/)/;
 const foraDaEscala: string[] = [];
 for (const f of codigo.filter((c) => LOJA.test(c))) {
   const achados = [...fs.readFileSync(f, 'utf8').matchAll(/\btext-(xs|sm|base|lg|[2-9]?xl|\[(?:\d|clamp)[^\]]*\]|marca-(?:mini|pequeno|corpo|destaque|titulo-[23]|display))(?![\w-])/g)].map((m) => m[0]);
