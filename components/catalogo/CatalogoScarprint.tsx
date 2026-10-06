@@ -47,7 +47,7 @@ export function CatalogoScarprint() {
               <p className="max-w-[525px] text-corpo text-marca-texto-2">Letreiros, chaveiros e placas que você ajusta com o seu texto, as suas cores e o seu tamanho, e baixa pronto para a impressora: 3MF multicor ou STL.</p>
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <BotaoMarca href="#modelos">Ver os modelos <span aria-hidden="true">↓</span></BotaoMarca>
-                <BotaoMarca href="/editor" variante="contorno">Montar do zero</BotaoMarca>
+                <BotaoMarca href="/design" variante="contorno">Montar do zero</BotaoMarca>
               </div>
               <div className="mt-8 flex flex-wrap gap-6 text-apoio text-marca-texto-3 max-sm:mt-6 max-sm:gap-4">
                 <span className="flex items-center gap-2"><b className="text-modulo text-marca-azul">{FICHAS.length}</b> geradores disponíveis</span>

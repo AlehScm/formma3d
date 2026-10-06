@@ -30,8 +30,32 @@ function forma(f: FormaId, w: number): Region {
   }
 }
 
+/** O que muda a forma do elemento (mover/girar/escalar nao): chave do cache da geometria local. */
+function chaveConteudo(el: Elemento, fontes: Fontes): string {
+  switch (el.tipo) {
+    case 'texto': return `t|${el.fonte}|${fontes(el.fonte) ? 1 : 0}|${el.altura}|${el.espacamento ?? 1}|${el.texto}`;
+    case 'forma': return `f|${el.forma}|${el.largura}`;
+    case 'desenho': return `d|${el.id}|${el.regiao.length}`;
+    case 'qr': return `q|${el.largura}|${el.conteudo}`;
+  }
+}
+
+// Compor texto e QR custa; arrastar so muda a posicao. Guarda as ultimas formas locais.
+const CACHE_LOCAL = new Map<string, Region>();
+const LIMITE_CACHE = 300;
+
 /** A area do elemento antes de mover/girar/escalar, centrada em (0, 0). */
 export function regiaoLocal(el: Elemento, fontes: Fontes): Region {
+  const k = chaveConteudo(el, fontes);
+  const pronta = CACHE_LOCAL.get(k);
+  if (pronta) return pronta;
+  const r = calcularLocal(el, fontes);
+  CACHE_LOCAL.set(k, r);
+  if (CACHE_LOCAL.size > LIMITE_CACHE) CACHE_LOCAL.delete(CACHE_LOCAL.keys().next().value!);
+  return r;
+}
+
+function calcularLocal(el: Elemento, fontes: Fontes): Region {
   switch (el.tipo) {
     case 'texto': {
       const fonte = fontes(el.fonte);

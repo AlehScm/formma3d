@@ -26,6 +26,11 @@ export type MoldeId = (typeof moldes)[number]['id'];
  */
 export const editoresLivres = [
   {
+    id: 'design-livre', title: 'Crie do zero', family: 'multicor', href: '/design', visual: 'design-livre',
+    summary: 'Arraste texto, formas, QR e imagem numa tela em mm; borda e fundo se ajustam sozinhos e o 3D aparece na hora.',
+    destaques: ['Camadas coloridas', 'Prévia 3D ao vivo', '3MF multicor e STL'],
+  },
+  {
     id: 'editor', title: 'Editor de letra caixa', family: 'texto', href: '/editor', visual: 'texto-livre',
     summary: 'Monte do zero, letra por letra: letra caixa com chapa de ACM, peças para imprimir e orçamento.',
     destaques: ['Letra caixa com chapa', 'Importa AI, PDF, STL e 3MF', 'Orçamento pronto'],

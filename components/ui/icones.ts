@@ -52,6 +52,13 @@ export {
   Type as IconeTexto,
   Undo2 as IconeOriginal,
   X as IconeFechar,
+  Shapes as IconeFormas,
+  Image as IconeImagem,
+  QrCode as IconeQr,
+  Grid3x3 as IconeGrade,
+  Redo2 as IconeRefazer,
+  FlipHorizontal2 as IconeEspelhar,
+  Minus as IconeMenos,
 } from 'lucide-react';
 
 export type { LucideIcon as Icone } from 'lucide-react';

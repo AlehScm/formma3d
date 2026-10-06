@@ -5,6 +5,7 @@
  * previa mostra as pecas montadas com a cor de cada uma, e a exportacao e a mesma
  * para todo modelo. Nenhuma receita tem tela propria.
  */
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -31,6 +32,9 @@ import type { Region } from '@/lib/geom/region';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { PreviaGerador } from './PreviaGerador';
+
+// O editor 2D so carrega quando a pessoa abre "Criar seu design".
+const EditorDesign = dynamic(() => import('@/features/design/EditorDesign').then((m) => m.EditorDesign), { ssr: false });
 import { useGeracao } from './useGeracao';
 
 const CHAVE = (id: string) => `formma3d:gerador:${id}`;
@@ -255,6 +259,7 @@ function CampoDoParametro({ p, valor, set }: { p: Parametro; valor: Valores[stri
 /** SVG ou imagem (PNG/JPG/WebP) -> desenho (area preenchida) guardado como JSON no valor do campo. */
 function CampoDesenho({ p, valor, set }: { p: Parametro; valor: string; set: (v: string) => void }) {
   const [erro, setErro] = useState<string | null>(null);
+  const [criando, setCriando] = useState(false);
   const atual = desenho({ d: valor }, 'd');
   const ler = async (arquivo: File | undefined) => {
     if (!arquivo) return;
@@ -285,6 +290,15 @@ function CampoDesenho({ p, valor, set }: { p: Parametro; valor: string; set: (v:
           </Botao>
         )}
       </div>
+      <button type="button" onClick={() => setCriando(true)} className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-acento/40 bg-acento/10 px-2.5 text-mini font-semibold text-acento hover:bg-acento/15">
+        Criar seu design (texto, formas, QR)
+      </button>
+      {criando && (
+        // Editor 2D livre numa janela: "Usar no modelo" devolve o desenho com uma cor por camada.
+        <div role="dialog" aria-modal="true" aria-label="Criar seu design" className="fixed inset-0 z-50 bg-fundo" onKeyDown={(e) => { if (e.key === 'Escape') setCriando(false); }}>
+          <EditorDesign janela onFechar={() => setCriando(false)} onUsar={(d) => { set(JSON.stringify(d)); setErro(null); setCriando(false); }} />
+        </div>
+      )}
     </Campo>
   );
 }

@@ -99,6 +99,9 @@ export function designNovo(): Design {
 }
 
 /** Camada onde os elementos novos entram: a desenhada mais alta. */
+/** Camada nova: desenhada, 0,8 mm, empilhada em cima pelo editor. */
+export const camadaNova = (n: number): CamadaDesign => ({ id: novoId('cam'), nome: `Camada ${n}`, cor: '#2563eb', z0: 0, z1: 0.8, origem: 'desenhada' });
+
 export const camadaDesenhadaPadrao = (d: Design) => [...d.camadas].reverse().find((c) => c.origem === 'desenhada')?.id ?? d.camadas.at(-1)?.id ?? 'topo';
 
 /** Fontes usadas pelos textos (para carregar antes de gerar). */
