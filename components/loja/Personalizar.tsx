@@ -5,7 +5,8 @@
  * do gerador ao lado do 3D, que muda junto. So o que a pessoa mudou vai para o orcamento.
  * Os campos carregam sob demanda (puxam as receitas, como o 3D).
  */
-import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CAMPO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import type { Parametro, Valores } from '@/lib/gerador/tipos';
@@ -36,7 +37,7 @@ export function usePersonalizacao(gerador: string | null) {
       // ?tema=natal (vindo do especial): comeca com o preset da campanha por cima do exemplo.
       const tema = new URLSearchParams(window.location.search).get('tema');
       const preset = tema === 'natal' && campanhaAtiva('natal') ? PRESETS_NATAL[gerador] : undefined;
-      const comTema = preset ? { ...v, ...preset } : v;
+      const comTema = preset ? m.valoresIniciais(gerador, preset) : v;
       setModulo(m);
       setIniciais(v);
       setValores(comTema);
@@ -57,19 +58,22 @@ export function usePersonalizacao(gerador: string | null) {
   const campos = modulo && gerador ? modulo.camposPrincipais(gerador, valores) : [];
   const mudou = diferenca(valores, iniciais);
   const alterado = Object.keys(mudou).length > 0;
+  const hrefEditor = useCallback((href: string, basePath: string) => modulo && gerador ? modulo.hrefParaEditor(gerador, href, valores, basePath) : null, [modulo, gerador, valores]);
   return {
     pronto: !!modulo,
+    gerador,
+    hrefEditor,
     temaNatal,
     campos,
     valores,
     mudar: (id: string, v: Valores[string]) => setValores((s) => (s[id] === v ? s : { ...s, [id]: v })),
-    desfazer: () => setValores(iniciais),
+    desfazer: () => { setValores(iniciais); setTemaNatal(false); },
     /** Natal ligado e gerador com preset: o botao "Ver com cara de Natal" aplica o preset. */
     presetNatal: gerador && campanhaAtiva('natal') ? PRESETS_NATAL[gerador] : undefined,
     aplicarNatal: () => {
       const preset = gerador ? PRESETS_NATAL[gerador] : undefined;
-      if (!preset) return;
-      setValores((s) => ({ ...s, ...preset }));
+      if (!preset || !gerador || !modulo) return;
+      setValores((s) => modulo.valoresIniciais(gerador, { ...s, ...preset }));
       setTemaNatal(true);
     },
     alterado,
@@ -137,6 +141,14 @@ function Campo({ p, valor, set }: { p: Parametro; valor: Valores[string]; set: (
 }
 
 export function PainelPersonalizar({ pz, maisOpcoes }: { pz: ReturnType<typeof usePersonalizacao>; maisOpcoes?: { href: string; rotulo: string } }) {
+  const destino = useMemo(() => {
+    if (!maisOpcoes || !pz.hrefEditor) return { href: null, erro: null };
+    try {
+      return { href: pz.hrefEditor(maisOpcoes.href, process.env.NEXT_PUBLIC_BASE ?? ''), erro: null };
+    } catch (e) {
+      return { href: null, erro: (e as Error).message || 'Não foi possível enviar esta configuração.' };
+    }
+  }, [maisOpcoes?.href, pz.hrefEditor]);
   if (!pz.pronto) return <div className="h-40 animate-pulse rounded-2xl bg-marca-branco shadow-marca-1 motion-reduce:animate-none" aria-hidden />;
   const cores = pz.campos.filter((p) => p.tipo === 'cor');
   const outros = pz.campos.filter((p) => p.tipo !== 'cor');
@@ -163,7 +175,8 @@ export function PainelPersonalizar({ pz, maisOpcoes }: { pz: ReturnType<typeof u
           </div>
         </fieldset>
       )}
-      {maisOpcoes && <a href={maisOpcoes.href} className="text-item font-semibold text-marca-azul no-underline hover:underline">Mais opções no gerador completo</a>}
+      {destino.href && <Link href={destino.href} className="text-item font-semibold text-marca-azul no-underline hover:underline">Mais opções no gerador completo</Link>}
+      {destino.erro && <p role="alert" className="m-0 text-apoio text-perigo">{destino.erro}</p>}
     </section>
   );
 }

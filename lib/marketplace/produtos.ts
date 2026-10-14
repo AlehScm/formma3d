@@ -17,7 +17,7 @@ function nosso(p: Pick<Produto, 'slug' | 'nome' | 'resumo' | 'descricao' | 'seca
 
 /** Feito por um gerador nosso: o botao "Personalizar" leva direto a ele. */
 function doGerador(slug: string, nome: string, secao: Secao, tipo: string, resumo: string, descricao: string, gerador: string, personalizavel: string[], destaque = false): Produto {
-  return nosso({ slug, nome, secao, tipo, resumo, descricao, personalizavel, destaque, personalizar: { href: `/moldes/${gerador}`, rotulo: 'Personalizar agora' } });
+  return nosso({ slug, nome, secao, tipo, resumo, descricao, personalizavel, destaque, personalizar: { href: `/design?modelo=${gerador}`, rotulo: 'Personalizar agora' } });
 }
 
 /** Modelo de terceiro: cadastrado, oculto, licenca a verificar. */
@@ -72,7 +72,7 @@ const CADASTRO: Produto[] = [
     resumo: 'Sua logo em relevo numa placa, para balcão, porta ou parede.',
     descricao: 'Passamos a sua logo para o 3D: base, logo e texto em cores diferentes, com pé de mesa ou furos para parafusar.',
     personalizavel: ['Logo', 'Texto', 'Cores', 'Pé ou furos'],
-    personalizar: { href: '/moldes/logo-camadas', rotulo: 'Personalizar agora' },
+    personalizar: { href: '/design?modelo=logo-camadas', rotulo: 'Personalizar agora' },
   }),
   nosso({
     slug: 'placa-personalizada', nome: 'Placa de sinalização', secao: 'empresa', tipo: 'Placa',

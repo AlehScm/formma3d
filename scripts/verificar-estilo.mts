@@ -49,6 +49,7 @@ const HEX_EXCECAO: Record<string, string> = {
   'features/placas/exportSvg.ts': 'cores no SVG exportado (arquivo do usuário)',
   'features/placas/GeradorPlaca3D.tsx': 'cores dos materiais e fundo da cena 3D (WebGL), nao CSS',
   'app/sistema/page.tsx': 'valor de reserva ao ler o token na vitrine',
+  'app/layout.tsx': 'theme-color do navegador (meta tag), nao aceita token CSS',
 };
 const HEX_PENDENTE: Record<string, string> = {
 };

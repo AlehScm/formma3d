@@ -47,7 +47,7 @@ export function GaleriaProduto({ produto: p, extras }: { produto: Produto; extra
         {temFoto && p.midias.map((m, i) => (
           <button key={m} type="button" role="tab" aria-selected={aba === 'foto' && foto === i} onClick={() => { setAba('foto'); setFoto(i); }} className={cx('size-16 overflow-hidden rounded-lg border-2 bg-marca-branco', aba === 'foto' && foto === i ? 'border-marca-azul' : 'border-marca-linha')}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={urlDaMidia(m)} alt={`Foto ${i + 1}`} className="size-full object-cover" />
+            <img src={urlDaMidia(m)} alt={`${p.nome}, foto ${i + 1}`} className="size-full object-cover" />
           </button>
         ))}
         {!temFoto && (

@@ -15,6 +15,7 @@ export {
   Trash as IconeExcluir,
   TriangleAlert as IconeAtencao,
   Box as IconeCaixa,
+  LayoutTemplate as IconeModelos,
   Check as IconeOk,
   ChevronDown as IconeAbaixo,
   ChevronRight as IconeDireita,

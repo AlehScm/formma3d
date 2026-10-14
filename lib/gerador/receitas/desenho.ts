@@ -7,10 +7,11 @@ import { diffRegion, regionBounds, scaleRegion, translateRegion, type Region } f
 import { coresDe, empilhar, hexDe, lerCamadas, parametrosCamadas } from '../camadas';
 import { ajustarLargura, circulo, contornar, estrela, semBuracos, temEmoji, textoNaCaixa, unir } from '../formas';
 import { espelharX } from '../figuras';
-import { comArgola, LOTE_MAX, loteDeNomes } from '../lote';
+import { avisarArgolaDesconectada, comArgolaDeslocada, LOTE_MAX, loteDeNomes } from '../lote';
 import { ficha } from './fichas';
 import type { Parametro, Receita, Resultado, Valores } from '../tipos';
 import { desenho, liga, num, txt } from '../tipos';
+import { concluirManipuladores, furarSeSobrepoe, offsetArgola } from '../manipuladores';
 
 export const AVISO_EXEMPLO = 'Usando um desenho de exemplo: escolha o seu SVG, PNG ou JPG.';
 
@@ -128,8 +129,12 @@ export const chaveiroDesenho: Receita = {
     if (!regiao.length) return { itens: [], cores, hex, avisos: ['O desenho não tem área.'] };
     const eb = num(v, 'espBase'), ed = num(v, 'espDesenho');
     const contorno = semBuracos(contornar(regiao, num(v, 'contornoBase')));
-    const base = comArgola(contorno, txt(v, 'argola'), num(v, 'furo'), num(v, 'aro'));
-    const avisos: string[] = exemplo ? [AVISO_EXEMPLO] : [];
+    const deslocamento = offsetArgola(v, 'single');
+    const espelhado = txt(v, 'estilo') !== 'sobreposto' && txt(v, 'face') === 'baixo';
+    const argola = comArgolaDeslocada(contorno, txt(v, 'argola'), num(v, 'furo'), num(v, 'aro'), deslocamento);
+    const argolaPadrao = comArgolaDeslocada(contorno, txt(v, 'argola'), num(v, 'furo'), num(v, 'aro'), { x: 0, y: 0 });
+    const base = argola.regiao;
+    const avisos: string[] = [...(exemplo ? [AVISO_EXEMPLO] : []), ...(txt(v, 'argola') !== 'nenhuma' ? avisarArgolaDesconectada(contorno, base) : [])];
     if (base.length > 1) avisos.push('O desenho tem partes soltas: aumente o contorno da base para unir tudo.');
     const pecas = [];
     if (txt(v, 'estilo') === 'sobreposto') {
@@ -142,8 +147,8 @@ export const chaveiroDesenho: Receita = {
       // Face para baixo: desenho e borda embutidos rente a mesa, espelhados (le-se virando a peca).
       const e = Math.min(ed, eb - 0.4);
       const anel = borda ? diffRegion(contorno, contornar(contorno, -num(v, 'larguraBorda'))) : [];
-      const des = diffRegion(espelharX(regiao), anel);
       const anelM = espelharX(anel);
+      const des = diffRegion(espelharX(regiao), anelM);
       const baseM = espelharX(base);
       pecas.push({ nome: 'Base', cor: 0, camadas: [{ region: diffRegion(baseM, unir([des, anelM])), z0: 0, z1: e }, { region: baseM, z0: e, z1: eb }] });
       pecas.push({ nome: 'Desenho', cor: 1, camadas: [{ region: des, z0: 0, z1: e }] });
@@ -152,12 +157,22 @@ export const chaveiroDesenho: Receita = {
       pecas.push({ nome: 'Base', cor: 0, camadas: [{ region: base, z0: 0, z1: eb }] });
       pecas.push({ nome: 'Desenho', cor: 1, camadas: [{ region: regiao, z0: eb, z1: eb + ed }] });
     }
-    if (borda && txt(v, 'face') !== 'baixo') {
+    if (borda && !espelhado) {
       const w = num(v, 'larguraBorda');
       const anel = diffRegion(contorno, contornar(contorno, -w));
       pecas.push({ nome: 'Borda', cor: 2, camadas: [{ region: anel, z0: eb, z1: eb + ed }] });
     }
-    return { itens: [{ nome: (txt(v, 'origem') === 'texto' ? txt(v, 'texto').replace(/\+/g, ' ') : nomeDoDesenho(v, 'desenho')) || 'Chaveiro', pecas }], cores, hex, avisos };
+    const outrasPadrao = pecas.slice(1).flatMap((p) => p.camadas.flatMap((c) => c.region));
+    if (deslocamento.x || deslocamento.y) {
+      const furoReal = espelhado ? espelharX(argola.furo) : argola.furo;
+      for (const p of pecas) p.camadas = p.camadas.map((c) => ({ ...c, region: furarSeSobrepoe(c.region, furoReal) }));
+    }
+    const ponto = espelhado ? { x: -argola.centro.x, y: argola.centro.y } : argola.centro;
+    const basePadrao = espelhado ? espelharX(argolaPadrao.regiao) : argolaPadrao.regiao;
+    const caixaGrade = regionBounds([...outrasPadrao, ...basePadrao]);
+    const item = { nome: (txt(v, 'origem') === 'texto' ? txt(v, 'texto').replace(/\+/g, ' ') : nomeDoDesenho(v, 'desenho')) || 'Chaveiro', pecas,
+      ...(txt(v, 'argola') !== 'nenhuma' ? { alvoArgola: 'single', pontoArgola: ponto, offsetArgola: deslocamento, eixoArgolaX: espelhado ? -1 as const : 1 as const, caixaGrade } : {}) };
+    return concluirManipuladores({ itens: [item], cores, hex, avisos });
   },
 };
 
@@ -201,7 +216,7 @@ export const chaveiroLogoNome: Receita = {
     const iCor = (n: string) => cores.indexOf(n);
     const logo = comLogo ? desenhoNoTamanho(v, 'desenho', num(v, 'alturaLogo'), 'altura') : { regiao: [] as Region, exemplo: false };
     const eb = num(v, 'espBase'), cb = num(v, 'contornoBase');
-    const r = loteDeNomes(v, (linhas, nome) => {
+    const r = loteDeNomes(v, (linhas, nome, alvo) => {
       const t = textoNaCaixa(linhas, { fonte, reserva, maxW: 10000, maxH: Math.max(4, num(v, 'altura') - 2 * cb), espacamento: num(v, 'espacamento') / 100, entrelinha: 1 });
       if (!t.letras.length) return { item: null, avisos: [] };
       let texto = t.regiao;
@@ -217,7 +232,11 @@ export const chaveiroLogoNome: Receita = {
         logoR = translateRegion(logoR, -cx, 0);
       }
       const contorno = semBuracos(contornar(unir([texto, logoR]), cb));
-      const base = comArgola(contorno, txt(v, 'ladoLogo') === 'esquerda' && logoR.length ? 'direita' : 'esquerda', num(v, 'furo'), Math.max(1, (num(v, 'anel') - num(v, 'furo')) / 2));
+      const ladoArgola = txt(v, 'ladoLogo') === 'esquerda' && logoR.length ? 'direita' : 'esquerda';
+      const deslocamento = offsetArgola(v, alvo);
+      const argola = comArgolaDeslocada(contorno, ladoArgola, num(v, 'furo'), Math.max(1, (num(v, 'anel') - num(v, 'furo')) / 2), deslocamento);
+      const argolaPadrao = comArgolaDeslocada(contorno, ladoArgola, num(v, 'furo'), Math.max(1, (num(v, 'anel') - num(v, 'furo')) / 2), { x: 0, y: 0 });
+      const base = argola.regiao;
       const pecas = [{ nome: 'Base', cor: iCor('Base'), camadas: [{ region: base, z0: 0, z1: eb }] }];
       if (wb > 0) {
         const fora = contornar(contorno, -num(v, 'offsetBorda'));
@@ -225,10 +244,15 @@ export const chaveiroLogoNome: Receita = {
       }
       if (logoR.length) pecas.push({ nome: 'Logo', cor: iCor('Logo'), camadas: [{ region: logoR, z0: eb, z1: eb + num(v, 'espLogo') }] });
       pecas.push({ nome: 'Nome', cor: iCor('Nome'), camadas: [{ region: texto, z0: eb, z1: eb + num(v, 'espTexto') }] });
-      return { item: { nome, pecas }, avisos: contorno.length > 1 ? ['A base ficou em mais de um pedaço: aumente o contorno da base.'] : [] };
+      const outrasPadrao = pecas.slice(1).flatMap((p) => p.camadas.flatMap((c) => c.region));
+      const caixa = regionBounds([...outrasPadrao, ...argolaPadrao.regiao]);
+      if (deslocamento.x || deslocamento.y) for (const p of pecas) p.camadas = p.camadas.map((c) => ({ ...c, region: furarSeSobrepoe(c.region, argola.furo) }));
+      const avisos = [...(contorno.length > 1 ? ['A base ficou em mais de um pedaço: aumente o contorno da base.'] : []), ...avisarArgolaDesconectada(contorno, argola.regiao)];
+      return { item: { nome, pecas, alvoArgola: alvo, pontoArgola: argola.centro, offsetArgola: deslocamento,
+        caixaGrade: caixa }, avisos };
     });
     const avisos = logo.exemplo ? [AVISO_EXEMPLO, ...r.avisos] : r.avisos;
-    return { itens: r.itens, cores, hex: cores.map((c) => hexes[c]!), avisos };
+    return concluirManipuladores({ itens: r.itens, cores, hex: cores.map((c) => hexes[c]!), avisos });
   },
 };
 

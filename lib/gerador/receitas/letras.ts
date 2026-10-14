@@ -13,6 +13,7 @@ import { comVazios } from '../solidos';
 import { desenho, liga, num, soCoresUsadas, txt } from '../tipos';
 import { ficha } from './fichas';
 import { padraoVazado } from './papelaria';
+import { nomeConectado } from '../nome-conectado';
 import type { Camada, Contexto, Item, Parametro, Peca, Receita, Resultado, Valores } from '../tipos';
 
 const cor = (id: string, rotulo: string, padrao: string, visivel?: (v: Valores) => boolean): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao, visivel });
@@ -145,7 +146,7 @@ export const letraGrande: Receita = {
     if (L.length > 1) avisos.push('A letra saiu em partes: engrosse a letra.');
     const E = num(v, 'espLetra'), folga = num(v, 'folga'), estilo = txt(v, 'estilo');
     const N = nomeNaLetra(v, ctx, L);
-    const placaNome = N.length ? placaDoNome(N, num(v, 'contornoNome')) : [];
+    const placaNome = N.length ? nomeConectado(N, num(v, 'contornoNome')) : [];
     if (placaNome.length > 1) avisos.push('O nome ficou em pedaços: aumente o contorno do nome.');
     // Nome em peca propria, deitada, para encaixar no rebaixo: onde ele passa da letra,
     // impresso no lugar ficaria no ar.
@@ -304,7 +305,7 @@ export const luminariaLetra: Receita = {
     const vv = { ...v, cortarBase: 0 };
     const N = nomeNaLetra(vv, ctx, L);
     if (N.length) {
-      const placa = placaDoNome(N, num(v, 'contornoNome'));
+      const placa = nomeConectado(N, num(v, 'contornoNome'));
       itens.push({ nome: 'Nome', pecas: [{ nome: 'Nome', cor: 2, camadas: [{ region: placa, z0: 0, z1: num(v, 'espNome') }] }] });
     }
     return soCoresUsadas({
@@ -392,16 +393,3 @@ export const luminariaSocial: Receita = {
     });
   },
 };
-
-/**
- * Placa do nome: o contorno das letras, sem miolo. Se ele se separar (palavras ou
- * letras soltas), uma faixa arredondada por tras, na altura do meio, une tudo.
- */
-function placaDoNome(N: Region, contorno: number): Region {
-  let placa = semBuracos(contornar(N, contorno));
-  if (placa.length > 1) {
-    const b = regionBounds(placa);
-    placa = semBuracos(unir([placa, retanguloArredondado((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, b.w - contorno, Math.max(b.h * 0.35, 2 * contorno), contorno)]));
-  }
-  return placa;
-}

@@ -31,6 +31,6 @@ export const designLivre: Receita = {
     const d = ler(txt(v, 'design'));
     if (!d) return { itens: [], cores: [], avisos: ['O design não pôde ser lido.'] };
     const carregadas = new Set(fontesDoDesign(d));
-    return designParaResultado(d, (id) => (carregadas.has(id) ? ctx.fonte(id) : undefined));
+    return designParaResultado(d, (id) => (carregadas.has(id) ? ctx.fonte(id) : undefined), ctx);
   },
 };

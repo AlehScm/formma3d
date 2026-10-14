@@ -3,8 +3,13 @@ import { PaginaLoja } from '@/components/loja/Estrutura';
 import { Listagem } from '@/components/loja/Listagem';
 import { TituloPagina } from '@/components/loja/Modulo';
 import { produtosPublicos } from '@/lib/marketplace/consultas';
+import { metadadosPagina } from '@/lib/seo';
 
-export const metadata: Metadata = { title: 'Todas as peças | Scarprint', description: 'Todas as peças impressas em 3D da Scarprint, com filtros por tipo.' };
+export const metadata: Metadata = metadadosPagina({
+  titulo: 'Todas as peças impressas em 3D',
+  descricao: 'Todas as peças impressas em 3D da Scarprint: decoração, colecionáveis, letreiros e placas para empresas, presentes e lembrancinhas personalizadas.',
+  caminho: '/pecas',
+});
 
 /** Catalogo completo com filtros (a home mostra so as vitrines). */
 export default function PecasPage() {

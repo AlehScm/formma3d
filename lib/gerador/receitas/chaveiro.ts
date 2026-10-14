@@ -1,11 +1,12 @@
 /** Chaveiros de nome: em camadas com argola, e retangular com o nome ajustado. */
-import { diffRegion, type Region } from '../../geom/region';
+import { diffRegion, regionBounds, translateRegion, type Region } from '../../geom/region';
 import { coresDe, empilhar, hexDe, lerCamadas, parametrosCamadas } from '../camadas';
 import { circulo, comporLinhas, contornar, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, unir } from '../formas';
-import { comArgola, LOTE_MAX, loteDeNomes } from '../lote';
+import { avisarArgolaDesconectada, comArgolaDeslocada, LOTE_MAX, loteDeNomes } from '../lote';
 import { ficha } from './fichas';
 import type { Contexto, Item, Parametro, Receita, Valores } from '../tipos';
 import { num, txt } from '../tipos';
+import { concluirManipuladores, furarSeSobrepoe, offsetArgola } from '../manipuladores';
 
 const nomes = (padrao: string): Parametro => ({
   tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao, maxCaracteres: 300,
@@ -39,13 +40,23 @@ export const chaveiroNome: Receita = {
     const o = lerCamadas(v);
     const fonte = ctx.fonte(txt(v, 'fonte'));
     const reserva = comEmoji(v) ? ctx.fonte('noto-emoji') : undefined;
-    const r = loteDeNomes(v, (linhas, nome) => {
+    const r = loteDeNomes(v, (linhas, nome, alvo) => {
       const t = comporLinhas(linhas.map((texto) => ({ texto, fonte, reserva, altura: num(v, 'altura'), espacamento: num(v, 'espacamento') / 100 })), num(v, 'entrelinha'));
       if (!t.letras.length) return { item: null, avisos: [] };
-      const e = empilhar(t.regiao, o, (b) => comArgola(b, txt(v, 'argola'), num(v, 'furo'), num(v, 'aro')));
-      return { item: { nome, pecas: e.pecas }, avisos: e.avisos };
+      const lado = txt(v, 'argola'), deslocamento = offsetArgola(v, alvo);
+      let centro = { x: 0, y: 0 };
+      let furoMovido: Region = [];
+      let baseArgola: Region = [];
+      const e = empilhar(t.regiao, o, (b) => { baseArgola = b; const a = comArgolaDeslocada(b, lado, num(v, 'furo'), num(v, 'aro'), deslocamento); centro = a.centro; furoMovido = a.furo; return a.regiao; });
+      const pecas = e.pecas.map((p) => ({ ...p, camadas: p.camadas.map((c) => ({ ...c, region: deslocamento.x || deslocamento.y ? furarSeSobrepoe(c.region, furoMovido) : c.region })) }));
+      const padrao = deslocamento.x || deslocamento.y
+        ? empilhar(t.regiao, o, (b) => comArgolaDeslocada(b, lado, num(v, 'furo'), num(v, 'aro'), { x: 0, y: 0 }).regiao).pecas
+        : e.pecas;
+      const caixa = regionBounds(padrao.flatMap((p) => p.camadas.flatMap((c) => c.region)));
+      const avisos = [...e.avisos, ...(lado !== 'nenhuma' ? avisarArgolaDesconectada(baseArgola, pecas[0]?.camadas[0]?.region ?? []) : [])];
+      return { item: { nome, pecas, ...(lado !== 'nenhuma' ? { alvoArgola: alvo, pontoArgola: centro, offsetArgola: deslocamento, caixaGrade: caixa } : {}) }, avisos };
     });
-    return { itens: r.itens, cores: coresDe(o), hex: hexDe(v, o), avisos: r.avisos };
+    return concluirManipuladores({ itens: r.itens, cores: coresDe(o), hex: hexDe(v, o), avisos: r.avisos });
   },
   fontes: fontesEmoji,
 };
@@ -98,7 +109,7 @@ export const chaveiroRetangular: Receita = {
     const cores = cn > 0 ? ['Placa', 'Contorno', 'Nome'] : ['Placa', 'Nome'];
     const hex = cn > 0 ? [txt(v, 'corPlaca'), txt(v, 'corContorno'), txt(v, 'corNome')] : [txt(v, 'corPlaca'), txt(v, 'corNome')];
     const reserva = comEmoji(v) ? ctx.fonte('noto-emoji') : undefined;
-    const r = loteDeNomes(v, (linhas, nome) => {
+    const r = loteDeNomes(v, (linhas, nome, alvo) => {
       // Cada linha do tamanho que enche a largura; se nao couber na altura, todas encolhem juntas.
       const larguraDe = (texto: string, altura: number) => comporLinhas([{ texto, fonte, reserva, altura, espacamento: num(v, 'espacamento') / 100 }], 0).bounds.w;
       const alturas = linhas.map((texto) => 10 * escalaParaLargura((k) => larguraDe(texto, 10 * k) + 2 * cn, W));
@@ -120,17 +131,31 @@ export const chaveiroRetangular: Receita = {
 
       let placa = retanguloArredondado(0, 0, L, H, raio);
       const fundo = placa;
+      let pontoArgola = { x: 0, y: 0 };
+      const deslocamento = offsetArgola(v, alvo);
+      let furoMovido: Region = [];
+      let placaPadrao: Region | undefined;
       if (v.argola === true) {
         const a = abaNoCanto(L, H, raio, num(v, 'furo'), num(v, 'externo'));
-        placa = diffRegion(unir([placa, a.disco]), a.furo);
+        placaPadrao = diffRegion(unir([fundo, a.disco]), a.furo);
+        furoMovido = translateRegion(a.furo, deslocamento.x, deslocamento.y);
+        const b = regionBounds(a.disco);
+        pontoArgola = { x: (b.minX + b.maxX) / 2 + deslocamento.x, y: (b.minY + b.maxY) / 2 + deslocamento.y };
+        placa = diffRegion(unir([placa, translateRegion(a.disco, deslocamento.x, deslocamento.y)]), translateRegion(a.furo, deslocamento.x, deslocamento.y));
       }
       const camadasPlaca = [{ region: placa, z0: 0, z1: ep }];
       if (borda > 0) camadasPlaca.push({ region: diffRegion(fundo, contornar(fundo, -borda)), z0: ep, z1: ep + ec + en });
       const pecas = [{ nome: 'Placa', cor: 0, camadas: camadasPlaca }];
       if (cn > 0) pecas.push({ nome: 'Contorno', cor: 1, camadas: [{ region: semBuracos(contornar(t.regiao, cn)), z0: ep, z1: ep + ec }] });
       pecas.push({ nome: 'Nome', cor: cores.length - 1, camadas: [{ region: t.regiao, z0: ep + ec, z1: ep + ec + en }] });
-      return { item: { nome, pecas }, avisos };
+      const outrasPadrao = pecas.slice(1).flatMap((p) => p.camadas.flatMap((c) => c.region));
+      if (deslocamento.x || deslocamento.y) {
+        for (const p of pecas) p.camadas = p.camadas.map((c) => ({ ...c, region: furarSeSobrepoe(c.region, furoMovido) }));
+        if (placaPadrao && avisarArgolaDesconectada(fundo, placa).length) avisos.push('A argola ficou desconectada da peça: reduza o deslocamento para uni-la à base.');
+      }
+      const caixaGrade = v.argola === true ? regionBounds([...outrasPadrao, ...(placaPadrao ?? [])]) : undefined;
+      return { item: { nome, pecas, ...(v.argola === true ? { alvoArgola: alvo, pontoArgola, offsetArgola: deslocamento, caixaGrade } : {}) }, avisos };
     });
-    return { itens: r.itens, cores, hex, avisos: r.avisos };
+    return concluirManipuladores({ itens: r.itens, cores, hex, avisos: r.avisos });
   },
 };

@@ -5,6 +5,8 @@ import { PaginaLoja } from '@/components/loja/Estrutura';
 import { ProdutoInterativo } from '@/components/loja/Produto';
 import { Modulo } from '@/components/loja/Modulo';
 import { Prateleira } from '@/components/loja/Vitrine';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { descricaoDoProduto, ldProduto, ldTrilha, metadadosPagina, urlAbsoluta } from '@/lib/seo';
 import { porSecao, porSlug, produtosPublicos } from '@/lib/marketplace/consultas';
 import { SECOES } from '@/lib/marketplace/tipos';
 
@@ -17,7 +19,10 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const p = porSlug((await params).slug);
-  return p ? { title: `${p.nome} | Scarprint`, description: p.resumo } : {};
+  if (!p) return {};
+  // Com foto real, ela vira a imagem do compartilhamento; sem, fica a imagem da marca.
+  const foto = p.midias[0] ? { url: urlAbsoluta(p.midias[0]), alt: p.nome } : undefined;
+  return metadadosPagina({ titulo: `${p.nome}: impressão 3D sob medida`, descricao: descricaoDoProduto(p), caminho: `/produto/${p.slug}`, imagem: foto });
 }
 
 export default async function ProdutoPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -27,6 +32,8 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
   const relacionados = porSecao(p.secao).filter((r) => r.slug !== p.slug);
   return (
     <PaginaLoja secaoAtual={p.secao}>
+      <JsonLd dados={ldTrilha([{ nome: 'Início', caminho: '/' }, { nome: secao.nome, caminho: `/secao/${p.secao}` }, { nome: p.nome, caminho: `/produto/${p.slug}` }])} />
+      <JsonLd dados={ldProduto(p)} />
       <nav aria-label="Você está em" className="flex flex-wrap gap-2 text-apoio text-marca-texto-2">
         <Link href="/" className="text-marca-azul no-underline hover:underline">Início</Link>
         <span aria-hidden="true">/</span>

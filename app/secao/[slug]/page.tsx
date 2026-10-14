@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { PaginaLoja } from '@/components/loja/Estrutura';
 import { Listagem } from '@/components/loja/Listagem';
 import { TituloPagina } from '@/components/loja/Modulo';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { ldTrilha, metadadosPagina } from '@/lib/seo';
 import { ehSecao, porSecao } from '@/lib/marketplace/consultas';
 import { ORDEM_SECOES, SECOES } from '@/lib/marketplace/tipos';
 
@@ -14,9 +16,12 @@ export function generateStaticParams() {
   return ORDEM_SECOES.map((slug) => ({ slug }));
 }
 
+// Secao sem peca publica ainda ("em breve") fica fora do Google ate ter conteudo.
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  return ehSecao(slug) ? { title: `${SECOES[slug].nome} | Scarprint`, description: SECOES[slug].resumo } : {};
+  if (!ehSecao(slug)) return {};
+  const s = SECOES[slug];
+  return metadadosPagina({ titulo: `${s.nome}: peças impressas em 3D`, descricao: `${s.chamada}. ${s.resumo} Personalizadas e impressas em 3D sob medida.`, caminho: `/secao/${slug}`, indexar: porSecao(slug).length > 0 });
 }
 
 export default async function SecaoPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -26,6 +31,7 @@ export default async function SecaoPage({ params }: { params: Promise<{ slug: st
   const produtos = porSecao(slug);
   return (
     <PaginaLoja secaoAtual={slug}>
+      {produtos.length > 0 && <JsonLd dados={ldTrilha([{ nome: 'Início', caminho: '/' }, { nome: 'Todas as peças', caminho: '/pecas' }, { nome: s.nome, caminho: `/secao/${slug}` }])} />}
       <TituloPagina titulo={s.nome} descricao={`${s.resumo} Preços sob consulta.`} trilha={[{ href: '/', rotulo: 'Início' }, { href: '/pecas', rotulo: 'Todas as peças' }]} />
       {produtos.length ? (
         <Listagem key={slug} produtos={produtos} />

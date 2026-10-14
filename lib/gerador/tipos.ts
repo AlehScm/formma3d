@@ -5,6 +5,7 @@
  */
 import type { Font } from 'opentype.js';
 import type { Region } from '../geom/region';
+import { analisarDesenho } from './validacaoDesenho';
 
 interface Base {
   id: string;
@@ -53,6 +54,12 @@ export interface Peca {
 export interface Item {
   nome: string;
   pecas: Peca[];
+  /** Metadados internos para manter manipuladores estáveis durante o arranjo em grade. */
+  alvoArgola?: string;
+  pontoArgola?: { x: number; y: number };
+  offsetArgola?: { x: number; y: number };
+  eixoArgolaX?: 1 | -1;
+  caixaGrade?: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
 /** Desenho vindo de SVG: a area preenchida, em unidades do arquivo, Y para cima. */
@@ -73,11 +80,18 @@ export interface Resultado {
   avisos: string[];
   /** Instrucoes de impressao e montagem (pausa para NFC, como colar...). */
   notas?: string[];
+  /** Centro de referência calculado antes de qualquer edição geométrica. */
+  referenciaXY?: { x: number; y: number };
+  manipuladores?: ManipuladorModelo[];
 }
+
+export type ManipuladorModelo = { id: string; rotulo: string; item: number; ponto: { x: number; y: number }; parametro: string; alvo: string; valor: { x: number; y: number }; eixoX?: 1 | -1 };
 
 export interface Contexto {
   /** Fonte ja carregada (a tela carrega as fontes dos campos `fonte` antes de gerar). */
   fonte: (id: string) => Font;
+  resultadoModelo?: (elementoId: string, receita: string, valores: Valores, idsFonte: string[], tentativa: number) => Resultado;
+  tentativaModelo?: (elementoId: string) => number;
 }
 
 export interface Receita {
@@ -137,12 +151,8 @@ export const liga = (v: Valores, id: string) => v[id] === true;
 export function desenho(v: Valores, id: string): Desenho | null {
   const s = txt(v, id);
   if (!s) return null;
-  try {
-    const d = JSON.parse(s) as Desenho;
-    return Array.isArray(d.regiao) && d.regiao.length ? d : null;
-  } catch {
-    return null;
-  }
+  const analise = analisarDesenho(s);
+  return analise.estado === 'valido' && analise.desenho.regiao.length ? analise.desenho : null;
 }
 
 /** Tira do resultado as cores que nenhuma peca usa (e renumera as pecas). */

@@ -3,8 +3,9 @@ import { PaginaLoja } from '@/components/loja/Estrutura';
 import { TituloPagina } from '@/components/loja/Modulo';
 import { Orcamento } from '@/components/loja/Orcamento';
 import { produtosPublicos } from '@/lib/marketplace/consultas';
+import { naoIndexar } from '@/lib/seo';
 
-export const metadata: Metadata = { title: 'Meu orçamento | Scarprint', description: 'As peças que você escolheu para pedir orçamento.' };
+export const metadata: Metadata = naoIndexar('Meu orçamento', 'As peças que você escolheu para pedir orçamento.');
 
 export default function OrcamentoPage() {
   return (

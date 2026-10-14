@@ -59,7 +59,7 @@ export function CatalogoScarprint() {
               {VITRINE.map((id, i) => {
                 const f = FICHAS.find((x) => x.id === id)!;
                 return (
-                  <Link key={id} href={`/moldes/${id}`} className={`hero-peca hero-peca-${i + 1}`} tabIndex={-1}>
+                  <Link key={id} href={`/design?modelo=${id}`} className={`hero-peca hero-peca-${i + 1}`} tabIndex={-1}>
                     <Miniatura id={id} alt={f.nome} reserva={<VisualReserva id={id} family={f.familia} />} />
                     <span>{f.nome}</span>
                   </Link>
@@ -147,7 +147,7 @@ function Secao({ titulo, texto, children }: { titulo: string; texto: string; chi
 
 function CardGerador({ f }: { f: Ficha }) {
   return (
-    <CartaoMarca href={`/moldes/${f.id}`} className="catalog-card">
+    <CartaoMarca href={`/design?modelo=${f.id}`} className="catalog-card">
       <div className={`catalog-card-foto foto-${f.familia}`}>
         <Miniatura id={f.id} alt={`Exemplo: ${f.nome}`} reserva={<VisualReserva id={f.id} family={f.familia} />} />
       </div>

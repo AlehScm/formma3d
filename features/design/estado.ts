@@ -5,7 +5,7 @@
  * O design se salva sozinho no navegador e volta na proxima visita; se o armazenamento
  * falhar, o editor funciona igual, so nao lembra.
  */
-import { create } from 'zustand';
+import { create, type StateCreator } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { designNovo, lerDesign, type Design, type Elemento } from '@/lib/design/documento';
 
@@ -32,7 +32,7 @@ const armazenamento: StateStorage = {
 
 const PASSOS = 100;
 
-interface EstadoDesign {
+export interface EstadoDesign {
   design: Design;
   selecao: string[];
   passado: Design[];
@@ -47,9 +47,7 @@ interface EstadoDesign {
   carregar: (d: Design) => void;
 }
 
-export const useDesign = create<EstadoDesign>()(
-  persist(
-    (set, get) => ({
+const criarEstado: StateCreator<EstadoDesign> = (set, get) => ({
       design: designNovo(),
       selecao: [],
       passado: [],
@@ -77,7 +75,11 @@ export const useDesign = create<EstadoDesign>()(
           return { design: proximo, futuro: s.futuro.slice(1), passado: [...s.passado, s.design].slice(-PASSOS), selecao: s.selecao.filter((id) => proximo.elementos.some((e) => e.id === id)) };
         }),
       carregar: (d) => set((s) => ({ design: d, selecao: [], passado: [...s.passado, s.design].slice(-PASSOS), futuro: [] })),
-    }),
+});
+
+export const useDesign = create<EstadoDesign>()(
+  persist(
+    criarEstado,
     {
       name: 'scarprint:design:v1',
       storage: createJSONStorage(() => armazenamento),
@@ -93,3 +95,6 @@ export const useDesign = create<EstadoDesign>()(
     },
   ),
 );
+
+/** Estado descartável por janela; nunca lê nem grava o rascunho principal. */
+export const criarDesignIsolado = () => create<EstadoDesign>()(criarEstado);

@@ -3,7 +3,8 @@
  * texto, fonte, cores e uma medida) e o resumo legivel da configuracao, que vai para o
  * orcamento e para a mensagem. O resto das opcoes continua no gerador completo.
  */
-import { prepararExemplo } from '@/lib/gerador/exemplo';
+import { prepararModelo } from '@/lib/gerador/exemplo';
+import { hrefComSnapshotModelo } from '@/lib/gerador/handoff';
 import { FONTES_WEB } from '@/lib/text/fontes';
 import type { Parametro, Valores } from '@/lib/gerador/tipos';
 
@@ -12,7 +13,7 @@ const LIMITE = { texto: 2, fonte: 1, cor: 4, numero: 1 } as const;
 const MEDIDA = /^(altura|largura|tamanho|diametro|lado|comprimento)$/;
 
 export function camposPrincipais(id: string, valores: Valores): Parametro[] {
-  const { receita } = prepararExemplo(id);
+  const { receita } = prepararModelo(id, { base: 'exemplo' });
   const contagem = { texto: 0, fonte: 0, cor: 0, numero: 0 };
   return receita.parametros.filter((p) => {
     if (p.visivel && !p.visivel(valores)) return false;
@@ -25,7 +26,12 @@ export function camposPrincipais(id: string, valores: Valores): Parametro[] {
 }
 
 /** Valores iniciais do produto: o exemplo da ficha do gerador. */
-export const valoresIniciais = (id: string): Valores => prepararExemplo(id).valores;
+export const valoresIniciais = (id: string, extras?: Valores): Valores => prepararModelo(id, { base: 'exemplo', extras }).valores;
+
+export function hrefParaEditor(id: string, href: string, valores: Valores, basePath = ''): string {
+  const { receita } = prepararModelo(id, { base: 'padrao' });
+  return hrefComSnapshotModelo(href, { versao: 1, receita: id, valores }, basePath, receita);
+}
 
 const legivel = (p: Parametro, v: Valores[string]): string => {
   if (p.tipo === 'fonte') return FONTES_WEB.find((f) => f.id === v)?.nome ?? String(v);

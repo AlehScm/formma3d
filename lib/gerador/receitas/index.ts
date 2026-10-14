@@ -1,4 +1,5 @@
 /** Todas as receitas do catalogo. Modelo novo: escrever a receita e registrar aqui. */
+import { registrarReceitas } from '@/lib/design/registro';
 import type { Receita } from '../tipos';
 import { chaveiroNome, chaveiroRetangular } from './chaveiro';
 import { letrasSeparadas, palavraCamadas, socialCamadas, topoBolo } from './texto';
@@ -43,3 +44,6 @@ export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparad
 const INTERNAS: Receita[] = [designLivre];
 
 export const receitaPorId = (id: string) => RECEITAS.find((r) => r.id === id) ?? INTERNAS.find((r) => r.id === id);
+
+// O design (elemento "modelo") gera receitas sem importar este index (evita o ciclo).
+registrarReceitas(receitaPorId);

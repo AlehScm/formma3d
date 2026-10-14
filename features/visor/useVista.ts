@@ -66,7 +66,7 @@ export function useVista(limites: Limites, { folga = 1.15, borda = 0, compacto =
   }, []);
   useEffect(() => {
     if (tam.w && tam.h && (auto.current || !vista.zoom)) setVista(calcular(tam.w, tam.h));
-  }, [tam.w, tam.h, reserva?.w, reserva?.h, calcular]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tam.w, tam.h, reserva?.w, reserva?.h, limites.minX, limites.minY, limites.w, limites.h, calcular]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const guardada = useRef<Vista | null>(null);
   useEffect(() => {

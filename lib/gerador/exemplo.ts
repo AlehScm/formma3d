@@ -1,14 +1,18 @@
 import { receitaPorId } from './receitas';
 import { ficha } from './receitas/fichas';
-import { valoresPadrao } from './tipos';
+import { coletarFontes, resolverValores } from './configuracao';
+import type { Valores } from './tipos';
 
-export function prepararExemplo(id: string) {
+type OpcoesModelo = { base: 'padrao' | 'exemplo'; extras?: Valores };
+
+export function prepararModelo(id: string, opcoes: OpcoesModelo) {
   const receita = receitaPorId(id);
   if (!receita) throw new Error('Gerador desconhecido: ' + id);
-  const valores = { ...valoresPadrao(receita), ...(ficha(id).exemplo ?? {}) };
-  const fontes = new Set([
-    ...receita.parametros.filter((p) => p.tipo === 'fonte' && (!p.visivel || p.visivel(valores))).map((p) => String(valores[p.id])),
-    ...(receita.fontes?.(valores) ?? []),
-  ]);
-  return { receita, valores, idsFonte: [...fontes] };
+  const exemplo = opcoes.base === 'exemplo' ? ficha(id).exemplo : undefined;
+  const valores = resolverValores(receita, exemplo, opcoes.extras);
+  return { receita, valores, idsFonte: coletarFontes(receita, valores) };
+}
+
+export function prepararExemplo(id: string) {
+  return prepararModelo(id, { base: 'exemplo' });
 }

@@ -36,16 +36,32 @@ export const editoresLivres = [
     destaques: ['Letra caixa com chapa', 'Importa AI, PDF, STL e 3MF', 'Orçamento pronto'],
   },
   {
-    id: 'placa-personalizada', title: 'Placa personalizada', family: 'placas', href: '/moldes/placa-personalizada', visual: 'placa-personalizada',
+    id: 'placa-personalizada', title: 'Placa personalizada', family: 'placas', href: '/placas?preset=placa-personalizada', visual: 'placa-personalizada',
     summary: 'Uma base com as medidas que você quiser e o texto em letras soltas para colar.',
     destaques: ['Medidas livres', 'Letras soltas em STL', 'Composição em 2D'],
   },
   {
-    id: 'placa-profissional', title: 'Placa profissional', family: 'placas', href: '/moldes/placa-profissional', visual: 'placa-profissional',
+    id: 'placa-profissional', title: 'Placa profissional', family: 'placas', href: '/placas?preset=placa-profissional', visual: 'placa-profissional',
     summary: 'Placa de nome para empresa ou consultório, já no formato largo de fachada.',
     destaques: ['Formato de fachada', 'Letras soltas em STL', 'Composição em 2D'],
   },
 ] as const;
+
+const ALIASES_MOLDES: Record<string, string> = {
+  'chaveiro-logo': 'chaveiro-desenho',
+  'cortador-svg': 'cortador-biscoito',
+  'carimbo-personalizado': 'carimbo-molde',
+  'placa-multicamadas': 'logo-camadas',
+  'porta-canetas': 'porta-canetas-grade',
+};
+
+/** Preserva as ferramentas especializadas dos moldes antigos e só abre receitas existentes. */
+export function destinoDoMoldeAntigo(id: string, temReceita: (receitaId: string) => boolean): string {
+  if (id === 'texto-livre' || id === 'letreiro-nome') return '/editor';
+  if (id === 'placa-personalizada' || id === 'placa-profissional') return `/placas?preset=${id}`;
+  const receita = ALIASES_MOLDES[id] ?? id;
+  return temReceita(receita) ? `/design?modelo=${encodeURIComponent(receita)}` : '/criar';
+}
 
 /** Moldes do "Em breve" que ja viraram gerador pronto (o card do gerador ocupa o lugar). */
 const VIRARAM_GERADOR: readonly string[] = ['chaveiro-logo', 'placa-qr', 'cortador-svg', 'carimbo-personalizado', 'placa-multicamadas', 'porta-canetas'];

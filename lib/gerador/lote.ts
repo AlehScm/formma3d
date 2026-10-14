@@ -2,6 +2,7 @@
 import { diffRegion, pointInContour, regionBounds, translateRegion, type Region } from '../geom/region';
 import { circulo, unir } from './formas';
 import { caixaDoItem } from './malha';
+import { alvoDeNome } from './manipuladores';
 import { txt, type Item, type Valores } from './tipos';
 
 /** Ate quantos nomes um lote aceita. */
@@ -17,7 +18,7 @@ export function nomesDoLote(texto: string): string[] {
  * primeiro em cima a esquerda.
  */
 export function emGrade(itens: Item[], colunas = Math.ceil(Math.sqrt(itens.length)), folga = 5): Item[] {
-  const caixas = itens.map(caixaDoItem);
+  const caixas = itens.map((it) => it.caixaGrade ?? caixaDoItem(it));
   const largura = Math.max(...caixas.map((c) => c.maxX - c.minX));
   const altura = Math.max(...caixas.map((c) => c.maxY - c.minY));
   return itens.map((it, i) => {
@@ -26,7 +27,9 @@ export function emGrade(itens: Item[], colunas = Math.ceil(Math.sqrt(itens.lengt
     const dx = col * (largura + folga) - (c.minX + c.maxX) / 2;
     const dy = -lin * (altura + folga) - (c.minY + c.maxY) / 2;
     return {
-      nome: it.nome,
+      ...it,
+      caixaGrade: { minX: c.minX + dx, minY: c.minY + dy, maxX: c.maxX + dx, maxY: c.maxY + dy },
+      pontoArgola: it.pontoArgola ? { x: it.pontoArgola.x + dx, y: it.pontoArgola.y + dy } : undefined,
       pecas: it.pecas.map((p) => ({ ...p, camadas: p.camadas.map((k) => ({ ...k, region: translateRegion(k.region, dx, dy) })) })),
     };
   });
@@ -41,13 +44,18 @@ export function linhasDoNome(nome: string, prefixo: string, sufixo: string): str
   return ls;
 }
 
-export function loteDeNomes(v: Valores, fazer: (linhas: string[], nome: string) => { item: Item | null; avisos: string[] }) {
+export function loteDeNomes(v: Valores, fazer: (linhas: string[], nome: string, alvo: string) => { item: Item | null; avisos: string[] }) {
   const lista = nomesDoLote(txt(v, 'nomes'));
   const avisos = new Set<string>();
   if (lista.length > LOTE_MAX) avisos.add(`Só os ${LOTE_MAX} primeiros nomes entram.`);
   const itens: Item[] = [];
+  const ocorrencias = new Map<string, number>();
   for (const nome of lista.slice(0, LOTE_MAX)) {
-    const r = fazer(linhasDoNome(nome, txt(v, 'prefixo'), txt(v, 'sufixo')), nome.replace(/\+/g, ' '));
+    const rotulo = nome.replace(/\+/g, ' ');
+    const chave = rotulo.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
+    const ocorrencia = ocorrencias.get(chave) ?? 0;
+    ocorrencias.set(chave, ocorrencia + 1);
+    const r = fazer(linhasDoNome(nome, txt(v, 'prefixo'), txt(v, 'sufixo')), rotulo, alvoDeNome(rotulo, ocorrencia));
     r.avisos.forEach((a) => avisos.add(a));
     if (r.item) itens.push(r.item);
   }
@@ -64,6 +72,19 @@ export function comArgola(base: Region, lado: string, furo: number, aro: number)
   const dir = lado === 'direita' ? { x: 1, y: 0 } : lado === 'topo' ? { x: 0, y: 1 } : { x: -1, y: 0 };
   const { disco, furo: f } = argolaNaDirecao(base, dir.x, dir.y, furo, aro);
   return diffRegion(unir([base, disco]), f);
+}
+
+export function comArgolaDeslocada(base: Region, lado: string, furo: number, aro: number, offset: { x: number; y: number }): { regiao: Region; centro: { x: number; y: number }; furo: Region } {
+  if (lado === 'nenhuma' || !base.length) return { regiao: base, centro: { x: 0, y: 0 }, furo: [] };
+  const dir = lado === 'direita' ? { x: 1, y: 0 } : lado === 'topo' ? { x: 0, y: 1 } : { x: -1, y: 0 };
+  const a = argolaNaDirecao(base, dir.x, dir.y, furo, aro);
+  const dx = Number.isFinite(offset.x) ? offset.x : 0, dy = Number.isFinite(offset.y) ? offset.y : 0;
+  const abertura = translateRegion(a.furo, dx, dy);
+  return { regiao: dx === 0 && dy === 0 ? comArgola(base, lado, furo, aro) : diffRegion(unir([base, translateRegion(a.disco, dx, dy)]), abertura), centro: { x: a.cx + dx, y: a.cy + dy }, furo: abertura };
+}
+
+export function avisarArgolaDesconectada(base: Region, ajustada: Region): string[] {
+  return ajustada.length > base.length ? ['A argola ficou desconectada da peça: reduza o deslocamento para uni-la à base.'] : [];
 }
 
 /**

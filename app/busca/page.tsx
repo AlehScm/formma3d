@@ -3,8 +3,10 @@ import { Suspense } from 'react';
 import { PaginaLoja } from '@/components/loja/Estrutura';
 import { ResultadoBusca } from '@/components/loja/Busca';
 import { produtosPublicos } from '@/lib/marketplace/consultas';
+import { naoIndexar } from '@/lib/seo';
 
-export const metadata: Metadata = { title: 'Buscar peças | Scarprint' };
+// Resultado de busca nao vai para o Google (conteudo repetido das secoes).
+export const metadata: Metadata = naoIndexar('Buscar peças');
 
 export default function BuscaPage() {
   // A busca le ?q= no navegador (export estatico); so os produtos publicos vao para a pagina.

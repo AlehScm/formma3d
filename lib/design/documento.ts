@@ -1,11 +1,17 @@
 /**
- * Documento do editor 2D livre ("Criar seu design"): uma tela em mm com elementos soltos
- * (texto, forma, desenho importado, QR) organizados em camadas de impressao. Cada camada e
+ * Documento do editor 2D ("Criar seu design"): uma tela em mm com elementos soltos (texto,
+ * forma, desenho importado, QR e modelos prontos do catalogo) organizados em camadas de
+ * impressao. Um modelo e uma receita com os valores dela: gera as proprias pecas e cores e
+ * so e movido/girado/escalado na tela. Cada camada e
  * uma altura Z e uma cor. Uma camada pode ser desenhada (tem os proprios elementos) ou o
  * contorno de outra (a borda e o fundo que acompanham o desenho sozinhos).
  * Coordenadas em mm, Y para cima, origem no centro da tela.
  */
 import type { Region } from '@/lib/geom/region';
+import { coletarFontes, resolverValores } from '@/lib/gerador/configuracao';
+import type { Valores } from '@/lib/gerador/tipos';
+import { validarRegion } from '@/lib/geom/validacaoRegion';
+import { receitaDoModelo } from './registro';
 
 export type OrigemCamada = 'desenhada' | { contornoDe: string; folgaMm: number };
 
@@ -59,6 +65,7 @@ export type Elemento = BaseElemento & (
   | { tipo: 'forma'; forma: FormaId; /** Largura natural, mm. */ largura: number }
   | { tipo: 'desenho'; nome: string; /** Ja em mm, centrado em (0, 0). */ regiao: Region }
   | { tipo: 'qr'; conteudo: string; /** Lado do QR com a margem, mm. */ largura: number }
+  | { tipo: 'modelo'; /** Id da receita do catalogo. */ receita: string; valores: Valores }
 );
 
 export type TipoElemento = Elemento['tipo'];
@@ -104,8 +111,21 @@ export const camadaNova = (n: number): CamadaDesign => ({ id: novoId('cam'), nom
 
 export const camadaDesenhadaPadrao = (d: Design) => [...d.camadas].reverse().find((c) => c.origem === 'desenhada')?.id ?? d.camadas.at(-1)?.id ?? 'topo';
 
-/** Fontes usadas pelos textos (para carregar antes de gerar). */
-export const fontesDoDesign = (d: Design) => [...new Set(d.elementos.flatMap((e) => (e.tipo === 'texto' ? [e.fonte] : [])))];
+/** Fontes que um modelo usa: as dos campos de fonte e as extras da receita (emoji...). */
+export function fontesDoModelo(receitaId: string, valores: Valores): string[] {
+  const r = receitaDoModelo(receitaId);
+  if (!r) return [];
+  return coletarFontes(r, resolverValores(r, undefined, valores));
+}
+
+/** Fontes usadas pelos textos e pelos modelos (para carregar antes de gerar). */
+export const fontesDoDesign = (d: Design) => [...new Set(d.elementos.flatMap((e) => (e.tipo === 'texto' ? [e.fonte] : e.tipo === 'modelo' ? fontesDoModelo(e.receita, e.valores) : [])))];
+
+/** Fontes necessárias para compor: textos não ocultos (inclusive origens de contornos) e modelos visíveis. */
+export const fontesDaComposicao = (d: Design) => {
+  const camadasVisiveis = new Set(d.camadas.filter((c) => !c.oculta).map((c) => c.id));
+  return [...new Set(d.elementos.filter((e) => !e.oculto).flatMap((e) => e.tipo === 'texto' ? [e.fonte] : e.tipo === 'modelo' && camadasVisiveis.has(e.camadaId) ? fontesDoModelo(e.receita, e.valores) : []))];
+};
 
 /** Valida e completa um design vindo de JSON (arquivo ou navegador). Lanca erro se nao for um design. */
 export function lerDesign(json: unknown): Design {
@@ -114,12 +134,16 @@ export function lerDesign(json: unknown): Design {
   const camadas = d.camadas.filter((c) => c && typeof c.id === 'string' && typeof c.z0 === 'number' && typeof c.z1 === 'number');
   if (!camadas.length) throw new Error('O design não tem camadas.');
   const ids = new Set(camadas.map((c) => c.id));
+  const elementos = d.elementos.filter((e) => e && typeof e.id === 'string' && ids.has(e.camadaId) && (['texto', 'forma', 'desenho', 'qr'].includes(e.tipo) || (e.tipo === 'modelo' && typeof e.receita === 'string' && !!e.valores && typeof e.valores === 'object')));
+  for (const e of elementos) {
+    if (e.tipo === 'desenho' && !validarRegion(e.regiao)) throw new Error(`O elemento de desenho "${e.id}" tem uma região inválida.`);
+  }
   return {
     versao: 1,
     nome: typeof d.nome === 'string' ? d.nome : 'Meu design',
     larguraMm: typeof d.larguraMm === 'number' && d.larguraMm > 0 ? d.larguraMm : 200,
     alturaMm: typeof d.alturaMm === 'number' && d.alturaMm > 0 ? d.alturaMm : 140,
     camadas,
-    elementos: d.elementos.filter((e) => e && typeof e.id === 'string' && ids.has(e.camadaId) && ['texto', 'forma', 'desenho', 'qr'].includes(e.tipo)),
+    elementos,
   };
 }

@@ -4,13 +4,15 @@
  *   npx tsx scripts/verificar-marketplace.mts
  */
 import fs from 'fs';
-import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, pecaDaSecao, podeAparecer, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
+import { destinoDoMoldeAntigo, editoresLivres, moldes } from '../features/catalogo/catalogo';
+import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, geradorDe, pecaDaSecao, podeAparecer, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
 import { FOTOS } from '../lib/marketplace/fotos';
 import { BANNERS, COMO_FUNCIONA, PERGUNTAS, VANTAGENS } from '../lib/marketplace/loja';
 import { CASA, VITRINE_CASA } from '../lib/marketplace/universos';
 import { camposPrincipais, resumoPersonalizacao, valoresIniciais } from '../lib/marketplace/personalizar';
 import { PRESETS_NATAL, SLUGS_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva, diasAteONatal, pecaDeNatal } from '../lib/marketplace/campanhas';
 import { receitaPorId } from '../lib/gerador/receitas';
+import { FICHAS } from '../lib/gerador/receitas/fichas';
 
 let falhas = 0, total = 0;
 const ok = (nome: string, cond: boolean, detalhe = '') => {
@@ -57,11 +59,38 @@ const rotas = new Set(['/editor', '/placas', '/criar']);
 const linkValido = (p: Produto) => {
   const h = p.personalizar?.href;
   if (!h) return true;
-  const g = h.match(/^\/moldes\/([a-z0-9-]+)$/);
-  return g ? !!receitaPorId(g[1]!) : rotas.has(h);
+  const g = geradorDe(p);
+  return g ? !!receitaPorId(g) : rotas.has(h);
 };
 ok('todo "personalizar" leva a um gerador ou rota que existe', PRODUTOS.every(linkValido), PRODUTOS.filter((p) => !linkValido(p)).map((p) => `${p.slug} -> ${p.personalizar!.href}`).join(', '));
 ok('rotas do editor e das placas existem', fs.existsSync('app/editor/page.tsx') && fs.existsSync('app/placas/page.tsx'));
+const linkEditorValido = (href: string) => {
+  const [rota, query = ''] = href.split('?');
+  if (!fs.existsSync(`app${rota}/page.tsx`)) return false;
+  if (rota === '/design' && query) {
+    const modelo = new URLSearchParams(query).get('modelo');
+    return !!modelo && !!receitaPorId(modelo);
+  }
+  if (rota === '/placas' && query) {
+    const preset = new URLSearchParams(query).get('preset');
+    return preset === 'placa-personalizada' || preset === 'placa-profissional';
+  }
+  return !query;
+};
+ok('todos os editores livres apontam para uma rota ou receita existente', editoresLivres.every((e) => linkEditorValido(e.href)), editoresLivres.filter((e) => !linkEditorValido(e.href)).map((e) => `${e.id} -> ${e.href}`).join(', '));
+ok('modelos abrem no editor por query e /moldes/<id> mantém os destinos especializados', fs.existsSync('app/design/page.tsx') && /Redirecionar/.test(fs.readFileSync('app/moldes/[id]/page.tsx', 'utf8')) && /destinoDoMoldeAntigo/.test(fs.readFileSync('app/moldes/[id]/page.tsx', 'utf8')));
+const idsLegados = [...new Set([...FICHAS, ...moldes].map(({ id }) => id))];
+const destinoLegadoValido = (id: string) => {
+  const destino = destinoDoMoldeAntigo(id, (receita) => !!receitaPorId(receita));
+  return linkEditorValido(destino);
+};
+ok('todo ID gerado em /moldes tem destino existente', idsLegados.every(destinoLegadoValido), idsLegados.filter((id) => !destinoLegadoValido(id)).join(', '));
+ok('moldes especializados e alias de chaveiro mantêm o destino correto', destinoDoMoldeAntigo('texto-livre', () => false) === '/editor' && destinoDoMoldeAntigo('letreiro-nome', () => false) === '/editor' && destinoDoMoldeAntigo('placa-personalizada', () => false) === '/placas?preset=placa-personalizada' && destinoDoMoldeAntigo('placa-profissional', () => false) === '/placas?preset=placa-profissional' && destinoDoMoldeAntigo('chaveiro-logo', (id) => id === 'chaveiro-desenho') === '/design?modelo=chaveiro-desenho' && destinoDoMoldeAntigo('id-desconhecido', () => false) === '/criar');
+ok('nenhum link do site ainda aponta para rotas antigas de modelo', !PRODUTOS.some((p) => /^(?:\/moldes\/|\/design\/)/.test(p.personalizar?.href ?? '')) && !/(?:\/moldes\/|\/design\/)/.test(fs.readFileSync('components/catalogo/CatalogoScarprint.tsx', 'utf8') + fs.readFileSync('features/catalogo/catalogo.ts', 'utf8')));
+const produtoTeste = PRODUTOS[0]!;
+const comHref = (href: string) => ({ ...produtoTeste, personalizar: { href, rotulo: 'teste' } });
+ok('gerador reconhece query nova e formatos antigos internos', geradorDe(comHref('/design?modelo=chaveiro-nome')) === 'chaveiro-nome' && geradorDe(comHref('/design/chaveiro-nome')) === 'chaveiro-nome' && geradorDe(comHref('/moldes/chaveiro-nome')) === 'chaveiro-nome');
+ok('gerador não trata URL externa como rota interna', geradorDe(comHref('https://example.com/design?modelo=chaveiro-nome')) === undefined && geradorDe(comHref('//example.com/design?modelo=chaveiro-nome')) === undefined);
 
 ok('busca ignora acento e maiuscula', buscar('PLACA DE AVALIACAO').some((p) => p.slug === 'placa-avaliacao-google'));
 ok('busca por secao', buscar('', 'casa').every((p) => p.secao === 'casa') && buscar('', 'casa').length > 0);
@@ -110,8 +139,8 @@ ok('como funciona: 3 passos, cada um com título e texto', COMO_FUNCIONA.length 
 ok('perguntas frequentes sem frete, pagamento, prazo ou avaliação inventados', PERGUNTAS.length > 0 && !/frete|gr[aá]tis|\bpix\b|cart[aã]o de cr[eé]dito|entrega em|\d+\s*dias|avalia[cç][aã]o|estrelas|★|mais vendid|garantia/i.test(JSON.stringify(PERGUNTAS)));
 ok('peça de cada categoria da home é pública', ORDEM_SECOES.every((s) => { const p = pecaDaSecao(s); return !p || !!porSlug(p.slug); }));
 // Personalizar no produto: toda peca com gerador mostra campos; resumo legivel; vai na mensagem.
-const comGerador = publicos.filter((p) => p.personalizar?.href.startsWith('/moldes/'));
-const semCampos = comGerador.filter((p) => { const g = p.personalizar!.href.split('/').pop()!; return camposPrincipais(g, valoresIniciais(g)).length === 0; });
+const comGerador = publicos.filter((p) => !!geradorDe(p));
+const semCampos = comGerador.filter((p) => { const g = geradorDe(p)!; return camposPrincipais(g, valoresIniciais(g)).length === 0; });
 ok('toda peça com gerador tem campos para personalizar no produto', comGerador.length > 0 && !semCampos.length, semCampos.map((p) => p.slug).join(', '));
 const camposChaveiro = camposPrincipais('chaveiro-nome', valoresIniciais('chaveiro-nome'));
 const resumo = resumoPersonalizacao(camposChaveiro, { ...valoresIniciais('chaveiro-nome'), nomes: 'Maria', prefixo: '' });

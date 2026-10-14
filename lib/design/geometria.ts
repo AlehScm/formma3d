@@ -15,6 +15,19 @@ export type Fontes = (id: string) => Font | undefined;
 /** Espessura minima que o bico imprime bem, mm. */
 export const LINHA_MINIMA = 0.4;
 
+// Regioes do desenho sao substituidas, nao mutadas; identidade evita serializar vertices durante o arrasto.
+const IDS_REGIAO = new WeakMap<Region, number>();
+let proximoIdRegiao = 0;
+
+function idRegiao(regiao: Region): number {
+  let id = IDS_REGIAO.get(regiao);
+  if (id === undefined) {
+    id = ++proximoIdRegiao;
+    IDS_REGIAO.set(regiao, id);
+  }
+  return id;
+}
+
 function forma(f: FormaId, w: number): Region {
   switch (f) {
     case 'circulo': return circulo(0, 0, w / 2, 96);
@@ -35,8 +48,9 @@ function chaveConteudo(el: Elemento, fontes: Fontes): string {
   switch (el.tipo) {
     case 'texto': return `t|${el.fonte}|${fontes(el.fonte) ? 1 : 0}|${el.altura}|${el.espacamento ?? 1}|${el.texto}`;
     case 'forma': return `f|${el.forma}|${el.largura}`;
-    case 'desenho': return `d|${el.id}|${el.regiao.length}`;
+    case 'desenho': return `d|${idRegiao(el.regiao)}`;
     case 'qr': return `q|${el.largura}|${el.conteudo}`;
+    case 'modelo': return `m|${el.id}`;
   }
 }
 
@@ -72,6 +86,8 @@ function calcularLocal(el: Elemento, fontes: Fontes): Region {
       } catch {
         return [];
       }
+    // O modelo tem as proprias pecas (lib/design/saida.ts); nao entra na area das camadas.
+    case 'modelo': return [];
   }
 }
 
@@ -137,7 +153,7 @@ type Pedaco = { el: Elemento; folga: number };
 function pedacosDasCamadas(d: Design): Map<string, Pedaco[]> {
   const porId = new Map(d.camadas.map((c) => [c.id, c]));
   const proprios = new Map<string, Elemento[]>();
-  for (const el of d.elementos) if (!el.oculto) proprios.set(el.camadaId, [...(proprios.get(el.camadaId) ?? []), el]);
+  for (const el of d.elementos) if (!el.oculto && el.tipo !== 'modelo') proprios.set(el.camadaId, [...(proprios.get(el.camadaId) ?? []), el]);
   const pedacos = new Map<string, Pedaco[]>();
   const calculando = new Set<string>();
   const listar = (c: CamadaDesign): Pedaco[] => {

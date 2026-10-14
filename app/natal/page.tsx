@@ -9,9 +9,10 @@ import { TopoNatal } from '@/features/marketplace/Natal';
 import { CAMPANHAS, PALETA_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { porSlug } from '@/lib/marketplace/consultas';
 import { COMO_FUNCIONA } from '@/lib/marketplace/loja';
+import { metadadosPagina } from '@/lib/seo';
 import type { Produto } from '@/lib/marketplace/tipos';
 
-export const metadata: Metadata = { title: `${CAMPANHAS.natal.nome} | Scarprint`, description: TEXTOS_NATAL.frase };
+export const metadata: Metadata = metadadosPagina({ titulo: `${CAMPANHAS.natal.nome}: enfeites e presentes com nome`, descricao: TEXTOS_NATAL.frase, caminho: CAMPANHAS.natal.href });
 
 const ICONES_PASSOS = [IconeBusca, IconeTridimensional, IconeConversa];
 
