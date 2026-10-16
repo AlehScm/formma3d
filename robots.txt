@@ -1,0 +1,4 @@
+User-Agent: *
+Allow: /
+
+Sitemap: https://alehscm.github.io/formma3d/sitemap.xml
