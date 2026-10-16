@@ -121,7 +121,7 @@ function useResumos() {
         : undefined,
     estilo: s.presetAtivo ? PRESETS[s.presetAtivo].nome : m.desc,
     medidas: `${medidaAltura} · prof. ${formatarNumero(s.profundidade)} mm`,
-    chapa: `${formatarNumero(esp, 1)} mm · apoio ${APOIOS[s.apoio].curto.toLowerCase()}`,
+    chapa: `${formatarNumero(esp, 1)} mm · batente ${APOIOS[s.apoio].curto.toLowerCase()}`,
     acabamento: extras.length ? extras.join(' · ') : 'nenhum',
   };
 }
@@ -616,9 +616,6 @@ function Chapa() {
     useShallow((x) => ({
       apoio: x.apoio,
       chapaModo: x.chapaModo,
-      borda: x.borda,
-      bordaCompensa: x.bordaCompensa,
-      labio: x.labio,
       batente: x.batente,
       batenteModo: x.batenteModo,
       batenteAltura: x.batenteAltura,
@@ -634,51 +631,25 @@ function Chapa() {
   return (
     <>
       <Segmentado<Apoio>
-        rotulo="Apoio"
-        dica="Como a chapa encosta na peça impressa"
+        rotulo="Batente"
+        dica="Se a parede da caixa fica dentro ou fora do contorno da letra"
         valor={s.apoio}
         set={(v) => definir('apoio', v)}
         opcoes={(Object.keys(APOIOS) as Apoio[]).map((k) => ({ valor: k, nome: APOIOS[k].curto, dica: APOIOS[k].desc }))}
       />
       <div className="rounded-md border border-borda bg-fundo p-2">
-        <CorteApoio apoio={s.apoio} comLabio={s.labio > 0} />
+        <CorteApoio apoio={s.apoio} />
       </div>
-
-      {s.apoio !== 'dentro' && (
-        <>
-          <CampoNumero
-            rotulo="Largura da borda"
-            dica="Quanto a peça avança para fora do contorno da letra"
-            valor={s.borda}
-            set={(v) => definir('borda', v)}
-            min={0.4}
-            max={30}
-            passo={0.1}
-          />
-          <Interruptor
-            rotulo="Medida vale para a peça pronta"
-            dica="Com borda a peça fica maior que a arte. Ligado, a arte encolhe para a peça sair na medida pedida."
-            valor={s.bordaCompensa}
-            set={(v) => definir('bordaCompensa', v)}
-          />
-        </>
-      )}
-      {s.apoio === 'dois' && (
-        <CampoNumero
-          rotulo="Lábio"
-          dica="Quanto a borda sobe acima da chapa para travá-la"
-          valor={s.labio}
-          set={(v) => definir('labio', v)}
-          min={0}
-          max={8}
-          passo={0.1}
-          layout="linha"
-        />
+      {s.apoio === 'fora' && (
+        <p className="text-mini text-texto-3">
+          O batente sobe {formatarNumero(s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp, 1)} mm acima da parede de fora (a espessura da chapa, em Estilo) e o
+          degrau fica virado para fora. Sem chapa.
+        </p>
       )}
 
       <Segmentado<BatenteModo>
-        rotulo="Batente"
-        dica="O degrau onde a chapa apoia"
+        rotulo="Como a chapa se apoia"
+        dica="Se o degrau da chapa vem do fundo ou só logo abaixo dela"
         valor={s.batenteModo}
         set={(v) => definir('batenteModo', v)}
         opcoes={(Object.keys(BATENTES) as BatenteModo[]).map((k) => ({ valor: k, nome: BATENTES[k].nome, dica: BATENTES[k].desc }))}
@@ -696,15 +667,17 @@ function Chapa() {
         />
       )}
 
-      <Segmentado<'cortar' | 'imprimir'>
-        rotulo="A chapa é"
-        valor={s.chapaModo}
-        set={(v) => definir('chapaModo', v)}
-        opcoes={[
-          { valor: 'cortar', nome: 'Cortada', dica: 'Sai como DXF/SVG para plotter ou router' },
-          { valor: 'imprimir', nome: 'Impressa', dica: 'Sai como STL separado, para imprimir em translúcido' },
-        ]}
-      />
+      {s.apoio === 'dentro' && (
+        <Segmentado<'cortar' | 'imprimir'>
+          rotulo="A chapa é"
+          valor={s.chapaModo}
+          set={(v) => definir('chapaModo', v)}
+          opcoes={[
+            { valor: 'cortar', nome: 'Cortada', dica: 'Sai como DXF/SVG para plotter ou router' },
+            { valor: 'imprimir', nome: 'Impressa', dica: 'Sai como STL separado, para imprimir em translúcido' },
+          ]}
+        />
+      )}
 
       {areaChapa > 0 && (
         <p className="flex justify-between text-mini text-texto-3">
@@ -716,7 +689,7 @@ function Chapa() {
       <MaisOpcoes>
         <CampoNumero
           rotulo="Batente"
-          dica="O degrau interno onde a chapa apoia"
+          dica="Largura do degrau onde a chapa apoia"
           valor={s.batente}
           set={(v) => definir('batente', v)}
           min={0.5}

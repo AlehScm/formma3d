@@ -4,8 +4,8 @@ import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { partToGeometriesByRole, layerToGeometry } from '@/lib/geom/extrude';
-import type { Part, Role } from '@/lib/geom/modes';
+import { partToGeometriesByRole, partToGeometry, layerToGeometry } from '@/lib/geom/extrude';
+import type { Extra, Part, Role } from '@/lib/geom/modes';
 import { regionBounds, type Region } from '@/lib/geom/region';
 import type { Colocada } from '@/lib/print/arranjo';
 import { deslocamentosNaPlaca, paraCoordenadasDaPlaca, type Deslocamento } from '@/features/viewport/referencial';
@@ -27,8 +27,6 @@ export const CORES: Record<Role, { cor: string; metal: number; rug: number }> = 
   bolsao: { cor: '#e8913a', metal: 0.2, rug: 0.5 },
   bisel: { cor: '#6ea8ff', metal: 0.2, rug: 0.45 },
   espacador: { cor: '#d9534f', metal: 0.1, rug: 0.7 },
-  borda: { cor: '#b6e04a', metal: 0.15, rug: 0.55 },
-  labio: { cor: '#8cba2e', metal: 0.15, rug: 0.55 },
   batente: { cor: '#c9a0ff', metal: 0.15, rug: 0.55 },
 };
 
@@ -38,8 +36,6 @@ export const LEGENDA: [Role, string][] = [
   ['corpo', 'Corpo'],
   ['traseira', 'Traseira'],
   ['bolsao', 'Bolsao da chapa'],
-  ['borda', 'Borda de apoio'],
-  ['labio', 'Labio (trava a chapa)'],
   ['batente', 'Batente (aba da chapa)'],
   ['bisel', 'Chanfro'],
   ['espacador', 'Espacador do halo'],
@@ -157,6 +153,25 @@ function CaixaFootprint({ contorno, cor }: { contorno: Region; cor: string }) {
   );
 }
 
+/** Extra pronto para a cena, ja na posicao em que fica com o letreiro montado. */
+interface ExtraCena {
+  ordem: number;
+  /** Chapa (cortada ou impressa em translucido): material de acrilico. */
+  chapa: THREE.BufferGeometry | null;
+  /** Peca impressa a parte: cor por papel, como a peca principal. */
+  roles: Map<Role, THREE.BufferGeometry>;
+}
+
+function extraNaCena(e: Extra): ExtraCena {
+  const z = e.montagem.z;
+  if (e.kind === 'cut') {
+    return { ordem: e.montagem.ordem, chapa: layerToGeometry({ region: e.region, z0: z, z1: z + e.espessura }), roles: new Map() };
+  }
+  const layers = e.layers.map((x) => ({ ...x, z0: x.z0 + z, z1: x.z1 + z }));
+  if (e.material === 'translucido') return { ordem: e.montagem.ordem, chapa: partToGeometry({ layers }), roles: new Map() };
+  return { ordem: e.montagem.ordem, chapa: null, roles: partToGeometriesByRole({ layers }) };
+}
+
 function Peca({
   letras,
   centro,
@@ -191,34 +206,22 @@ function Peca({
     () =>
       letras.map((l) => ({
         roles: partToGeometriesByRole(l.part),
-        // Qualquer extra e uma chapa: cortada vira DXF, impressa vira STL separado.
-        // Casar por `kind` e nao por nome, senao renomear um extra some com ele do preview.
-        chapa: l.part.extras[0],
-        alturaZ: l.part.alturaZ,
+        extras: l.part.extras.map(extraNaCena),
       })),
     [letras]
   );
 
-  // A chapa fica no proprio Z; o "explode" so a afasta para a frente, para dar
-  // para ver as duas pecas separadas sem mexer na geometria.
-  const chapas = useMemo(
-    () =>
-      grupos.map((g) => {
-        if (!g.chapa) return null;
-        const region = g.chapa.kind === 'cut' ? g.chapa.region : g.chapa.layers[0]?.region;
-        if (!region) return null;
-        const esp = g.chapa.kind === 'cut' ? g.chapa.espessura : (g.chapa.layers[0]?.z1 ?? 2);
-        return layerToGeometry({ region, z0: g.alturaZ, z1: g.alturaZ + esp });
-      }),
-    [grupos]
-  );
-
   useEffect(
     () => () => {
-      for (const g of grupos) for (const geo of g.roles.values()) geo.dispose();
-      for (const c of chapas) c?.dispose();
+      for (const g of grupos) {
+        for (const geo of g.roles.values()) geo.dispose();
+        for (const x of g.extras) {
+          x.chapa?.dispose();
+          for (const geo of x.roles.values()) geo.dispose();
+        }
+      }
     },
-    [grupos, chapas]
+    [grupos]
   );
 
   return (
@@ -230,6 +233,38 @@ function Peca({
         const fora = naoCabem.has(l.chave);
         const sel = selecao.has(l.chave);
         const travada = travadas.has(l.chave);
+        const malha = (role: Role, geo: THREE.BufferGeometry, dz: number, key: string) => {
+          if (!camadas[camadaDoRole(role)]) return null;
+          const c = CORES[role];
+          return (
+            <mesh
+              key={key}
+              geometry={geo}
+              position={[0, 0, dz]}
+              castShadow
+              receiveShadow
+              // Travada: o clique atravessa, como camada travada no Photoshop.
+              onClick={(e) => {
+                if (travada) return;
+                e.stopPropagation();
+                onClicar(l.chave, modsDe(e));
+              }}
+              onContextMenu={(e) => {
+                if (travada) return;
+                e.stopPropagation();
+                onClicar(l.chave, modsDe(e), true);
+              }}
+            >
+              <meshStandardMaterial
+                color={fora ? COR_NAO_CABE : c.cor}
+                metalness={fora ? 0.1 : c.metal}
+                roughness={fora ? 0.6 : c.rug}
+                emissive={sel ? COR_SELECAO : '#000000'}
+                emissiveIntensity={sel ? 0.35 : 0}
+              />
+            </mesh>
+          );
+        };
         return (
           <PecaPosicionada
             key={l.chave}
@@ -238,47 +273,24 @@ function Peca({
             desloc={deslocamentos.get(l.chave) ?? null}
             registrar={registrar}
           >
-            {[...g.roles.entries()].map(([role, geo]) => {
-              if (!camadas[camadaDoRole(role)]) return null;
-              const c = CORES[role];
-              // A traseira tambem se afasta, para o explode mostrar as tres partes.
-              const dz = role === 'traseira' ? -explode * 0.6 : 0;
-              return (
-                <mesh
-                  key={role}
-                  geometry={geo}
-                  position={[0, 0, dz]}
-                  castShadow
-                  receiveShadow
-                  // Travada: o clique atravessa, como camada travada no Photoshop.
-                  onClick={(e) => {
-                    if (travada) return;
-                    e.stopPropagation();
-                    onClicar(l.chave, modsDe(e));
-                  }}
-                  onContextMenu={(e) => {
-                    if (travada) return;
-                    e.stopPropagation();
-                    onClicar(l.chave, modsDe(e), true);
-                  }}
-                >
-                  <meshStandardMaterial
-                    color={fora ? COR_NAO_CABE : c.cor}
-                    metalness={fora ? 0.1 : c.metal}
-                    roughness={fora ? 0.6 : c.rug}
-                    emissive={sel ? COR_SELECAO : '#000000'}
-                    emissiveIntensity={sel ? 0.35 : 0}
-                  />
-                </mesh>
-              );
-            })}
+            {/* A peca principal fica parada: o fundo impresso sai junto com ela, so os extras se afastam. */}
+            {[...g.roles.entries()].map(([role, geo]) => malha(role, geo, 0, role))}
             {fora && <CaixaFootprint contorno={l.part.contorno} cor={COR_NAO_CABE} />}
             {sel && <CaixaFootprint contorno={l.part.contorno} cor={COR_SELECAO} />}
-            {camadas.chapa && chapas[i] ? (
-              <mesh geometry={chapas[i]!} position={[0, 0, explode]}>
-                <meshPhysicalMaterial color="#cfe4ff" transparent opacity={0.45} roughness={0.15} metalness={0} transmission={0.6} />
-              </mesh>
-            ) : null}
+            {g.extras.map((x, j) => {
+              // Cada extra ja vem na posicao montada; a montagem so o afasta pela ordem dele.
+              const dz = explode * x.ordem;
+              return (
+                <group key={j}>
+                  {x.chapa && camadas.chapa ? (
+                    <mesh geometry={x.chapa} position={[0, 0, dz]}>
+                      <meshPhysicalMaterial color="#cfe4ff" transparent opacity={0.45} roughness={0.15} metalness={0} transmission={0.6} />
+                    </mesh>
+                  ) : null}
+                  {[...x.roles.entries()].map(([role, geo]) => malha(role, geo, dz, role))}
+                </group>
+              );
+            })}
           </PecaPosicionada>
         );
       })}

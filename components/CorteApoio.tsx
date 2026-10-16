@@ -2,91 +2,74 @@
 
 import type { Apoio } from '@/lib/geom/modes';
 
+const X_EXT = 40;
+const X_CHAPA = 120;
+const X_DEGRAU = X_CHAPA + 14;
+const Y_TOPO = 18;
+const Y_CHAPA = 42;
+const Y_BASE = 96;
+
 /**
- * Desenho em corte do encaixe da chapa. A diferenca entre os tres apoios e quase
- * toda interna -- vista de fora a peca fica do mesmo tamanho -- entao sem este
- * desenho o usuario troca a opcao e parece que nada aconteceu.
+ * Desenho em corte do batente. Um e o outro ao contrario: no de dentro a parede de fora
+ * sobe mais e a chapa entra na letra; no de fora o batente sobe e passa da parede de fora.
  *
  * Corte lateral, metade da letra: a esquerda e o lado de fora da peca.
  */
-export function CorteApoio({ apoio, comLabio }: { apoio: Apoio; comLabio: boolean }) {
-  const W = 260;
-  const H = 120;
-
-  // Fatia vertical da parede, em coordenadas do desenho
-  const xExt = 40; // face externa da peca
-  const xInt = 120; // face interna (vao)
-  const yTopo = 18;
-  const yBase = 96;
-  const yChapa = 42; // onde a chapa comeca
-
-  const borda = 18; // largura da aba, exagerada de proposito para dar para ver
-  const temBorda = apoio === 'fora' || apoio === 'dois';
-  const temDegrau = apoio === 'dentro' || apoio === 'dois';
-  const labio = comLabio && apoio === 'dois' ? 10 : 0;
-
-  const xParede = temBorda ? xExt - borda : xExt;
-  const xDegrau = temDegrau ? xInt + 14 : xInt;
-  const xChapaIni = temDegrau ? xInt : xParede + 8;
-
+export function CorteApoio({ apoio }: { apoio: Apoio }) {
   return (
     <figure className="m-0">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`Corte do apoio ${apoio}`}>
-        {/* traseira */}
-        <rect x={xParede} y={yBase} width={W - xParede - 20} height={10} fill="var(--color-peca-corpo)" opacity="0.5" />
-
-        {/* parede / corpo */}
-        <rect x={xParede} y={yChapa} width={xDegrau - xParede} height={yBase - yChapa} fill="var(--color-peca-corpo)" />
-
-        {/* aba externa: o que o apoio 'fora' e 'canaleta' acrescentam */}
-        {temBorda && (
-          <rect x={xParede} y={yTopo + labio} width={borda} height={yChapa - yTopo - labio + 2} fill="var(--color-peca-borda)" />
-        )}
-        {/* labio: sobe acima da chapa e trava ela pela frente */}
-        {labio > 0 && <rect x={xParede} y={yTopo} width={borda} height={labio} fill="var(--color-peca-borda)" opacity="0.65" />}
-
-        {/* parede fina que cerca a chapa, quando nao ha aba */}
-        {!temBorda && <rect x={xParede} y={yTopo} width={xChapaIni - xParede} height={yChapa - yTopo} fill="var(--color-peca-bolsao)" />}
-
-        {/* a chapa */}
-        <rect
-          x={xChapaIni}
-          y={yTopo + labio}
-          width={W - 20 - xChapaIni}
-          height={yChapa - yTopo - labio}
-          fill="var(--color-peca-chapa)"
-          opacity="0.85"
-        />
-        <text x={W - 24} y={yTopo + labio + (yChapa - yTopo - labio) / 2 + 3} textAnchor="end" fontSize="9" fill="var(--color-peca-chapa-texto)" fontWeight="600">
-          chapa
-        </text>
-
-        {/* degrau onde a chapa apoia */}
-        {temDegrau && (
-          <>
-            <rect x={xInt} y={yChapa} width={xDegrau - xInt} height={6} fill="var(--color-peca-bolsao)" />
-            <text x={xDegrau + 6} y={yChapa + 16} fontSize="8.5" fill="currentColor" opacity="0.6">
-              apoia aqui
-            </text>
-          </>
-        )}
-
-        {/* indicacao do lado de fora */}
-        <line x1={xParede} y1={yTopo - 8} x2={xParede} y2={yBase + 14} stroke="currentColor" strokeWidth="0.75" strokeDasharray="3 3" opacity="0.35" />
-        <text x={xParede - 4} y={yBase + 12} textAnchor="end" fontSize="8.5" fill="currentColor" opacity="0.55">
+      <svg viewBox="0 0 260 124" className="w-full" role="img" aria-label={`Corte do batente ${apoio === 'fora' ? 'de fora' : 'de dentro'}`}>
+        {apoio === 'fora' ? <BatenteFora /> : <BatenteDentro />}
+        {/* contorno da arte: igual nos dois */}
+        <line x1={X_EXT} y1={6} x2={X_EXT} y2={116} stroke="currentColor" strokeWidth="0.75" strokeDasharray="3 3" opacity="0.35" />
+        <text x={36} y={114} textAnchor="end" fontSize="8.5" fill="currentColor" opacity="0.55">
           fora
         </text>
-
-        {/* medida da borda */}
-        {temBorda && (
-          <>
-            <line x1={xParede} y1={H - 12} x2={xExt} y2={H - 12} stroke="var(--color-peca-borda)" strokeWidth="1.5" />
-            <text x={(xParede + xExt) / 2} y={H - 3} textAnchor="middle" fontSize="8.5" fill="var(--color-peca-borda)" fontWeight="600">
-              borda
-            </text>
-          </>
-        )}
       </svg>
     </figure>
+  );
+}
+
+function Rotulo({ x, y, children, fim = false }: { x: number; y: number; children: string; fim?: boolean }) {
+  return (
+    <text x={x} y={y} textAnchor={fim ? 'end' : 'start'} fontSize="8.5" fill="currentColor" opacity="0.6">
+      {children}
+    </text>
+  );
+}
+
+/** A parede de fora sobe mais; a chapa entra na letra e apoia no degrau de dentro. */
+function BatenteDentro() {
+  return (
+    <>
+      <rect x={X_EXT} y={Y_BASE} width={200} height={10} fill="var(--color-peca-traseira)" />
+      <rect x={X_EXT} y={Y_CHAPA} width={X_DEGRAU - X_EXT} height={Y_BASE - Y_CHAPA} fill="var(--color-peca-corpo)" />
+      <rect x={X_EXT} y={Y_TOPO} width={X_CHAPA - X_EXT} height={Y_CHAPA - Y_TOPO} fill="var(--color-peca-bolsao)" />
+      <rect x={X_CHAPA} y={Y_TOPO} width={120} height={Y_CHAPA - Y_TOPO} fill="var(--color-peca-chapa)" opacity="0.85" />
+      <text x={236} y={Y_TOPO + 15} textAnchor="end" fontSize="9" fill="var(--color-peca-chapa-texto)" fontWeight="600">
+        chapa
+      </text>
+      <rect x={X_CHAPA} y={Y_CHAPA} width={X_DEGRAU - X_CHAPA} height={6} fill="var(--color-peca-batente)" />
+      <Rotulo x={X_DEGRAU + 6} y={Y_CHAPA + 16}>
+        apoia aqui
+      </Rotulo>
+    </>
+  );
+}
+
+/** O de dentro ao contrario: o batente sobe e passa da parede de fora. */
+function BatenteFora() {
+  return (
+    <>
+      <rect x={X_EXT} y={Y_BASE} width={200} height={10} fill="var(--color-peca-traseira)" />
+      <rect x={X_EXT} y={Y_CHAPA} width={X_DEGRAU - X_EXT} height={Y_BASE - Y_CHAPA} fill="var(--color-peca-corpo)" />
+      <rect x={X_CHAPA} y={Y_TOPO} width={X_DEGRAU - X_CHAPA} height={Y_CHAPA - Y_TOPO} fill="var(--color-peca-batente)" />
+      <Rotulo x={X_DEGRAU + 6} y={Y_TOPO + 10}>
+        batente sobe
+      </Rotulo>
+      <Rotulo x={X_CHAPA - 4} y={Y_CHAPA - 6} fim>
+        degrau virado para fora
+      </Rotulo>
+    </>
   );
 }

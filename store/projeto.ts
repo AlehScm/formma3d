@@ -129,12 +129,9 @@ export interface EstadoProjeto {
   chapaModo: ChapaModo;
   folga: number;
   apoio: Apoio;
-  borda: number;
   batente: number;
   batenteModo: BatenteModo;
   batenteAltura: number;
-  labio: number;
-  bordaCompensa: boolean;
   comLed: boolean;
   furoFio: number;
   espacadores: number;
@@ -261,12 +258,9 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
   chapaModo: 'cortar',
   folga: 0.3,
   apoio: 'dentro',
-  borda: 3,
   batente: 2.5,
   batenteModo: 'parede',
   batenteAltura: 3,
-  labio: 1,
-  bordaCompensa: true,
   comLed: false,
   furoFio: 6,
   espacadores: 0,
@@ -308,6 +302,9 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
       if (q.chapaModo) m.chapaModo = q.chapaModo;
       if (q.apoio) m.apoio = q.apoio;
       if (q.batente !== undefined) m.batente = q.batente;
+      if (q.batenteModo) m.batenteModo = q.batenteModo;
+      if (q.batenteAltura !== undefined) m.batenteAltura = q.batenteAltura;
+      if (q.folga !== undefined) m.folga = q.folga;
       if (q.parede !== undefined) m.parede = q.parede;
       if (q.profundidade !== undefined) m.profundidade = q.profundidade;
       m.comLed = q.comLed ?? false;

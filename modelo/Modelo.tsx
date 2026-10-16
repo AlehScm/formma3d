@@ -3,10 +3,9 @@
 import { createContext, useContext, useDeferredValue, useMemo, type ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { textToLetters, normalizeLetters, type Letra } from '@/lib/text/glyphs';
-import { buildPart, alturaArte, orientar, descreverPeca, type Params, type Part, type Role } from '@/lib/geom/modes';
+import { buildPart, orientar, descreverPeca, type Params, type Part, type Role } from '@/lib/geom/modes';
 import type { Font } from 'opentype.js';
 import { regionArea, regionPerimeter, minThickness, regionBounds, type Region } from '@/lib/geom/region';
-import { colisoesPorBorda, avisoColisao } from '@/lib/geom/letreiro';
 import type { Insumos, Orcamento } from '@/lib/cost/calc';
 import { custosDoTrabalho, type Custos } from '@/lib/cost/trabalho';
 import { volumeMalha } from '@/lib/import/stl';
@@ -147,12 +146,9 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       chapaModo: s.chapaModo,
       folga: s.folga,
       apoio: s.apoio,
-      borda: s.borda,
       batente: s.batente,
       batenteModo: s.batenteModo,
       batenteAltura: s.batenteAltura,
-      labio: s.labio,
-      bordaCompensa: s.bordaCompensa,
       comLed: s.comLed,
       furoFio: s.furoFio,
       espacadores: s.espacadores,
@@ -195,12 +191,9 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       chapaModo: p.chapaModo,
       folga: p.folga,
       apoio: p.apoio,
-      borda: p.borda,
       batente: p.batente,
       batenteModo: p.batenteModo,
       batenteAltura: p.batenteAltura,
-      labio: p.labio,
-      bordaCompensa: p.bordaCompensa,
       comLed: p.comLed,
       furoFio: p.furoFio,
       espacadores: p.espacadores,
@@ -212,7 +205,6 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
   );
 
   const { arquivos, objetos3d, fonte, texto, altura, tracking, edicoes, fontesTexto, removidas, copias } = origem;
-  const { apoio, borda, bordaCompensa } = p;
 
   // Pecas de cada arquivo, na escala nativa (ver `nativasDoArquivo`).
   const pecasNativas = useMemo(
@@ -266,10 +258,9 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
     let todas: Crua[] = [];
     let vivas: (chave: string) => boolean = () => true;
     if (pecasNativas) {
-      const alvoDe = (a: ArquivoImportado) => alturaArte(a.altura, apoio, borda, bordaCompensa);
       const fila = (comDesligadas: boolean) =>
         enfileirarArquivos(
-          pecasNativas.map(({ a, pecas }) => ({ id: a.id, alvo: alvoDe(a), desativadas: comDesligadas ? new Set<string>() : a.desativadas, pecas }))
+          pecasNativas.map(({ a, pecas }) => ({ id: a.id, alvo: a.altura, desativadas: comDesligadas ? new Set<string>() : a.desativadas, pecas }))
         ).map((x) => {
           const bb = regionBounds(x.region);
           return { ...x, bounds: bb, baseW: bb.w, baseH: bb.h };
@@ -281,9 +272,8 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       todas = [...vivasLista, ...fila(true).filter((x) => !chavesVivas.has(x.chave))];
       vivas = (k) => chavesVivas.has(k);
     } else if (fonte && texto.trim()) {
-      const alvo = alturaArte(altura, apoio, borda, bordaCompensa);
       // A chave usa a posicao ANTES de filtrar: excluir uma letra nao pode renomear as outras.
-      todas = normalizeLetters(textToLetters(fonte, texto, { altura: alvo, tracking })).map((l, i) => ({
+      todas = normalizeLetters(textToLetters(fonte, texto, { altura, tracking })).map((l, i) => ({
         ...l,
         chave: `${l.nome}#${i}`,
         espessuraMin: minThickness(l.region),
@@ -298,7 +288,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       return b ? [{ ...b, chave: chaveCopia(c.id), nome: c.nome }] : [];
     });
     return [...todas.filter((b) => vivas(b.chave)), ...duplicadas].map(editar);
-  }, [pecasNativas, fonte, texto, altura, tracking, apoio, borda, bordaCompensa, edicoes, removidas, copias]);
+  }, [pecasNativas, fonte, texto, altura, tracking, edicoes, removidas, copias]);
 
   // Enquanto o slider se move, o React mantem o quadro anterior em vez de travar.
   // So primitivos ou valores estaveis: objeto novo a cada render anularia o efeito.
@@ -354,9 +344,6 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       vereditos.set(l.chave, v);
       if (!v.cabe) avisos.add(`A peça "${l.nome}" (${bp.w.toFixed(0)}×${bp.h.toFixed(0)} mm) ${descreverVeredito(v, mesa)} na ${mesa.nome}.`);
     }
-
-    const e = paramsDiferidos.apoio === 'dentro' ? 0 : paramsDiferidos.borda;
-    if (e > 0 && letras.length > 1) for (const c of colisoesPorBorda(letras, e)) avisos.add(avisoColisao(c, e));
 
     const alturaZ = letras[0]?.part.alturaZ ?? paramsDiferidos.profundidade;
     if (alturaZ > mesa.z) {

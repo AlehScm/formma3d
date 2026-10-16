@@ -288,8 +288,8 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
           {m.temChapa && (
             <Balao lado="top" largura="w-64" gatilho={<BotaoIcone icone={IconeMontagem} rotulo="Montagem" ativo={explode > 0} />}>
               <CampoNumero
-                rotulo="Afastar a chapa"
-                dica="Separa a chapa do corpo para conferir o encaixe"
+                rotulo="Afastar as peças"
+                dica="Separa do corpo a chapa ou a tampa para conferir como encaixam"
                 valor={explode}
                 set={setExplode}
                 min={0}

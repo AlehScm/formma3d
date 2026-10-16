@@ -11,7 +11,7 @@ import { parseFont, textToLetters } from '../lib/text/glyphs';
 import { buildPart, PRESETS, type Params, type PresetId } from '../lib/geom/modes';
 import { partToGeometry } from '../lib/geom/extrude';
 import { geometryToSTL } from '../lib/export/stl';
-import { minThickness, regionBounds } from '../lib/geom/region';
+import { minThickness, regionArea, regionBounds } from '../lib/geom/region';
 
 let falhas = 0;
 let total = 0;
@@ -80,7 +80,7 @@ for (const id of Object.keys(REFERENCIA) as PresetId[]) {
 console.log('\n== toda combinacao gera solido fechado ==');
 {
   const fechamentos = ['aberta', 'impressa', 'chapa'] as const;
-  const apoios = ['dentro', 'fora', 'dois'] as const;
+  const apoios = ['dentro', 'fora'] as const;
   let testadas = 0;
   let piorErro = 0;
   let pior = '';
@@ -95,10 +95,15 @@ console.log('\n== toda combinacao gera solido fechado ==');
         const part = buildPart(O.region, p, espO);
         const nome = `${frente}/${traseira}/${apoio}`;
         if (!part.layers.length) { vazias.push(nome); continue; }
-        const geo = partToGeometry(part);
-        if (!geo) { vazias.push(nome); continue; }
-        const erro = (Math.abs(volumeDaMalha(geometryToSTL(geo, 'O')) - part.volume) / part.volume) * 100;
-        if (erro > piorErro) { piorErro = erro; pior = nome; }
+        // A tampa do batente de fora e outra peca impressa: tem de fechar tambem.
+        const pecas = [part.layers, ...part.extras.flatMap((e) => (e.kind === 'stl' ? [e.layers] : []))];
+        for (const layers of pecas) {
+          const geo = partToGeometry({ layers });
+          if (!geo) { vazias.push(nome); continue; }
+          const vol = layers.reduce((t, l) => t + regionArea(l.region) * (l.z1 - l.z0), 0);
+          const erro = (Math.abs(volumeDaMalha(geometryToSTL(geo, 'O')) - vol) / vol) * 100;
+          if (erro > piorErro) { piorErro = erro; pior = nome; }
+        }
         testadas++;
       }
     }
@@ -115,7 +120,7 @@ console.log('\n== nada fica em voladico: z=0 e sempre face fechada ou solido =='
     ['frente aberta / fundo impresso', { frente: 'aberta', traseira: 'impressa' }],
     ['chapa dos dois lados', { frente: 'chapa', traseira: 'chapa' }],
     ['aberta dos dois lados', { frente: 'aberta', traseira: 'aberta' }],
-    ['com borda para fora', { frente: 'chapa', traseira: 'impressa', apoio: 'fora', borda: 3 }],
+    ['com batente de fora', { frente: 'chapa', traseira: 'impressa', apoio: 'fora' }],
   ];
   for (const [nome, p] of casos) {
     const part = buildPart(O.region, { ...p, macica: false, profundidade: 40 }, espO);

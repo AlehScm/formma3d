@@ -1,6 +1,5 @@
 import {
   shrinkRegion,
-  offsetRegion,
   diffRegion,
   regionArea,
   regionBounds,
@@ -14,7 +13,7 @@ import {
 // com frequencia em contorno de fonte.
 
 /** Papel de cada camada. Governa a cor no preview e o que o usuario entende. */
-export type Role = 'corpo' | 'face' | 'parede' | 'traseira' | 'bolsao' | 'bisel' | 'espacador' | 'borda' | 'labio' | 'batente';
+export type Role = 'corpo' | 'face' | 'parede' | 'traseira' | 'bolsao' | 'bisel' | 'espacador' | 'batente';
 
 /**
  * Como cada extremidade da peca e fechada.
@@ -29,31 +28,25 @@ export type Fechamento = 'aberta' | 'impressa' | 'chapa';
 export type ChapaModo = 'cortar' | 'imprimir';
 
 /**
- * Como a chapa se apoia na peca impressa.
+ * Onde fica o batente da chapa do lado de cima.
  *
- *  dentro - chapa menor que a letra, embutida num bolsao e apoiada num degrau interno.
- *  fora   - a peca cresce `borda` mm para fora; a chapa tem o tamanho da arte e fica
- *           cercada por essa borda. A peca final mede a arte + 2x borda.
- *  dois   - os dois ao mesmo tempo: degrau por baixo e borda por fora, com o labio
- *           subindo acima da chapa para travar pela frente.
+ *  dentro - a parede de fora sobe mais e o batente fica por dentro, mais baixo: o degrau
+ *           fica virado para dentro e a chapa entra na letra.
+ *  fora   - o contrario: o batente sobe e passa da parede de fora, e o degrau fica virado
+ *           para fora. Nao tem chapa. A letra nao muda de formato nem de tamanho.
  */
-export type Apoio = 'dentro' | 'fora' | 'dois';
+export type Apoio = 'dentro' | 'fora';
 
 export const APOIOS: Record<Apoio, { nome: string; curto: string; desc: string }> = {
   dentro: {
-    nome: 'Para dentro',
-    curto: 'Para dentro',
-    desc: 'Chapa menor que a letra, embutida num bolsão e apoiada num degrau interno.',
+    nome: 'Batente de dentro',
+    curto: 'De dentro',
+    desc: 'A parede de fora é mais alta e o batente fica por dentro: o degrau vira para dentro e a chapa entra na letra.',
   },
   fora: {
-    nome: 'Para fora (bordinha)',
-    curto: 'Para fora',
-    desc: 'A peça ganha uma borda para fora; a chapa tem o tamanho da arte e fica cercada por ela.',
-  },
-  dois: {
-    nome: 'Dos dois lados',
-    curto: 'Dois lados',
-    desc: 'Degrau por baixo e borda por fora, com o lábio travando a chapa pela frente.',
+    nome: 'Batente de fora',
+    curto: 'De fora',
+    desc: 'O batente sobe e passa da parede de fora: o degrau vira para fora. Sem chapa.',
   },
 };
 
@@ -117,17 +110,11 @@ export interface Params {
   folga: number;
 
   apoio: Apoio;
-  /** Quanto a peca avanca para fora do contorno da arte (apoios `fora` e `dois`). */
-  borda: number;
   /** Largura do degrau interno onde a chapa apoia. */
   batente: number;
   batenteModo: BatenteModo;
   /** Altura da parte reta da aba (modo `aba`), onde a chapa encosta. */
   batenteAltura: number;
-  /** Quanto a borda sobe acima da chapa, travando pela frente (apoio `dois`). */
-  labio: number;
-  /** A medida pedida vale para a peca pronta: a arte encolhe 2x borda para compensar. */
-  bordaCompensa: boolean;
 
   /** A peca leva fita de LED. Libera o furo de passagem e entra no custo. */
   comLed: boolean;
@@ -142,6 +129,16 @@ export interface Params {
   virar: boolean;
 }
 
+/**
+ * Onde um extra fica com o letreiro montado, no referencial da peca principal.
+ * `z` e onde o z=0 do extra encosta; `ordem` diz quanto e para que lado ele se afasta
+ * na vista de montagem (1 = um passo para cima, 2 = dois passos, -1 = um para baixo).
+ */
+export interface Montagem {
+  z: number;
+  ordem: number;
+}
+
 /** Peca que se imprime separada. */
 export interface ExtraStl {
   kind: 'stl';
@@ -150,6 +147,7 @@ export interface ExtraStl {
   layers: Layer[];
   material: string;
   lado: LadoNaMesa;
+  montagem: Montagem;
 }
 
 /** Contorno que se corta em chapa, nao se imprime. */
@@ -160,6 +158,7 @@ export interface ExtraCut {
   region: Region;
   espessura: number;
   lado: LadoNaMesa;
+  montagem: Montagem;
 }
 
 export type Extra = ExtraStl | ExtraCut;
@@ -171,7 +170,7 @@ export interface Part {
   volume: number;
   alturaZ: number;
   orientacao: string;
-  /** Footprint real da peca. Com borda e maior que a arte: vale para a mesa e para colisao. */
+  /** Footprint real da peca: vale para a mesa e para colisao. */
   contorno: Region;
 }
 
@@ -186,12 +185,9 @@ export const PARAMS_PADRAO: Params = {
   chapaModo: 'cortar',
   folga: 0.3,
   apoio: 'dentro',
-  borda: 3,
   batente: 2.5,
   batenteModo: 'parede',
   batenteAltura: 3,
-  labio: 1,
-  bordaCompensa: true,
   comLed: false,
   furoFio: 0,
   espacadores: 0,
@@ -264,50 +260,6 @@ export function samplePointsInside(region: Region, margem: number, count: number
   return picked;
 }
 
-/**
- * Dilata a letra por `borda` mm para fora, preservando os vazados internos que
- * fechariam no caminho.
- *
- * Dilatar o solido ENCOLHE os buracos: o miolo do 'e', do 'a' ou de um 'O' estreito
- * some antes do resto. Em vez de limitar a borda da letra inteira por causa de um
- * miolo pequeno, devolvemos aquele buraco ao tamanho original -- fica sem borda no
- * miolo, mas a letra continua legivel e a parede ali fica mais grossa, nunca mais fina.
- */
-export function dilataComMiolo(region: Region, borda: number, vaoMin: number): { base: Region; preservados: number } {
-  if (borda <= 0) return { base: region, preservados: 0 };
-
-  // 'round' garante que a caixa cresce exatamente `borda` por lado; com 'miter' uma
-  // ponta aguda cresceria ate o dobro e a medida final mentiria.
-  let base = offsetRegion(region, -borda, 'round');
-  let preservados = 0;
-
-  // Abertura morfologica: o que nao volta depois de erodir e dilatar era fino demais.
-  const sobrevive = (r: Region, raio: number): boolean =>
-    regionArea(offsetRegion(offsetRegion(r, raio, 'miter'), -raio, 'miter')) > 0.01;
-
-  for (const poly of region) {
-    for (const h of poly.holes) {
-      const buraco: Region = [{ outer: h, holes: [] }];
-      const apos = shrinkRegion(buraco, borda); // e assim que a dilatacao do solido o encolhe
-      if (!apos.length || !sobrevive(apos, vaoMin / 2)) {
-        base = diffRegion(base, buraco);
-        preservados++;
-      }
-    }
-  }
-  return { base, preservados };
-}
-
-/**
- * Altura a dar para a ARTE, dado o que o cliente pediu para a PECA.
- * Com borda, a peca fica `2 x borda` maior que a arte. No comercio a medida
- * contratada e a da peca pronta, entao por padrao a arte encolhe para compensar.
- */
-export function alturaArte(alturaPedida: number, apoio: Apoio, borda: number, compensar: boolean): number {
-  const e = apoio === 'dentro' ? 0 : Math.max(0, borda);
-  return compensar ? Math.max(1, alturaPedida - 2 * e) : alturaPedida;
-}
-
 /** Chanfro como degraus: a impressora ja deposita em camadas, entao escalonar e honesto. */
 function bevelLayers(region: Region, cfg: BiselCfg, zTop: number): Layer[] {
   const layers: Layer[] = [];
@@ -376,7 +328,8 @@ export function orientar(p: Pick<Params, 'frente' | 'traseira' | 'macica' | 'vir
 export function descreverPeca(p: Params): string {
   if (p.macica) return 'macica';
   const lado = (f: Fechamento) => (f === 'chapa' ? 'chapa' : f === 'impressa' ? 'impressa' : 'aberta');
-  return `frente-${lado(p.frente)}_fundo-${lado(p.traseira)}`;
+  const fora = p.apoio === 'fora' && (p.frente === 'chapa' || p.traseira === 'chapa') ? '_batente-fora' : '';
+  return `frente-${lado(p.frente)}_fundo-${lado(p.traseira)}${fora}`;
 }
 
 interface Extremidade {
@@ -395,7 +348,7 @@ interface Extremidade {
  */
 export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?: number): Part {
   const cfg: Params = { ...PARAMS_PADRAO, ...p, chanfro: { ...PARAMS_PADRAO.chanfro, ...p.chanfro } };
-  const { profundidade: T, parede, batente, folga, apoio, bico, chanfro } = cfg;
+  const { profundidade: T, parede, batente, folga, bico, chanfro } = cfg;
 
   const layers: Layer[] = [];
   const extras: Extra[] = [];
@@ -426,29 +379,15 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
     return fechar(layers, extras, avisos, region, o, cfg, espessuraMin);
   }
 
-  // --- a peca cresce para fora quando a borda existe ---
-  // Dilatar desde a base e o que impede a borda de ficar em balanço.
-  const e = temChapa && apoio !== 'dentro' ? Math.max(0, cfg.borda) : 0;
-  const { base, preservados } = dilataComMiolo(region, e, Math.max(bico * 2, 0.8));
-  if (preservados > 0) {
-    avisos.push(
-      `${preservados} vazado(s) interno(s) fechariam com borda de ${e}mm: mantidos no tamanho original, sem borda no miolo.`
-    );
-  }
-
-  const vao = (d: number): Region => diffRegion(base, shrinkRegion(base, d));
-  const temMiolo = (d: number): boolean => regionArea(shrinkRegion(base, d)) > 0.01;
+  const vao = (d: number): Region => diffRegion(region, shrinkRegion(region, d));
+  const temMiolo = (d: number): boolean => regionArea(shrinkRegion(region, d)) > 0.01;
 
   // Sem miolo nao ha parede: vira bloco cheio.
   const espCorpo = parede + (temChapa ? batente : 0);
   if (!temMiolo(espCorpo)) {
-    avisos.push(
-      e > 0
-        ? `Mesmo com borda de ${e}mm não sobra miolo para a parede: saiu maciça. Aumente a borda ou reduza parede/batente.`
-        : 'A letra é fina demais para ficar oca com esta parede: saiu maciça. Experimente o apoio "para fora".'
-    );
-    layers.push({ region: base, z0: 0, z1: T, role: 'corpo' });
-    return fechar(layers, extras, avisos, base, o, cfg, espessuraMin);
+    avisos.push('A letra é fina demais para ficar oca com esta parede e este batente: saiu maciça. Reduza a parede ou o batente.');
+    layers.push({ region, z0: 0, z1: T, role: 'corpo' });
+    return fechar(layers, extras, avisos, region, o, cfg, espessuraMin);
   }
 
   // Ordena as extremidades conforme a orientacao: `baixo` encosta na mesa.
@@ -457,17 +396,28 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
   const baixo = o.mesa === 'frente' ? exFrente : exTraseira;
   const cima = o.mesa === 'frente' ? exTraseira : exFrente;
 
-  const labio = apoio === 'dois' ? Math.max(0, cfg.labio) : 0;
-  const ocupa = (x: Extremidade, comLabio: boolean) =>
-    x.tipo === 'aberta' ? 0 : x.tipo === 'chapa' ? x.esp + (comLabio ? labio : 0) : x.esp;
-
-  const zBaixo = ocupa(baixo, false);
-  const zCima = T - ocupa(cima, true);
+  const ocupa = (x: Extremidade) => (x.tipo === 'aberta' ? 0 : x.esp);
+  const zBaixo = ocupa(baixo);
+  const zCima = T - ocupa(cima);
   const fundoMin = Math.max(bico * 2, 0.8);
 
   if (zCima - zBaixo < fundoMin) {
     avisos.push(`Profundidade de ${T}mm não cabe as duas faces: aumente a profundidade.`);
   }
+
+  const hAba = Math.max(0, cfg.batenteAltura);
+  const soAba = cfg.batenteModo === 'aba' && temChapa && batente > 0;
+
+  /** Parede que engrossa para dentro em degraus de 45°: cada degrau avanca no maximo a propria altura. */
+  const rampa = (de: number, ate: number, z0: number, role: Role): Layer[] => {
+    const passos = Math.max(1, Math.ceil((ate - de) / 0.4));
+    const h = (ate - de) / passos;
+    const out: Layer[] = [];
+    for (let k = 1; k <= passos; k++) {
+      out.push({ region: vao(de + ((ate - de) * k) / passos), z0: z0 + (k - 1) * h, z1: z0 + k * h, role });
+    }
+    return out;
+  };
 
   // --- extremidade de baixo ---
   monta(baixo, 0, zBaixo, true);
@@ -478,9 +428,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
     const papel: Role = temChapa ? 'corpo' : 'parede';
     const abaEmBaixo = baixo.tipo === 'chapa';
     const abaEmCima = cima.tipo === 'chapa';
-    const hAba = Math.max(0, cfg.batenteAltura);
     const precisa = (abaEmBaixo ? hAba : 0) + (abaEmCima ? hAba + batente : 0);
-    const soAba = cfg.batenteModo === 'aba' && temChapa && batente > 0;
 
     if (soAba && zCorpo1 - zCorpo0 >= precisa) {
       // Parede fina no corpo; o batente so onde a chapa encosta.
@@ -493,13 +441,8 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
       const zFina = abaEmCima ? zCorpo1 - hAba - batente : zCorpo1;
       if (zFina > z) layers.push({ region: vao(parede), z0: z, z1: zFina, role: papel });
       if (abaEmCima) {
-        // Aba no meio da parede ficaria no ar: por baixo, rampa de 45° em degraus
-        // que avancam para dentro no maximo a propria altura.
-        const passos = Math.max(1, Math.ceil(batente / 0.4));
-        const h = batente / passos;
-        for (let k = 1; k <= passos; k++) {
-          layers.push({ region: vao(parede + (batente * k) / passos), z0: zFina + (k - 1) * h, z1: zFina + k * h, role: 'batente' });
-        }
+        // Aba no meio da parede ficaria no ar: por baixo, rampa de 45° em degraus.
+        layers.push(...rampa(parede, parede + batente, zFina, 'batente'));
         layers.push({ region: vao(espCorpo), z0: zCorpo1 - hAba, z1: zCorpo1, role: 'batente' });
       }
     } else {
@@ -514,22 +457,32 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
     if (x.tipo === 'aberta' || z1 <= z0) return;
 
     if (x.tipo === 'impressa') {
-      let tampa = base;
+      let tampa = region;
       // O furo so faz sentido em tampa fechada, e so quando a peca leva LED.
       if (cfg.comLed && cfg.furoFio > 0) {
-        const pts = samplePointsInside(base, cfg.furoFio / 2 + parede, 1);
-        if (pts[0]) tampa = diffRegion(base, circleRegion(pts[0].x, pts[0].y, cfg.furoFio / 2));
+        const pts = samplePointsInside(region, cfg.furoFio / 2 + parede, 1);
+        if (pts[0]) tampa = diffRegion(region, circleRegion(pts[0].x, pts[0].y, cfg.furoFio / 2));
         else avisos.push('Não cabe furo de fio nesta letra: gerada sem furo.');
       }
       layers.push({ region: tampa, z0, z1, role: x.role, lado: x.qual });
       return;
     }
 
+    if (cfg.apoio === 'fora') {
+      // O de dentro ao contrario: o batente sobe e passa da parede de fora, e o degrau
+      // fica virado para fora. Sem chapa.
+      layers.push({ region: diffRegion(shrinkRegion(region, parede), shrinkRegion(region, espCorpo)), z0, z1, role: 'batente', lado: x.qual });
+      if (naMesa) {
+        avisos.push(
+          `O batente de fora da ${x.qual === 'frente' ? 'frente' : 'traseira'} imprime virado para baixo: a parede de fora fica em balanço. ` +
+            'Considere deixar esse lado impresso ou aberto.'
+        );
+      }
+      return;
+    }
+
     // chapa: a cerca sobe reta do fundo do rebaixo ate o topo, nada em balanço
-    const cerca = vao(parede);
-    const zChapaTopo = naMesa ? z1 : z1 - labio;
-    layers.push({ region: cerca, z0, z1: Math.max(z0, zChapaTopo), role: e > 0 ? 'borda' : 'bolsao', lado: x.qual });
-    if (!naMesa && labio > 0) layers.push({ region: cerca, z0: zChapaTopo, z1, role: 'labio', lado: x.qual });
+    layers.push({ region: vao(parede), z0, z1, role: 'bolsao', lado: x.qual });
 
     if (naMesa) {
       avisos.push(
@@ -537,12 +490,14 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
           'Considere deixar esse lado impresso ou aberto.'
       );
     }
+    fazerChapa(x, { z: naMesa ? 0 : z1 - x.esp, ordem: naMesa ? -1 : 1 });
+  }
 
-    // A chapa: o vao da cerca menos a folga. Com borda = parede + folga ela sai
-    // exatamente no contorno da arte original.
-    const chapa = shrinkRegion(base, parede + folga);
+  /** A chapa: o vao da cerca menos a folga. */
+  function fazerChapa(x: Extremidade, montagem: Montagem): void {
+    const chapa = shrinkRegion(region, parede + folga);
     if (!chapa.length) {
-      avisos.push('A chapa fica sem área nesta letra: reduza a parede ou aumente a borda.');
+      avisos.push('A chapa fica sem área nesta letra: reduza a parede.');
       return;
     }
     const nome = x.qual === 'frente' ? 'chapa-frente' : 'chapa-fundo';
@@ -554,6 +509,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
         layers: [{ region: chapa, z0: 0, z1: x.esp, role: 'face' }],
         material: 'translucido',
         lado: x.qual,
+        montagem,
       });
     } else {
       extras.push({
@@ -563,6 +519,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
         region: chapa,
         espessura: x.esp,
         lado: x.qual,
+        montagem,
       });
     }
   }
@@ -573,7 +530,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
       avisos.push('Espaçadores só fazem sentido com o lado de trás aberto: ignorados.');
     } else {
       const raio = Math.max(parede, 3);
-      const pts = samplePointsInside(base, raio + 0.5, 3);
+      const pts = samplePointsInside(region, raio + 0.5, 3);
       for (const pt of pts) {
         layers.push({ region: circleRegion(pt.x, pt.y, raio), z0: T, z1: T + cfg.espacadores, role: 'espacador' });
       }
@@ -582,20 +539,14 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
   }
 
   // --- avisos de fabricacao ---
-  if (e > 0 && e < bico) {
-    avisos.push(`Borda de ${e}mm é menor que uma linha do bico ${bico}mm: não vai aparecer na peça.`);
-  }
   if (temChapa && batente < bico * 2) {
     avisos.push(`Batente de ${batente}mm é menor que 2 linhas do bico ${bico}mm: a chapa vai apoiar no ar.`);
-  }
-  if (labio > 0 && parede < bico * 3) {
-    avisos.push(`Com lábio, a parede precisa de ${(bico * 3).toFixed(1)}mm ou mais para não descolar.`);
   }
   if (parede < bico * 2) {
     avisos.push(`Parede de ${parede}mm é menor que 2 linhas do bico ${bico}mm: use ${(bico * 2).toFixed(1)}mm ou mais.`);
   }
 
-  return fechar(layers, extras, avisos, base, o, cfg, espessuraMin);
+  return fechar(layers, extras, avisos, region, o, cfg, espessuraMin);
 }
 
 /** Volume analitico, avisos de espessura e empacotamento final. */

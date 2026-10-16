@@ -83,8 +83,10 @@ export function textoOrcamento(m: Modelo, o: Orcamento): string {
       : `Altura das maiúsculas: ${s.altura} mm | Profundidade: ${s.profundidade} mm`,
     `Largura total montado: ${m.bounds ? m.bounds.w.toFixed(0) : '?'} mm`,
     `Parede: ${s.parede} mm | Bico: ${s.bico} mm`,
-    ...(temChapa
-      ? [`Chapa: ${s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp} mm, folga ${s.folga} mm, batente ${s.batente} mm (${BATENTES[s.batenteModo].nome.toLowerCase()}), apoio ${APOIOS[s.apoio].curto}`]
+    ...(temChapa && s.apoio === 'fora'
+      ? [`${APOIOS.fora.nome}: ${s.batente} mm de largura, sobe ${s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp} mm acima da parede de fora (${BATENTES[s.batenteModo].nome.toLowerCase()}), sem chapa`]
+      : temChapa
+      ? [`Chapa: ${s.frente === 'chapa' ? s.frenteEsp : s.traseiraEsp} mm, folga ${s.folga} mm, batente ${s.batente} mm (${BATENTES[s.batenteModo].nome.toLowerCase()}), ${APOIOS[s.apoio].nome.toLowerCase()}`]
       : []),
     '',
     `Filamento: ${s.cfg.filamento} - ${o.gramas.toFixed(0)} g (${o.rolos.toFixed(2)} rolo)`,
