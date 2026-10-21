@@ -42,6 +42,8 @@ import { criarDesignIsolado, useDesign } from './estado';
 import { useFontes } from './fontes';
 import { VistaDupla } from '@/features/visor/VistaDupla';
 import { BotoesExportar, Casca, ListaModelos, nomeDoModelo, VoltarCatalogo } from './Casca';
+import { AdicionarOrcamento } from './AdicionarOrcamento';
+import { resumoDoModelo, valoresParaOrcamento } from '@/lib/marketplace/personalizar';
 import { Tela, type VistaModelo } from './Tela';
 
 const ESPERA_3D = 300; // ms parado antes de regerar o 3D
@@ -116,7 +118,8 @@ function Ferramenta({ icone: I, rotulo, onClick, ativo }: { icone: typeof IconeT
   );
 }
 
-export function ModoLivre({ janela, onUsar, onFechar }: { janela?: boolean; onUsar?: (d: Desenho) => void; onFechar?: () => void }) {
+/** `pecas`: slug -> gerador das pecas publicas da loja (vem do servidor), para o orcamento e a volta. */
+export function ModoLivre({ janela, onUsar, onFechar, pecas = {} }: { janela?: boolean; onUsar?: (d: Desenho) => void; onFechar?: () => void; pecas?: Record<string, string> }) {
   const [storeJanela] = useState(criarDesignIsolado);
   const store = janela ? storeJanela : useDesign;
   const { design, selecao, passado, futuro, alterar, alterarElementos, iniciarGesto, selecionar, desfazer, refazer, carregar } = useStore(store);
@@ -341,6 +344,23 @@ export function ModoLivre({ janela, onUsar, onFechar }: { janela?: boolean; onUs
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Peca da loja de cada modelo: a de origem (?produto=, vindo da pagina dela) ou a primeira com o gerador.
+  const [produtoOrigem, setProdutoOrigem] = useState<string | null>(null);
+  useEffect(() => { if (!janela) setProdutoOrigem(new URLSearchParams(window.location.search).get('produto')); }, [janela]);
+  const pecaDoModelo = (receita: string) => (produtoOrigem && pecas[produtoOrigem] === receita ? produtoOrigem : Object.keys(pecas).find((s) => pecas[s] === receita));
+  const comPeca = elementosModelo.flatMap((e) => { const slug = pecaDoModelo(e.receita); return slug ? [{ e, slug }] : []; });
+  const outros = elementosVisiveis(design).length - elementosModelo.length;
+  const medida = (w: number, h: number) => `Medida: ${Math.round(w)} × ${Math.round(h)} mm`;
+  const linhasPedido = comPeca.map(({ e, slug }) => {
+    // Um modelo so: a medida e a da peca inteira; com varios, a de cada um (com a escala da tela).
+    const r = geradosModelo[e.id]?.resultado;
+    const tamanho = elementosModelo.length === 1 && resultado?.itens.length ? fatiasDaPlanta(resultado).limites
+      : r?.itens.length ? (({ w, h }) => ({ w: w * Math.abs(e.escalaX), h: h * Math.abs(e.escalaY) }))(fatiasDaPlanta(r).limites) : null;
+    const partes = [resumoDoModelo(e.receita, e.valores), tamanho && medida(tamanho.w, tamanho.h), outros > 0 && `montado no editor com mais ${outros} elemento(s) (texto, forma ou imagem)`];
+    return { slug, personalizacao: partes.filter(Boolean).join('; '), valores: valoresParaOrcamento(e.receita, e.valores) };
+  });
+  const voltar = comPeca[0] ? { href: `/produto/${comPeca[0].slug}`, rotulo: 'Voltar à peça' } : {};
+
   const camadasDesenhadas = design.camadas.filter((c) => c.origem === 'desenhada');
   const linha = (rotulo: string, filho: ReactNode) => (
     <label className="flex items-center gap-2 text-mini text-texto-2">{rotulo}{filho}</label>
@@ -353,7 +373,7 @@ export function ModoLivre({ janela, onUsar, onFechar }: { janela?: boolean; onUs
       colunas="lg:grid-cols-[76px_minmax(0,1fr)_340px]"
       cabecalho={
         <>
-          {!janela && <VoltarCatalogo />}
+          {!janela && <VoltarCatalogo {...voltar} />}
           <input value={design.nome} onChange={(e) => alterar((d) => ({ ...d, nome: e.target.value }), { historico: false })} aria-label="Nome do design" className={cx(campo, 'w-44 font-semibold')} />
           <BotaoIcone icone={IconeDesfazer} rotulo="Desfazer" atalho="Ctrl+Z" disabled={!passado.length} onClick={desfazer} />
           <BotaoIcone icone={IconeRefazer} rotulo="Refazer" atalho="Ctrl+Y" disabled={!futuro.length} onClick={refazer} />
@@ -370,7 +390,10 @@ export function ModoLivre({ janela, onUsar, onFechar }: { janela?: boolean; onUs
             <Botao variante="primario" disabled={!podeUsarResultado || !fontesProntas || !desenhoUsavel} onClick={() => onUsar?.(designParaDesenho(design, fontes))}>Usar no modelo</Botao>
           </>
         ) : (
-          <BotoesExportar resultado={resultado} nome={nomeArquivo} pode={podeUsarResultado && fontesProntas} />
+          <>
+            <AdicionarOrcamento linhas={linhasPedido} pode={podeUsarResultado && fontesProntas} />
+            <BotoesExportar resultado={resultado} nome={nomeArquivo} pode={podeUsarResultado && fontesProntas} primario={!linhasPedido.length} />
+          </>
         )
       }
       contexto={

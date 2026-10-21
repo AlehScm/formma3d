@@ -26,6 +26,10 @@ export type Licenca = 'propria' | 'a-verificar' | 'comercial-ok';
 export type Visibilidade = 'publico' | 'oculto';
 /** Preco: ate o usuario validar custos, nenhum valor aparece. */
 export type Preco = { status: 'validacao' } | { status: 'definido'; valor: number };
+/** `gerador`: feito por um gerador nosso (`Produto.gerador`), com configuracao simples na pagina
+ *  e "Ver no gerador" para o resto. `editor`: montado num editor (`Produto.personalizar`). */
+export type Tag = 'gerador' | 'editor';
+export const TAGS: Tag[] = ['gerador', 'editor'];
 
 export interface Produto {
   slug: string;
@@ -45,8 +49,13 @@ export interface Produto {
   personalizavel: string[];
   /** Caminhos de fotos em `public/marketplace/<slug>/`; vazio ate as fotos chegarem. */
   midias: string[];
-  /** Onde a pessoa mesma monta a peca (um gerador ou o editor). */
+  tags: Tag[];
+  /** Id da ficha do gerador (lib/gerador/receitas/fichas.ts); so com a tag `gerador`. */
+  gerador?: string;
+  /** Editor onde a pessoa monta a peca (/editor, /placas); so com a tag `editor`. */
   personalizar?: { href: string; rotulo: string };
+  /** Registro criado da ficha, com textos provisorios: preencher no banco (data/produtos.json). */
+  revisar?: boolean;
   /** Ja impresso para clientes (portfolio), sem dizer quem. So o que esta confirmado. */
   jaImpresso?: boolean;
   /** Peca sazonal: so aparece com a campanha ligada (lib/marketplace/campanhas.ts). */

@@ -37,10 +37,31 @@ const legivel = (p: Parametro, v: Valores[string]): string => {
   if (p.tipo === 'fonte') return FONTES_WEB.find((f) => f.id === v)?.nome ?? String(v);
   if (p.tipo === 'cor') return String(v).toUpperCase();
   if (p.tipo === 'numero') return `${v}${p.unidade ? ` ${p.unidade}` : ''}`;
+  if (p.tipo === 'escolha') return p.opcoes.find((o) => o.valor === v)?.rotulo ?? String(v);
+  if (p.tipo === 'liga') return v ? 'Sim' : 'Não';
+  // A imagem nao cabe na mensagem: a pessoa manda pelo WhatsApp.
+  if (p.tipo === 'svg') return v ? 'imagem enviada (mandar pelo WhatsApp)' : '';
   return String(v).trim();
 };
 
 /** "Nomes: Ana; Fonte: Lobster; Base: #F5F5F4" -- so os campos mostrados, na ordem do gerador. */
 export function resumoPersonalizacao(campos: Parametro[], valores: Valores): string {
   return campos.map((p) => `${p.rotulo}: ${legivel(p, valores[p.id] ?? p.padrao)}`).filter((t) => !t.endsWith(': ')).join('; ');
+}
+
+/**
+ * O pedido que sai do gerador completo (/design): os textos e tudo o que mudou do padrao,
+ * so os campos visiveis, na ordem do gerador.
+ */
+export function resumoDoModelo(id: string, valores: Valores): string {
+  const { receita, valores: padrao } = prepararModelo(id, { base: 'padrao' });
+  const campos = receita.parametros.filter((p) => (!p.visivel || p.visivel(valores)) && p.id in valores && (p.tipo === 'texto' || valores[p.id] !== padrao[p.id]));
+  return resumoPersonalizacao(campos, valores) || 'Configuração padrão do modelo';
+}
+
+/** Valores para guardar no orcamento: sem os desenhos importados (pesam e nao vao na mensagem). */
+export function valoresParaOrcamento(id: string, valores: Valores): Valores {
+  const { receita } = prepararModelo(id, { base: 'padrao' });
+  const imagens = new Set(receita.parametros.filter((p) => p.tipo === 'svg').map((p) => p.id));
+  return Object.fromEntries(Object.entries(valores).filter(([k]) => !imagens.has(k)));
 }

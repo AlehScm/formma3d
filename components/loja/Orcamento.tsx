@@ -8,10 +8,12 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BotaoIconeMarca, BotaoMarca, CAMPO_MARCA } from '@/components/marca';
 import { useMontado, useOrcamento } from '@/features/loja/estado';
-import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
-import { rotuloPreco } from '@/lib/marketplace/formato';
+import { MENSAGENS, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
+import { comImagemPrimeiro, rotuloPreco } from '@/lib/marketplace/formato';
 import type { Produto } from '@/lib/marketplace/tipos';
+import { BarraFixa, useAbaixoDaTela } from './BarraFixa';
 import { ImagemProduto } from './CardProduto';
+import { Prateleira } from './Vitrine';
 import { IconeCarrinho, IconeCopiar, IconeMais, IconeMenos, IconeOk, IconeRemover } from './icones';
 
 export function Orcamento({ produtos }: { produtos: Produto[] }) {
@@ -24,6 +26,7 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
   const mensagem = MENSAGENS.orcamento(linhas.map(({ item, produto }) => ({ nome: produto.nome, quantidade: item.quantidade, cor: item.cor, observacao: item.observacao, personalizacao: item.personalizacao })));
   const whatsapp = linkWhatsapp(mensagem);
   const total = linhas.reduce((t, l) => t + l.item.quantidade, 0);
+  const [envio, envioAbaixo] = useAbaixoDaTela<HTMLDivElement>();
 
   const copiar = async () => {
     try {
@@ -38,12 +41,16 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
   if (!montado) return <div className="h-64 rounded-2xl bg-marca-branco shadow-marca-1" aria-busy="true" />;
   if (!linhas.length) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl bg-marca-branco p-12 text-center shadow-marca-1">
-        <IconeCarrinho className="size-10 text-marca-texto-3" aria-hidden />
-        <p className="m-0 font-display text-modulo text-marca-navy">Seu orçamento está vazio.</p>
-        <p className="m-0 text-marca-texto-2">Escolha as peças e use "Adicionar ao orçamento".</p>
-        <BotaoMarca href="/" formato="controle" variante="secao" className="mt-2">Ver as peças</BotaoMarca>
-      </div>
+      <>
+        <div className="flex flex-col items-center gap-3 rounded-2xl bg-marca-branco p-12 text-center shadow-marca-1">
+          <IconeCarrinho className="size-10 text-marca-texto-3" aria-hidden />
+          <p className="m-0 font-display text-modulo text-marca-navy">Seu orçamento está vazio.</p>
+          <p className="m-0 text-marca-texto-2">Escolha as peças e use "Adicionar ao orçamento".</p>
+          <BotaoMarca href="/pecas" formato="controle" variante="secao" className="mt-2">Ver as peças</BotaoMarca>
+        </div>
+        {/* Carrinho vazio com saida: as mais pedidas logo aqui. */}
+        <Prateleira titulo="Mais pedidas" produtos={comImagemPrimeiro(produtos.filter((p) => p.destaque)).slice(0, 12)} verTodos={{ href: '/pecas', rotulo: 'Ver todas as peças' }} />
+      </>
     );
   }
 
@@ -77,7 +84,7 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
         ))}
       </ul>
 
-      <aside className="flex flex-col gap-4 rounded-2xl bg-marca-branco p-5 shadow-marca-1 lg:sticky lg:top-40">
+      <aside className="flex flex-col gap-4 rounded-2xl bg-marca-branco p-5 shadow-marca-1 lg:sticky lg:top-28">
         <h2 className="m-0 font-display text-modulo text-marca-navy">Resumo</h2>
         <dl className="m-0 flex flex-col gap-2 text-item">
           <div className="flex justify-between"><dt className="text-marca-texto-2">Peças diferentes</dt><dd className="m-0 font-semibold tabular-nums">{linhas.length}</dd></div>
@@ -85,9 +92,19 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
           <div className="flex justify-between border-t border-marca-linha pt-2"><dt className="text-marca-texto-2">Preço</dt><dd className="m-0 font-semibold">a combinar</dd></div>
         </dl>
         {whatsapp ? (
-          <BotaoMarca href={whatsapp} formato="controle" variante="whatsapp">Pedir orçamento pelo WhatsApp</BotaoMarca>
+          <div ref={envio} className="flex flex-col gap-2">
+            <BotaoMarca href={whatsapp} formato="controle" variante="whatsapp">Pedir orçamento pelo WhatsApp</BotaoMarca>
+            <p className="m-0 text-center text-apoio text-marca-texto-2">{textoResposta()}</p>
+          </div>
         ) : (
           <p className="m-0 rounded-lg bg-marca-atencao-fundo px-3 py-2 text-apoio text-marca-atencao">O envio pelo WhatsApp abre em breve. Copie a lista e mande pelo canal que preferir.</p>
+        )}
+        {/* No celular o resumo fica depois da lista: o envio acompanha a rolagem ate la. */}
+        {whatsapp && envioAbaixo && (
+          <BarraFixa className="lg:hidden">
+            <p className="m-0 min-w-0 flex-1 text-item font-semibold text-marca-navy">{total} {total === 1 ? 'unidade' : 'unidades'}</p>
+            <BotaoMarca href={whatsapp} formato="controle" variante="whatsapp" className="shrink-0">Pedir pelo WhatsApp</BotaoMarca>
+          </BarraFixa>
         )}
         <BotaoMarca onClick={copiar} formato="controle" variante="contorno" rotulo={copiado ? 'Lista copiada' : 'Copiar a lista'}>
           {copiado ? <IconeOk className="size-4" aria-hidden /> : <IconeCopiar className="size-4" aria-hidden />}

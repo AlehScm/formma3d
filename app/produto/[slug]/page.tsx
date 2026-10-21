@@ -5,6 +5,7 @@ import { PaginaLoja } from '@/components/loja/Estrutura';
 import { ProdutoInterativo } from '@/components/loja/Produto';
 import { Modulo } from '@/components/loja/Modulo';
 import { Prateleira } from '@/components/loja/Vitrine';
+import { IconeOk } from '@/components/loja/icones';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { descricaoDoProduto, ldProduto, ldTrilha, metadadosPagina, urlAbsoluta } from '@/lib/seo';
 import { porSecao, porSlug, produtosPublicos } from '@/lib/marketplace/consultas';
@@ -60,8 +61,8 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
           {p.personalizavel.length > 0 && (
             <div>
               <h3 className="mt-0 mb-2 text-item font-semibold text-marca-navy">Você escolhe</h3>
-              <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
-                {p.personalizavel.map((o) => <li key={o} className="rounded-marca-pilula border border-marca-linha px-3 py-1.5 text-apoio text-marca-texto">{o}</li>)}
+              <ul className="m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0">
+                {p.personalizavel.map((o) => <li key={o} className="flex items-center gap-1.5 text-item text-marca-texto"><IconeOk className="size-4 shrink-0 text-marca-azul" aria-hidden />{o}</li>)}
               </ul>
             </div>
           )}

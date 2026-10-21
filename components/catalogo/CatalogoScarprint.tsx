@@ -2,27 +2,26 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { editoresLivres, emBreve, familias } from '@/features/catalogo/catalogo';
-import { FICHAS, type Ficha } from '@/lib/gerador/receitas/fichas';
+import { editoresLivres, emBreve, familias, tipoDaFamilia } from '@/features/catalogo/catalogo';
+import { FICHAS } from '@/lib/gerador/receitas/fichas';
 import { COBERTURA } from '@/lib/gerador/cobertura';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import { PaginaLoja } from '@/components/marketplace/Loja';
-import { BotaoMarca, CartaoMarca } from '@/components/marca';
+import { BotaoMarca, CartaoMarca, classeBotaoMarca } from '@/components/marca';
+import { cx } from '@/components/ui/cx';
 import './catalogo.css';
 
 type Familia = keyof typeof familias;
 
-/** Etiqueta do card: o que a coisa e, no singular. */
-const tipoDe: Record<Familia, string> = {
-  multicor: 'Letreiro em camadas', chaveiros: 'Chaveiro', texto: 'Letra caixa', placas: 'Placa',
-  qr: 'QR code', cortadores: 'Cortador', carimbos: 'Carimbo', parametricos: 'Peça paramétrica',
-};
 
 /** Modelos da vitrine do topo (fotos reais dos geradores). */
 const VITRINE = ['palavra-camadas', 'chaveiro-nome', 'social-camadas'];
 const RECEITAS_PARCIAIS = new Set(COBERTURA.filter((c) => c.status === 'parcial' && c.receita).map((c) => c.receita));
 
-export function CatalogoScarprint() {
+/** `naLoja`: gerador -> peca da loja feita com ele (vem do servidor; o banco nao vai para o navegador). */
+export function CatalogoScarprint({ naLoja = {} }: { naLoja?: Record<string, string> }) {
+  // Todo gerador tem peca no banco (verificar-marketplace); o /design e so a reserva.
+  const pecaDo = (id: string) => naLoja[id] ? `/produto/${naLoja[id]}` : `/design?modelo=${id}`;
   const [busca, setBusca] = useState('');
   const [familia, setFamilia] = useState<Familia | 'todos'>('todos');
   const termo = busca.trim().toLocaleLowerCase('pt-BR');
@@ -44,7 +43,7 @@ export function CatalogoScarprint() {
             <div>
               <div className="flex items-center gap-2 text-apoio font-semibold text-marca-azul-forte"><span className="size-[7px] rounded-full bg-marca-ciano ring-4 ring-marca-gelo" aria-hidden="true" /> Modelos 3D personalizados</div>
               <h1 id="catalog-title" className="my-5 font-display text-display text-marca-navy">Escolha. Personalize.<br /><em className="texto-gradiente not-italic">Imprima.</em></h1>
-              <p className="max-w-[525px] text-corpo text-marca-texto-2">Letreiros, chaveiros e placas que você ajusta com o seu texto, as suas cores e o seu tamanho, e baixa pronto para a impressora: 3MF multicor ou STL.</p>
+              <p className="max-w-[525px] text-corpo text-marca-texto-2">Letreiros, chaveiros e placas com o seu texto, as suas cores e o seu tamanho. Você personaliza, vê em 3D e pede o orçamento.</p>
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <BotaoMarca href="#modelos">Ver os modelos <span aria-hidden="true">↓</span></BotaoMarca>
                 <BotaoMarca href="/design" variante="contorno">Montar do zero</BotaoMarca>
@@ -59,7 +58,7 @@ export function CatalogoScarprint() {
               {VITRINE.map((id, i) => {
                 const f = FICHAS.find((x) => x.id === id)!;
                 return (
-                  <Link key={id} href={`/design?modelo=${id}`} className={`hero-peca hero-peca-${i + 1}`} tabIndex={-1}>
+                  <Link key={id} href={pecaDo(id)} className={`hero-peca hero-peca-${i + 1}`} tabIndex={-1}>
                     <Miniatura id={id} alt={f.nome} reserva={<VisualReserva id={id} family={f.familia} />} />
                     <span>{f.nome}</span>
                   </Link>
@@ -77,7 +76,7 @@ export function CatalogoScarprint() {
             </label>
             <div className="flex flex-wrap gap-2" aria-label="Filtrar por tipo">
               {filtros.map((f) => (
-                <button key={f} type="button" className={`cursor-pointer rounded-marca-pilula border px-3.5 py-2 text-apoio font-bold transition-colors ${familia === f ? 'border-marca-azul bg-marca-gelo text-marca-azul-forte' : 'border-marca-linha bg-marca-branco text-marca-texto-2 hover:bg-marca-palido'}`} onClick={() => setFamilia(f)} aria-pressed={familia === f}>
+                <button key={f} type="button" className={`min-h-11 cursor-pointer rounded-marca-pilula border px-3.5 py-2 text-apoio font-bold transition-colors ${familia === f ? 'border-marca-azul bg-marca-gelo text-marca-azul-forte' : 'border-marca-linha bg-marca-branco text-marca-texto-2 hover:bg-marca-palido'}`} onClick={() => setFamilia(f)} aria-pressed={familia === f}>
                   {f === 'todos' ? 'Todos' : familias[f]}
                 </button>
               ))}
@@ -85,9 +84,13 @@ export function CatalogoScarprint() {
           </div>
 
           {prontos.length > 0 && (
-            <Secao titulo="Geradores disponíveis" texto="Escolha um modelo, confira as opções disponíveis e exporte para imprimir.">
+            <Secao titulo="Geradores disponíveis" texto="Escolha um modelo, personalize e peça o orçamento.">
               <div className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-vao">
-                {prontos.map((f) => <CardGerador key={f.id} f={f} />)}
+                {prontos.map((f) => (
+                  <CardModelo key={f.id} href={pecaDo(f.id)} nome={f.nome} resumo={f.resumo} familia={f.familia}
+                    etiqueta={f.tipo ?? tipoDaFamilia[f.familia]} emEvolucao={RECEITAS_PARCIAIS.has(f.id)} acao="Personalizar"
+                    foto={<Miniatura id={f.id} alt={`Exemplo: ${f.nome}`} reserva={<VisualReserva id={f.id} family={f.familia} />} />} />
+                ))}
               </div>
             </Secao>
           )}
@@ -96,15 +99,9 @@ export function CatalogoScarprint() {
             <Secao titulo="Editores livres" texto="Para montar do zero, peça por peça, quando nenhum modelo pronto serve.">
               <div className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-vao">
                 {editores.map((e) => (
-                  <CartaoMarca key={e.id} href={e.href} className="catalog-card">
-                    <div className={`catalog-card-foto foto-${e.family}`}><VisualReserva id={e.visual} family={e.family} /></div>
-                    <div className="flex flex-1 flex-col px-4 pt-3.5 pb-4">
-                      <span className="self-start rounded-md bg-marca-gelo px-2.5 py-1 text-apoio font-extrabold text-marca-azul-forte">Editor · {tipoDe[e.family]}</span>
-                      <h3 className="mt-2 mb-1 text-item font-bold text-marca-navy">{e.title}</h3>
-                      <p className="m-0 line-clamp-2 text-apoio leading-normal text-marca-texto-2">{e.summary}</p>
-                      <div className="mt-auto flex items-center justify-between gap-3 pt-3 text-apoio text-marca-texto-3"><span>Montagem livre</span><span className="rounded-marca-pilula bg-marca px-4 py-2 text-apoio font-extrabold whitespace-nowrap text-white">Abrir <span aria-hidden="true">→</span></span></div>
-                    </div>
-                  </CartaoMarca>
+                  <CardModelo key={e.id} href={e.href} nome={e.title} resumo={e.summary} familia={e.family}
+                    etiqueta={`Editor · ${tipoDaFamilia[e.family]}`} acao="Abrir editor"
+                    foto={<VisualReserva id={e.visual} family={e.family} />} />
                 ))}
               </div>
             </Secao>
@@ -145,20 +142,23 @@ function Secao({ titulo, texto, children }: { titulo: string; texto: string; chi
   );
 }
 
-function CardGerador({ f }: { f: Ficha }) {
+/** Card de gerador e de editor livre: o mesmo molde e um botao so, igual em todos. O card
+ *  inteiro e o link (gerador -> pagina da peca; editor -> o editor). */
+function CardModelo({ href, nome, resumo, familia, etiqueta, emEvolucao, foto, acao }: {
+  href: string; nome: string; resumo: string; familia: Familia; etiqueta: string; emEvolucao?: boolean;
+  foto: React.ReactNode; acao: string;
+}) {
   return (
-    <CartaoMarca href={`/design?modelo=${f.id}`} className="catalog-card">
-      <div className={`catalog-card-foto foto-${f.familia}`}>
-        <Miniatura id={f.id} alt={`Exemplo: ${f.nome}`} reserva={<VisualReserva id={f.id} family={f.familia} />} />
-      </div>
+    <CartaoMarca href={href} className="catalog-card">
+      <div className={`catalog-card-foto foto-${familia}`}>{foto}</div>
       <div className="flex flex-1 flex-col px-4 pt-3.5 pb-4">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="self-start rounded-md bg-marca-gelo px-2.5 py-1 text-apoio font-extrabold text-marca-azul-forte">{f.tipo ?? tipoDe[f.familia]}</span>
-          {RECEITAS_PARCIAIS.has(f.id) && <span className="rounded-md bg-marca-atencao-fundo px-2.5 py-1 text-apoio font-extrabold text-marca-atencao" title="Algumas opções desta família ainda estão em desenvolvimento">Em evolução</span>}
+          <span className="self-start rounded-md bg-marca-gelo px-2.5 py-1 text-apoio font-extrabold text-marca-azul-forte">{etiqueta}</span>
+          {emEvolucao && <span className="rounded-md bg-marca-atencao-fundo px-2.5 py-1 text-apoio font-extrabold text-marca-atencao" title="Algumas opções desta família ainda estão em desenvolvimento">Em evolução</span>}
         </div>
-        <h3 className="mt-2 mb-1 text-item font-bold text-marca-navy">{f.nome}</h3>
-        <p className="m-0 line-clamp-2 text-apoio leading-normal text-marca-texto-2">{f.resumo}</p>
-        <div className="mt-auto flex items-center justify-between gap-3 pt-3 text-apoio text-marca-texto-3"><span>3MF multicor · STL</span><span className="rounded-marca-pilula bg-marca px-4 py-2 text-apoio font-extrabold whitespace-nowrap text-white">Criar <span aria-hidden="true">→</span></span></div>
+        <h3 className="mt-2 mb-1 text-item font-bold text-marca-navy">{nome}</h3>
+        <p className="m-0 line-clamp-2 text-apoio leading-normal text-marca-texto-2">{resumo}</p>
+        <div className="mt-auto pt-3"><span className={cx(classeBotaoMarca('primario', true), 'w-full')}>{acao} <span aria-hidden="true">→</span></span></div>
       </div>
     </CartaoMarca>
   );
@@ -168,7 +168,7 @@ function CardGerador({ f }: { f: Ficha }) {
 function VisualReserva({ id, family }: { id: string; family: Familia }) {
   switch (id) {
     case 'texto-livre': return <div className="preview-letters"><span>S</span><span>C</span><span>A</span><span>R</span></div>;
-    case 'palavra-camadas': return <div className="preview-layers"><span>BOLOS</span><span>BOLOS</span><span>BOLOS</span></div>;
+    case 'palavra-camadas': return <div className="preview-layers"><span>SCAR</span><span>SCAR</span><span>SCAR</span></div>;
     case 'social-camadas': return <div className="preview-social"><span>@</span><b>scarprint</b></div>;
     case 'placa-personalizada': return <div className="preview-sign"><span>STUDIO</span><small>DESIGN · CRIAÇÃO</small></div>;
     case 'placa-profissional': return <div className="preview-nameplate"><small>SEU NEGÓCIO</small><b>MARCA</b><i /></div>;
@@ -176,9 +176,9 @@ function VisualReserva({ id, family }: { id: string; family: Familia }) {
     case 'floco-neve': return <div className="preview-snowflake">❄</div>;
     case 'topo-bolo':
     case 'topo-bolo-circular': return <div className="preview-cake"><span>★</span><b>FESTA</b><i /></div>;
-    case 'marcador-pagina': return <div className="preview-bookmark"><span>ANA</span></div>;
-    case 'plaquinha-pet': return <div className="preview-pet"><span>🐾</span><b>LUNA</b></div>;
-    case 'pingente-familia': return <div className="preview-pendant"><span>♥ ANA</span><span>♥ LEO</span><span>● MEL</span></div>;
+    case 'marcador-pagina': return <div className="preview-bookmark"><span>SCAR</span></div>;
+    case 'plaquinha-pet': return <div className="preview-pet"><span>🐾</span><b>SCAR</b></div>;
+    case 'pingente-familia': return <div className="preview-pendant"><span>♥ SCAR</span><span>♥ PRINT</span><span>● 3D</span></div>;
     default:
       if (family === 'chaveiros') return <div className="preview-keychain"><i /><b>A</b></div>;
       if (family === 'cortadores') return <div className="preview-cutter"><span>✦</span></div>;

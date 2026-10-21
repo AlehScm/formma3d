@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { EditorDesign } from '@/features/design/EditorDesign';
+import { geradorDe, produtosPublicos } from '@/lib/marketplace/consultas';
 import { metadadosPagina } from '@/lib/seo';
 
 export const metadata: Metadata = metadadosPagina({
@@ -9,5 +10,7 @@ export const metadata: Metadata = metadadosPagina({
 });
 
 export default function DesignPage() {
-  return <EditorDesign />;
+  // Peca da loja -> gerador: o "Adicionar ao orcamento" e o "Voltar a peca" do editor.
+  const pecas = Object.fromEntries(produtosPublicos().flatMap((p) => { const g = geradorDe(p); return g ? [[p.slug, g]] : []; }));
+  return <EditorDesign pecas={pecas} />;
 }

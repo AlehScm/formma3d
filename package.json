@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "publicar": "node scripts/publicar.mjs",
+    "banco:sincronizar": "tsx scripts/banco-produtos.mts",
     "verificar-placas-2d": "tsx scripts/verificar-placas-2d.mts",
     "verificar-qr": "tsx scripts/verificar-qr.mts",
     "testar-arquitetura": "tsx scripts/verificar-orcamento.mts && tsx scripts/verificar-previas.mts && tsx scripts/verificar-download.mts && tsx scripts/verificar-estado-design.mts && tsx scripts/verificar-valores-modelo.mts && tsx scripts/verificar-manipuladores.mts && tsx scripts/verificar-letra-nome.mts && tsx scripts/verificar-configuracao-modelo.mts && tsx scripts/verificar-handoff-modelo.mts && tsx scripts/verificar-reuso-modelos.mts && tsx scripts/verificar-worker-reuso.mts && tsx scripts/verificar-desenho-importado.mts && tsx scripts/verificar-seo.mts",

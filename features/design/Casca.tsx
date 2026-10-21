@@ -36,17 +36,19 @@ export function Casca({ janela, cabecalho, acoes, contexto, colunas, children }:
   );
 }
 
-export const VoltarCatalogo = () => (
-  <Link href="/criar" className="rounded-md px-2 py-1 text-mini font-medium text-texto-2 hover:bg-superficie-3">← Monte a sua peça</Link>
+/** Volta para a peca da loja quando o modelo veio de uma; senao, para o catalogo. */
+export const VoltarCatalogo = ({ href = '/criar', rotulo = 'Monte a sua peça' }: { href?: string; rotulo?: string }) => (
+  <Link href={href} className="rounded-md px-2 py-1 text-mini font-medium text-texto-2 hover:bg-superficie-3">← {rotulo}</Link>
 );
 
-/** 3MF multicor, 3MF em pecas, STL e "Abrir no editor": os mesmos para qualquer modelo. */
-export function BotoesExportar({ resultado, nome, pode }: { resultado: Resultado | null | undefined; nome: string; pode: boolean }) {
+/** 3MF multicor, 3MF em pecas, STL e "Abrir no editor": os mesmos para qualquer modelo.
+ *  `primario`: falso quando "Adicionar ao orcamento" e a acao principal da tela. */
+export function BotoesExportar({ resultado, nome, pode, primario = true }: { resultado: Resultado | null | undefined; nome: string; pode: boolean; primario?: boolean }) {
   const router = useRouter();
   const ok = pode && !!resultado;
   return (
     <>
-      <Botao variante="primario" icone={IconeBaixar} disabled={!ok} onClick={async () => ok && baixar(`${nome}.3mf`, await blob3mfMontado(resultado!))}>3MF multicor</Botao>
+      <Botao variante={primario ? 'primario' : 'secundario'} icone={IconeBaixar} disabled={!ok} onClick={async () => ok && baixar(`${nome}.3mf`, await blob3mfMontado(resultado!))}>3MF multicor</Botao>
       <Botao icone={IconeBaixar} disabled={!ok} onClick={async () => ok && baixar(`${nome}-pecas.3mf`, await blob3mfSoltas(resultado!))}>3MF peças separadas</Botao>
       <Botao icone={IconeBaixar} disabled={!ok} onClick={async () => ok && baixar(`${nome}-stl.zip`, await zipStl(resultado!))}>STL (zip)</Botao>
       <Botao variante="fantasma" icone={IconeImprimir} disabled={!ok} onClick={() => ok && enviarAoEditor(resultado!, (r) => router.push(r))}>Abrir no editor</Botao>

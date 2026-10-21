@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { CatalogoScarprint } from '@/components/catalogo/CatalogoScarprint';
+import { geradorDe, produtosPublicos } from '@/lib/marketplace/consultas';
 import { metadadosPagina } from '@/lib/seo';
 
 export const metadata: Metadata = metadadosPagina({
@@ -9,5 +10,7 @@ export const metadata: Metadata = metadadosPagina({
 });
 
 export default function Page() {
-  return <CatalogoScarprint />;
+  // Gerador -> peca publica da loja feita com ele: o card abre a pagina da peca.
+  const naLoja = Object.fromEntries(produtosPublicos().flatMap((p) => { const g = geradorDe(p); return g ? [[g, p.slug]] : []; }));
+  return <CatalogoScarprint naLoja={naLoja} />;
 }

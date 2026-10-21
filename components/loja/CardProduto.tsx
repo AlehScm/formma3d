@@ -10,7 +10,7 @@ import { BotaoIconeMarca, BotaoMarca } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
-import { geradorDe, urlDaMidia } from '@/lib/marketplace/formato';
+import { geradorDe, textoDoPreco, urlDaMidia } from '@/lib/marketplace/formato';
 import { pecaDeNatal } from '@/lib/marketplace/campanhas';
 import type { Produto } from '@/lib/marketplace/tipos';
 import { IconeCarrinho, IconeFavorito, IconeImpressora, IconeOk } from './icones';
@@ -83,8 +83,8 @@ export function BotaoAdicionar({ slug, extra, grande, className }: { slug: strin
   );
 }
 
-/** Card no padrao das grandes lojas: foto grande, nome e uma linha de apoio. O card inteiro
- *  leva a peca; adicionar ao orcamento fica na pagina do produto. */
+/** Card no padrao das grandes lojas: foto grande, nome, tipo e preco ("Sob consulta" ate
+ *  ter valor). O card inteiro leva a peca; adicionar ao orcamento fica na pagina do produto. */
 /** `tema`: abre a peca ja com o tema da campanha no painel de personalizar (?tema=natal). */
 export function CardProduto({ produto: p, nivel = 'h3', tema }: { produto: Produto; nivel?: 'h2' | 'h3'; tema?: string }) {
   const Titulo = nivel;
@@ -100,6 +100,9 @@ export function CardProduto({ produto: p, nivel = 'h3', tema }: { produto: Produ
           <Link href={`/produto/${p.slug}${tema ? `?tema=${tema}` : ''}`} className="text-inherit no-underline after:absolute after:inset-0 after:content-[''] group-hover:underline">{p.nome}</Link>
         </Titulo>
         <p className="m-0 text-apoio text-marca-texto-2">{p.tipo}</p>
+        <p className={cx('m-0 mt-1 text-apoio', p.preco.status === 'definido' ? 'font-semibold text-marca-navy' : 'text-marca-texto-2')}>
+          {p.preco.status === 'definido' ? `a partir de ${textoDoPreco(p)}` : 'Sob consulta'}
+        </p>
         {p.jaImpresso && <p className="m-0 text-apoio font-semibold text-secao-forte">Já feito para clientes</p>}
       </div>
     </article>

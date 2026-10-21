@@ -7,9 +7,15 @@ import fs from 'fs';
 import { destinoDoMoldeAntigo, editoresLivres, moldes } from '../features/catalogo/catalogo';
 import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, geradorDe, pecaDaSecao, podeAparecer, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
 import { FOTOS } from '../lib/marketplace/fotos';
+import { textoResposta } from '../lib/marketplace/contato';
+import { comImagemPrimeiro, secoesComPecas, semRepetir, temImagem } from '../lib/marketplace/consultas';
+import { ehInterno } from '../lib/ambiente';
 import { BANNERS, COMO_FUNCIONA, PERGUNTAS, VANTAGENS } from '../lib/marketplace/loja';
 import { CASA, VITRINE_CASA } from '../lib/marketplace/universos';
-import { camposPrincipais, resumoPersonalizacao, valoresIniciais } from '../lib/marketplace/personalizar';
+import { camposPrincipais, resumoDoModelo, resumoPersonalizacao, valoresIniciais, valoresParaOrcamento } from '../lib/marketplace/personalizar';
+import { lerBanco, type RegistroProduto } from '../lib/marketplace/banco';
+import { sincronizarBanco } from '../lib/marketplace/banco-sincronizar';
+import { hrefDoGerador } from '../lib/marketplace/formato';
 import { PRESETS_NATAL, SLUGS_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva, diasAteONatal, pecaDeNatal } from '../lib/marketplace/campanhas';
 import { receitaPorId } from '../lib/gerador/receitas';
 import { FICHAS } from '../lib/gerador/receitas/fichas';
@@ -57,12 +63,11 @@ ok('pasta publica de fotos nao inclui itens ocultos ou desconhecidos', entradasF
 
 const rotas = new Set(['/editor', '/placas', '/criar']);
 const linkValido = (p: Produto) => {
-  const h = p.personalizar?.href;
-  if (!h) return true;
-  const g = geradorDe(p);
-  return g ? !!receitaPorId(g) : rotas.has(h);
+  if (p.tags.includes('gerador')) return !!p.gerador && !!receitaPorId(p.gerador) && !p.personalizar;
+  if (p.tags.includes('editor')) return !!p.personalizar && rotas.has(p.personalizar.href);
+  return !p.personalizar && !p.gerador;
 };
-ok('todo "personalizar" leva a um gerador ou rota que existe', PRODUTOS.every(linkValido), PRODUTOS.filter((p) => !linkValido(p)).map((p) => `${p.slug} -> ${p.personalizar!.href}`).join(', '));
+ok('tag gerador aponta para receita existente e tag editor para rota existente', PRODUTOS.every(linkValido), PRODUTOS.filter((p) => !linkValido(p)).map((p) => `${p.slug} -> ${p.gerador ?? p.personalizar?.href}`).join(', '));
 ok('rotas do editor e das placas existem', fs.existsSync('app/editor/page.tsx') && fs.existsSync('app/placas/page.tsx'));
 const linkEditorValido = (href: string) => {
   const [rota, query = ''] = href.split('?');
@@ -88,9 +93,41 @@ ok('todo ID gerado em /moldes tem destino existente', idsLegados.every(destinoLe
 ok('moldes especializados e alias de chaveiro mantêm o destino correto', destinoDoMoldeAntigo('texto-livre', () => false) === '/editor' && destinoDoMoldeAntigo('letreiro-nome', () => false) === '/editor' && destinoDoMoldeAntigo('placa-personalizada', () => false) === '/placas?preset=placa-personalizada' && destinoDoMoldeAntigo('placa-profissional', () => false) === '/placas?preset=placa-profissional' && destinoDoMoldeAntigo('chaveiro-logo', (id) => id === 'chaveiro-desenho') === '/design?modelo=chaveiro-desenho' && destinoDoMoldeAntigo('id-desconhecido', () => false) === '/criar');
 ok('nenhum link do site ainda aponta para rotas antigas de modelo', !PRODUTOS.some((p) => /^(?:\/moldes\/|\/design\/)/.test(p.personalizar?.href ?? '')) && !/(?:\/moldes\/|\/design\/)/.test(fs.readFileSync('components/catalogo/CatalogoScarprint.tsx', 'utf8') + fs.readFileSync('features/catalogo/catalogo.ts', 'utf8')));
 const produtoTeste = PRODUTOS[0]!;
-const comHref = (href: string) => ({ ...produtoTeste, personalizar: { href, rotulo: 'teste' } });
-ok('gerador reconhece query nova e formatos antigos internos', geradorDe(comHref('/design?modelo=chaveiro-nome')) === 'chaveiro-nome' && geradorDe(comHref('/design/chaveiro-nome')) === 'chaveiro-nome' && geradorDe(comHref('/moldes/chaveiro-nome')) === 'chaveiro-nome');
-ok('gerador não trata URL externa como rota interna', geradorDe(comHref('https://example.com/design?modelo=chaveiro-nome')) === undefined && geradorDe(comHref('//example.com/design?modelo=chaveiro-nome')) === undefined);
+ok('gerador vem da tag, nao do link', geradorDe({ ...produtoTeste, tags: ['gerador'], gerador: 'chaveiro-nome' }) === 'chaveiro-nome' && geradorDe({ ...produtoTeste, tags: [], gerador: 'chaveiro-nome' }) === undefined && geradorDe({ ...produtoTeste, tags: ['editor'], gerador: undefined, personalizar: { href: '/design?modelo=chaveiro-nome', rotulo: 'x' } }) === undefined);
+ok('"Ver no gerador" leva o modelo e a peca de origem', hrefDoGerador('chaveiro-nome', 'chaveiro-nome') === '/design?modelo=chaveiro-nome&produto=chaveiro-nome');
+
+// ---- banco mockado (data/produtos.json) ----
+const linhasBanco = JSON.parse(fs.readFileSync('data/produtos.json', 'utf8')) as RegistroProduto[];
+const colunas = Object.keys(linhasBanco[0]!).sort().join();
+ok('banco: todo registro tem as mesmas colunas', linhasBanco.every((r) => Object.keys(r).sort().join() === colunas));
+ok('banco: PRODUTOS sai do banco, um por registro', PRODUTOS.length === linhasBanco.length && PRODUTOS.every((p, i) => p.slug === linhasBanco[i]!.slug));
+const recusa = (mudanca: Partial<RegistroProduto>, campo: string) => { try { lerBanco([{ ...linhasBanco[0]!, ...mudanca }]); return false; } catch (e) { return (e as Error).message.includes(campo); } };
+ok('banco: registro invalido para o build com o campo', recusa({ secao: 'brinquedos' }, 'secao') && recusa({ tags: ['gerador'], gerador: null }, 'gerador') && recusa({ preco: { status: 'definido', valor: -1 } }, 'preco') && recusa({ tags: ['editor'], gerador: null, personalizar: null }, 'personalizar'));
+ok('banco: slug repetido para o build', (() => { try { lerBanco([linhasBanco[0]!, linhasBanco[0]!]); return false; } catch (e) { return /repetido/.test((e as Error).message); } })());
+ok('banco: sincronizar de novo nao muda nada', JSON.stringify(sincronizarBanco(linhasBanco, FICHAS)) === JSON.stringify(linhasBanco));
+const semFicha = sincronizarBanco(linhasBanco.filter((r) => r.gerador !== 'chaveiro-retangular'), FICHAS);
+const recriado = semFicha.find((r) => r.gerador === 'chaveiro-retangular');
+ok('banco: gerador sem peca ganha registro com os textos da ficha e revisar', !!recriado && recriado.revisar && recriado.tags.join() === 'gerador' && recriado.nome === FICHAS.find((f) => f.id === 'chaveiro-retangular')!.nome && semFicha.every((r, i) => i >= linhasBanco.length - 1 || r === linhasBanco.filter((x) => x.gerador !== 'chaveiro-retangular')[i]));
+const pecaDoGerador = (id: string) => produtosPublicos().find((p) => geradorDe(p) === id);
+const brinquedo = (id: string) => /brinquedo/i.test(FICHAS.find((f) => f.id === id)?.tipo ?? '');
+const vendaveis = FICHAS.filter((f) => !brinquedo(f.id));
+const semPeca = vendaveis.filter((f) => !pecaDoGerador(f.id));
+ok(`todo gerador tem peca publica na loja (${vendaveis.length - semPeca.length}/${vendaveis.length})`, !semPeca.length, semPeca.map((f) => f.id).join(', '));
+ok('gerador de brinquedo fica no banco, mas oculto (restricao legal)', FICHAS.filter((f) => brinquedo(f.id)).every((f) => PRODUTOS.some((p) => geradorDe(p) === f.id && p.visibilidade === 'oculto')));
+
+// ---- fluxo: /criar -> produto -> gerador -> orcamento ----
+const catalogo = fs.readFileSync('components/catalogo/CatalogoScarprint.tsx', 'utf8');
+ok('/criar: card de gerador abre a pagina da peca, sem "Pedir impressa"', /`\/produto\/\$\{naLoja\[id\]\}`/.test(catalogo) && /href=\{pecaDo\(f\.id\)\}/.test(catalogo) && !/Pedir impressa/.test(catalogo));
+ok('/criar: todo card tem o mesmo botao, um so', (catalogo.match(/<CardModelo /g) ?? []).length === 2 && /acao="Personalizar"/.test(catalogo) && /acao="Abrir editor"/.test(catalogo));
+ok('menu e rodape sem "Arquivos para imprimir"', !/Arquivos para imprimir|Baixe o arquivo|Para quem imprime/.test(['components/loja/Cabecalho.tsx', 'components/loja/Estrutura.tsx', 'app/not-found.tsx'].map((f) => fs.readFileSync(f, 'utf8')).join()));
+ok('produto com gerador tem "Ver no gerador (mais configurações)"', /hrefDoGerador\(gerador, p\.slug\)/.test(fs.readFileSync('components/loja/Produto.tsx', 'utf8')) && /Ver no gerador \(mais configurações\)/.test(fs.readFileSync('components/loja/Produto.tsx', 'utf8')));
+ok('/design tem "Adicionar ao orçamento" e recebe as pecas do servidor', /<AdicionarOrcamento /.test(fs.readFileSync('features/design/ModoLivre.tsx', 'utf8')) && /pecas=\{pecas\}/.test(fs.readFileSync('app/design/page.tsx', 'utf8')));
+const resumoChaveiro = resumoDoModelo('chaveiro-retangular', { ...valoresIniciais('chaveiro-retangular'), nomes: 'Ana', argola: false });
+ok('resumo do gerador: texto, escolha e liga legiveis', /Nomes?: Ana/.test(resumoChaveiro) && /: Não/.test(resumoChaveiro) && !/false|true/.test(resumoChaveiro), resumoChaveiro);
+const comImagem = FICHAS.map((f) => receitaPorId(f.id)!).find((r) => r.parametros.some((p) => p.tipo === 'svg' && !p.visivel))!;
+const idImagem = comImagem.parametros.find((p) => p.tipo === 'svg' && !p.visivel)!.id;
+ok('resumo do gerador: imagem vira aviso e nao vai nos valores do orcamento', /imagem enviada/.test(resumoDoModelo(comImagem.id, { [idImagem]: '<svg/>' })) && !(idImagem in valoresParaOrcamento(comImagem.id, { [idImagem]: '<svg/>', outro: 1 })));
+ok('resumo do gerador sem mudanca diz que e o padrao', resumoDoModelo('floco-neve', {}) === 'Configuração padrão do modelo');
 
 ok('busca ignora acento e maiuscula', buscar('PLACA DE AVALIACAO').some((p) => p.slug === 'placa-avaliacao-google'));
 ok('busca por secao', buscar('', 'casa').every((p) => p.secao === 'casa') && buscar('', 'casa').length > 0);
@@ -123,6 +160,16 @@ ok('a cor da marca nao muda dentro das secoes',!/\[data-secao[^\]]*\][^{]*\{[^}]
 ok('WhatsApp sem numero: sem link (botao em breve)', linkWhatsapp('oi', '') === null);
 const l = linkWhatsapp(MENSAGENS.produto(publicos[0]!), '+55 (19) 99999-0000');
 ok('WhatsApp com numero: so digitos e mensagem codificada', l === `https://wa.me/5519999990000?text=${encodeURIComponent(MENSAGENS.produto(publicos[0]!))}`, l ?? '');
+ok('prazo de resposta vazio nao promete nada', textoResposta('') === 'Respondemos pelo WhatsApp.' && textoResposta(' em até 1 dia útil ') === 'Respondemos pelo WhatsApp em até 1 dia útil.');
+ok('pedido do letreiro leva a descricao e nenhum valor', MENSAGENS.letreiro('*SCAR*').endsWith('*SCAR*') && !/R\$/.test(MENSAGENS.letreiro('*SCAR*')));
+
+// Custo, lucro e socios do /editor so no computador da loja.
+ok('interno so no localhost', ehInterno('localhost') && ehInterno('127.0.0.1') && ehInterno('[::1]') && !ehInterno('scarprint.com.br') && !ehInterno('alehscm.github.io'));
+ok('?cliente=1 mostra a versao do cliente no localhost', !ehInterno('localhost', '?cliente=1') && ehInterno('localhost', '?x=1'));
+const folha = fs.readFileSync('features/orcamento/Orcamento.tsx', 'utf8');
+const cliente = folha.slice(folha.indexOf('function FolhaCliente'), folha.indexOf('function FolhaInterna'));
+ok('folha do cliente sem custo, lucro, margem nem socio', cliente.length > 200 && !/custo|lucro|margem|s[oó]cio|brl\(/i.test(cliente));
+ok('painel e folha trocam pela regra de interno', /useInterno\(\) \? <PainelCustos \/> : <PainelCliente \/>/.test(folha) && /useInterno\(\) \? <FolhaInterna \/> : <FolhaCliente \/>/.test(folha));
 
 const fonte = fs.readFileSync('lib/marketplace/produtos.ts', 'utf8');
 ok('sem valores em reais no cadastro (custos ficam fora do repo)', !/R\$\s*\d/.test(fonte));
@@ -162,12 +209,25 @@ ok('Natal: textos sem prazo, frete ou promessa de entrega', !/frete|gr[aá]tis|\
 ok('Natal: contagem certa (5/out → 81, 25/dez → 0, 26/dez → 364)', diasAteONatal(new Date(2026, 9, 5)) === 81 && diasAteONatal(new Date(2026, 11, 25)) === 0 && diasAteONatal(new Date(2026, 11, 26)) === 364);
 ok('Natal no site: peças de Natal cadastradas e sem fitinha com a chave desligada', SLUGS_NATAL.length > 0 && SLUGS_NATAL.every((s) => PRODUTOS.some((p) => p.slug === s)) && !pecaDeNatal('chaveiro-nome', () => false) && pecaDeNatal('chaveiro-nome', () => true) && !pecaDeNatal('placa-pix', () => true));
 const homeNatal = fs.readFileSync('features/marketplace/MarketplaceHome.tsx', 'utf8');
-ok('Natal no site: a home só troca o topo e abre com presentes de Natal com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(homeNatal) && /natal \? .*<TopoNatal \/>.* : <TopoPersonalize \/>/.test(homeNatal) && /\{natal && \(/.test(homeNatal));
+ok('Natal no site: a home só troca o topo e abre com presentes de Natal com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(homeNatal) && /natal \? .*<TopoNatal \/>.* : <TopoPersonalize \/>/.test(homeNatal) && /const comNatal = natal && /.test(homeNatal) && /\{comNatal \? \(/.test(homeNatal));
 const cabecalho = fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8');
-ok('Natal no site: luzes, gorro e faixa do cabeçalho só com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(cabecalho) && /\{natal && <FioDeLuzes \/>\}/.test(cabecalho) && /\{natal && <GorroNoel/.test(cabecalho));
+ok('Natal no site: luzes, gorro e faixa do cabeçalho só com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(cabecalho) && /const varal = natal && /.test(cabecalho) && /\{varal && <FioDeLuzes \/>\}/.test(cabecalho) && /\{natal && <GorroNoel/.test(cabecalho));
 const paginaNatal = fs.readFileSync('app/natal/page.tsx', 'utf8');
 ok('Natal: com a chave desligada a página vira 404', /if \(!campanhaAtiva\('natal'\)\) notFound\(\)/.test(paginaNatal));
 ok('banners apontam para peças públicas', BANNERS.every((b) => !!porSlug(b.produto)));
+
+// Home: nenhuma peca em duas vitrines, as com imagem antes, secao vazia fora dos atalhos.
+const [a1, a2, a3] = [publicos.slice(0, 4), publicos.slice(2, 8), publicos.slice(0, 5)];
+const unicas = semRepetir([a1, a2, a3]);
+const todasUnicas = unicas.flat().map((p) => p.slug);
+ok('vitrines da home sem peça repetida', new Set(todasUnicas).size === todasUnicas.length && unicas[0]!.length === 4 && unicas[1]!.every((p) => !a1.includes(p)));
+ok('vitrine que ficaria com menos de 3 peças some', unicas[2]!.length === 0);
+const ordenadas = comImagemPrimeiro(publicos);
+const primeiraSem = ordenadas.findIndex((p) => !temImagem(p));
+ok('peças com imagem antes de "Imagem em preparação"', ordenadas.length === publicos.length && (primeiraSem < 0 || ordenadas.slice(primeiraSem).every((p) => !temImagem(p))));
+ok('menu, rodapé e atalhos só com seções que têm peça', secoesComPecas().every((s) => porSecao(s).length > 0) && secoesComContagem().filter((c) => c.total > 0).length === secoesComPecas().length);
+const card = fs.readFileSync('components/loja/CardProduto.tsx', 'utf8');
+ok('card mostra "Sob consulta" ou "a partir de"', /'Sob consulta'/.test(card) && /a partir de \$\{textoDoPreco\(p\)\}/.test(card));
 
 console.log(`\n${total - falhas}/${total} passaram\n`);
 if (falhas) process.exit(1);

@@ -30,6 +30,7 @@ import { regionBounds, type Region } from '@/lib/geom/region';
 import { edicaoVazia, escalaDeMm, mmDeEscala, SEM_EDICAO } from '@/lib/geom/pecaEditada';
 import { IMPRESSORAS, caberNaMesa, descreverVeredito } from '@/lib/print/impressoras';
 import { useCustos } from '@/features/orcamento/custos';
+import { useInterno } from '@/features/orcamento/interno';
 import { useProjeto } from '@/store/projeto';
 import { placaDe, useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type LetraComPeca } from '@/modelo/Modelo';
@@ -176,7 +177,8 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
  */
 function CustoDaPeca({ chave }: { chave: string }) {
   const o = useCustos().porPeca.get(chave);
-  if (!o) return null;
+  const interno = useInterno();
+  if (!o || !interno) return null;
   return (
     <div className="space-y-1">
       <p className="text-micro font-semibold uppercase tracking-wider text-texto-3">Custo desta peça</p>
@@ -377,6 +379,7 @@ function InspetorConjunto() {
   const definirSelecao = useInterface((s) => s.definirSelecao);
   const grupos = useProjeto((s) => s.grupos);
   const custos = useCustos();
+  const interno = useInterno();
 
   const itens = selecao.flatMap((k) => {
     const l = m.letras.find((x) => x.chave === k);
@@ -400,7 +403,7 @@ function InspetorConjunto() {
       />
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-4">
-          <Metrica rotulo="Preço junto" valor={brl(soma((o) => o.preco))} tom="sucesso" />
+          {interno && <Metrica rotulo="Preço junto" valor={brl(soma((o) => o.preco))} tom="sucesso" />}
           <Metrica rotulo="Filamento" valor={formatarPeso(soma((o) => o.gramas))} />
         </div>
         <ListaValores
@@ -408,7 +411,7 @@ function InspetorConjunto() {
           itens={[
             { rotulo: 'Peças', valor: String(itens.length) },
             { rotulo: 'Tempo de máquina', valor: formatarTempo(soma((o) => o.horas)) },
-            { rotulo: 'Custo', valor: brl(soma((o) => o.custo)) },
+            ...(interno ? [{ rotulo: 'Custo', valor: brl(soma((o) => o.custo)) }] : []),
             ...(espaco === 'imprimir'
               ? [{ rotulo: `Não cabem na ${m.mesa.nome.replace('Bambu Lab ', '')}`, valor: String(naoCabem), tom: naoCabem ? ('perigo' as const) : undefined }]
               : []),
@@ -447,6 +450,7 @@ function Resumo() {
   const m = useModelo();
   const o = useOrcamento();
   const profundidade = useProjeto((s) => s.profundidade);
+  const interno = useInterno();
 
   return (
     <>
@@ -454,7 +458,7 @@ function Resumo() {
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
         {o && (
           <div className="grid grid-cols-2 gap-4">
-            <Metrica rotulo="Preço" valor={brl(o.preco)} tom="sucesso" />
+            {interno && <Metrica rotulo="Preço" valor={brl(o.preco)} tom="sucesso" />}
             <Metrica rotulo="Filamento" valor={formatarPeso(o.gramas)} />
           </div>
         )}

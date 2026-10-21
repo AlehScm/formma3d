@@ -80,6 +80,17 @@ function Modelo({ peca, girar, imprimir, balancar }: { peca: PecaCarregada; gira
   );
 }
 
+/**
+ * A pagina continua rolando por cima da peca: o OrbitControls poe touch-action none no
+ * canvas, e no celular a peca ocupa a tela inteira. Arrastar na vertical rola a pagina,
+ * na horizontal gira. Roda do mouse tambem rola (zoom desligado).
+ */
+function RolarPagina() {
+  const gl = useThree((s) => s.gl);
+  useEffect(() => { gl.domElement.style.touchAction = 'pan-y'; }, [gl]);
+  return null;
+}
+
 /** `imprimir`: na primeira peca, ela "imprime" de baixo para cima (quem pede menos movimento nao recebe). */
 export default function CenaPeca({ peca, girar, interativo, imprimir = false, balancar = false }: { peca: PecaCarregada; girar: boolean; interativo?: boolean; imprimir?: boolean; balancar?: boolean }) {
   return (
@@ -88,7 +99,8 @@ export default function CenaPeca({ peca, girar, interativo, imprimir = false, ba
       <directionalLight position={[2, -3, 4]} intensity={1.7} />
       <directionalLight position={[-3, 2, 1.5]} intensity={0.55} />
       <Modelo peca={peca} girar={girar} imprimir={imprimir} balancar={balancar} />
-      {interativo && <OrbitControls enablePan={false} makeDefault />}
+      {interativo && <OrbitControls enablePan={false} enableZoom={false} makeDefault />}
+      {interativo && <RolarPagina />}
     </Canvas>
   );
 }

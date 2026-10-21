@@ -8,8 +8,9 @@ import { ESCOPO_MARCA, Wordmark } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { EstrelaNatal } from '@/features/marketplace/Natal';
 import { campanhaAtiva } from '@/lib/marketplace/campanhas';
-import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
-import { ORDEM_SECOES, SECOES, type Secao } from '@/lib/marketplace/tipos';
+import { CONTATO, MENSAGENS, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
+import { secoesComPecas } from '@/lib/marketplace/consultas';
+import { SECOES, type Secao } from '@/lib/marketplace/tipos';
 import { CabecalhoLoja } from './Cabecalho';
 
 const LINK_RODAPE = 'text-apoio text-marca-texto-2 no-underline hover:text-marca-azul hover:underline';
@@ -21,7 +22,7 @@ export function RodapeLoja() {
       <div className="conteiner-loja grid grid-cols-2 gap-8 px-margem md:grid-cols-4">
         <div>
           <h2 className="mt-0 mb-3 text-item font-semibold">Seções</h2>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">{ORDEM_SECOES.map((s) => <li key={s}><Link href={`/secao/${s}`} className={LINK_RODAPE}>{SECOES[s].nome}</Link></li>)}</ul>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">{secoesComPecas().map((s) => <li key={s}><Link href={`/secao/${s}`} className={LINK_RODAPE}>{SECOES[s].nome}</Link></li>)}</ul>
         </div>
         <div>
           <h2 className="mt-0 mb-3 text-item font-semibold">Monte a sua</h2>
@@ -30,7 +31,6 @@ export function RodapeLoja() {
             <li><Link href="/design" className={LINK_RODAPE}>Crie do zero</Link></li>
             <li><Link href="/editor" className={LINK_RODAPE}>Editor de letreiros</Link></li>
             <li><Link href="/placas" className={LINK_RODAPE}>Editor de placas</Link></li>
-            <li><Link href="/criar" className={LINK_RODAPE}>Seja apoiador (em breve)</Link></li>
           </ul>
         </div>
         <div>
@@ -43,11 +43,19 @@ export function RodapeLoja() {
         </div>
         <div>
           <h2 className="mt-0 mb-3 text-item font-semibold">Atendimento</h2>
-          {whatsapp ? <a href={whatsapp} className={LINK_RODAPE} target="_blank" rel="noopener noreferrer">Falar pelo WhatsApp</a> : <p className="m-0 text-apoio text-marca-texto-2">WhatsApp em breve.</p>}
+          {whatsapp ? (
+            <div className="flex flex-col gap-2">
+              <a href={whatsapp} className={cx(LINK_RODAPE, 'font-semibold text-marca-whatsapp')} target="_blank" rel="noopener noreferrer">WhatsApp {CONTATO.whatsappTexto}</a>
+              <p className="m-0 text-apoio text-marca-texto-2">{textoResposta()}</p>
+            </div>
+          ) : <p className="m-0 text-apoio text-marca-texto-2">WhatsApp em breve.</p>}
         </div>
       </div>
       <div className="conteiner-loja mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-marca-linha px-margem pt-6 text-apoio text-marca-texto-2">
-        <Wordmark tamanho={22} subtitulo={null} href={null} />
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Wordmark tamanho={22} subtitulo={null} href={null} />
+          <span>© {new Date().getFullYear()} Scarprint</span>
+        </span>
         {campanhaAtiva('natal') ? (
           <span className="flex items-center gap-1.5 font-semibold text-natal-vermelho">
             <EstrelaNatal />
@@ -67,7 +75,7 @@ export function PaginaLoja({ secaoAtual, todas, children, className, cru }: { se
     // scheme-light: o :root do app e escuro (editor); sem isto checkbox e select da loja saem pretos.
     <div data-secao={secaoAtual} className={cx(ESCOPO_MARCA, 'flex min-h-screen flex-col scheme-light')}>
       <a className="absolute -left-[9999px] top-2 z-50 rounded-md bg-marca-navy px-3.5 py-2.5 font-bold text-white focus:left-2" href="#conteudo">Pular para o conteúdo</a>
-      <CabecalhoLoja secaoAtual={secaoAtual} todas={todas} />
+      <CabecalhoLoja secaoAtual={secaoAtual} todas={todas} secoes={secoesComPecas()} />
       <main id="conteudo" className={cru ? className : cx('conteiner-loja flex min-w-0 flex-1 flex-col gap-8 px-margem pt-6', className)}>{children}</main>
       <RodapeLoja />
     </div>

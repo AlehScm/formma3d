@@ -10,10 +10,12 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { BotaoIconeMarca, BotaoMarca, CAMPO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { PecaViva } from '@/features/marketplace/PecaViva';
-import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
-import { geradorDe, rotuloPreco, urlDaMidia } from '@/lib/marketplace/formato';
+import { useInterno } from '@/features/orcamento/interno';
+import { MENSAGENS, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
+import { geradorDe, hrefDoGerador, rotuloPreco, urlDaMidia } from '@/lib/marketplace/formato';
 import type { Produto } from '@/lib/marketplace/tipos';
 import type { Valores } from '@/lib/gerador/tipos';
+import { BarraFixa, useAbaixoDaTela } from './BarraFixa';
 import { BotaoAdicionar, BotaoFavorito, ImagemProduto, ReservaProduto } from './CardProduto';
 import { PainelPersonalizar, usePersonalizacao } from './Personalizar';
 import { IconeMais, IconeMenos } from './icones';
@@ -67,11 +69,13 @@ export function CompraProduto({ produto: p, pedido, semPersonalizar }: { produto
   const [observacao, setObservacao] = useState('');
   const whatsapp = linkWhatsapp(MENSAGENS.orcamento([{ nome: p.nome, quantidade, cor, observacao, personalizacao: pedido?.personalizacao }]));
   const campo = CAMPO_MARCA;
+  const extra = { quantidade, cor, observacao, ...pedido };
+  const [botao, abaixo] = useAbaixoDaTela<HTMLDivElement>();
   return (
     <div className="flex flex-col gap-4 rounded-2xl bg-marca-branco p-5 shadow-marca-1">
       <div>
         <p className="m-0 font-display text-modulo text-marca-navy">{rotuloPreco(p)}</p>
-        {p.preco.status === 'validacao' && <p className="m-0 mt-1 text-apoio text-marca-texto-2">O valor depende do tamanho, das cores e da quantidade. Adicione ao orçamento e envie a lista.</p>}
+        {p.preco.status === 'validacao' && <p className="m-0 mt-1 text-apoio text-marca-texto-2">O valor depende do tamanho, das cores e da quantidade. Adicione ao orçamento e envie a lista. {textoResposta()}</p>}
       </div>
       <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
         <div>
@@ -95,7 +99,16 @@ export function CompraProduto({ produto: p, pedido, semPersonalizar }: { produto
         <textarea id="obs-produto" value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} className={campo} />
       </div>
       {pedido && <p className="m-0 rounded-marca-sm bg-marca-gelo px-3 py-2 text-apoio text-marca-navy"><span className="font-semibold">Vai junto:</span> {pedido.personalizacao}</p>}
-      <BotaoAdicionar slug={p.slug} extra={{ quantidade, cor, observacao, ...pedido }} grande />
+      <div ref={botao}><BotaoAdicionar slug={p.slug} extra={extra} grande /></div>
+      {abaixo && (
+        <BarraFixa>
+          <div className="min-w-0 flex-1">
+            <p className="m-0 truncate text-item font-semibold text-marca-navy">{p.nome}</p>
+            <p className="m-0 text-apoio text-marca-texto-2">{rotuloPreco(p)}{quantidade > 1 ? ` · ${quantidade} un.` : ''}</p>
+          </div>
+          <BotaoAdicionar slug={p.slug} extra={extra} grande className="w-auto! shrink-0" />
+        </BarraFixa>
+      )}
       {p.personalizar && !semPersonalizar && (
         <BotaoMarca href={p.personalizar.href} formato="controle" variante="contorno">
           {p.personalizar.rotulo}
@@ -114,12 +127,15 @@ export function CompraProduto({ produto: p, pedido, semPersonalizar }: { produto
 export function ProdutoInterativo({ produto: p, cabecalho }: { produto: Produto; cabecalho: ReactNode }) {
   const gerador = geradorDe(p);
   const pz = usePersonalizacao(gerador ?? null);
+  const interno = useInterno();
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-      <div className="lg:sticky lg:top-40"><GaleriaProduto produto={p} extras={pz.extras3d} /></div>
+      <div className="lg:sticky lg:top-28"><GaleriaProduto produto={p} extras={pz.extras3d} /></div>
       <div className="flex flex-col gap-4">
+        {/* So no localhost: registro criado da ficha, com textos e preco ainda por preencher. */}
+        {interno && p.revisar && <p className="m-0 rounded-marca-sm border border-marca-atencao bg-marca-atencao-fundo px-3 py-2 text-apoio font-semibold text-marca-atencao">Dados provisórios: preencher em data/produtos.json (descrição, preço, fotos) e tirar o &quot;revisar&quot;.</p>}
         {cabecalho}
-        {gerador && <PainelPersonalizar pz={pz} maisOpcoes={p.personalizar} />}
+        {gerador && <PainelPersonalizar pz={pz} maisOpcoes={{ href: hrefDoGerador(gerador, p.slug), rotulo: 'Ver no gerador (mais configurações)' }} />}
         <CompraProduto produto={p} pedido={pz.pedido} semPersonalizar={!!gerador} />
       </div>
     </div>

@@ -5,9 +5,8 @@
  * do gerador ao lado do 3D, que muda junto. So o que a pessoa mudou vai para o orcamento.
  * Os campos carregam sob demanda (puxam as receitas, como o 3D).
  */
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CAMPO_MARCA } from '@/components/marca';
+import { BotaoMarca, CAMPO_MARCA } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import type { Parametro, Valores } from '@/lib/gerador/tipos';
 import { FONTES_WEB } from '@/lib/text/fontes';
@@ -112,15 +111,19 @@ function CampoCor({ id, valor, set }: { id: string; valor: string; set: (v: stri
 function Campo({ p, valor, set }: { p: Parametro; valor: Valores[string]; set: (v: Valores[string]) => void }) {
   const id = `pz-${p.id}`;
   const rotulo = <label htmlFor={id} className="mb-1 block text-apoio font-semibold text-marca-navy">{p.rotulo}</label>;
+  // A dica da receita explica o campo ("separados por virgula", "vazio = sem nome").
+  const descricao = p.dica ? `${id}-dica` : undefined;
+  const dica = p.dica && <p id={descricao} className="m-0 mt-1 text-apoio text-marca-texto-2">{p.dica}</p>;
   if (p.tipo === 'texto') {
-    return <div>{rotulo}<input id={id} value={String(valor)} maxLength={p.maxCaracteres} placeholder={p.placeholder} onChange={(e) => set(e.target.value)} className={CAMPO_MARCA} /></div>;
+    return <div>{rotulo}<input id={id} value={String(valor)} maxLength={p.maxCaracteres} placeholder={p.placeholder} aria-describedby={descricao} onChange={(e) => set(e.target.value)} className={CAMPO_MARCA} />{dica}</div>;
   }
   if (p.tipo === 'fonte') {
     return (
       <div>{rotulo}
-        <select id={id} value={String(valor)} onChange={(e) => set(e.target.value)} className={CAMPO_MARCA}>
+        <select id={id} value={String(valor)} aria-describedby={descricao} onChange={(e) => set(e.target.value)} className={CAMPO_MARCA}>
           {FONTES_WEB.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
         </select>
+        {dica}
       </div>
     );
   }
@@ -128,9 +131,10 @@ function Campo({ p, valor, set }: { p: Parametro; valor: Valores[string]; set: (
     return (
       <div>{rotulo}
         <div className="flex items-center gap-3">
-          <input id={id} type="range" min={p.min} max={p.max} step={p.passo ?? 1} value={Number(valor)} onChange={(e) => set(Number(e.target.value))} className="min-w-0 flex-1 accent-marca-azul" />
+          <input id={id} type="range" min={p.min} max={p.max} step={p.passo ?? 1} value={Number(valor)} aria-describedby={descricao} onChange={(e) => set(Number(e.target.value))} className="min-w-0 flex-1 accent-marca-azul" />
           <span className="w-20 text-right text-item font-semibold text-marca-navy tabular-nums">{String(valor)} {p.unidade}</span>
         </div>
+        {dica}
       </div>
     );
   }
@@ -175,7 +179,8 @@ export function PainelPersonalizar({ pz, maisOpcoes }: { pz: ReturnType<typeof u
           </div>
         </fieldset>
       )}
-      {destino.href && <Link href={destino.href} className="text-item font-semibold text-marca-azul no-underline hover:underline">Mais opções no gerador completo</Link>}
+      {/* O que esta aqui vai junto para o gerador, onde ficam as outras configuracoes. */}
+      {destino.href && <BotaoMarca href={destino.href} variante="contorno" formato="controle" className="w-full">{maisOpcoes!.rotulo}</BotaoMarca>}
       {destino.erro && <p role="alert" className="m-0 text-apoio text-perigo">{destino.erro}</p>}
     </section>
   );

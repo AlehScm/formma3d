@@ -69,7 +69,7 @@ export function Listagem({ produtos, vazio, filtrosEmLinha = true, extra, grade 
     <Dialog.Root open={aberto} onOpenChange={setAberto}>
     <div className={cx('grid grid-cols-1 gap-6', !filtrosEmLinha && 'lg:grid-cols-[240px_minmax(0,1fr)]')}>
       {!filtrosEmLinha && (
-        <aside aria-label="Filtros" className="hidden self-start rounded-2xl bg-secao-superficie p-5 shadow-marca-1 lg:sticky lg:top-40 lg:block">
+        <aside aria-label="Filtros" className="hidden self-start rounded-2xl bg-secao-superficie p-5 shadow-marca-1 lg:sticky lg:top-28 lg:block">
           <h2 className="mt-0 mb-4 font-display text-modulo text-secao-tinta">Filtrar</h2>
           {filtros}
         </aside>

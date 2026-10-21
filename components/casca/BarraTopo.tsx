@@ -23,6 +23,7 @@ import { useProjeto } from '@/store/projeto';
 import { useInterface, type Espaco } from '@/store/interface';
 import { useModelo, useOrcamento } from '@/modelo/Modelo';
 import { FORMATOS_TEXTO } from '@/features/acoes/origem';
+import { useInterno } from '@/features/orcamento/interno';
 import {
   baixarChapaDXF,
   baixarChapaPDF,
@@ -48,6 +49,7 @@ export function BarraTopo() {
   const fecharImport = useProjeto((s) => s.fecharImport);
   const m = useModelo();
   const o = useOrcamento();
+  const interno = useInterno();
   const [editando, setEditando] = useState(false);
   const temPecas = m.letras.length > 0 || m.objetos.length > 0;
   const placas = useInterface((s) => s.placas.length);
@@ -56,7 +58,7 @@ export function BarraTopo() {
   return (
     <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-borda bg-superficie px-2 py-1 xl:h-12 xl:flex-nowrap xl:gap-3 xl:px-3 xl:py-0">
       <span className="select-none pl-1 text-medio font-semibold tracking-tight text-texto max-sm:hidden">
-        formma<span className="text-acento">3d</span>
+        Scar<span className="text-acento">print</span>
       </span>
 
       <Link href="/criar" className="flex h-8 shrink-0 items-center rounded-md px-2 text-mini font-medium text-texto-2 hover:bg-superficie-3">
@@ -129,12 +131,12 @@ export function BarraTopo() {
           abas={[
             { valor: 'desenhar', nome: 'Desenhar', icone: IconeDesenhar, dica: 'Como o letreiro é: texto, estilo e medidas', atalho: '1' },
             { valor: 'imprimir', nome: 'Imprimir', icone: IconeImprimir, dica: 'Máquina, mesa e arranjo das peças', atalho: '2' },
-            { valor: 'orcamento', nome: 'Orçamento', icone: IconeOrcamento, dica: 'Custo, margem e preço', atalho: '3' },
+            { valor: 'orcamento', nome: 'Orçamento', icone: IconeOrcamento, dica: interno ? 'Custo, margem e preço' : 'Pedir orçamento deste letreiro', atalho: '3' },
           ]}
         />
       </div>
 
-      {o && (
+      {o && interno && (
         <button
           type="button"
           onClick={() => setEspaco('orcamento')}
@@ -155,7 +157,7 @@ export function BarraTopo() {
         }
       >
         <MenuRotulo>Tudo de uma vez</MenuRotulo>
-        <MenuItem icone={IconeBaixar} detalhe=".zip" disabled={!o || !m.letras.length} onSelect={() => o && void baixarPacote(m, o)}>
+        <MenuItem icone={IconeBaixar} detalhe=".zip" disabled={!o || !m.letras.length} onSelect={() => o && void baixarPacote(m, o, interno)}>
           Pacote completo
         </MenuItem>
         {m.temCorte && (

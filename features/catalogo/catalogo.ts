@@ -3,6 +3,12 @@ export const familias = {
   cortadores: 'Cortadores', carimbos: 'Carimbos e ejetores', multicor: 'Camadas e cores', parametricos: 'Paramétricos',
 } as const;
 
+/** O que a peca e, no singular, quando a ficha nao diz (`Ficha.tipo`): etiqueta do card e tipo do produto. */
+export const tipoDaFamilia: Record<keyof typeof familias, string> = {
+  multicor: 'Letreiro em camadas', chaveiros: 'Chaveiro', texto: 'Letra caixa', placas: 'Placa',
+  qr: 'QR code', cortadores: 'Cortador', carimbos: 'Carimbo', parametricos: 'Peça paramétrica',
+};
+
 export const moldes = [
   { id: 'texto-livre', title: 'Texto editável', family: 'texto', summary: 'Monte palavras e ajuste cada letra, escala e espaçamento.', icon: 'Aa', ativo: true },
   { id: 'letreiro-nome', title: 'Letreiro de nome', family: 'texto', summary: 'Comece por um nome e refine a composição letra por letra.', icon: 'N', ativo: true },

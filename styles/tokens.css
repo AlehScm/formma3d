@@ -66,7 +66,7 @@
      material WebGL nao le variavel CSS. Mudou aqui, mude la. */
 
   /* ---- Tipografia ------------------------------------------------------------ */
-  --text-micro: 0.6875rem; /* 11px - unidade, legenda, rotulo de secao */
+  --text-micro: 0.75rem;   /* 12px - unidade, legenda, rotulo de secao (11px era pequeno demais para ler) */
   --text-mini: 0.75rem;    /* 12px - texto secundario, botoes */
   --text-base: 0.8125rem;  /* 13px - corpo da interface */
   --text-medio: 0.875rem;  /* 14px - titulo de painel */

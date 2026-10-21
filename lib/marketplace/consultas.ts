@@ -30,13 +30,30 @@ export function destaquesPorSecao(n = 4, lista: Produto[] = PRODUTOS): { secao: 
   });
 }
 
+/** Secoes com alguma peca publica: so elas entram no menu, no rodape e nos atalhos. */
+export const secoesComPecas = (lista: Produto[] = PRODUTOS): Secao[] => secoesComContagem(lista).filter((c) => c.total > 0).map((c) => c.secao);
+
+/**
+ * Vitrines da home sem repetir peca: cada uma pula o que as de cima ja mostraram. A que
+ * ficaria com menos de `minimo` some (a secao continua no menu e nos atalhos).
+ */
+export function semRepetir(vitrines: Produto[][], minimo = 3): Produto[][] {
+  const vistos = new Set<string>();
+  return vitrines.map((ps) => {
+    const novos = ps.filter((p) => !vistos.has(p.slug));
+    if (novos.length < minimo) return [];
+    novos.forEach((p) => vistos.add(p.slug));
+    return novos;
+  });
+}
+
 export const ehSecao = (s: string): s is Secao => (ORDEM_SECOES as string[]).includes(s);
 
 /** Busca sem acento nem maiuscula, so entre os publicos (ver busca.ts). */
 export const buscar = (termo: string, secao: Secao | 'todas' = 'todas', lista: Produto[] = PRODUTOS): Produto[] =>
   filtrarPorTexto(produtosPublicos(lista).filter((p) => secao === 'todas' || p.secao === secao), termo);
 
-export { geradorDe, textoDoPreco, urlDaMidia } from './formato';
+export { comImagemPrimeiro, geradorDe, temImagem, textoDoPreco, urlDaMidia } from './formato';
 
 /** Peca que representa a secao na vitrine 3D: a primeira publica com gerador (destaques antes). */
 export function pecaDaSecao(secao: Secao, lista: Produto[] = PRODUTOS): { gerador: string; nome: string; slug: string } | null {

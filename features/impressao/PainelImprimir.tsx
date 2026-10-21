@@ -31,6 +31,7 @@ import { useProjeto } from '@/store/projeto';
 import { placaDe, useInterface } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
 import { useCustos } from '@/features/orcamento/custos';
+import { useInterno } from '@/features/orcamento/interno';
 import { brl } from '@/lib/cost/calc';
 import { arrumarNaPlaca } from '@/features/acoes/arranjo';
 import {
@@ -268,6 +269,7 @@ function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; 
   const vista = useInterface((x) => x.placaVista);
   const verPlaca = useInterface((x) => x.verPlaca);
   const custos = useCustos();
+  const interno = useInterno();
   const daPlaca = placa === undefined ? undefined : custos.porPlaca.find((c) => c.indice === placa);
 
   return (
@@ -295,7 +297,7 @@ function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; 
           <span>
             {formatarPeso(daPlaca.orc.gramas)} · {formatarTempo(daPlaca.orc.horas)}
           </span>
-          <span className="font-semibold text-sucesso">{brl(daPlaca.orc.preco)}</span>
+          {interno && <span className="font-semibold text-sucesso">{brl(daPlaca.orc.preco)}</span>}
         </p>
       )}
       <ul className="-mx-2 space-y-0.5">
@@ -335,7 +337,7 @@ function GrupoPecas({ titulo, placa, itens }: { titulo: string; placa?: number; 
                     );
                   })}
                   <span className="tabular w-16 shrink-0 text-right font-mono text-micro text-texto-2">
-                    {custos.porPeca.has(it.chave) ? brl(custos.porPeca.get(it.chave)!.preco) : ''}
+                    {interno && custos.porPeca.has(it.chave) ? brl(custos.porPeca.get(it.chave)!.preco) : ''}
                   </span>
                 </button>
                 <BotaoIcone icone={IconeBaixar} rotulo={`Baixar STL de ${it.nome}`} tamanho="sm" onClick={it.baixar} />

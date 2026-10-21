@@ -25,14 +25,14 @@ export function Wordmark({ tamanho = 24, subtitulo = null, href = '/' }: { taman
 
 type Variante = 'primario' | 'contorno' | 'fantasma' | 'whatsapp' | 'secao' | 'sucesso';
 export const FOCO_MARCA = 'focus-visible:outline-none focus-visible:shadow-marca-foco';
-const BOTAO_BASE = 'inline-flex min-w-0 items-center justify-center gap-2 border border-transparent font-display no-underline cursor-pointer transition-[box-shadow,background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 motion-reduce:transition-none';
+const BOTAO_BASE = 'inline-flex min-w-0 items-center justify-center gap-2 border font-display no-underline cursor-pointer transition-[box-shadow,background-color,border-color] duration-150 disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 motion-reduce:transition-none';
 const BOTAO_VARIANTE: Record<Variante, string> = {
-  primario: 'bg-marca text-white shadow-marca-acao hover:shadow-marca-2',
+  primario: 'border-transparent bg-marca text-white shadow-marca-acao hover:shadow-marca-2',
   contorno: 'bg-marca-branco text-marca-navy border-marca-linha hover:border-marca-linha-forte hover:bg-marca-gelo',
-  fantasma: 'bg-transparent text-marca-azul hover:text-marca-azul-forte hover:underline underline-offset-4',
-  whatsapp: 'bg-marca-whatsapp text-white hover:bg-marca-whatsapp-forte',
-  secao: 'bg-secao-botao text-secao-botao-texto hover:bg-secao-botao-forte',
-  sucesso: 'bg-marca-sucesso text-white',
+  fantasma: 'border-transparent bg-transparent text-marca-azul hover:text-marca-azul-forte hover:underline underline-offset-4',
+  whatsapp: 'border-transparent bg-marca-whatsapp text-white hover:bg-marca-whatsapp-forte',
+  secao: 'border-transparent bg-secao-botao text-secao-botao-texto hover:bg-secao-botao-forte',
+  sucesso: 'border-transparent bg-marca-sucesso text-white',
 };
 export const classeBotaoMarca = (variante: Variante = 'primario', pequeno = false, formato: 'pilula' | 'controle' = 'pilula') =>
   cx(BOTAO_BASE, FOCO_MARCA, BOTAO_VARIANTE[variante], pequeno ? 'min-h-11 px-3 text-sm' : 'min-h-12 px-5 text-sm', formato === 'controle' ? 'rounded-marca-sm py-2 text-center font-semibold leading-snug whitespace-normal' : 'rounded-marca-pilula font-extrabold leading-none whitespace-nowrap');

@@ -69,9 +69,9 @@ export function baixarGabarito(m: Modelo): void {
 
 /**
  * O orcamento como texto: vai no .zip e e o que o botao "copiar para o cliente"
- * poe na area de transferencia.
+ * poe na area de transferencia. Sem `comValores`, so a ficha tecnica (fora da loja).
  */
-export function textoOrcamento(m: Modelo, o: Orcamento): string {
+export function textoOrcamento(m: Modelo, o: Orcamento, comValores = true): string {
   const s = useProjeto.getState();
   const temChapa = m.temChapa;
   return [
@@ -91,12 +91,16 @@ export function textoOrcamento(m: Modelo, o: Orcamento): string {
     '',
     `Filamento: ${s.cfg.filamento} - ${o.gramas.toFixed(0)} g (${o.rolos.toFixed(2)} rolo)`,
     `Tempo estimado: ${o.horas.toFixed(1)} h`,
-    '',
-    ...o.itens.map((i) => `${i.rotulo.padEnd(18)} ${brl(i.valor).padStart(12)}  ${i.detalhe}`),
-    `${'CUSTO'.padEnd(18)} ${brl(o.custo).padStart(12)}`,
-    `${'PREÇO SUGERIDO'.padEnd(18)} ${brl(o.preco).padStart(12)}  (margem ${s.cfg.margem}%)`,
-    ...linhasPorPlaca(m, s.cfg),
-    ...linhasSocios(o, s.cfg, s.pagarMaquina),
+    ...(comValores
+      ? [
+          '',
+          ...o.itens.map((i) => `${i.rotulo.padEnd(18)} ${brl(i.valor).padStart(12)}  ${i.detalhe}`),
+          `${'CUSTO'.padEnd(18)} ${brl(o.custo).padStart(12)}`,
+          `${'PREÇO SUGERIDO'.padEnd(18)} ${brl(o.preco).padStart(12)}  (margem ${s.cfg.margem}%)`,
+          ...linhasPorPlaca(m, s.cfg),
+          ...linhasSocios(o, s.cfg, s.pagarMaquina),
+        ]
+      : []),
     ...(m.avisos.length ? ['', 'AVISOS:', ...m.avisos.map((a) => '- ' + a)] : []),
   ].join('\r\n');
 }
@@ -144,7 +148,8 @@ function linhasPorPlaca(m: Modelo, cfg: CustoCfg): string[] {
   ];
 }
 
-export async function baixarPacote(m: Modelo, o: Orcamento): Promise<void> {
+/** `interno`: leva o orcamento com custos; fora da loja, so a ficha tecnica. */
+export async function baixarPacote(m: Modelo, o: Orcamento, interno: boolean): Promise<void> {
   const zip = new JSZip();
   const pasta = zip.folder(`${seguro(m.nomeProjeto)}_${m.desc}`);
   if (!pasta) return;
@@ -174,7 +179,7 @@ export async function baixarPacote(m: Modelo, o: Orcamento): Promise<void> {
     pasta.file('chapa_acm_todas.pdf', regionToPDF(chapas, { titulo: `${m.nomeProjeto} - chapa ACM` }));
   }
   pasta.file('gabarito_instalacao_1a1.svg', gabaritoSVG(m.letras));
-  pasta.file('orcamento.txt', textoOrcamento(m, o));
+  pasta.file(interno ? 'orcamento.txt' : 'ficha_tecnica.txt', textoOrcamento(m, o, interno));
 
   baixar(`${seguro(m.nomeProjeto)}_${m.desc}.zip`, await zip.generateAsync({ type: 'blob' }));
 }

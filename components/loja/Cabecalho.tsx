@@ -2,17 +2,18 @@
 
 /**
  * Cabecalho da loja (padrao marketplace): faixa fina, logo, busca grande, favoritos e o
- * carrinho de orcamento com contador, e a barra de categorias (as secoes).
+ * carrinho de orcamento com contador, e a barra de categorias (as secoes). So a linha da
+ * logo e da busca fica presa no topo: no celular o cabecalho inteiro tomava 30% da tela.
  */
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent } from 'react';
 import { ICONE_MARCA, Wordmark } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
 import { CAMPANHAS, campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { ContagemNatal, EstrelaNatal, FioDeLuzes, GorroNoel, Neve } from '@/features/marketplace/Natal';
-import { ORDEM_SECOES, SECOES, type Secao } from '@/lib/marketplace/tipos';
+import { SECOES, type Secao } from '@/lib/marketplace/tipos';
 import { IconeBusca, IconeCarrinho, IconeFavorito } from './icones';
 
 function Contador({ n }: { n: number }) {
@@ -46,15 +47,19 @@ function Busca() {
   );
 }
 
-/** `todas`: a pagina e o catalogo completo (/pecas), marcado na barra. */
-export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas?: boolean }) {
+/** `todas`: a pagina e o catalogo completo (/pecas), marcado na barra. `secoes`: so as que
+ *  tem peca publica (vem do servidor; o cadastro nao vai para o navegador). */
+export function CabecalhoLoja({ secaoAtual, todas, secoes }: { secaoAtual?: Secao; todas?: boolean; secoes: Secao[] }) {
   const montado = useMontado();
   const qtdOrcamento = useOrcamento((s) => s.itens.reduce((t, i) => t + i.quantidade, 0));
   const qtdFavoritos = useFavoritos((s) => s.slugs.length);
   const icone = cx(ICONE_MARCA, 'relative text-marca-navy no-underline');
   const natal = campanhaAtiva('natal');
+  // O varal de luzes enfeita a home e o especial; nas outras paginas so ocupava altura.
+  const pagina = usePathname();
+  const varal = natal && (pagina === '/' || pagina === '/natal' || pagina === '/natal/');
   return (
-    <header className="sticky top-0 z-30 bg-marca-branco shadow-marca-1">
+    <>
       {natal ? (
         <div data-campanha="natal" className="relative flex flex-wrap items-center justify-center gap-x-3 gap-y-1 overflow-hidden bg-natal-verde-noite px-margem py-2 text-center text-apoio text-natal-creme">
           <Neve className="opacity-50" />
@@ -67,29 +72,31 @@ export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas
           Peças impressas em 3D sob medida. <Link href="/criar" className="font-semibold text-marca-azul underline underline-offset-2">Monte a sua peça</Link>
         </div>
       )}
-      <div className="conteiner-loja flex flex-wrap items-center gap-x-6 gap-y-3 px-margem py-3 md:flex-nowrap">
-        <Wordmark />
-        <div className="order-3 w-full min-w-0 md:order-none md:flex-1">
-          <Suspense fallback={<div className="h-12 w-full rounded-marca-md border border-marca-linha" />}>
-            <Busca />
-          </Suspense>
+      <header className="sticky top-0 z-30 bg-marca-branco shadow-marca-1">
+        <div className="conteiner-loja flex flex-wrap items-center gap-x-6 gap-y-3 px-margem py-3 md:flex-nowrap">
+          <Wordmark />
+          <div className="order-3 w-full min-w-0 md:order-none md:flex-1">
+            <Suspense fallback={<div className="h-12 w-full rounded-marca-md border border-marca-linha" />}>
+              <Busca />
+            </Suspense>
+          </div>
+          <nav aria-label="Sua conta" className="ml-auto flex items-center gap-1">
+            <Link href="/busca?favoritos=1" className={icone} aria-label={`Favoritos${montado && qtdFavoritos ? ` (${qtdFavoritos})` : ''}`}>
+              <IconeFavorito className="size-6" aria-hidden />
+              {montado && <Contador n={qtdFavoritos} />}
+            </Link>
+            <Link href="/orcamento" className={cx(icone, 'w-auto gap-2 px-3 sm:flex')} aria-label={`Orçamento${montado && qtdOrcamento ? ` (${qtdOrcamento} peças)` : ''}`}>
+              <span className="relative">
+                <IconeCarrinho className="size-6" aria-hidden />
+                {natal && <GorroNoel className="absolute -top-3 -left-2.5 w-5 -rotate-12" />}
+                {montado && <Contador n={qtdOrcamento} />}
+              </span>
+              <span className="hidden text-item font-semibold sm:inline">Orçamento</span>
+            </Link>
+          </nav>
         </div>
-        <nav aria-label="Sua conta" className="ml-auto flex items-center gap-1">
-          <Link href="/busca?favoritos=1" className={icone} aria-label={`Favoritos${montado && qtdFavoritos ? ` (${qtdFavoritos})` : ''}`}>
-            <IconeFavorito className="size-6" aria-hidden />
-            {montado && <Contador n={qtdFavoritos} />}
-          </Link>
-          <Link href="/orcamento" className={cx(icone, 'w-auto gap-2 px-3 sm:flex')} aria-label={`Orçamento${montado && qtdOrcamento ? ` (${qtdOrcamento} peças)` : ''}`}>
-            <span className="relative">
-              <IconeCarrinho className="size-6" aria-hidden />
-              {natal && <GorroNoel className="absolute -top-3 -left-2.5 w-5 -rotate-12" />}
-              {montado && <Contador n={qtdOrcamento} />}
-            </span>
-            <span className="hidden text-item font-semibold sm:inline">Orçamento</span>
-          </Link>
-        </nav>
-      </div>
-      <nav aria-label="Categorias" className="border-t border-marca-linha">
+      </header>
+      <nav aria-label="Categorias" className="border-b border-marca-linha bg-marca-branco">
         <ul className="conteiner-loja my-0 flex list-none gap-1 overflow-x-auto px-margem py-1 [scrollbar-width:none] max-md:[mask-image:linear-gradient(to_right,black_88%,transparent)] [&::-webkit-scrollbar]:hidden">
           {campanhaAtiva('natal') && (
             <li className="shrink-0">
@@ -102,7 +109,7 @@ export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas
           <li className="shrink-0">
             <Link href="/pecas" aria-current={secaoAtual === undefined && todas ? 'page' : undefined} className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-navy no-underline hover:bg-marca-gelo aria-[current=page]:bg-marca-gelo">Todas as peças</Link>
           </li>
-          {ORDEM_SECOES.map((s) => (
+          {secoes.map((s) => (
             <li key={s} data-secao={s} className="shrink-0">
               <Link
                 href={`/secao/${s}`}
@@ -118,7 +125,7 @@ export function CabecalhoLoja({ secaoAtual, todas }: { secaoAtual?: Secao; todas
           </li>
         </ul>
       </nav>
-      {natal && <FioDeLuzes />}
-    </header>
+      {varal && <FioDeLuzes />}
+    </>
   );
 }

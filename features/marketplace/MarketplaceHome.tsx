@@ -2,7 +2,7 @@ import { IconeBusca, IconeConversa, IconeTridimensional } from '@/components/loj
 import { PaginaLoja } from '@/components/loja/Estrutura';
 import { Modulo } from '@/components/loja/Modulo';
 import { AtalhosCategoria, Prateleira } from '@/components/loja/Vitrine';
-import { destaquesPorSecao, pecaDaSecao, porSlug, produtosPublicos, secoesComContagem } from '@/lib/marketplace/consultas';
+import { comImagemPrimeiro, destaquesPorSecao, pecaDaSecao, porSlug, produtosPublicos, secoesComContagem, semRepetir } from '@/lib/marketplace/consultas';
 import { CAMPANHAS, PALETA_NATAL, SLUGS_NATAL, campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { ComPaleta } from '@/features/catalogo/Miniaturas';
 import { COMO_FUNCIONA, PERGUNTAS } from '@/lib/marketplace/loja';
@@ -16,35 +16,40 @@ const ORDEM_VITRINES: Secao[] = ['presentes', 'empresa', 'casa', 'colecionaveis'
 
 /**
  * Home no padrao das grandes lojas: topo, atalhos de categoria e o mesmo bloco de vitrine
- * repetido (mais pedidas e uma por secao), depois como funciona e perguntas. O catalogo
- * completo com filtros fica em /pecas.
+ * repetido (mais pedidas e uma por secao), com como funciona logo depois da primeira vitrine
+ * e perguntas no fim. Nenhuma peca aparece em duas vitrines; as com imagem vem antes. O
+ * catalogo completo com filtros fica em /pecas.
  */
 export function MarketplaceHome() {
-  const categorias = secoesComContagem().map((c) => {
+  // Secao sem peca publica nao vira atalho ("Em breve" nao levava a lugar nenhum).
+  const categorias = secoesComContagem().filter((c) => c.total > 0).map((c) => {
     const peca = pecaDaSecao(c.secao);
     return { ...c, produto: peca ? porSlug(peca.slug) : undefined };
   });
-  const maisPedidas = produtosPublicos().filter((p) => p.destaque).slice(0, 12);
   const porSecao = destaquesPorSecao(12);
   // Com a campanha de Natal ligada, a home abre no Natal: topo do enfeite e a vitrine de presentes.
   const natal = campanhaAtiva('natal');
   const presentesNatal = natal ? SLUGS_NATAL.map((s) => porSlug(s)).filter((p): p is Produto => !!p) : [];
-  const vitrines = ORDEM_VITRINES.map((s) => porSecao.find((d) => d.secao === s)!).filter((d) => d.produtos.length);
+  const secoes = ORDEM_VITRINES.map((s) => porSecao.find((d) => d.secao === s)!);
+  const [natalUnicos = [], maisPedidas = [], ...porSecaoUnicos] = semRepetir([
+    presentesNatal,
+    comImagemPrimeiro(produtosPublicos().filter((p) => p.destaque)).slice(0, 12),
+    ...secoes.map((d) => comImagemPrimeiro(d.produtos)),
+  ]);
+  const vitrines = secoes.map((d, i) => ({ secao: d.secao, produtos: porSecaoUnicos[i] ?? [] })).filter((d) => d.produtos.length);
+  const comNatal = natal && natalUnicos.length > 0;
+  const prateleiraMaisPedidas = <Prateleira titulo="Mais pedidas" produtos={maisPedidas} verTodos={{ href: '/pecas', rotulo: 'Ver todas as peças' }} />;
 
   return (
     <PaginaLoja>
       {natal ? <div data-campanha="natal"><TopoNatal /></div> : <TopoPersonalize />}
       <AtalhosCategoria itens={categorias} natal={natal} />
-      {natal && (
+      {/* A primeira vitrine (Natal ou mais pedidas) vem antes de como funciona. */}
+      {comNatal ? (
         <ComPaleta cores={PALETA_NATAL}>
-          <Prateleira titulo="Presentes de Natal" produtos={presentesNatal} tema="natal" verTodos={{ href: CAMPANHAS.natal.href, rotulo: 'Ver o especial de Natal' }} />
+          <Prateleira titulo="Presentes de Natal" produtos={natalUnicos} tema="natal" verTodos={{ href: CAMPANHAS.natal.href, rotulo: 'Ver o especial de Natal' }} />
         </ComPaleta>
-      )}
-
-      <Prateleira titulo="Mais pedidas" produtos={maisPedidas} verTodos={{ href: '/pecas', rotulo: 'Ver todas as peças' }} />
-      {vitrines.map(({ secao, produtos }) => (
-        <Prateleira key={secao} titulo={SECOES[secao].nome} secao={secao} produtos={produtos} verTodos={{ href: `/secao/${secao}`, rotulo: 'Ver todos' }} />
-      ))}
+      ) : prateleiraMaisPedidas}
 
       <Modulo id="como-titulo" titulo="Como funciona" subtitulo="Preços sob consulta: você monta o orçamento e a gente responde com o valor.">
         <ol className="m-0 grid list-none gap-5 p-0 md:grid-cols-3">
@@ -65,6 +70,11 @@ export function MarketplaceHome() {
           })}
         </ol>
       </Modulo>
+
+      {comNatal && prateleiraMaisPedidas}
+      {vitrines.map(({ secao, produtos }) => (
+        <Prateleira key={secao} titulo={SECOES[secao].nome} secao={secao} produtos={produtos} verTodos={{ href: `/secao/${secao}`, rotulo: 'Ver todos' }} />
+      ))}
 
       <Modulo id="perguntas-titulo" titulo="Perguntas frequentes">
         <div className="divide-y divide-marca-linha border-y border-marca-linha">

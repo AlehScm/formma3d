@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Botao,
+  classeBotao,
   CampoNumero,
   ListaValores,
   Metrica,
@@ -40,10 +41,31 @@ import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 import { useModelo, useOrcamento, type Modelo } from '@/modelo/Modelo';
 import { baixarPacote } from '@/features/acoes/exportar';
+import { CONTATO, MENSAGENS, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
+import { useInterno } from './interno';
 
 /* ----------------------------------------------------- barra lateral: custos */
 
+/** Custos so no computador da loja; o visitante ve como pedir o orcamento. */
 export function PainelOrcamento() {
+  return useInterno() ? <PainelCustos /> : <PainelCliente />;
+}
+
+function PainelCliente() {
+  return (
+    <div className="space-y-3 p-4 text-base text-texto-2">
+      <p className="text-medio font-semibold text-texto">Como pedir</p>
+      <ol className="list-decimal space-y-2 pl-5">
+        <li>Monte o letreiro em <span className="text-texto">Desenhar</span>: texto, estilo e medidas.</li>
+        <li>Confira as peças em <span className="text-texto">Imprimir</span>.</li>
+        <li>Aqui, peça o orçamento pelo WhatsApp: a mensagem já vai com a descrição do letreiro.</li>
+      </ol>
+      <p className="text-texto-3">{textoResposta()} Combinamos valor, cores e prazo com você antes de imprimir.</p>
+    </div>
+  );
+}
+
+function PainelCustos() {
   const cfg = useProjeto((x) => x.cfg);
   const definir = useProjeto((x) => x.definirCusto);
   const m = useModelo();
@@ -195,9 +217,9 @@ function MaisEnergia({ cfg, c }: { cfg: CustoCfg; c: <K extends keyof CustoCfg>(
 
 /**
  * Texto para mandar ao cliente. Diferente do orcamento interno: NAO leva custo,
- * margem nem taxa de falha -- so o que o cliente precisa saber.
+ * margem nem taxa de falha -- so o que o cliente precisa saber. Sem preco, so a descricao.
  */
-function textoCliente(m: Modelo, preco: number): string {
+function textoCliente(m: Modelo, preco?: number): string {
   const s = useProjeto.getState();
   const medida = m.bounds ? `${formatarNumero(m.bounds.w)} × ${formatarNumero(m.bounds.h)} mm` : '';
   const descricao = [
@@ -207,10 +229,79 @@ function textoCliente(m: Modelo, preco: number): string {
     m.temChapa && 'Com chapa de ACM encaixada.',
     s.comLed && 'Com iluminação de LED.',
   ].filter(Boolean);
-  return [...descricao, '', `Valor: *${brl(preco)}*`].join('\n');
+  return (preco === undefined ? descricao : [...descricao, '', `Valor: *${brl(preco)}*`]).join('\n');
 }
 
 export function FolhaOrcamento() {
+  return useInterno() ? <FolhaInterna /> : <FolhaCliente />;
+}
+
+/** O visitante: o letreiro descrito e o pedido pelo WhatsApp. Sem custo, margem nem socio. */
+function FolhaCliente() {
+  const m = useModelo();
+  const profundidade = useProjeto((x) => x.profundidade);
+  const comLed = useProjeto((x) => x.comLed);
+  const [copiado, setCopiado] = useState(false);
+
+  if (!m.letras.length) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Vazio icone={IconeOrcamento} titulo="Monte o letreiro primeiro">
+          Escreva o texto em Desenhar ou abra um desenho do Corel ou do Illustrator. Depois volte aqui para pedir o orçamento.
+        </Vazio>
+      </div>
+    );
+  }
+
+  const descricao = textoCliente(m);
+  const whatsapp = linkWhatsapp(MENSAGENS.letreiro(descricao));
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(descricao);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      setCopiado(false);
+    }
+  };
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-2xl space-y-4 p-4 sm:p-6">
+        <header>
+          <p className="text-micro font-medium uppercase tracking-wider text-texto-3">Orçamento</p>
+          <h1 className="mt-0.5 truncate text-grande font-semibold text-texto">{m.nomeProjeto || 'Sem nome'}</h1>
+        </header>
+        <Cartao titulo="Seu letreiro">
+          <ListaValores
+            itens={[
+              { rotulo: 'Peças', valor: String(m.letras.length) },
+              ...(m.bounds ? [{ rotulo: 'Medida montado', valor: `${formatarNumero(m.bounds.w)} × ${formatarNumero(m.bounds.h)} mm` }] : []),
+              { rotulo: 'Profundidade', valor: `${formatarNumero(profundidade)} mm` },
+              { rotulo: 'Chapa de ACM', valor: m.temChapa ? 'Sim' : 'Não' },
+              { rotulo: 'Iluminação de LED', valor: comLed ? 'Sim' : 'Não' },
+            ]}
+          />
+        </Cartao>
+        <div className="flex flex-wrap gap-2">
+          {whatsapp && (
+            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className={classeBotao('primario')}>
+              Pedir orçamento pelo WhatsApp
+            </a>
+          )}
+          <Botao variante="fantasma" icone={copiado ? IconeOk : IconeCopiar} onClick={() => void copiar()}>
+            {copiado ? 'Copiado' : 'Copiar a descrição'}
+          </Botao>
+        </div>
+        <p className="text-base text-texto-3">
+          {textoResposta()} Combinamos valor, cores e prazo antes de imprimir. WhatsApp: <span className="text-texto-2">{CONTATO.whatsappTexto}</span>.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function FolhaInterna() {
   const m = useModelo();
   const total = useOrcamento();
   const cfg = useProjeto((x) => x.cfg);
@@ -278,7 +369,7 @@ export function FolhaOrcamento() {
                 {copiado ? 'Copiado' : 'Copiar para o cliente'}
               </Botao>
             </Dica>
-            <Botao icone={IconeBaixar} disabled={!m.letras.length} onClick={() => void baixarPacote(m, o)}>
+            <Botao icone={IconeBaixar} disabled={!m.letras.length} onClick={() => void baixarPacote(m, o, true)}>
               Baixar pacote
             </Botao>
           </div>

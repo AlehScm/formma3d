@@ -39,7 +39,7 @@ export function Prateleira({ titulo, verTodos, produtos, secao, tema, id }: { ti
 export function AtalhosCategoria({ itens, natal }: { itens: { secao: Secao; total: number; produto?: Produto }[]; natal?: boolean }) {
   return (
     <nav aria-label="Categorias">
-      <ul className="m-0 grid list-none grid-cols-3 gap-3 p-0 sm:grid-cols-5">
+      <ul className="m-0 grid list-none auto-cols-fr grid-flow-col gap-3 p-0">
         {itens.map(({ secao, total, produto }) => (
           <li key={secao} data-secao={secao}>
             <Link href={`/secao/${secao}`} className="group relative flex flex-col items-center gap-2 text-center no-underline">

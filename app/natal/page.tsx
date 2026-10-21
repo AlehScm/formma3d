@@ -24,7 +24,7 @@ export default function NatalPage() {
     <PaginaLoja>
       <div data-campanha="natal" className="flex flex-col gap-8">
         <TopoNatal />
-        <div id="presentes" className="flex scroll-mt-40 flex-col gap-8">
+        <div id="presentes" className="flex scroll-mt-28 flex-col gap-8">
           <ComPaleta cores={PALETA_NATAL}>
             {vitrines.map((v) => <Prateleira key={v.titulo} titulo={v.titulo} produtos={v.produtos} tema="natal" />)}
           </ComPaleta>

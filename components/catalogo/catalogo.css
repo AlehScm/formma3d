@@ -4,9 +4,11 @@
 .hero-peca > span { padding: 8px 14px 11px; color: var(--marca-profundo); font-size: 12px; font-weight: 800; }
 .hero-peca-1 { left: 0; top: 4%; width: 58%; height: 72%; z-index: 2; }
 .hero-peca-2 { right: 0; top: 0; width: 44%; height: 50%; }
+.hero-peca-2 > span { text-align: right; } /* a peca 1 cobre o canto esquerdo */
 .hero-peca-3 { right: 4%; bottom: 0; width: 46%; height: 46%; z-index: 3; }
 
-.catalog-card-foto { position: relative; display: grid; place-items: center; height: clamp(160px, 13vw, 180px); overflow: hidden; background: radial-gradient(circle at 50% 35%, #ffffff 0, #eaf4fd 70%); }
+/* Trilha fixa: com linha automatica a foto crescia ate a altura natural e saia cortada. */
+.catalog-card-foto { position: relative; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; height: clamp(160px, 13vw, 180px); overflow: hidden; background: radial-gradient(circle at 50% 35%, #ffffff 0, #eaf4fd 70%); }
 .foto-chaveiros { background: radial-gradient(circle at 50% 35%, #ffffff 0, #fdf0f4 70%); }
 .foto-placas { background: radial-gradient(circle at 50% 35%, #ffffff 0, #eef3f8 70%); }
 .foto-texto { background: radial-gradient(circle at 50% 35%, #ffffff 0, #e4f0fd 70%); }
