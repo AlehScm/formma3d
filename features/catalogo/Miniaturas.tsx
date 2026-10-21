@@ -10,7 +10,7 @@ import { ficha, FICHAS } from '@/lib/gerador/receitas/fichas';
 import { criarFilaSerial } from './filaSerial';
 
 /** Mudou a geometria das receitas de um jeito que muda a foto: suba o numero. */
-const VERSAO = 3;
+const VERSAO = 4;
 const TEMPO_MAX = 20000;
 const memoria = new Map<string, string>();
 const pendentes = new Map<string, { promessa: Promise<string>; cancelar: () => void; ouvintes: number; iniciada: boolean }>();
