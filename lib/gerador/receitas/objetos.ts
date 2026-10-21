@@ -41,8 +41,9 @@ export const suporteFoto: Receita = {
     const c = num(v, 'contorno');
     let base = semBuracos(contornar(t.regiao, c));
     const b = regionBounds(base);
-    // Pe reto para ficar em pe.
-    base = unir([base, retanguloArredondado((b.minX + b.maxX) / 2, b.minY + c / 2, b.w, c, 0)]);
+    // Pe reto para ficar em pe. Tira os buracos de novo: o pe fecha por baixo o vao entre
+    // letras (embaixo do P, ao lado do R) e ele virava furo na base.
+    base = semBuracos(unir([base, retanguloArredondado((b.minX + b.maxX) / 2, b.minY + c / 2, b.w, c, 0)]));
     const P = num(v, 'profundidade'), larg = num(v, 'fenda') + 2 * num(v, 'folga');
     const z0 = (P - larg) / 2, z1 = z0 + larg;
     const faixa = retanguloArredondado((b.minX + b.maxX) / 2, b.maxY - num(v, 'fundoFenda') / 2 + 1, b.w + 2, num(v, 'fundoFenda') + 2, 0);
