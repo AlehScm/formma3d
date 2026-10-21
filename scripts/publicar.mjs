@@ -46,6 +46,8 @@ console.log('\n3/4  gerando o site');
 rmSync(SAIDA, { recursive: true, force: true });
 node(BIN.next, ['build'], { env: { ...process.env, GITHUB_PAGES: 'true', FORMMA_BUILD_DIR: SAIDA } });
 if (!existsSync(`${SAIDA}/index.html`)) throw new Error(`o build nao gerou ${SAIDA}/index.html`);
+// Sem o CNAME na gh-pages o Pages perde o dominio proprio a cada push -f.
+if (!existsSync(`${SAIDA}/CNAME`)) throw new Error(`o build nao levou public/CNAME para ${SAIDA}`);
 // Next 16 grava o pre-carregamento em pastas e o navegador pede o nome achatado (ver o script).
 console.log(`     prefetch: ${achatarPrefetch(SAIDA)} copias com o nome que o navegador pede`);
 

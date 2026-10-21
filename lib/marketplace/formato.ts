@@ -10,7 +10,7 @@ export const textoDoPreco = (p: Produto, rotuloValidacao = 'Preço em validaçã
 /** Rotulo usado na loja. */
 export const rotuloPreco = (p: Produto) => textoDoPreco(p, 'Preço sob consulta');
 
-/** Endereco de uma foto (`marketplace/<slug>/x.jpg`) com o prefixo do site (GitHub Pages usa /formma3d). */
+/** Endereco de uma foto (`marketplace/<slug>/x.jpg`) com o prefixo do site (vazio no dominio proprio). */
 export const urlDaMidia = (m: string) => `${process.env.NEXT_PUBLIC_BASE ?? ''}/${m.replace(/^\//, '').split('/').map(encodeURIComponent).join('/')}`;
 
 /** Gerador da peca (`/design?modelo=<id>`), mantendo os enderecos antigos internos. */

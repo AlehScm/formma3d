@@ -3,18 +3,18 @@
 // entrar codigo de servidor por engano, o build falha em vez de quebrar em producao.
 const paraPages = process.env.GITHUB_PAGES === 'true';
 
-// No Pages o site mora em /<repo>, e sem isto os assets apontariam para a raiz e
-// nao carregariam. Rodando local, fica na raiz normalmente.
-const base = '/formma3d';
+// Com dominio proprio (public/CNAME) o Pages serve na raiz, sem /<repo>. Se um dia voltar
+// para alehscm.github.io/<repo>, por aqui o prefixo do repo, senao os assets nao carregam.
+const base = '';
 
 // Endereco publico do site, para canonical, sitemap, Open Graph e JSON-LD (precisam de URL
-// absoluta). Com dominio proprio: trocar aqui, criar public/CNAME e tirar o basePath.
-const site = paraPages ? `https://alehscm.github.io${base}` : 'http://localhost:3111';
+// absoluta). Trocar o dominio: aqui e em public/CNAME.
+const site = paraPages ? 'https://scarprint.com.br' : 'http://localhost:3111';
 
 const nextConfig = {
   output: 'export',
   ...(process.env.FORMMA_BUILD_DIR ? { distDir: process.env.FORMMA_BUILD_DIR } : {}),
-  ...(paraPages ? { basePath: base, assetPrefix: `${base}/` } : {}),
+  ...(paraPages && base ? { basePath: base, assetPrefix: `${base}/` } : {}),
   // Caminho de arquivos de public/ (fontes) no navegador.
   env: { NEXT_PUBLIC_BASE: paraPages ? base : '', NEXT_PUBLIC_SITE_URL: site },
   images: { unoptimized: true },

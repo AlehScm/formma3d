@@ -46,7 +46,8 @@ ok('robots nao bloqueia pagina (noindex fica na pagina)', !/disallow/i.test(robo
 ok('URL absoluta a partir do endereco do site', urlAbsoluta('/pecas') === `${SITE_URL}/pecas` && urlAbsoluta('/') === `${SITE_URL}/` && urlAbsoluta('marketplace/a b/1.jpg') === `${SITE_URL}/marketplace/a%20b/1.jpg`);
 ok('endereco do site sem barra no fim', !SITE_URL.endsWith('/'));
 const config = fs.readFileSync('next.config.mjs', 'utf8');
-ok('next.config passa a URL do Pages com /formma3d', /https:\/\/alehscm\.github\.io\$\{base\}/.test(config) && /NEXT_PUBLIC_SITE_URL: site/.test(config));
+const cname = fs.readFileSync('public/CNAME', 'utf8').trim();
+ok('next.config passa a URL do dominio proprio, o mesmo do public/CNAME', config.includes(`'https://${cname}'`) && /NEXT_PUBLIC_SITE_URL: site/.test(config) && /const base = ''/.test(config));
 
 // ---- textos ----
 const PROMESSA = /frete|gr[aá]tis|entrega|prazo|\d+\s*dias|garantia|avalia[cç][aã]o|estrelas|★|mais vendid/i;
