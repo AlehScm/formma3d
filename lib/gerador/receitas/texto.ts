@@ -87,7 +87,7 @@ function textoNaLargura(v: Valores, ctx: Contexto) {
 export const palavraCamadas: Receita = {
   ...ficha('palavra-camadas'),
   parametros: [
-    { tipo: 'texto', id: 'linha1', rotulo: 'Texto', grupo: 'Texto', padrao: 'Formma', maxCaracteres: 40, dica: 'Aceita emoji (♥ ⭐ 🐾...)' },
+    { tipo: 'texto', id: 'linha1', rotulo: 'Texto', grupo: 'Texto', padrao: 'Scarprint', maxCaracteres: 40, dica: 'Aceita emoji (♥ ⭐ 🐾...)' },
     { tipo: 'fonte', id: 'fonte1', rotulo: 'Fonte', grupo: 'Texto', padrao: 'archivo-black' },
     { tipo: 'texto', id: 'linha2', rotulo: 'Segunda linha (opcional)', grupo: 'Texto', padrao: '', maxCaracteres: 40 },
     { tipo: 'fonte', id: 'fonte2', rotulo: 'Fonte da segunda linha', grupo: 'Texto', padrao: 'pacifico', visivel: (v) => !!txt(v, 'linha2').trim() },
@@ -112,7 +112,7 @@ export const palavraCamadas: Receita = {
 export const socialCamadas: Receita = {
   ...ficha('social-camadas'),
   parametros: [
-    { tipo: 'texto', id: 'usuario', rotulo: 'Usuário', grupo: 'Texto', padrao: 'formma3d', maxCaracteres: 30, placeholder: 'sem o @' },
+    { tipo: 'texto', id: 'usuario', rotulo: 'Usuário', grupo: 'Texto', padrao: 'scarprint', maxCaracteres: 30, placeholder: 'sem o @' },
     { tipo: 'fonte', id: 'fonte1', rotulo: 'Fonte', grupo: 'Texto', padrao: 'poppins-800' },
     espacamento,
     tamanho(190),

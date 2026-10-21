@@ -25,7 +25,7 @@ const furo: Parametro[] = [
 export const chaveiroNome: Receita = {
   ...ficha('chaveiro-nome'),
   parametros: [
-    nomes('Ana, Pedro, Lu'),
+    nomes('Scar, Scarprint'),
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'lobster' },
     { tipo: 'numero', id: 'altura', rotulo: 'Altura das letras', grupo: 'Texto', padrao: 14, min: 5, max: 60, passo: 0.5, unidade: 'mm' },
     { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%', dica: '100% é o espaço da própria fonte' },
@@ -76,7 +76,7 @@ function abaNoCanto(L: number, H: number, raio: number, furo: number, externo: n
 export const chaveiroRetangular: Receita = {
   ...ficha('chaveiro-retangular'),
   parametros: [
-    nomes('Aline+Borges, Ana+Silva da Mata'),
+    nomes('Scarprint+Impressão 3D, Scar'),
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'archivo-black' },
     { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%', dica: '100% é o espaço da própria fonte' },
     { tipo: 'numero', id: 'entrelinha', rotulo: 'Espaço entre linhas', grupo: 'Texto', padrao: 1.5, min: -5, max: 20, passo: 0.5, unidade: 'mm' },

@@ -240,7 +240,7 @@ export const placaQrSocial: Receita = {
       return [
         ...(n === 1 ? [] : [{ tipo: 'liga', id: `perfil${n}`, rotulo: `Mais uma placa (perfil ${n})`, grupo, padrao: false } as Parametro]),
         { tipo: 'escolha', id: `rede${k}`, rotulo: 'Rede', grupo, padrao: ['instagram', 'tiktok', 'youtube'][n - 1]!, opcoes: REDES, visivel: on },
-        texto(`handle${k}`, 'Perfil', grupo, '@formma3d', 120, 'Só o @ (em "Outra", a URL completa)', on),
+        texto(`handle${k}`, 'Perfil', grupo, '@scarprint', 120, 'Só o @ (em "Outra", a URL completa)', on),
       ];
     }),
     texto('titulo', 'Título (acima do QR)', 'Conteúdo', 'Siga a gente!', 60),
@@ -297,12 +297,12 @@ export const placaQrSocial: Receita = {
 export const placaQrLogo: Receita = {
   ...ficha('placa-qr-logo'),
   parametros: [
-    texto('link', 'Link do QR Code', 'Conteúdo', 'https://formma3d.com', 300),
+    texto('link', 'Link do QR Code', 'Conteúdo', 'https://scarprint.com.br', 300),
     { ...campoDesenho('Logo'), grupo: 'Conteúdo' },
     { tipo: 'escolha', id: 'posLogo', rotulo: 'Logo', grupo: 'Conteúdo', padrao: 'acima', opcoes: [{ valor: 'acima', rotulo: 'Acima do QR' }, { valor: 'centro', rotulo: 'No meio do QR' }] },
     mm('altLogo', 'Altura do logo', 'Conteúdo', 25, 8, 150, 1, 'No meio do QR, no máximo 28% da largura do código'),
     texto('titulo', 'Título (acima do QR)', 'Conteúdo', 'INSTAGRAM', 60),
-    texto('subtitulo', 'Subtítulo (abaixo do QR)', 'Conteúdo', '@formma3d', 80),
+    texto('subtitulo', 'Subtítulo (abaixo do QR)', 'Conteúdo', '@scarprint', 80),
     { tipo: 'fonte', id: 'fonteTitulo', rotulo: 'Fonte do título', grupo: 'Texto', padrao: 'cal-sans' },
     mm('tamTitulo', 'Altura do título', 'Texto', 6, 2, 30, 0.5),
     { tipo: 'fonte', id: 'fonteSub', rotulo: 'Fonte do subtítulo', grupo: 'Texto', padrao: 'cal-sans' },
@@ -457,8 +457,8 @@ function icone(tipo: Icone, w: number): Region {
 
 /** Os QR que uma lista pode ter: id, nome, icone nosso, campos e o conteudo. */
 const TIPOS_LISTA: { id: string; nome: string; icone: Icone; grupo: string; campos: Parametro[]; payload: (v: Valores) => string; padrao: boolean }[] = [
-  { id: 'link1', nome: 'Link 1', icone: 'link', grupo: 'Link 1', padrao: true, campos: [texto('url1', 'Link', 'Link 1', 'https://formma3d.com', 300), texto('rotulo1', 'Nome escrito', 'Link 1', 'Site', 30, undefined, (v) => v.marca === 'nome')], payload: (v) => payloadUrl(txt(v, 'url1')) },
-  { id: 'link2', nome: 'Link 2', icone: 'link', grupo: 'Link 2', padrao: false, campos: [texto('url2', 'Link', 'Link 2', 'https://formma3d.com/catalogo', 300), texto('rotulo2', 'Nome escrito', 'Link 2', 'Catálogo', 30, undefined, (v) => v.marca === 'nome')], payload: (v) => payloadUrl(txt(v, 'url2')) },
+  { id: 'link1', nome: 'Link 1', icone: 'link', grupo: 'Link 1', padrao: true, campos: [texto('url1', 'Link', 'Link 1', 'https://scarprint.com.br', 300), texto('rotulo1', 'Nome escrito', 'Link 1', 'Site', 30, undefined, (v) => v.marca === 'nome')], payload: (v) => payloadUrl(txt(v, 'url1')) },
+  { id: 'link2', nome: 'Link 2', icone: 'link', grupo: 'Link 2', padrao: false, campos: [texto('url2', 'Link', 'Link 2', 'https://scarprint.com.br/pecas', 300), texto('rotulo2', 'Nome escrito', 'Link 2', 'Catálogo', 30, undefined, (v) => v.marca === 'nome')], payload: (v) => payloadUrl(txt(v, 'url2')) },
   {
     id: 'wifi', nome: 'Wi-Fi', icone: 'wifi', grupo: 'Wi-Fi', padrao: false,
     campos: [
@@ -469,9 +469,9 @@ const TIPOS_LISTA: { id: string; nome: string; icone: Icone; grupo: string; camp
     payload: (v) => { const p = payloadWifi(txt(v, 'ssid'), txt(v, 'senhaWifi'), txt(v, 'segurancaWifi') as 'WPA'); return liga(v, 'wifiOculta') ? p.replace(/;;$/, ';H:true;;') : p; },
   },
   { id: 'whatsapp', nome: 'WhatsApp', icone: 'conversa', grupo: 'WhatsApp', padrao: true, campos: [texto('telefone', 'Telefone internacional', 'WhatsApp', '+5511999999999', 16), texto('mensagem', 'Mensagem (opcional)', 'WhatsApp', '', 200)], payload: (v) => payloadWhatsapp(txt(v, 'telefone'), txt(v, 'mensagem')) },
-  { id: 'instagram', nome: 'Instagram', icone: 'camera', grupo: 'Instagram', padrao: true, campos: [texto('instagram', '@ do Instagram', 'Instagram', '@formma3d', 60)], payload: (v) => urlDoPerfil('instagram', txt(v, 'instagram')) },
-  { id: 'tiktok', nome: 'TikTok', icone: 'nota', grupo: 'TikTok', padrao: false, campos: [texto('tiktok', '@ do TikTok', 'TikTok', '@formma3d', 60)], payload: (v) => urlDoPerfil('tiktok', txt(v, 'tiktok')) },
-  { id: 'youtube', nome: 'YouTube', icone: 'play', grupo: 'YouTube', padrao: false, campos: [texto('youtube', '@ do YouTube', 'YouTube', '@formma3d', 60)], payload: (v) => urlDoPerfil('youtube', txt(v, 'youtube')) },
+  { id: 'instagram', nome: 'Instagram', icone: 'camera', grupo: 'Instagram', padrao: true, campos: [texto('instagram', '@ do Instagram', 'Instagram', '@scarprint', 60)], payload: (v) => urlDoPerfil('instagram', txt(v, 'instagram')) },
+  { id: 'tiktok', nome: 'TikTok', icone: 'nota', grupo: 'TikTok', padrao: false, campos: [texto('tiktok', '@ do TikTok', 'TikTok', '@scarprint', 60)], payload: (v) => urlDoPerfil('tiktok', txt(v, 'tiktok')) },
+  { id: 'youtube', nome: 'YouTube', icone: 'play', grupo: 'YouTube', padrao: false, campos: [texto('youtube', '@ do YouTube', 'YouTube', '@scarprint', 60)], payload: (v) => urlDoPerfil('youtube', txt(v, 'youtube')) },
   {
     id: 'pix', nome: 'Pix', icone: 'losango', grupo: 'Pix', padrao: false,
     campos: [texto('chavePix', 'Chave Pix', 'Pix', '', 77, 'CPF, CNPJ, e-mail, telefone (+55...) ou aleatória'), texto('nomePix', 'Nome do recebedor', 'Pix', '', 25), texto('cidadePix', 'Cidade', 'Pix', '', 15)],
@@ -580,7 +580,7 @@ function topoDaLista(v: Valores, ctx: Contexto, maxW: number): Region {
 }
 
 const camposTopo = (grupo: string, tam1: number, tam2: number, altLogo: number): Parametro[] => [
-  texto('negocio', 'Nome do negócio', grupo, 'Formma3D', 40, 'Usado quando não há logo'),
+  texto('negocio', 'Nome do negócio', grupo, 'Scarprint', 40, 'Usado quando não há logo'),
   texto('negocio2', 'Segunda linha', grupo, '', 60),
   { tipo: 'fonte', id: 'fonteNegocio', rotulo: 'Fonte', grupo, padrao: 'cal-sans' },
   mm('tamNegocio', 'Altura da 1ª linha', grupo, tam1, 3, 30, 0.5),
@@ -806,8 +806,8 @@ const escalar = (r: Region, k: number): Region => escalarXY(r, k, k);
 export const socialComQr: Receita = {
   ...ficha('social-com-qr'),
   parametros: [
-    texto('usuario', 'Texto', 'Texto', '@formma3d', 30),
-    texto('link', 'Link do QR', 'Texto', 'https://instagram.com/formma3d', 300, 'Use o link mais curto que puder'),
+    texto('usuario', 'Texto', 'Texto', '@scarprint', 30),
+    texto('link', 'Link do QR', 'Texto', 'https://instagram.com/scarprint', 300, 'Use o link mais curto que puder'),
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'cal-sans' },
     mm('largura', 'Largura total', 'Texto', 190, 80, 280, 1),
     { tipo: 'numero', id: 'escalaQr', rotulo: 'Tamanho do QR', grupo: 'Texto', padrao: 100, min: 50, max: 300, passo: 1, unidade: '%', dica: '100% = a altura do texto com a base' },
@@ -882,13 +882,13 @@ function portaCartao(v: Valores, ctx: Contexto, corIdx: number): { item: Item; a
 }
 
 const camposCartao: Parametro[] = [
-  texto('linha1', 'Nome', 'Cartão', 'Ana Souza', 40),
+  texto('linha1', 'Nome', 'Cartão', 'Scarprint', 40),
   texto('linha2', 'Cargo ou empresa', 'Cartão', 'Design e impressão 3D', 50),
   texto('linha3', 'Contato 1', 'Cartão', '+55 11 99999-9999', 50),
-  texto('linha4', 'Contato 2', 'Cartão', 'ana@formma3d.com', 50),
+  texto('linha4', 'Contato 2', 'Cartão', 'contato@scarprint.com.br', 50),
   { tipo: 'fonte', id: 'fonteNome', rotulo: 'Fonte do nome', grupo: 'Cartão', padrao: 'cal-sans' },
   { tipo: 'fonte', id: 'fonteResto', rotulo: 'Fonte das outras linhas', grupo: 'Cartão', padrao: 'montserrat-900' },
-  texto('linkQr', 'Link do QR (opcional)', 'Cartão', 'https://formma3d.com', 300, 'Vazio = sem QR'),
+  texto('linkQr', 'Link do QR (opcional)', 'Cartão', 'https://scarprint.com.br', 300, 'Vazio = sem QR'),
   mm('largura', 'Largura', 'Cartão', 90, 70, 100, 0.5),
   mm('altura', 'Altura', 'Cartão', 50, 40, 60, 0.5),
 ];

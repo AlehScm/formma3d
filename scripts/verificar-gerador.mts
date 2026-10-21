@@ -781,18 +781,18 @@ console.log('\n== placas e listas de QR, cartoes ==');
   ok('google: estrelas (logo) e texto em pecas proprias', google.itens[0]!.pecas.some((p) => p.nome === 'Logo') && google.itens[0]!.pecas.some((p) => p.nome === 'Texto'));
   const zTopo = Math.max(...google.itens[0]!.pecas.filter((p) => p.nome !== 'Base').map((p) => p.camadas[0]!.z0));
   ok('google: relevos apoiados na placa', zTopo === 3);
-  const social = gerar(placaQrSocial, { rede: 'tiktok', handle: '@formma3d' });
-  ok('social: @ vira o endereco do perfil', urlDoPerfil('tiktok', '@formma3d') === 'https://www.tiktok.com/@formma3d' && errosDoQr(qrDa(social), 'https://www.tiktok.com/@formma3d') === 0);
+  const social = gerar(placaQrSocial, { rede: 'tiktok', handle: '@scarprint' });
+  ok('social: @ vira o endereco do perfil', urlDoPerfil('tiktok', '@scarprint') === 'https://www.tiktok.com/@scarprint' && errosDoQr(qrDa(social), 'https://www.tiktok.com/@scarprint') === 0);
   ok('social: outra rede pede URL completa', /URL completa/.test(gerar(placaQrSocial, { rede: 'outra', handle: '@x' }).avisos.join()));
   const svg = JSON.stringify({ nome: 'c.svg', regiao: circulo(0, 0, 5, 64) });
-  const comLogo = gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', link: 'https://formma3d.com' });
-  const errosLogo = errosDoQr(qrDa(comLogo), payloadUrl('https://formma3d.com'), 'H');
+  const comLogo = gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', link: 'https://scarprint.com.br' });
+  const errosLogo = errosDoQr(qrDa(comLogo), payloadUrl('https://scarprint.com.br'), 'H');
   ok('qr com logo no meio: modulos tirados cabem na correcao H (< 15%)', errosLogo > 0.02 && errosLogo < 0.15, `${(errosLogo * 100).toFixed(1)}%`);
   const lb = regionBounds(comLogo.itens[0]!.pecas.find((p) => p.nome === 'Logo')!.camadas[0]!.region), qb = regionBounds(qrDa(comLogo));
   ok('qr com logo no meio: logo centrado no QR', perto((lb.minX + lb.maxX) / 2, (qb.minX + qb.maxX) / 2, 0.05) && perto((lb.minY + lb.maxY) / 2, (qb.minY + qb.maxY) / 2, 0.05));
-  const logoMenor = gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', altLogo: 8, link: 'https://formma3d.com' });
+  const logoMenor = gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', altLogo: 8, link: 'https://scarprint.com.br' });
   ok('qr com logo no meio: altura do logo altera a peca', regionArea(logoMenor.itens[0]!.pecas.find((p) => p.nome === 'Logo')!.camadas[0]!.region) < regionArea(comLogo.itens[0]!.pecas.find((p) => p.nome === 'Logo')!.camadas[0]!.region));
-  ok('qr com logo acima: QR com correcao normal sem erro', errosDoQr(qrDa(gerar(placaQrLogo, { desenho: svg, link: 'https://formma3d.com' })), payloadUrl('https://formma3d.com')) === 0);
+  ok('qr com logo acima: QR com correcao normal sem erro', errosDoQr(qrDa(gerar(placaQrLogo, { desenho: svg, link: 'https://scarprint.com.br' })), payloadUrl('https://scarprint.com.br')) === 0);
   const pixV = { chavePix: '123e4567-e12b-12d1-a456-426655440000', nomePix: 'Fulano de Tal', cidadePix: 'BRASILIA' };
   const pixPayload = gerarPixEstatico({ chave: pixV.chavePix, nome: pixV.nomePix, cidade: pixV.cidadePix });
   ok('pix logo: QR le o BR Code oficial', errosDoQr(qrDa(gerar(placaPixLogo, pixV)), pixPayload) === 0);
@@ -908,15 +908,15 @@ console.log('\n== placas e listas de QR, cartoes ==');
   const g = gerar(placaGoogleReview, exemplo(placaGoogleReview));
   confere('avaliacao Google (QR claro em fundo escuro)', lerItem(g, 0), [payloadUrl(String(exemplo(placaGoogleReview).link))]);
   const so = gerar(placaQrSocial, exemplo(placaQrSocial));
-  confere('social, 3 placas', [0, 1, 2].flatMap((i) => lerItem(so, i)), ['instagram', 'tiktok', 'youtube'].map((r) => urlDoPerfil(r, '@formma3d')));
-  confere('QR com logo acima', lerItem(gerar(placaQrLogo, { desenho: svg }), 0), [payloadUrl('https://formma3d.com')]);
-  confere('QR com logo no meio, logo da cor do QR', lerItem(gerar(placaQrLogo, { desenho: svg, posLogo: 'centro' }), 0), [payloadUrl('https://formma3d.com')]);
-  confere('QR com logo no meio, logo de outra cor', lerItem(gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', corLogo: '#ff0000' }), 0), [payloadUrl('https://formma3d.com')]);
+  confere('social, 3 placas', [0, 1, 2].flatMap((i) => lerItem(so, i)), ['instagram', 'tiktok', 'youtube'].map((r) => urlDoPerfil(r, '@scarprint')));
+  confere('QR com logo acima', lerItem(gerar(placaQrLogo, { desenho: svg }), 0), [payloadUrl('https://scarprint.com.br')]);
+  confere('QR com logo no meio, logo da cor do QR', lerItem(gerar(placaQrLogo, { desenho: svg, posLogo: 'centro' }), 0), [payloadUrl('https://scarprint.com.br')]);
+  confere('QR com logo no meio, logo de outra cor', lerItem(gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', corLogo: '#ff0000' }), 0), [payloadUrl('https://scarprint.com.br')]);
   const pl = lerItem(gerar(placaPixLogo, pixV), 0);
   confere('Pix com logo = BR Code oficial', pl, [pixPayload]);
   ok('leitura: Pix lido tem CRC valido', pl.length === 1 && pl[0]!.endsWith(crc16Ccitt(pl[0]!.slice(0, -4))));
   const logoGrande = gerar(placaQrLogo, { desenho: svg, posLogo: 'centro', altLogo: 150 });
-  confere('logo no meio pedido enorme: reduzido e ainda le', lerItem(logoGrande, 0), [payloadUrl('https://formma3d.com')]);
+  confere('logo no meio pedido enorme: reduzido e ainda le', lerItem(logoGrande, 0), [payloadUrl('https://scarprint.com.br')]);
   ok('logo no meio pedido enorme: avisa a reducao', /reduzido/.test(logoGrande.avisos.join()));
   let menor = 70;
   while (menor > 30 && gerar(listaQrVertical, { usar_link1: false, usar_whatsapp: false, usar_instagram: false, usar_pix: true, ...pixV, tamQr: menor - 1 }).itens.length) menor--;
@@ -924,18 +924,18 @@ console.log('\n== placas e listas de QR, cartoes ==');
   confere('Pix com texto', lerItem(gerar(placaPixTexto, { ...pixV, linha3: 'OBRIGADO' }), 0), [pixPayload]);
   const todos = { usar_link2: true, usar_wifi: true, senhaWifi: 'abc12345', usar_tiktok: true, usar_youtube: true, usar_pix: true, ...pixV, usar_google: true };
   const esperadosLista = [
-    payloadUrl('https://formma3d.com'), payloadUrl('https://formma3d.com/catalogo'), payloadWifi('Minha rede', 'abc12345', 'WPA'), payloadWhatsapp('+5511999999999', ''),
-    ...['instagram', 'tiktok', 'youtube'].map((r) => urlDoPerfil(r, '@formma3d')), pixPayload, payloadUrl('https://g.page/r/SEU-CODIGO/review'),
+    payloadUrl('https://scarprint.com.br'), payloadUrl('https://scarprint.com.br/pecas'), payloadWifi('Minha rede', 'abc12345', 'WPA'), payloadWhatsapp('+5511999999999', ''),
+    ...['instagram', 'tiktok', 'youtube'].map((r) => urlDoPerfil(r, '@scarprint')), pixPayload, payloadUrl('https://g.page/r/SEU-CODIGO/review'),
   ];
   confere('lista vertical com os 9 QR', lerItem(gerar(listaQrVertical, todos), 0), esperadosLista);
   confere('lista horizontal com os 9 QR', lerItem(gerar(listaQrHorizontal, todos), 0), esperadosLista);
   const camR = gerar(listaQrCamadas, todos);
   confere('lista em camadas com os 9 QR', lerItem(camR, camR.itens.findIndex((i) => i.nome === 'Placa dos QR')), esperadosLista);
   confere('Wi-Fi de rede oculta', lerItem(gerar(listaQrVertical, { usar_link1: false, usar_whatsapp: false, usar_instagram: false, usar_wifi: true, senhaWifi: 'abc12345', wifiOculta: true }), 0), [payloadWifi('Minha rede', 'abc12345', 'WPA').replace(/;;$/, ';H:true;;')]);
-  confere('@social de 2 cores com QR', lerItem(gerar(socialComQr), 0, { nomeQr: 'Topo e QR' }), [payloadUrl('https://instagram.com/formma3d')]);
-  confere('cartao de visita (QR de 0,6 mm por modulo)', lerItem(gerar(cartaoVisita), 0, { nomeQr: 'Frente' }), [payloadUrl('https://formma3d.com')]);
-  confere('cartao face para baixo, visto pela face da mesa', lerItem(gerar(cartaoVisita, { face: 'baixo' }), 0, { nomeQr: 'Frente', espelhar: true }), [payloadUrl('https://formma3d.com')]);
-  confere('cartao com tecido (tecido branco)', lerItem(gerar(cartaoTecido), 0, { nomeQr: 'Texto e QR', soPecas: ['Texto e QR'] }), [payloadUrl('https://formma3d.com')]);
+  confere('@social de 2 cores com QR', lerItem(gerar(socialComQr), 0, { nomeQr: 'Topo e QR' }), [payloadUrl('https://instagram.com/scarprint')]);
+  confere('cartao de visita (QR de 0,6 mm por modulo)', lerItem(gerar(cartaoVisita), 0, { nomeQr: 'Frente' }), [payloadUrl('https://scarprint.com.br')]);
+  confere('cartao face para baixo, visto pela face da mesa', lerItem(gerar(cartaoVisita, { face: 'baixo' }), 0, { nomeQr: 'Frente', espelhar: true }), [payloadUrl('https://scarprint.com.br')]);
+  confere('cartao com tecido (tecido branco)', lerItem(gerar(cartaoTecido), 0, { nomeQr: 'Texto e QR', soPecas: ['Texto e QR'] }), [payloadUrl('https://scarprint.com.br')]);
 }
 
 console.log('\n== planta 2D (vista de cima) ==');

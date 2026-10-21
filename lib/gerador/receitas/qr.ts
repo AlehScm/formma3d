@@ -30,7 +30,7 @@ export const placaQr: Receita = {
     { tipo: 'escolha', id: 'tipoQr', rotulo: 'Conteúdo do QR Code', grupo: 'Conteúdo', padrao: 'url', opcoes: [
       { valor: 'url', rotulo: 'URL' }, { valor: 'wifi', rotulo: 'Wi-Fi' }, { valor: 'whatsapp', rotulo: 'WhatsApp' }, { valor: 'pix', rotulo: 'Pix estático' },
     ] },
-    { ...campo('url', 'Endereço completo', 'URL', 'https://example.com', 500), visivel: (v) => modo(v) === 'url' },
+    { ...campo('url', 'Endereço completo', 'URL', 'https://scarprint.com.br', 500), visivel: (v) => modo(v) === 'url' },
     { ...campo('ssid', 'Nome da rede', 'Wi-Fi', 'Minha rede', 32), visivel: (v) => modo(v) === 'wifi' },
     { ...campo('senhaWifi', 'Senha', 'Wi-Fi', '', 63), visivel: (v) => modo(v) === 'wifi' && v.segurancaWifi !== 'nopass' },
     { tipo: 'escolha', id: 'segurancaWifi', rotulo: 'Segurança', grupo: 'Wi-Fi', padrao: 'WPA', visivel: (v) => modo(v) === 'wifi', opcoes: [

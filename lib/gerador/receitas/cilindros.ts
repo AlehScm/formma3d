@@ -116,7 +116,7 @@ export const estojoBatom: Receita = {
   ...ficha('estojo-batom'),
   parametros: [
     { tipo: 'escolha', id: 'modo', rotulo: 'Decoração', grupo: 'Desenho', padrao: 'nome', opcoes: [{ valor: 'liso', rotulo: 'Liso' }, { valor: 'nome', rotulo: 'Só o nome' }, { valor: 'mosaico', rotulo: 'Mosaico' }, { valor: 'imagem', rotulo: 'Imagem grande' }] },
-    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Nome', padrao: 'Love', maxCaracteres: 20, dica: 'Escrito ao longo do estojo; vazio = sem nome' },
+    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Nome', padrao: 'Scarprint', maxCaracteres: 20, dica: 'Escrito ao longo do estojo; vazio = sem nome' },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Nome', padrao: 'sacramento' },
     { tipo: 'numero', id: 'escalaNome', rotulo: 'Tamanho do nome', grupo: 'Nome', padrao: 100, min: 30, max: 200, passo: 1, unidade: '%' },
     mm('yNome', 'Posição do nome (ao longo)', 'Nome', 0, -100, 100, 1),

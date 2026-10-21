@@ -21,7 +21,7 @@ export const letreiroSobreposto: Receita = {
     { tipo: 'texto', id: 'palavra', rotulo: 'Palavra grande', grupo: 'Palavras', padrao: 'LOVE', maxCaracteres: 20 },
     { tipo: 'fonte', id: 'fontePalavra', rotulo: 'Fonte da palavra', grupo: 'Palavras', padrao: 'archivo-black' },
     { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre as letras grandes', grupo: 'Palavras', padrao: 82, min: 50, max: 150, passo: 1, unidade: '%', dica: 'Abaixo de 100% as letras se encostam e viram uma peça só' },
-    { tipo: 'texto', id: 'nome', rotulo: 'Nome por cima', grupo: 'Palavras', padrao: 'Ana & João', maxCaracteres: 40, dica: 'Aceita emoji' },
+    { tipo: 'texto', id: 'nome', rotulo: 'Nome por cima', grupo: 'Palavras', padrao: 'Scarprint', maxCaracteres: 40, dica: 'Aceita emoji' },
     { tipo: 'fonte', id: 'fonteNome', rotulo: 'Fonte do nome', grupo: 'Palavras', padrao: 'great-vibes' },
     {
       tipo: 'escolha', id: 'adornoNome', rotulo: 'Enfeite no nome', grupo: 'Palavras', padrao: 'nenhum',
@@ -96,7 +96,7 @@ export const letreiroSobreposto: Receita = {
 export const topoBoloCircular: Receita = {
   ...ficha('topo-bolo-circular'),
   parametros: [
-    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Texto', padrao: 'Elisa', maxCaracteres: 20 },
+    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Texto', padrao: 'Scarprint', maxCaracteres: 20 },
     { tipo: 'fonte', id: 'fonteNome', rotulo: 'Fonte do nome', grupo: 'Texto', padrao: 'great-vibes' },
     { tipo: 'texto', id: 'numero', rotulo: 'Número', grupo: 'Texto', padrao: '3', maxCaracteres: 4 },
     { tipo: 'fonte', id: 'fonteNumero', rotulo: 'Fonte do número', grupo: 'Texto', padrao: 'luckiest-guy' },

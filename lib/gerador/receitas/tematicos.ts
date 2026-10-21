@@ -53,7 +53,7 @@ function tematico(id: 'chaveiro-cenoura' | 'chaveiro-coelho'): Receita {
   return {
     ...ficha(id),
     parametros: [
-      { tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao: ehCenoura ? 'Enzo, Ana Clara, Miguel' : 'Clara, Leo, Bento', maxCaracteres: 300, dica: `Até ${LOTE_MAX}, separados por vírgula` },
+      { tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao: 'Scar, Scarprint', maxCaracteres: 300, dica: `Até ${LOTE_MAX}, separados por vírgula` },
       { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'pacifico' },
       { tipo: 'numero', id: 'escalaNome', rotulo: 'Tamanho do nome', grupo: 'Texto', padrao: 110, min: 50, max: 150, passo: 1, unidade: '%', dica: 'Um pouco maior que a figura: passa da borda' },
       mm('altura', 'Altura do chaveiro', 'Chaveiro', ehCenoura ? 70 : 75, 30, 200, 1),
@@ -129,7 +129,7 @@ export const chaveiroCoelho = tematico('chaveiro-coelho');
 export const rosaNome: Receita = {
   ...ficha('rosa-nome'),
   parametros: [
-    { tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao: 'Aline, Mãe, Elisa', maxCaracteres: 300, dica: `Até ${LOTE_MAX}, separados por vírgula` },
+    { tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao: 'Scar, Scarprint', maxCaracteres: 300, dica: `Até ${LOTE_MAX}, separados por vírgula` },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'great-vibes' },
     mm('altura', 'Altura da rosa', 'Rosa', 90, 40, 250, 1),
     mm('espessura', 'Espessura', 'Rosa', 2, 1, 10),
@@ -197,8 +197,8 @@ export const stringArt: Receita = {
   ...ficha('string-art'),
   parametros: [
     { tipo: 'escolha', id: 'modelo', rotulo: 'Modelo', grupo: 'Modelo', padrao: 'coracao', opcoes: [{ valor: 'coracao', rotulo: 'Coração com nome' }, { valor: 'retangulo', rotulo: 'Retângulo com desenho (fios radiais)' }, { valor: 'social', rotulo: '@ num retângulo' }] },
-    { tipo: 'texto', id: 'linha1', rotulo: 'Texto', grupo: 'Texto', padrao: 'Maria', maxCaracteres: 40, visivel: (v) => v.modelo !== 'retangulo' },
-    { tipo: 'texto', id: 'linha2', rotulo: 'Segunda linha', grupo: 'Texto', padrao: 'Júlia', maxCaracteres: 40, visivel: (v) => v.modelo === 'coracao' },
+    { tipo: 'texto', id: 'linha1', rotulo: 'Texto', grupo: 'Texto', padrao: 'Scar', maxCaracteres: 40, visivel: (v) => v.modelo !== 'retangulo' },
+    { tipo: 'texto', id: 'linha2', rotulo: 'Segunda linha', grupo: 'Texto', padrao: 'Print', maxCaracteres: 40, visivel: (v) => v.modelo === 'coracao' },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'dancing-script-700', visivel: (v) => v.modelo !== 'retangulo' },
     mm('larguraTexto', 'Largura do texto', 'Texto', 85, 20, 250, 1, undefined, (v) => v.modelo !== 'retangulo'),
     mm('engrossar', 'Engrossar o texto', 'Texto', 0.4, 0, 2, 0.1, 'Letra fina fica mais forte', (v) => v.modelo !== 'retangulo'),

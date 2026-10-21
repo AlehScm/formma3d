@@ -81,7 +81,7 @@ testaFechamento({ ...valores, tipoQr: 'pix', chavePix: '123e4567-e12b-12d1-a456-
 const modelos = [
   { receita: placaQrWifi, id: 'placa-qr-wifi', padroes: { ssid: 'Minha rede', senhaWifi: '', segurancaWifi: 'WPA' }, payload: { ssid: 'Atelie Formma', senhaWifi: 'ImprimaEm3D', segurancaWifi: 'WPA' }, esperado: 'WIFI:T:WPA;S:Atelie Formma;P:ImprimaEm3D;;' },
   { receita: placaQrWhatsapp, id: 'placa-qr-whatsapp', padroes: { telefone: '+5511999999999', mensagem: '' }, payload: { telefone: '+5511999999999', mensagem: 'Olá!' }, esperado: 'https://wa.me/5511999999999?text=Ol%C3%A1%21' },
-  { receita: placaQrTexto, id: 'placa-qr-texto', padroes: { url: 'https://example.com' }, payload: { url: 'https://example.com' }, esperado: 'https://example.com/' },
+  { receita: placaQrTexto, id: 'placa-qr-texto', padroes: { url: 'https://scarprint.com.br' }, payload: { url: 'https://example.com' }, esperado: 'https://example.com/' },
   { receita: placaPixSimples, id: 'placa-pix-simples', padroes: { chavePix: '', nomePix: '', cidadePix: '', valorPix: 0 }, payload: { chavePix: '123e4567-e12b-12d1-a456-426655440000', nomePix: 'Fulano de Tal', cidadePix: 'BRASILIA' }, esperado: amostraOficial },
 ];
 for (const { receita, id, padroes, payload, esperado } of modelos) {

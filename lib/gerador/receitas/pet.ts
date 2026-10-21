@@ -43,7 +43,7 @@ export const plaquinhaPet: Receita = {
     { tipo: 'numero', id: 'tamanho', rotulo: 'Tamanho', grupo: 'Formato', padrao: 53, min: 20, max: 200, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'espessura', rotulo: 'Espessura', grupo: 'Formato', padrao: 5, min: 1, max: 10, passo: 0.2, unidade: 'mm' },
     {
-      tipo: 'texto', id: 'nomes', rotulo: 'Nomes (frente)', grupo: 'Frente', padrao: 'Luna, Thor, Mel', maxCaracteres: 300,
+      tipo: 'texto', id: 'nomes', rotulo: 'Nomes (frente)', grupo: 'Frente', padrao: 'Scar, Scarprint', maxCaracteres: 300,
       dica: `Até ${LOTE_MAX} plaquinhas, separadas por vírgula; aceita emoji`,
     },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Frente', padrao: 'luckiest-guy' },
@@ -51,7 +51,7 @@ export const plaquinhaPet: Receita = {
     { tipo: 'numero', id: 'xNome', rotulo: 'Mover o nome (X)', grupo: 'Frente', padrao: 0, min: -40, max: 40, passo: 0.5, unidade: 'mm' },
     { tipo: 'numero', id: 'yNome', rotulo: 'Mover o nome (Y)', grupo: 'Frente', padrao: 0, min: -40, max: 40, passo: 0.5, unidade: 'mm' },
     {
-      tipo: 'texto', id: 'versos', rotulo: 'Verso (contato)', grupo: 'Verso', padrao: 'Ana+41 9999-1111, Pedro+21 8888-2222', maxCaracteres: 400,
+      tipo: 'texto', id: 'versos', rotulo: 'Verso (contato)', grupo: 'Verso', padrao: 'Scar+41 9999-1111, Scarprint+21 8888-2222', maxCaracteres: 400,
       dica: 'Na mesma ordem dos nomes, separados por vírgula; "+" quebra a linha. Vazio = sem verso',
     },
     { tipo: 'fonte', id: 'fonteVerso', rotulo: 'Fonte do verso', grupo: 'Verso', padrao: 'montserrat-900' },
@@ -149,9 +149,9 @@ export const pingenteFamilia: Receita = {
   ...ficha('pingente-familia'),
   parametros: [
     { tipo: 'texto', id: 'titulo', rotulo: 'Título', grupo: 'Nomes', padrao: 'Família', maxCaracteres: 30, dica: 'Vazio = sem peça de título' },
-    { tipo: 'texto', id: 'nomes', rotulo: 'Pessoas', grupo: 'Nomes', padrao: 'Aline, Alex, Elisa', maxCaracteres: 200, dica: 'Separadas por vírgula (ícone de coração)' },
-    { tipo: 'texto', id: 'cachorros', rotulo: 'Cachorros', grupo: 'Nomes', padrao: 'Geleia', maxCaracteres: 200, dica: 'Ícone de pata' },
-    { tipo: 'texto', id: 'gatos', rotulo: 'Gatos', grupo: 'Nomes', padrao: 'Marrie', maxCaracteres: 200, dica: 'Ícone de gato' },
+    { tipo: 'texto', id: 'nomes', rotulo: 'Pessoas', grupo: 'Nomes', padrao: 'Scar, Scarprint', maxCaracteres: 200, dica: 'Separadas por vírgula (ícone de coração)' },
+    { tipo: 'texto', id: 'cachorros', rotulo: 'Cachorros', grupo: 'Nomes', padrao: 'Scar', maxCaracteres: 200, dica: 'Ícone de pata' },
+    { tipo: 'texto', id: 'gatos', rotulo: 'Gatos', grupo: 'Nomes', padrao: 'Scarprint', maxCaracteres: 200, dica: 'Ícone de gato' },
     { tipo: 'texto', id: 'outros', rotulo: 'Outros', grupo: 'Nomes', padrao: '', maxCaracteres: 200, dica: 'Ícone de estrela' },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Peças', padrao: 'pacifico' },
     {

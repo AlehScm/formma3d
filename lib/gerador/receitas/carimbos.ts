@@ -69,7 +69,7 @@ export const carimboMolde: Receita = {
   ...ficha('carimbo-molde'),
   parametros: [
     { tipo: 'escolha', id: 'origem', rotulo: 'Desenho a partir de', grupo: 'Desenho', padrao: 'texto', opcoes: [{ valor: 'texto', rotulo: 'Texto' }, { valor: 'imagem', rotulo: 'Imagem' }] },
-    { tipo: 'texto', id: 'texto', rotulo: 'Texto', grupo: 'Desenho', padrao: '@formma3d', maxCaracteres: 40, visivel: (v) => v.origem !== 'imagem' },
+    { tipo: 'texto', id: 'texto', rotulo: 'Texto', grupo: 'Desenho', padrao: '@scarprint', maxCaracteres: 40, visivel: (v) => v.origem !== 'imagem' },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Desenho', padrao: 'cal-sans', visivel: (v) => v.origem !== 'imagem' },
     { ...campoDesenho(), visivel: (v) => v.origem === 'imagem' },
     mm('tamanho', 'Tamanho (lado maior)', 'Desenho', 90, 30, 300, 1),

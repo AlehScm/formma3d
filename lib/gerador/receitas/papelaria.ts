@@ -183,7 +183,7 @@ export const contadorRaspadinha: Receita = {
 export const textoComGuia: Receita = {
   ...ficha('texto-com-guia'),
   parametros: [
-    { tipo: 'texto', id: 'texto', rotulo: 'Texto', grupo: 'Texto', padrao: '@formma3d', maxCaracteres: 30 },
+    { tipo: 'texto', id: 'texto', rotulo: 'Texto', grupo: 'Texto', padrao: '@scarprint', maxCaracteres: 30 },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'archivo-black' },
     { tipo: 'numero', id: 'tamanho', rotulo: 'Largura total', grupo: 'Texto', padrao: 700, min: 100, max: 3000, passo: 10, unidade: 'mm' },
     { ...espacamento, padrao: 105 },

@@ -185,7 +185,7 @@ function pratoOndulado(R: number, ondas: number): Region {
 export const suporteBolo: Receita = {
   ...ficha('suporte-bolo'),
   parametros: [
-    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Prato', padrao: '@formma3d', maxCaracteres: 30, dica: 'Em arco na borda do prato; vazio = sem nome' },
+    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Prato', padrao: '@scarprint', maxCaracteres: 30, dica: 'Em arco na borda do prato; vazio = sem nome' },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Prato', padrao: 'cal-sans' },
     mm('alturaNome', 'Altura das letras', 'Prato', 12, 4, 30, 0.5),
     mm('diametroTopo', 'Diâmetro do prato', 'Prato', 245, 120, 320, 1),

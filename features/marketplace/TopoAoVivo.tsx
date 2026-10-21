@@ -121,7 +121,7 @@ export function TopoAoVivo({ c }: { c: ConfigTopo }) {
 
 /** Topo da home: o chaveiro com nome. */
 const TOPO_HOME: ConfigTopo = {
-  gerador: 'chaveiro-nome', produto: 'chaveiro-nome', nomePeca: 'Chaveiro com nome', campo: 'nomes', rotuloCampo: 'Nome no chaveiro', nomeInicial: 'Ana', max: 14,
+  gerador: 'chaveiro-nome', produto: 'chaveiro-nome', nomePeca: 'Chaveiro com nome', campo: 'nomes', rotuloCampo: 'Nome no chaveiro', nomeInicial: 'Scarprint', max: 14,
   titulo: 'Escreva um nome. Veja a peça em 3D.',
   texto: 'Chaveiro com nome em camadas, impresso sob medida. Digite e confira a peça antes de pedir: nas outras peças personalizáveis é igual.',
   link: { href: '/pecas', rotulo: 'Ver todas as peças' },

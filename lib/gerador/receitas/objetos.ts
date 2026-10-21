@@ -21,7 +21,7 @@ const cor = (id: string, rotulo: string, padrao: string): Parametro => ({ tipo: 
 export const suporteFoto: Receita = {
   ...ficha('suporte-foto'),
   parametros: [
-    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Texto', padrao: 'ELISA', maxCaracteres: 20 },
+    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Texto', padrao: 'SCARPRINT', maxCaracteres: 20 },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'luckiest-guy' },
     { tipo: 'numero', id: 'altura', rotulo: 'Altura das letras', grupo: 'Texto', padrao: 36, min: 15, max: 200, passo: 0.5, unidade: 'mm' },
     { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 104, min: 50, max: 200, passo: 1, unidade: '%' },
@@ -150,7 +150,7 @@ export const portaCanetasGrade: Receita = {
 export const flocoNeve: Receita = {
   ...ficha('floco-neve'),
   parametros: [
-    { tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao: 'Ana, Lucas', maxCaracteres: 200, dica: `Até ${LOTE_MAX} enfeites, separados por vírgula` },
+    { tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao: 'Scar, Scarprint', maxCaracteres: 200, dica: `Até ${LOTE_MAX} enfeites, separados por vírgula` },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'pacifico' },
     { tipo: 'numero', id: 'tamanho', rotulo: 'Tamanho', grupo: 'Floco', padrao: 80, min: 40, max: 200, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'traco', rotulo: 'Espessura das linhas', grupo: 'Floco', padrao: 3.2, min: 1.5, max: 8, passo: 0.1, unidade: 'mm' },

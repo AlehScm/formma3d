@@ -84,7 +84,7 @@ export const chaveiroDesenho: Receita = {
   parametros: [
     { tipo: 'escolha', id: 'origem', rotulo: 'Em cima vai', grupo: 'Desenho', padrao: 'imagem', opcoes: [{ valor: 'imagem', rotulo: 'Imagem' }, { valor: 'texto', rotulo: 'Texto' }] },
     { ...campoDesenho(), visivel: (v: Valores) => v.origem !== 'texto' },
-    { tipo: 'texto', id: 'texto', rotulo: 'Texto', grupo: 'Desenho', padrao: 'Ana', maxCaracteres: 40, dica: '"+" quebra a linha; aceita emoji', visivel: (v) => v.origem === 'texto' },
+    { tipo: 'texto', id: 'texto', rotulo: 'Texto', grupo: 'Desenho', padrao: 'Scar', maxCaracteres: 40, dica: '"+" quebra a linha; aceita emoji', visivel: (v) => v.origem === 'texto' },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Desenho', padrao: 'pacifico', visivel: (v) => v.origem === 'texto' },
     { tipo: 'numero', id: 'tamanho', rotulo: 'Tamanho', grupo: 'Desenho', padrao: 50, min: 15, max: 150, passo: 1, unidade: 'mm' },
     campoEixo,
@@ -181,7 +181,7 @@ export const chaveiroLogoNome: Receita = {
   ...ficha('chaveiro-logo-nome'),
   parametros: [
     {
-      tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao: 'ALINE, BRUNA, ELISA', maxCaracteres: 300,
+      tipo: 'texto', id: 'nomes', rotulo: 'Nomes', grupo: 'Texto', padrao: 'SCAR, SCARPRINT', maxCaracteres: 300,
       dica: `Até ${LOTE_MAX} nomes separados por vírgula; "+" quebra a linha`,
     },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'luckiest-guy' },

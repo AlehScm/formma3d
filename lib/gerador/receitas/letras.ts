@@ -99,13 +99,13 @@ export const letraGrande: Receita = {
   ...ficha('letra-grande'),
   parametros: [
     { tipo: 'escolha', id: 'estilo', rotulo: 'Acabamento', grupo: 'Letra', padrao: 'nome', opcoes: ESTILOS },
-    { tipo: 'texto', id: 'letra', rotulo: 'Letra', grupo: 'Letra', padrao: 'M', maxCaracteres: 1 },
+    { tipo: 'texto', id: 'letra', rotulo: 'Letra', grupo: 'Letra', padrao: 'S', maxCaracteres: 1 },
     { tipo: 'fonte', id: 'fonteLetra', rotulo: 'Fonte da letra', grupo: 'Letra', padrao: 'playfair-900' },
     mm('altura', 'Altura da letra', 'Letra', 160, 40, 300, 1),
     mm('engrossar', 'Engrossar a letra', 'Letra', 0, 0, 20, 0.5, 'Letra fina fica larga o bastante para a moldura'),
     { tipo: 'numero', id: 'cortarBase', rotulo: 'Cortar a base', grupo: 'Letra', padrao: 0, min: 0, max: 40, passo: 1, unidade: '%', dica: 'Corta o pé reto para a letra ficar em pé' },
     mm('espLetra', 'Espessura da letra', 'Letra', 22, 6, 60, 0.5),
-    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Nome', padrao: 'Mom', maxCaracteres: 30, dica: '"+" quebra a linha; vazio = sem nome' },
+    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Nome', padrao: 'Scar', maxCaracteres: 30, dica: '"+" quebra a linha; vazio = sem nome' },
     { tipo: 'fonte', id: 'fonteNome', rotulo: 'Fonte do nome', grupo: 'Nome', padrao: 'dancing-script-700' },
     { tipo: 'svg', id: 'desenhoNome', rotulo: 'Ou o nome em imagem', grupo: 'Nome', padrao: '', dica: 'SVG/PNG do nome já desenhado (uma fonte que não está na lista)' },
     { tipo: 'escolha', id: 'enfeite', rotulo: 'Enfeite do nome', grupo: 'Nome', padrao: 'nenhum', opcoes: [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'coracao', rotulo: 'Coração' }, { valor: 'espiral', rotulo: 'Arabesco' }] },
@@ -239,12 +239,12 @@ function posLado(itens: Item[]): Item[] {
 export const luminariaLetra: Receita = {
   ...ficha('luminaria-letra'),
   parametros: [
-    { tipo: 'texto', id: 'letra', rotulo: 'Letra', grupo: 'Letra', padrao: 'A', maxCaracteres: 1 },
+    { tipo: 'texto', id: 'letra', rotulo: 'Letra', grupo: 'Letra', padrao: 'S', maxCaracteres: 1 },
     { tipo: 'fonte', id: 'fonteLetra', rotulo: 'Fonte da letra', grupo: 'Letra', padrao: 'archivo-black' },
     mm('altura', 'Altura da letra', 'Letra', 160, 60, 300, 1),
     mm('engrossar', 'Engrossar a letra', 'Letra', 4, 0, 20, 0.5, 'Precisa de espaço por dentro para a fita de LED'),
     { tipo: 'numero', id: 'cortarBase', rotulo: 'Cortar a base', grupo: 'Letra', padrao: 0, min: 0, max: 40, passo: 1, unidade: '%' },
-    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Nome', padrao: 'Ana', maxCaracteres: 30 },
+    { tipo: 'texto', id: 'nome', rotulo: 'Nome', grupo: 'Nome', padrao: 'Scarprint', maxCaracteres: 30 },
     { tipo: 'fonte', id: 'fonteNome', rotulo: 'Fonte do nome', grupo: 'Nome', padrao: 'pacifico' },
     { tipo: 'escolha', id: 'enfeite', rotulo: 'Enfeite do nome', grupo: 'Nome', padrao: 'nenhum', opcoes: [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'coracao', rotulo: 'Coração' }, { valor: 'espiral', rotulo: 'Arabesco' }] },
     { tipo: 'numero', id: 'escalaNome', rotulo: 'Largura do nome', grupo: 'Nome', padrao: 110, min: 30, max: 160, passo: 1, unidade: '%' },
@@ -323,7 +323,7 @@ export const luminariaLetra: Receita = {
 export const luminariaSocial: Receita = {
   ...ficha('luminaria-social'),
   parametros: [
-    { tipo: 'texto', id: 'usuario', rotulo: 'Usuário', grupo: 'Texto', padrao: '@formma3d', maxCaracteres: 30 },
+    { tipo: 'texto', id: 'usuario', rotulo: 'Usuário', grupo: 'Texto', padrao: '@scarprint', maxCaracteres: 30 },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte', grupo: 'Texto', padrao: 'cal-sans' },
     mm('largura', 'Largura', 'Texto', 250, 120, 400, 1),
     { tipo: 'numero', id: 'espacamento', rotulo: 'Espaço entre letras', grupo: 'Texto', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%' },

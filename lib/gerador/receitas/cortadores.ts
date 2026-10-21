@@ -222,7 +222,7 @@ export const cortadoresGrade: Receita = {
     { tipo: 'numero', id: 'parede', rotulo: 'Espessura das paredes', grupo: 'Espessuras', padrao: 1.2, min: 0.6, max: 3, passo: 0.1, unidade: 'mm' },
     { tipo: 'numero', id: 'espBase', rotulo: 'Espessura da base', grupo: 'Espessuras', padrao: 2, min: 1, max: 4, passo: 0.1, unidade: 'mm' },
     { tipo: 'numero', id: 'saia', rotulo: 'Saia da base', grupo: 'Espessuras', padrao: 4, min: 0, max: 10, passo: 0.1, unidade: 'mm', dica: 'Quanto a base entra em cada retângulo: dá firmeza' },
-    { tipo: 'texto', id: 'marca', rotulo: 'Sua marca', grupo: 'Abas', padrao: '@formma3d', maxCaracteres: 30, dica: 'Vazio = sem abas' },
+    { tipo: 'texto', id: 'marca', rotulo: 'Sua marca', grupo: 'Abas', padrao: '@scarprint', maxCaracteres: 30, dica: 'Vazio = sem abas' },
     { tipo: 'fonte', id: 'fonte', rotulo: 'Fonte da marca', grupo: 'Abas', padrao: 'montserrat-900', visivel: (v) => !!v.marca },
     { tipo: 'numero', id: 'abaComprimento', rotulo: 'Comprimento da aba', grupo: 'Abas', padrao: 50, min: 30, max: 120, passo: 1, unidade: 'mm', visivel: (v) => !!v.marca },
     { tipo: 'numero', id: 'abaLargura', rotulo: 'Largura da aba', grupo: 'Abas', padrao: 12, min: 8, max: 25, passo: 0.5, unidade: 'mm', visivel: (v) => !!v.marca },

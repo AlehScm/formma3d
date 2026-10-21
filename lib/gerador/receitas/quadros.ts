@@ -55,7 +55,7 @@ const fontesArte = (v: Valores) => (v.origem !== 'imagem' ? [String(v.fonte), ..
 export const quadroTecido: Receita = {
   ...ficha('quadro-tecido'),
   parametros: [
-    ...camposArte('Ana+& Leo', 'great-vibes'),
+    ...camposArte('Scarprint', 'great-vibes'),
     mm('largura', 'Largura', 'Quadro', 150, 60, 300, 1),
     mm('altura', 'Altura', 'Quadro', 150, 60, 300, 1),
     mm('borda', 'Largura da moldura', 'Quadro', 12, 5, 40, 0.5),
@@ -204,7 +204,7 @@ function laco(w: number): Region {
 export const displayUnhas: Receita = {
   ...ficha('display-unhas'),
   parametros: [
-    ...camposArte('Salão de Unhas+@formma3d', 'cal-sans'),
+    ...camposArte('Salão de Unhas+@scarprint', 'cal-sans'),
     mm('tamDesenho', 'Tamanho do desenho', 'Desenho', 60, 10, 120, 1),
     mm('yDesenho', 'Posição Y do desenho', 'Desenho', 8, -40, 40, 1),
     { tipo: 'escolha', id: 'lado', rotulo: 'Desenho em', grupo: 'Desenho', padrao: 'dupla', opcoes: [{ valor: 'cima', rotulo: 'Cima' }, { valor: 'baixo', rotulo: 'Baixo' }, { valor: 'dupla', rotulo: 'Dupla face' }] },
@@ -267,7 +267,7 @@ export const displayUnhas: Receita = {
 export const miniMicrofone: Receita = {
   ...ficha('mini-microfone'),
   parametros: [
-    ...camposArte('@formma3d', 'cal-sans'),
+    ...camposArte('@scarprint', 'cal-sans'),
     mm('lado', 'Lado do cubo', 'Cubo', 38, 30, 80, 0.5),
     mm('alturaCubo', 'Altura do cubo', 'Cubo', 38, 30, 80, 0.5),
     mm('larguraMic', 'Largura do microfone', 'Encaixe', 22, 10, 60, 0.5),
