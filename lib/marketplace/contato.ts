@@ -5,8 +5,8 @@
 import type { Produto } from './tipos';
 
 export const CONTATO = {
-  /** So digitos, com DDI e DDD (ex.: 5519999999999). Vazio ate o usuario passar o numero. */
-  whatsapp: '',
+  /** So digitos, com DDI e DDD. Vazio = botao "em breve". */
+  whatsapp: '5519997848348',
 };
 
 export function linkWhatsapp(mensagem: string, numero = CONTATO.whatsapp): string | null {
