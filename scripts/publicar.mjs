@@ -61,5 +61,5 @@ git('remote', 'add', 'origin', REPO);
 git('push', '-qf', 'origin', BRANCH);
 rmSync(`${SAIDA}/.git`, { recursive: true, force: true });
 
-console.log('\npronto: https://alehscm.github.io/formma3d/');
+console.log('\npronto: https://scarprint.com.br/');
 console.log('(o GitHub leva cerca de um minuto para trocar a versao no ar)\n');
