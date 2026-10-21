@@ -119,6 +119,8 @@ ok('gerador de brinquedo fica no banco, mas oculto (restricao legal)', FICHAS.fi
 const catalogo = fs.readFileSync('components/catalogo/CatalogoScarprint.tsx', 'utf8');
 ok('/criar: card de gerador abre a pagina da peca, sem "Pedir impressa"', /`\/produto\/\$\{naLoja\[id\]\}`/.test(catalogo) && /href=\{pecaDo\(f\.id\)\}/.test(catalogo) && !/Pedir impressa/.test(catalogo));
 ok('/criar: todo card tem o mesmo botao, um so', (catalogo.match(/<CardModelo /g) ?? []).length === 2 && /acao="Personalizar"/.test(catalogo) && /acao="Abrir editor"/.test(catalogo));
+ok('pecas de ACM fora da loja: o orcamento delas sai do editor', ['letreiro-letra-caixa-acm', 'letra-moldura-acm'].every((s) => PRODUTOS.some((p) => p.slug === s) && !porSlug(s)));
+ok('menu do topo tem "Monte seu letreiro" para o editor', /href="\/editor"[^>]*>Monte seu letreiro</.test(fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8')));
 ok('menu e rodape sem "Arquivos para imprimir"', !/Arquivos para imprimir|Baixe o arquivo|Para quem imprime/.test(['components/loja/Cabecalho.tsx', 'components/loja/Estrutura.tsx', 'app/not-found.tsx'].map((f) => fs.readFileSync(f, 'utf8')).join()));
 ok('produto com gerador tem "Ver no gerador (mais configurações)"', /hrefDoGerador\(gerador, p\.slug\)/.test(fs.readFileSync('components/loja/Produto.tsx', 'utf8')) && /Ver no gerador \(mais configurações\)/.test(fs.readFileSync('components/loja/Produto.tsx', 'utf8')));
 ok('/design tem "Adicionar ao orçamento" e recebe as pecas do servidor', /<AdicionarOrcamento /.test(fs.readFileSync('features/design/ModoLivre.tsx', 'utf8')) && /pecas=\{pecas\}/.test(fs.readFileSync('app/design/page.tsx', 'utf8')));

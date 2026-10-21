@@ -120,7 +120,11 @@ export function CabecalhoLoja({ secaoAtual, todas, secoes }: { secaoAtual?: Seca
               </Link>
             </li>
           ))}
+          {/* Letreiro de letra caixa com ACM nao e peca do carrinho: o orcamento sai do editor. */}
           <li className="ml-auto shrink-0">
+            <Link href="/editor" className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-azul no-underline hover:bg-marca-gelo">Monte seu letreiro</Link>
+          </li>
+          <li className="shrink-0">
             <Link href="/criar" className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-azul no-underline hover:bg-marca-gelo">Monte a sua peça</Link>
           </li>
         </ul>

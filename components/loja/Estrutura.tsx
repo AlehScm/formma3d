@@ -29,7 +29,7 @@ export function RodapeLoja() {
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             <li><Link href="/criar" className={LINK_RODAPE}>Geradores de peças</Link></li>
             <li><Link href="/design" className={LINK_RODAPE}>Crie do zero</Link></li>
-            <li><Link href="/editor" className={LINK_RODAPE}>Editor de letreiros</Link></li>
+            <li><Link href="/editor" className={LINK_RODAPE}>Monte seu letreiro</Link></li>
             <li><Link href="/placas" className={LINK_RODAPE}>Editor de placas</Link></li>
           </ul>
         </div>
