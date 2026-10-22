@@ -45,11 +45,9 @@ const CSS_PENDENTE: Record<string, string> = {
 const HEX_EXCECAO: Record<string, string> = {
   'components/Viewer3D.tsx': 'cores da cena 3D (WebGL), não CSS',
   'features/gerador/PreviaGerador.tsx': 'fundo da cena 3D (WebGL)',
-  'features/placas/model.ts': 'cor padrão dos dados da placa',
-  'features/placas/exportSvg.ts': 'cores no SVG exportado (arquivo do usuário)',
-  'features/placas/GeradorPlaca3D.tsx': 'cores dos materiais e fundo da cena 3D (WebGL), nao CSS',
   'app/sistema/page.tsx': 'valor de reserva ao ler o token na vitrine',
   'app/layout.tsx': 'theme-color do navegador (meta tag), nao aceita token CSS',
+  'app/manifest.ts': 'theme_color e background_color do manifest (JSON), nao aceitam token CSS',
 };
 const HEX_PENDENTE: Record<string, string> = {
 };

@@ -33,11 +33,12 @@ ok('terceiro sem licenca fora do sitemap mesmo marcado publico', !caminhosIndexa
 ok('sitemap so com secoes que tem peca publica', ORDEM_SECOES.every((s) => caminhos.includes(`/secao/${s}`) === porSecao(s).length > 0));
 ok('Sensoriais (sem peca publica) fora do sitemap', !caminhos.includes('/secao/sensoriais'));
 ok('sitemap sem busca, orcamento, guia interno e enderecos antigos', !caminhos.some((c) => /^\/(busca|orcamento|sistema|moldes)\b/.test(c)));
-ok('Natal no sitemap segue a chave da campanha', caminhos.includes(CAMPANHAS.natal.href) === campanhaAtiva('natal'));
+ok('Natal sempre no sitemap, com a campanha ligada ou nao', caminhos.includes(CAMPANHAS.natal.href));
 const semNatal = caminhosIndexaveis(PRODUTOS, () => false), comNatal = caminhosIndexaveis(PRODUTOS, () => true);
 const soDoNatal = PRODUTOS.filter((p) => p.campanha === 'natal');
-ok('campanha desligada: sem /natal e sem peca so de Natal', !semNatal.includes('/natal') && soDoNatal.length > 0 && soDoNatal.every((p) => !semNatal.includes(`/produto/${p.slug}`)));
+ok('campanha desligada: /natal fica, mas sem peca so de Natal', semNatal.includes('/natal') && soDoNatal.length > 0 && soDoNatal.every((p) => !semNatal.includes(`/produto/${p.slug}`)));
 ok('campanha ligada: /natal no sitemap', comNatal.includes('/natal'));
+ok('icones do site e manifest existem', ['app/favicon.ico', 'app/apple-icon.png', 'public/icone-192.png', 'public/icone-512.png', 'app/manifest.ts'].every((f) => fs.existsSync(f)), ['app/favicon.ico', 'app/apple-icon.png', 'public/icone-192.png', 'public/icone-512.png', 'app/manifest.ts'].filter((f) => !fs.existsSync(f)).join(', '));
 const sitemap = fs.readFileSync('app/sitemap.ts', 'utf8'), robots = fs.readFileSync('app/robots.ts', 'utf8');
 ok('sitemap e robots estaticos (export) e com URL absoluta', [sitemap, robots].every((t) => /export const dynamic = 'force-static'/.test(t) && /urlAbsoluta\(/.test(t)) && /caminhosIndexaveis\(\)/.test(sitemap));
 ok('robots nao bloqueia pagina (noindex fica na pagina)', !/disallow/i.test(robots) && /sitemap: urlAbsoluta\('sitemap\.xml'\)/.test(robots));
@@ -57,7 +58,7 @@ ok('resumir corta na palavra, ate 160, com reticencias', longo.length <= 160 && 
 const descricoes = publicos.map((p) => ({ p, d: descricaoDoProduto(p) }));
 ok('descricao de todo produto publico com 50 a 160 caracteres', descricoes.every(({ d }) => d.length >= 50 && d.length <= 160), descricoes.filter(({ d }) => d.length < 50 || d.length > 160).map(({ p, d }) => `${p.slug}=${d.length}`).join(', '));
 ok('descricao do produto sem promessa inventada (fora o que ja e do produto)', descricoes.every(({ p, d }) => !PROMESSA.test(d) || PROMESSA.test(p.descricao + p.personalizavel.join())));
-const textosSeo = [DESCRICAO_SITE, IMAGEM_SOCIAL.alt, fs.readFileSync('lib/seo.ts', 'utf8'), ...['pecas', 'criar', 'design', 'editor', 'placas', 'secao/[slug]', 'produto/[slug]', 'natal'].map((r) => fs.readFileSync(`app/${r}/page.tsx`, 'utf8').match(/metadadosPagina\(\{[\s\S]*?\}\)/g)?.join('\n') ?? '')];
+const textosSeo = [DESCRICAO_SITE, IMAGEM_SOCIAL.alt, fs.readFileSync('lib/seo.ts', 'utf8'), ...['pecas', 'criar', 'design', 'editor', 'secao/[slug]', 'produto/[slug]', 'natal'].map((r) => fs.readFileSync(`app/${r}/page.tsx`, 'utf8').match(/metadadosPagina\(\{[\s\S]*?\}\)/g)?.join('\n') ?? '')];
 ok('textos de SEO sem frete, prazo, garantia ou avaliacao inventados', textosSeo.every((t) => !PROMESSA.test(t.replace(/promessa inventada/gi, ''))));
 ok('descricao do site ate 160', DESCRICAO_SITE.length <= 160);
 

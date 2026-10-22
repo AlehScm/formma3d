@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { IconeBusca, IconeConversa, IconeTridimensional } from '@/components/loja/icones';
 import { PaginaLoja } from '@/components/loja/Estrutura';
+import { BotaoMarca } from '@/components/marca';
 import { Modulo } from '@/components/loja/Modulo';
 import { Prateleira } from '@/components/loja/Vitrine';
 import { ComPaleta } from '@/features/catalogo/Miniaturas';
@@ -16,9 +16,19 @@ export const metadata: Metadata = metadadosPagina({ titulo: `${CAMPANHAS.natal.n
 
 const ICONES_PASSOS = [IconeBusca, IconeTridimensional, IconeConversa];
 
-/** Especial de Natal: so existe com a campanha ligada (desligada, o build gera 404). */
+/** Especial de Natal: fica no ar o ano todo para manter o ranking; fora da campanha mostra so um aviso. */
 export default function NatalPage() {
-  if (!campanhaAtiva('natal')) notFound();
+  if (!campanhaAtiva('natal')) {
+    return (
+      <PaginaLoja>
+        <div data-campanha="natal" className="flex flex-col items-start gap-4 py-10">
+          <h1 className="m-0 text-titulo font-semibold text-marca-navy">O especial de Natal volta em novembro</h1>
+          <p className="m-0 text-corpo text-marca-texto-2">Enquanto isso, veja os presentes com nome.</p>
+          <BotaoMarca href="/secao/presentes">Ver os presentes</BotaoMarca>
+        </div>
+      </PaginaLoja>
+    );
+  }
   const vitrines = VITRINES_NATAL.map((v) => ({ ...v, produtos: v.slugs.map((s) => porSlug(s)).filter((p): p is Produto => !!p) })).filter((v) => v.produtos.length);
   return (
     <PaginaLoja>
