@@ -115,7 +115,7 @@ export function CompraProduto({ produto: p, pedido, semPersonalizar }: { produto
         </BotaoMarca>
       )}
       {whatsapp ? (
-        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="text-center text-item font-semibold text-marca-whatsapp no-underline hover:underline">Pedir só esta peça pelo WhatsApp</a>
+        <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="text-center text-item font-semibold text-marca-whatsapp-forte no-underline hover:underline">Pedir só esta peça pelo WhatsApp</a>
       ) : (
         <Link href="/orcamento" className="text-center text-item font-semibold text-marca-azul no-underline hover:underline">Ver o meu orçamento</Link>
       )}

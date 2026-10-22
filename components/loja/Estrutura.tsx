@@ -44,7 +44,7 @@ export function RodapeLoja() {
           <h2 className="mt-0 mb-3 text-item font-semibold">Atendimento</h2>
           {whatsapp ? (
             <div className="flex flex-col gap-2">
-              <a href={whatsapp} className={cx(LINK_RODAPE, 'font-semibold text-marca-whatsapp')} target="_blank" rel="noopener noreferrer">WhatsApp {CONTATO.whatsappTexto}</a>
+              <a href={whatsapp} className={cx(LINK_RODAPE, 'font-semibold text-marca-whatsapp-forte')} target="_blank" rel="noopener noreferrer">WhatsApp {CONTATO.whatsappTexto}</a>
               <p className="m-0 text-apoio text-marca-texto-2">{textoResposta()}</p>
             </div>
           ) : <p className="m-0 text-apoio text-marca-texto-2">WhatsApp em breve.</p>}
