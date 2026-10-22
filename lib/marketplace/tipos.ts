@@ -52,7 +52,7 @@ export interface Produto {
   tags: Tag[];
   /** Id da ficha do gerador (lib/gerador/receitas/fichas.ts); so com a tag `gerador`. */
   gerador?: string;
-  /** Editor onde a pessoa monta a peca (/editor, /placas); so com a tag `editor`. */
+  /** Editor onde a pessoa monta a peca (/editor, /design); so com a tag `editor`. */
   personalizar?: { href: string; rotulo: string };
   /** Registro criado da ficha, com textos provisorios: preencher no banco (data/produtos.json). */
   revisar?: boolean;

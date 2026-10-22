@@ -87,7 +87,7 @@ conferir('loja fluida sem teto central e grade com colunas automaticas', () => {
   }
 });
 conferir('areas de trabalho sem tetos centrais de 1800 ou 2400px', () => {
-  for (const arquivo of ['components/casca/AppShell.tsx', 'features/placas/EditorPlacas.tsx', 'features/placas/GeradorPlaca3D.tsx']) {
+  for (const arquivo of ['components/casca/AppShell.tsx']) {
     assert.doesNotMatch(fs.readFileSync(arquivo, 'utf8'), /max-w-\[(?:1800|2400)px\]/);
   }
 });

@@ -8,6 +8,8 @@
   --marca-profundo: #18212e;
   --marca-azul: #2760a2;
   --marca-azul-forte: #1f4d83;
+  --marca-azul-brilho: #9cc6ff;  /* o brilho que corre na borda viva */
+  --marca-gelo-azul: #e9eef6;    /* fundo da borda viva no hover */
   --marca-ciano: #2760a2;
   --marca-gelo: #f7f8fa;
   --marca-palido: #f7f8fa;
@@ -344,4 +346,26 @@
   & > :nth-child(3n + 2) { animation-delay: 0.8s; }
   & > :nth-child(3n) { animation-delay: 1.6s; }
   @media (prefers-reduced-motion: reduce) { & > * { animation: none; } }
+}
+
+/* Borda viva (o "Criar" do menu, docs/handoff-menu-criar.md): um brilho corre no contorno do
+   botao. A propria borda e a animacao, nao um indicador solto (parecia "carregando").
+   Quem pede menos movimento ve so a borda azul parada. */
+@property --angulo-borda {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes borda-viva {
+  to { --angulo-borda: 360deg; }
+}
+@utility borda-viva {
+  --borda-viva-fundo: var(--marca-gelo);
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--borda-viva-fundo), var(--borda-viva-fundo)) padding-box,
+    conic-gradient(from var(--angulo-borda), var(--marca-azul) 0deg, var(--marca-azul) 250deg, var(--marca-azul-brilho) 300deg, var(--marca-branco) 318deg, var(--marca-azul-brilho) 336deg, var(--marca-azul) 360deg) border-box;
+  animation: borda-viva 2.6s linear infinite;
+  &:hover, &[data-state='open'] { --borda-viva-fundo: var(--marca-gelo-azul); animation-duration: 1.4s; }
+  @media (prefers-reduced-motion: reduce) { animation: none; }
 }

@@ -12,8 +12,6 @@ export const tipoDaFamilia: Record<keyof typeof familias, string> = {
 export const moldes = [
   { id: 'texto-livre', title: 'Texto editável', family: 'texto', summary: 'Monte palavras e ajuste cada letra, escala e espaçamento.', icon: 'Aa', ativo: true },
   { id: 'letreiro-nome', title: 'Letreiro de nome', family: 'texto', summary: 'Comece por um nome e refine a composição letra por letra.', icon: 'N', ativo: true },
-  { id: 'placa-personalizada', title: 'Placa personalizada', family: 'placas', summary: 'Defina medidas e texto; depois reorganize tudo no editor.', icon: '▱', ativo: true },
-  { id: 'placa-profissional', title: 'Placa profissional', family: 'placas', summary: 'Base dimensional com nome editável para comunicação visual.', icon: '▰', ativo: true },
   { id: 'chaveiro-logo', title: 'Chaveiro com logo', family: 'chaveiros', summary: 'Logo, base, relevo e opção de fixação.', icon: '◇', ativo: false },
   { id: 'placa-qr', title: 'Placa com QR Code', family: 'qr', summary: 'QR, texto e identidade organizados em uma placa.', icon: '⌗', ativo: false },
   { id: 'cortador-svg', title: 'Cortador por desenho', family: 'cortadores', summary: 'Contorno enviado por SVG, borda e altura ajustáveis.', icon: '✂', ativo: false },
@@ -41,16 +39,6 @@ export const editoresLivres = [
     summary: 'Monte do zero, letra por letra: letra caixa com chapa de ACM, peças para imprimir e orçamento.',
     destaques: ['Letra caixa com chapa', 'Importa AI, PDF, STL e 3MF', 'Orçamento pronto'],
   },
-  {
-    id: 'placa-personalizada', title: 'Placa personalizada', family: 'placas', href: '/placas?preset=placa-personalizada', visual: 'placa-personalizada',
-    summary: 'Uma base com as medidas que você quiser e o texto em letras soltas para colar.',
-    destaques: ['Medidas livres', 'Letras soltas em STL', 'Composição em 2D'],
-  },
-  {
-    id: 'placa-profissional', title: 'Placa profissional', family: 'placas', href: '/placas?preset=placa-profissional', visual: 'placa-profissional',
-    summary: 'Placa de nome para empresa ou consultório, já no formato largo de fachada.',
-    destaques: ['Formato de fachada', 'Letras soltas em STL', 'Composição em 2D'],
-  },
 ] as const;
 
 const ALIASES_MOLDES: Record<string, string> = {
@@ -64,7 +52,7 @@ const ALIASES_MOLDES: Record<string, string> = {
 /** Preserva as ferramentas especializadas dos moldes antigos e só abre receitas existentes. */
 export function destinoDoMoldeAntigo(id: string, temReceita: (receitaId: string) => boolean): string {
   if (id === 'texto-livre' || id === 'letreiro-nome') return '/editor';
-  if (id === 'placa-personalizada' || id === 'placa-profissional') return `/placas?preset=${id}`;
+  if (id === 'placa-personalizada' || id === 'placa-profissional') return '/criar';
   const receita = ALIASES_MOLDES[id] ?? id;
   return temReceita(receita) ? `/design?modelo=${encodeURIComponent(receita)}` : '/criar';
 }

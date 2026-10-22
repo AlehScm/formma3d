@@ -16,6 +16,8 @@ import { camposPrincipais, resumoDoModelo, resumoPersonalizacao, valoresIniciais
 import { lerBanco, type RegistroProduto } from '../lib/marketplace/banco';
 import { sincronizarBanco } from '../lib/marketplace/banco-sincronizar';
 import { hrefDoGerador } from '../lib/marketplace/formato';
+import { FLAGS } from '../lib/flags';
+import { FERRAMENTAS } from '../lib/marketplace/indexacao';
 import { PRESETS_NATAL, SLUGS_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva, diasAteONatal, pecaDeNatal } from '../lib/marketplace/campanhas';
 import { receitaPorId } from '../lib/gerador/receitas';
 import { FICHAS } from '../lib/gerador/receitas/fichas';
@@ -61,24 +63,20 @@ ok('pasta publica de fotos nao inclui itens ocultos ou desconhecidos', entradasF
     fs.readdirSync(`${pastaFotos}/${entrada.name}`, { withFileTypes: true }).every((foto) => foto.isFile() && /\.(jpe?g|png|webp|avif)$/i.test(foto.name)))
 ));
 
-const rotas = new Set(['/editor', '/placas', '/criar']);
+const rotas = new Set(['/editor', '/criar']);
 const linkValido = (p: Produto) => {
   if (p.tags.includes('gerador')) return !!p.gerador && !!receitaPorId(p.gerador) && !p.personalizar;
   if (p.tags.includes('editor')) return !!p.personalizar && rotas.has(p.personalizar.href);
   return !p.personalizar && !p.gerador;
 };
 ok('tag gerador aponta para receita existente e tag editor para rota existente', PRODUTOS.every(linkValido), PRODUTOS.filter((p) => !linkValido(p)).map((p) => `${p.slug} -> ${p.gerador ?? p.personalizar?.href}`).join(', '));
-ok('rotas do editor e das placas existem', fs.existsSync('app/editor/page.tsx') && fs.existsSync('app/placas/page.tsx'));
+ok('rota do editor existe e a de placas nao', fs.existsSync('app/editor/page.tsx') && !fs.existsSync('app/placas'));
 const linkEditorValido = (href: string) => {
   const [rota, query = ''] = href.split('?');
   if (!fs.existsSync(`app${rota}/page.tsx`)) return false;
   if (rota === '/design' && query) {
     const modelo = new URLSearchParams(query).get('modelo');
     return !!modelo && !!receitaPorId(modelo);
-  }
-  if (rota === '/placas' && query) {
-    const preset = new URLSearchParams(query).get('preset');
-    return preset === 'placa-personalizada' || preset === 'placa-profissional';
   }
   return !query;
 };
@@ -90,8 +88,12 @@ const destinoLegadoValido = (id: string) => {
   return linkEditorValido(destino);
 };
 ok('todo ID gerado em /moldes tem destino existente', idsLegados.every(destinoLegadoValido), idsLegados.filter((id) => !destinoLegadoValido(id)).join(', '));
-ok('moldes especializados e alias de chaveiro mantêm o destino correto', destinoDoMoldeAntigo('texto-livre', () => false) === '/editor' && destinoDoMoldeAntigo('letreiro-nome', () => false) === '/editor' && destinoDoMoldeAntigo('placa-personalizada', () => false) === '/placas?preset=placa-personalizada' && destinoDoMoldeAntigo('placa-profissional', () => false) === '/placas?preset=placa-profissional' && destinoDoMoldeAntigo('chaveiro-logo', (id) => id === 'chaveiro-desenho') === '/design?modelo=chaveiro-desenho' && destinoDoMoldeAntigo('id-desconhecido', () => false) === '/criar');
+ok('moldes especializados e alias de chaveiro mantêm o destino correto', destinoDoMoldeAntigo('texto-livre', () => false) === '/editor' && destinoDoMoldeAntigo('letreiro-nome', () => false) === '/editor' && destinoDoMoldeAntigo('placa-personalizada', () => false) === '/criar' && destinoDoMoldeAntigo('placa-profissional', () => false) === '/criar' && destinoDoMoldeAntigo('chaveiro-logo', (id) => id === 'chaveiro-desenho') === '/design?modelo=chaveiro-desenho' && destinoDoMoldeAntigo('id-desconhecido', () => false) === '/criar');
 ok('nenhum link do site ainda aponta para rotas antigas de modelo', !PRODUTOS.some((p) => /^(?:\/moldes\/|\/design\/)/.test(p.personalizar?.href ?? '')) && !/(?:\/moldes\/|\/design\/)/.test(fs.readFileSync('components/catalogo/CatalogoScarprint.tsx', 'utf8') + fs.readFileSync('features/catalogo/catalogo.ts', 'utf8')));
+const varrer = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? varrer(`${dir}/${e.name}`) : /\.(tsx?|mts|json|css)$/.test(e.name) ? [`${dir}/${e.name}`] : []);
+const citaPlacas = ['app', 'components', 'features', 'lib'].flatMap(varrer).filter((arq) => /\/placas\b/.test(fs.readFileSync(arq, 'utf8')));
+const registroPlacas = PRODUTOS.find((p) => p.slug === 'placa-personalizada');
+ok('rota /placas nao existe e nada do site aponta para ela', !fs.existsSync('app/placas') && !fs.existsSync('features/placas') && citaPlacas.length === 0 && !PRODUTOS.some((p) => p.slug !== 'placa-personalizada' && (p.personalizar?.href ?? '').startsWith('/placas')) && registroPlacas?.visibilidade === 'oculto' && !FERRAMENTAS.includes('/placas'), citaPlacas.join(', '));
 const produtoTeste = PRODUTOS[0]!;
 ok('gerador vem da tag, nao do link', geradorDe({ ...produtoTeste, tags: ['gerador'], gerador: 'chaveiro-nome' }) === 'chaveiro-nome' && geradorDe({ ...produtoTeste, tags: [], gerador: 'chaveiro-nome' }) === undefined && geradorDe({ ...produtoTeste, tags: ['editor'], gerador: undefined, personalizar: { href: '/design?modelo=chaveiro-nome', rotulo: 'x' } }) === undefined);
 ok('"Ver no gerador" leva o modelo e a peca de origem', hrefDoGerador('chaveiro-nome', 'chaveiro-nome') === '/design?modelo=chaveiro-nome&produto=chaveiro-nome');
@@ -120,7 +122,14 @@ const catalogo = fs.readFileSync('components/catalogo/CatalogoScarprint.tsx', 'u
 ok('/criar: card de gerador abre a pagina da peca, sem "Pedir impressa"', /`\/produto\/\$\{naLoja\[id\]\}`/.test(catalogo) && /href=\{pecaDo\(f\.id\)\}/.test(catalogo) && !/Pedir impressa/.test(catalogo));
 ok('/criar: todo card tem o mesmo botao, um so', (catalogo.match(/<CardModelo /g) ?? []).length === 2 && /acao="Personalizar"/.test(catalogo) && /acao="Abrir editor"/.test(catalogo));
 ok('pecas de ACM fora da loja: o orcamento delas sai do editor', ['letreiro-letra-caixa-acm', 'letra-moldura-acm'].every((s) => PRODUTOS.some((p) => p.slug === s) && !porSlug(s)));
-ok('menu do topo tem "Monte seu letreiro" para o editor', /href="\/editor"[^>]*>Monte seu letreiro</.test(fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8')));
+const cabecalhoLoja = fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8');
+const menuCriar = fs.readFileSync('components/loja/MenuCriar.tsx', 'utf8');
+ok('menu "Criar": Personalize em 3D (/criar) e Letreiro de fachada (/editor), um item só', /href: '\/criar', titulo: 'Personalize em 3D'/.test(menuCriar) && /href: '\/editor', titulo: 'Letreiro de fachada'/.test(menuCriar) && !/Monte seu letreiro|Monte a sua peça/.test(cabecalhoLoja));
+ok('menu "Criar" vem primeiro no celular e por último no computador', cabecalhoLoja.indexOf('<MenuCriar modo="folha"') < cabecalhoLoja.indexOf('campanhaAtiva(\'natal\') && (') && cabecalhoLoja.indexOf('<MenuCriar modo="menu"') > cabecalhoLoja.indexOf('secoes.map('));
+const barraTopo = fs.readFileSync('components/casca/BarraTopo.tsx', 'utf8');
+ok('flag desligada: /editor sem aba, atalho 3 e valor de orçamento', FLAGS.orcamentoNoEditor === false && /\.\.\.\(FLAGS\.orcamentoNoEditor \? \[\{ valor: 'orcamento'/.test(barraTopo) && /\{FLAGS\.orcamentoNoEditor && o && interno && \(/.test(barraTopo) && /FLAGS\.orcamentoNoEditor \? \{ '3': 'orcamento'/.test(fs.readFileSync('components/casca/Atalhos.tsx', 'utf8')));
+ok('com o orçamento do editor desligado, o menu Criar não promete orçamento lá', FLAGS.orcamentoNoEditor || !/orçamento sai do editor/i.test(menuCriar));
+ok('mesmos nomes no site: sem "Monte a sua peça" nem "Monte seu letreiro"', !['components/loja/Estrutura.tsx', 'app/not-found.tsx', 'features/design/Casca.tsx'].some((f) => /Monte a sua peça|Monte seu letreiro|>Monte a sua</.test(fs.readFileSync(f, 'utf8'))));
 ok('menu e rodape sem "Arquivos para imprimir"', !/Arquivos para imprimir|Baixe o arquivo|Para quem imprime/.test(['components/loja/Cabecalho.tsx', 'components/loja/Estrutura.tsx', 'app/not-found.tsx'].map((f) => fs.readFileSync(f, 'utf8')).join()));
 ok('produto com gerador tem "Ver no gerador (mais configurações)"', /hrefDoGerador\(gerador, p\.slug\)/.test(fs.readFileSync('components/loja/Produto.tsx', 'utf8')) && /Ver no gerador \(mais configurações\)/.test(fs.readFileSync('components/loja/Produto.tsx', 'utf8')));
 ok('/design tem "Adicionar ao orçamento" e recebe as pecas do servidor', /<AdicionarOrcamento /.test(fs.readFileSync('features/design/ModoLivre.tsx', 'utf8')) && /pecas=\{pecas\}/.test(fs.readFileSync('app/design/page.tsx', 'utf8')));
@@ -215,7 +224,7 @@ ok('Natal no site: a home só troca o topo e abre com presentes de Natal com a c
 const cabecalho = fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8');
 ok('Natal no site: luzes, gorro e faixa do cabeçalho só com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(cabecalho) && /const varal = natal && /.test(cabecalho) && /\{varal && <FioDeLuzes \/>\}/.test(cabecalho) && /\{natal && <GorroNoel/.test(cabecalho));
 const paginaNatal = fs.readFileSync('app/natal/page.tsx', 'utf8');
-ok('Natal: com a chave desligada a página vira 404', /if \(!campanhaAtiva\('natal'\)\) notFound\(\)/.test(paginaNatal));
+ok('Natal: com a chave desligada a página continua no ar com o aviso', !/notFound\(/.test(paginaNatal) && /volta em novembro/.test(paginaNatal));
 ok('banners apontam para peças públicas', BANNERS.every((b) => !!porSlug(b.produto)));
 
 // Home: nenhuma peca em duas vitrines, as com imagem antes, secao vazia fora dos atalhos.

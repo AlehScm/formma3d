@@ -15,6 +15,7 @@ import { CAMPANHAS, campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { ContagemNatal, EstrelaNatal, FioDeLuzes, GorroNoel, Neve } from '@/features/marketplace/Natal';
 import { SECOES, type Secao } from '@/lib/marketplace/tipos';
 import { IconeBusca, IconeCarrinho, IconeFavorito } from './icones';
+import { MenuCriar } from './MenuCriar';
 
 function Contador({ n }: { n: number }) {
   if (!n) return null;
@@ -69,7 +70,7 @@ export function CabecalhoLoja({ secaoAtual, todas, secoes }: { secaoAtual?: Seca
         </div>
       ) : (
         <div className="bg-marca-palido px-margem py-2 text-center text-apoio text-marca-texto-2">
-          Peças impressas em 3D sob medida. <Link href="/criar" className="font-semibold text-marca-azul underline underline-offset-2">Monte a sua peça</Link>
+          Peças impressas em 3D sob medida. <Link href="/criar" className="font-semibold text-marca-azul underline underline-offset-2">Personalize em 3D</Link>
         </div>
       )}
       <header className="sticky top-0 z-30 bg-marca-branco shadow-marca-1">
@@ -98,6 +99,8 @@ export function CabecalhoLoja({ secaoAtual, todas, secoes }: { secaoAtual?: Seca
       </header>
       <nav aria-label="Categorias" className="border-b border-marca-linha bg-marca-branco">
         <ul className="conteiner-loja my-0 flex list-none gap-1 overflow-x-auto px-margem py-1 [scrollbar-width:none] max-md:[mask-image:linear-gradient(to_right,black_88%,transparent)] [&::-webkit-scrollbar]:hidden">
+          {/* No celular a barra rola de lado: o "Criar" vem primeiro para nao sumir no fim. */}
+          <li className="shrink-0 md:hidden"><MenuCriar modo="folha" /></li>
           {campanhaAtiva('natal') && (
             <li className="shrink-0">
               <Link href={CAMPANHAS.natal.href} className="inline-flex min-h-11 items-center gap-1.5 rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-natal-vermelho no-underline hover:bg-natal-vermelho/10">
@@ -120,13 +123,8 @@ export function CabecalhoLoja({ secaoAtual, todas, secoes }: { secaoAtual?: Seca
               </Link>
             </li>
           ))}
-          {/* Letreiro de letra caixa com ACM nao e peca do carrinho: o orcamento sai do editor. */}
-          <li className="ml-auto shrink-0">
-            <Link href="/editor" className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-azul no-underline hover:bg-marca-gelo">Monte seu letreiro</Link>
-          </li>
-          <li className="shrink-0">
-            <Link href="/criar" className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-azul no-underline hover:bg-marca-gelo">Monte a sua peça</Link>
-          </li>
+          {/* No computador o "Criar" fecha a barra; no celular ele abre a barra (acima). */}
+          <li className="ml-auto hidden shrink-0 md:block"><MenuCriar modo="menu" /></li>
         </ul>
       </nav>
       {varal && <FioDeLuzes />}

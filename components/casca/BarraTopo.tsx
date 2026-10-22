@@ -24,6 +24,7 @@ import { useInterface, type Espaco } from '@/store/interface';
 import { useModelo, useOrcamento } from '@/modelo/Modelo';
 import { FORMATOS_TEXTO } from '@/features/acoes/origem';
 import { useInterno } from '@/features/orcamento/interno';
+import { FLAGS } from '@/lib/flags';
 import {
   baixarChapaDXF,
   baixarChapaPDF,
@@ -131,12 +132,12 @@ export function BarraTopo() {
           abas={[
             { valor: 'desenhar', nome: 'Desenhar', icone: IconeDesenhar, dica: 'Como o letreiro é: texto, estilo e medidas', atalho: '1' },
             { valor: 'imprimir', nome: 'Imprimir', icone: IconeImprimir, dica: 'Máquina, mesa e arranjo das peças', atalho: '2' },
-            { valor: 'orcamento', nome: 'Orçamento', icone: IconeOrcamento, dica: interno ? 'Custo, margem e preço' : 'Pedir orçamento deste letreiro', atalho: '3' },
+            ...(FLAGS.orcamentoNoEditor ? [{ valor: 'orcamento' as const, nome: 'Orçamento', icone: IconeOrcamento, dica: interno ? 'Custo, margem e preço' : 'Pedir orçamento deste letreiro', atalho: '3' }] : []),
           ]}
         />
       </div>
 
-      {o && interno && (
+      {FLAGS.orcamentoNoEditor && o && interno && (
         <button
           type="button"
           onClick={() => setEspaco('orcamento')}

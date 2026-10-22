@@ -37,7 +37,7 @@ export function Casca({ janela, cabecalho, acoes, contexto, colunas, children }:
 }
 
 /** Volta para a peca da loja quando o modelo veio de uma; senao, para o catalogo. */
-export const VoltarCatalogo = ({ href = '/criar', rotulo = 'Monte a sua peça' }: { href?: string; rotulo?: string }) => (
+export const VoltarCatalogo = ({ href = '/criar', rotulo = 'Personalize em 3D' }: { href?: string; rotulo?: string }) => (
   <Link href={href} className="rounded-md px-2 py-1 text-mini font-medium text-texto-2 hover:bg-superficie-3">← {rotulo}</Link>
 );
 

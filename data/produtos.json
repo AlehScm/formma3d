@@ -636,9 +636,7 @@
   {
     "slug": "placa-personalizada",
     "nome": "Placa de sinalização",
-    "tags": [
-      "editor"
-    ],
+    "tags": [],
     "gerador": null,
     "secao": "empresa",
     "tipo": "Placa",
@@ -653,13 +651,10 @@
       "status": "validacao"
     },
     "midias": [],
-    "personalizar": {
-      "href": "/placas",
-      "rotulo": "Montar a placa"
-    },
+    "personalizar": null,
     "origem": "nosso",
     "licenca": "propria",
-    "visibilidade": "publico",
+    "visibilidade": "oculto",
     "destaque": false,
     "jaImpresso": false,
     "campanha": null,

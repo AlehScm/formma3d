@@ -16,6 +16,8 @@ export {
   Search as IconeBusca,
   ShoppingCart as IconeCarrinho,
   SlidersHorizontal as IconeFiltros,
+  Store as IconeFachada,
+  ChevronDown as IconeAbaixo,
   Trash2 as IconeRemover,
   X as IconeFechar,
 } from 'lucide-react';

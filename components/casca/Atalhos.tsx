@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useInterface, type Espaco, type Ferramenta } from '@/store/interface';
 import { useModelo } from '@/modelo/Modelo';
+import { FLAGS } from '@/lib/flags';
 import {
   agruparSelecao,
   colarCopiadas,
@@ -15,7 +16,7 @@ import {
 } from '@/features/acoes/selecao';
 
 const FERRAMENTAS: Record<string, Ferramenta> = { v: 'selecionar', g: 'mover', r: 'girar', s: 'tamanho' };
-const ESPACOS: Record<string, Espaco> = { '1': 'desenhar', '2': 'imprimir', '3': 'orcamento' };
+const ESPACOS: Record<string, Espaco> = { '1': 'desenhar', '2': 'imprimir', ...(FLAGS.orcamentoNoEditor ? { '3': 'orcamento' as const } : {}) };
 
 /**
  * Atalhos de teclado. Ignorados enquanto se digita num campo -- senao escrever

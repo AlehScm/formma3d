@@ -170,8 +170,6 @@ function VisualReserva({ id, family }: { id: string; family: Familia }) {
     case 'texto-livre': return <div className="preview-letters"><span>S</span><span>C</span><span>A</span><span>R</span></div>;
     case 'palavra-camadas': return <div className="preview-layers"><span>SCAR</span><span>SCAR</span><span>SCAR</span></div>;
     case 'social-camadas': return <div className="preview-social"><span>@</span><b>scarprint</b></div>;
-    case 'placa-personalizada': return <div className="preview-sign"><span>STUDIO</span><small>DESIGN · CRIAÇÃO</small></div>;
-    case 'placa-profissional': return <div className="preview-nameplate"><small>SEU NEGÓCIO</small><b>MARCA</b><i /></div>;
     case 'logo-camadas': return <div className="preview-sign"><span>LOGO</span><small>CAMADAS</small></div>;
     case 'floco-neve': return <div className="preview-snowflake">❄</div>;
     case 'topo-bolo':

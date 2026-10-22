@@ -19,7 +19,7 @@ export default function NaoEncontrada() {
         <Link href="/" className={LINK}>Início</Link>
         <Link href="/pecas" className={LINK}>Todas as peças</Link>
         {ORDEM_SECOES.filter((s) => porSecao(s).length).map((s) => <Link key={s} href={`/secao/${s}`} className={LINK}>{SECOES[s].nome}</Link>)}
-        <Link href="/criar" className={LINK}>Monte a sua peça</Link>
+        <Link href="/criar" className={LINK}>Personalize em 3D</Link>
       </div>
     </PaginaLoja>
   );
