@@ -9,8 +9,9 @@
  * .github/workflows/deploy.yml, que publica sozinho a cada push.
  */
 import { execFileSync } from 'node:child_process';
-import { rmSync, existsSync } from 'node:fs';
+import { rmSync, existsSync, readFileSync } from 'node:fs';
 import { achatarPrefetch } from './achatar-prefetch.mjs';
+import { avisarIndexNow, esperarNoAr, mudancas, sitemapNoAr, urlsDoSitemap } from './indexnow.mjs';
 
 const REPO = 'https://github.com/AlehScm/formma3d.git';
 const BRANCH = 'gh-pages';
@@ -52,6 +53,9 @@ if (!existsSync(`${SAIDA}/CNAME`)) throw new Error(`o build nao levou public/CNA
 console.log(`     prefetch: ${achatarPrefetch(SAIDA)} copias com o nome que o navegador pede`);
 
 console.log('\n4/4  enviando para o GitHub Pages');
+// O sitemap no ar antes de trocar, para avisar ao IndexNow so o que entrou ou saiu.
+const sitemapAntes = await sitemapNoAr();
+const sitemapDepois = urlsDoSitemap(readFileSync(`${SAIDA}/sitemap.xml`, 'utf8'));
 const git = (...args) => run('git', args, { cwd: SAIDA, stdio: ['inherit', 'pipe', 'pipe'] });
 rmSync(`${SAIDA}/.git`, { recursive: true, force: true });
 git('init', '-q', '-b', BRANCH);
@@ -63,3 +67,18 @@ rmSync(`${SAIDA}/.git`, { recursive: true, force: true });
 
 console.log('\npronto: https://scarprint.com.br/');
 console.log('(o GitHub leva cerca de um minuto para trocar a versao no ar)\n');
+
+// Bing e cia. ficam sabendo na hora; o aviso so sai depois que a versao nova esta no ar.
+const novas = sitemapAntes ? mudancas(sitemapAntes, sitemapDepois) : [];
+if (!sitemapAntes) console.log('IndexNow: nao deu para ler o sitemap no ar antes de publicar; nada avisado\n');
+else if (!novas.length) console.log('IndexNow: nenhuma pagina entrou ou saiu do sitemap\n');
+else {
+  console.log(`IndexNow: esperando a versao nova no ar para avisar ${novas.length} pagina(s)`);
+  const comando = `node scripts/indexnow.mjs ${novas.join(' ')}`;
+  try {
+    if (await esperarNoAr(sitemapDepois)) console.log(`     resposta ${await avisarIndexNow(novas)} (200/202 = recebido)\n`);
+    else console.log(`     a versao nova nao apareceu em 10 min; avise depois com:\n     ${comando}\n`);
+  } catch (e) {
+    console.log(`     falhou (${e.message}); avise depois com:\n     ${comando}\n`);
+  }
+}

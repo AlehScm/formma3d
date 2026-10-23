@@ -12,6 +12,7 @@ import { PRODUTOS, porSecao, produtosPublicos, type Produto } from '../lib/marke
 import { ORDEM_SECOES } from '../lib/marketplace/tipos';
 import { CAMPANHAS, campanhaAtiva } from '../lib/marketplace/campanhas';
 import { DESCRICAO_SITE, IMAGEM_SOCIAL, SITE_URL, descricaoDoProduto, ldLoja, ldProduto, ldTrilha, metadadosPagina, naoIndexar, resumir, urlAbsoluta } from '../lib/seo';
+import { CHAVE_INDEXNOW, SITE as SITE_INDEXNOW, mudancas, urlsDoSitemap } from './indexnow.mjs';
 
 let falhas = 0, total = 0;
 const ok = (nome: string, cond: boolean, detalhe = '') => {
@@ -49,6 +50,15 @@ ok('endereco do site sem barra no fim', !SITE_URL.endsWith('/'));
 const config = fs.readFileSync('next.config.mjs', 'utf8');
 const cname = fs.readFileSync('public/CNAME', 'utf8').trim();
 ok('next.config passa a URL do dominio proprio, o mesmo do public/CNAME', config.includes(`'https://${cname}'`) && /NEXT_PUBLIC_SITE_URL: site/.test(config) && /const base = ''/.test(config));
+
+// ---- IndexNow (aviso ao Bing a cada publicacao) ----
+const arquivoChave = `public/${CHAVE_INDEXNOW}.txt`;
+ok('IndexNow: chave valida, com arquivo na raiz do site contendo a propria chave', /^[a-zA-Z0-9-]{8,128}$/.test(CHAVE_INDEXNOW) && fs.existsSync(arquivoChave) && fs.readFileSync(arquivoChave, 'utf8').trim() === CHAVE_INDEXNOW);
+ok('IndexNow: avisa pelo dominio do public/CNAME', SITE_INDEXNOW === `https://${cname}`);
+ok('IndexNow: le as URLs do sitemap', JSON.stringify(urlsDoSitemap('<urlset><url><loc>https://a.b/</loc></url><url><loc> https://a.b/x </loc></url></urlset>')) === JSON.stringify(['https://a.b/', 'https://a.b/x']));
+ok('IndexNow: so o que entrou ou saiu do sitemap', JSON.stringify(mudancas(['a', 'b', 'c'], ['a', 'c', 'd'])) === JSON.stringify(['d', 'b']) && mudancas(['a'], ['a']).length === 0);
+const publicar = fs.readFileSync('scripts/publicar.mjs', 'utf8');
+ok('publicar avisa o IndexNow so depois do push', publicar.includes('avisarIndexNow(novas)') && publicar.indexOf("git('push'") < publicar.indexOf('avisarIndexNow(novas)'));
 
 // ---- textos ----
 const PROMESSA = /frete|gr[aá]tis|entrega|prazo|\d+\s*dias|garantia|avalia[cç][aã]o|estrelas|★|mais vendid/i;
