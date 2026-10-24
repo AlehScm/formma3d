@@ -5,6 +5,8 @@
  *   npx tsx scripts/verificar-seo.mts
  */
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JsonLd } from '../components/seo/JsonLd';
 import { FERRAMENTAS, caminhosIndexaveis } from '../lib/marketplace/indexacao';
@@ -12,7 +14,8 @@ import { PRODUTOS, porSecao, produtosPublicos, type Produto } from '../lib/marke
 import { ORDEM_SECOES } from '../lib/marketplace/tipos';
 import { CAMPANHAS, campanhaAtiva } from '../lib/marketplace/campanhas';
 import { DESCRICAO_SITE, IMAGEM_SOCIAL, SITE_URL, descricaoDoProduto, ldLoja, ldProduto, ldTrilha, metadadosPagina, naoIndexar, resumir, urlAbsoluta } from '../lib/seo';
-import { CHAVE_INDEXNOW, SITE as SITE_INDEXNOW, mudancas, urlsDoSitemap } from './indexnow.mjs';
+import { CHAVE_INDEXNOW, SITE as SITE_INDEXNOW, urlsDoSitemap } from './indexnow.mjs';
+import { arquivoDoCaminho, assinatura, comLastmod, conferirSaida, datarSitemap, datasDoSitemap, leitura } from './seo-saida.mjs';
 
 let falhas = 0, total = 0;
 const ok = (nome: string, cond: boolean, detalhe = '') => {
@@ -56,9 +59,74 @@ const arquivoChave = `public/${CHAVE_INDEXNOW}.txt`;
 ok('IndexNow: chave valida, com arquivo na raiz do site contendo a propria chave', /^[a-zA-Z0-9-]{8,128}$/.test(CHAVE_INDEXNOW) && fs.existsSync(arquivoChave) && fs.readFileSync(arquivoChave, 'utf8').trim() === CHAVE_INDEXNOW);
 ok('IndexNow: avisa pelo dominio do public/CNAME', SITE_INDEXNOW === `https://${cname}`);
 ok('IndexNow: le as URLs do sitemap', JSON.stringify(urlsDoSitemap('<urlset><url><loc>https://a.b/</loc></url><url><loc> https://a.b/x </loc></url></urlset>')) === JSON.stringify(['https://a.b/', 'https://a.b/x']));
-ok('IndexNow: so o que entrou ou saiu do sitemap', JSON.stringify(mudancas(['a', 'b', 'c'], ['a', 'c', 'd'])) === JSON.stringify(['d', 'b']) && mudancas(['a'], ['a']).length === 0);
 const publicar = fs.readFileSync('scripts/publicar.mjs', 'utf8');
-ok('publicar avisa o IndexNow so depois do push', publicar.includes('avisarIndexNow(novas)') && publicar.indexOf("git('push'") < publicar.indexOf('avisarIndexNow(novas)'));
+const posPush = (trecho: string) => publicar.includes(trecho) && publicar.indexOf("git('push'") < publicar.indexOf(trecho);
+const antesDoPush = (trecho: string) => publicar.includes(trecho) && publicar.indexOf(trecho) < publicar.indexOf("git('push'");
+ok('publicar: trava de SEO e datas do sitemap antes do push; IndexNow depois', antesDoPush('conferirSaida(SAIDA)') && antesDoPush('if (seo.erros.length) throw') && antesDoPush('comLastmod(') && antesDoPush('removidas.length > 5') && posPush('avisarIndexNow(avisar)'));
+ok('publicar roda os testes de SEO', /'verificar-seo'/.test(publicar));
+
+// ---- site gerado: trava de SEO e datas do sitemap (scripts/seo-saida.mjs) ----
+const S = 'https://exemplo.com.br';
+type Opcoes = { titulo?: string; descricao?: string | null; canonical?: string | null; robots?: string; lang?: string; corpo?: string; script?: string; ld?: string };
+const pagina = (caminho: string, o: Opcoes = {}) => `<!DOCTYPE html><html lang="${o.lang ?? 'pt-BR'}"><head><meta charSet="utf-8"/><title>${o.titulo ?? `Pagina ${caminho}`}</title>${o.descricao === null ? '' : `<meta name="description" content="${o.descricao ?? `Descri&#x27;cao da pagina ${caminho}, comprida o bastante para passar.`}"/>`}${o.robots ? `<meta name="robots" content="${o.robots}"/>` : ''}${o.canonical === null ? '' : `<link rel="canonical" href="${o.canonical ?? (caminho === '/' ? S : `${S}${caminho}`)}"/>`}<meta property="og:image" content="${S}/og.png"/><script>self.__next_f.push([1,"${o.script ?? 'build-1'}"])</script>${o.ld ? `<script type="application/ld+json">${o.ld}</script>` : ''}</head><body><h1 class="a">Título</h1>${o.corpo ?? '<a href="/pecas">Peças</a><a href="/produto/a?cor=azul#topo">A</a><a href="https://wa.me/1">Zap</a><img src="/a.png" alt="A"/><img src="/b.png" alt=""/>'}</body></html>`;
+const BASE: Record<string, string> = {
+  'index.html': pagina('/'),
+  'pecas.html': pagina('/pecas'),
+  'produto/a.html': pagina('/produto/a', { ld: '{"@type":"Product"}' }),
+  'busca.html': pagina('/busca', { robots: 'noindex, follow' }),
+  '404.html': '<html lang="pt-BR"><title>404</title></html>',
+  'robots.txt': `User-Agent: *\nAllow: /\n\nSitemap: ${S}/sitemap.xml\n`,
+  'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n<url>\n<loc>${S}/</loc>\n</url>\n<url>\n<loc>${S}/pecas</loc>\n</url>\n<url>\n<loc>${S}/produto/a</loc>\n</url>\n</urlset>\n`,
+};
+const raizTeste = fs.mkdtempSync(path.join(os.tmpdir(), 'seo-saida-'));
+let nTeste = 0;
+const montar = (troca: Record<string, string | null> = {}) => {
+  const dir = path.join(raizTeste, String(nTeste++));
+  for (const [arq, txt] of Object.entries({ ...BASE, ...troca })) {
+    if (txt === null) continue;
+    fs.mkdirSync(path.dirname(path.join(dir, arq)), { recursive: true });
+    fs.writeFileSync(path.join(dir, arq), txt);
+  }
+  fs.mkdirSync(path.join(dir, 'produto', 'a'), { recursive: true }); // pasta de prefetch ao lado da pagina, como no export
+  return dir;
+};
+const erros = (troca: Record<string, string | null>) => conferirSaida(montar(troca), S).erros.join('\n');
+const limpo = conferirSaida(montar(), S);
+ok('trava de SEO: site certo passa sem erro nem aviso', limpo.erros.length === 0 && limpo.avisos.length === 0 && limpo.urls.length === 3, [...limpo.erros, ...limpo.avisos].join(' | '));
+ok('trava de SEO: pega noindex numa pagina do sitemap', /noindex/.test(erros({ 'pecas.html': pagina('/pecas', { robots: 'noindex' }) })));
+ok('trava de SEO: pega canonical errado ou ausente', /canonical/.test(erros({ 'pecas.html': pagina('/pecas', { canonical: `${S}/` }) })) && /canonical ausente/.test(erros({ 'pecas.html': pagina('/pecas', { canonical: null }) })));
+ok('trava de SEO: pega pagina sem titulo, sem descricao ou em outro idioma', /titulos/.test(erros({ 'pecas.html': pagina('/pecas', { titulo: '' }) })) && /meta description/.test(erros({ 'pecas.html': pagina('/pecas', { descricao: null }) })) && /idioma en/.test(erros({ 'pecas.html': pagina('/pecas', { lang: 'en' }) })));
+ok('trava de SEO: pega link interno quebrado (e aceita externo, ancora e ?query)', /link quebrado para \/sumiu/.test(erros({ 'pecas.html': pagina('/pecas', { corpo: '<a href="/sumiu">x</a><a href="#topo">t</a><a href="/produto/a?x=1">a</a>' }) })) && !/link quebrado/.test(erros({})));
+ok('trava de SEO: pega link para pasta de prefetch (nao e pagina)', /link quebrado para \/produto\/a\//.test(erros({ 'pecas.html': pagina('/pecas', { corpo: '<a href="/produto/a/">x</a>' }) })));
+ok('trava de SEO: pega imagem sem alt (alt="" de enfeite pode)', /imagem sem alt: \/c\.png/.test(erros({ 'pecas.html': pagina('/pecas', { corpo: '<img src="/c.png"/><img src="/d.png" alt=""/>' }) })));
+ok('trava de SEO: pega JSON-LD invalido', /JSON-LD invalido/.test(erros({ 'produto/a.html': pagina('/produto/a', { ld: '{"@type":' }) })));
+ok('trava de SEO: pega titulo repetido', /titulo repetido/.test(erros({ 'pecas.html': pagina('/pecas', { titulo: 'Pagina /' }) })));
+ok('trava de SEO: pega pagina do sitemap que nao existe', /\/produto\/a: esta no sitemap mas a pagina nao existe/.test(erros({ 'produto/a.html': null })));
+ok('trava de SEO: pega robots.txt bloqueando tudo ou sem sitemap', /bloqueia o site inteiro/.test(erros({ 'robots.txt': `User-Agent: *\nDisallow: /\nSitemap: ${S}/sitemap.xml\n` })) && /robots\.txt sem/.test(erros({ 'robots.txt': 'User-Agent: *\nAllow: /\n' })));
+ok('trava de SEO: pega sitemap com URL de outro site ou sem 404', /fora do site/.test(erros({ 'sitemap.xml': BASE['sitemap.xml']!.replace(`${S}/pecas`, 'https://outro.com/pecas') })) && /404\.html/.test(erros({ '404.html': null })));
+ok('trava de SEO: avisa (sem travar) descricao curta e pagina sem h1', (() => { const r = conferirSaida(montar({ 'pecas.html': pagina('/pecas', { descricao: 'Curta.', corpo: '<p>sem h1</p>' }).replace(/<h1[^]*?<\/h1>/, '') }), S); return r.erros.length === 0 && r.avisos.some((a) => /descricao com 6/.test(a)) && r.avisos.some((a) => /0 titulos h1/.test(a)); })());
+
+const basePagina = pagina('/pecas');
+ok('assinatura: igual quando so muda o que o buscador nao le (scripts do build, classes)', assinatura(basePagina) === assinatura(pagina('/pecas', { script: 'build-2' }).replace('class="a"', 'class="b"')));
+ok('assinatura: muda com texto, titulo, descricao, imagem, link ou JSON-LD', [pagina('/pecas', { corpo: '<p>outro texto</p>' }), pagina('/pecas', { titulo: 'Outro' }), pagina('/pecas', { descricao: 'Outra descricao qualquer, tambem comprida o bastante.' }), basePagina.replace('/a.png', '/a2.png'), basePagina.replace('href="/pecas"', 'href="/criar"'), pagina('/pecas', { ld: '{}' })].every((h) => assinatura(h) !== assinatura(basePagina)));
+ok('leitura: desfaz entidades do HTML (descricao e texto)', leitura(pagina('/x')).descricao === "Descri'cao da pagina /x, comprida o bastante para passar." && leitura(pagina('/x')).texto.includes('Título'));
+
+const xmlCom = comLastmod(BASE['sitemap.xml']!, new Map([[`${S}/`, '2026-01-02T03:04:05Z'], [`${S}/pecas`, '']]));
+ok('sitemap: lastmod logo depois do loc, so onde tem data, e le de volta', /<loc>https:\/\/exemplo\.com\.br\/<\/loc>\n<lastmod>2026-01-02T03:04:05Z<\/lastmod>/.test(xmlCom) && (xmlCom.match(/<lastmod>/g) ?? []).length === 1 && datasDoSitemap(xmlCom).get(`${S}/`) === '2026-01-02T03:04:05Z' && datasDoSitemap(xmlCom).get(`${S}/pecas`) === '');
+ok('sitemap: lastmod nao duplica se ja tinha', (comLastmod(xmlCom, new Map([[`${S}/`, '2026-02-02T00:00:00Z']])).match(/<lastmod>/g) ?? []).length === 1);
+
+const agora = new Date('2026-10-23T12:00:00.000Z');
+const noAr = `<urlset><url><loc>${S}/</loc><lastmod>2026-01-01T00:00:00Z</lastmod></url><url><loc>${S}/pecas</loc></url><url><loc>${S}/sumiu</loc><lastmod>2026-01-01T00:00:00Z</lastmod></url></urlset>`;
+const xmlNovo = BASE['sitemap.xml']!;
+const dirDatas = montar();
+const igualAoNovo = (url: string) => fs.readFileSync(arquivoDoCaminho(dirDatas, url.slice(S.length))!, 'utf8');
+const d1 = await datarSitemap({ pasta: dirDatas, xmlNovo, xmlNoAr: noAr, agora, site: S, baixar: async (url: string) => (url === `${S}/pecas` ? pagina('/pecas', { titulo: 'Velho' }) : igualAoNovo(url)) });
+ok('datas: igual mantem a data, alterada e nova ganham agora, removida aparece', d1.datas.get(`${S}/`) === '2026-01-01T00:00:00Z' && d1.datas.get(`${S}/pecas`) === '2026-10-23T12:00:00Z' && d1.datas.get(`${S}/produto/a`) === '2026-10-23T12:00:00Z' && JSON.stringify([d1.novas, d1.mudaram, d1.removidas]) === JSON.stringify([[`${S}/produto/a`], [`${S}/pecas`], [`${S}/sumiu`]]));
+const d2 = await datarSitemap({ pasta: dirDatas, xmlNovo, xmlNoAr: noAr.replace(`<loc>${S}/pecas</loc>`, `<loc>${S}/pecas</loc><lastmod>2026-05-05T00:00:00Z</lastmod>`), agora, site: S, baixar: async () => null });
+ok('datas: sem conseguir baixar a pagina, mantem a data que tinha e nao avisa', d2.datas.get(`${S}/`) === '2026-01-01T00:00:00Z' && d2.datas.get(`${S}/pecas`) === '2026-05-05T00:00:00Z' && d2.mudaram.length === 0);
+const d3 = await datarSitemap({ pasta: dirDatas, xmlNovo, xmlNoAr: null, agora, site: S, baixar: async () => { throw new Error('nao devia baixar'); } });
+ok('datas: sem o sitemap no ar, nenhuma data (melhor sem lastmod que com data errada)', d3.datas.size === 0 && d3.novas.length + d3.mudaram.length + d3.removidas.length === 0);
+fs.rmSync(raizTeste, { recursive: true, force: true });
 
 // ---- textos ----
 const PROMESSA = /frete|gr[aá]tis|entrega|prazo|\d+\s*dias|garantia|avalia[cç][aã]o|estrelas|★|mais vendid/i;
