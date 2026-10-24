@@ -1,0 +1,46 @@
+1:"$Sreact.fragment"
+2:I[97925,["/_next/static/chunks/00mb8fx3lik1u.js","/_next/static/chunks/3yjmt7kvjgo9c.js","/_next/static/chunks/3e5582nqf26bl.js","/_next/static/chunks/09cejyr0sfy41.js","/_next/static/chunks/0_32ugwjttpvc.js","/_next/static/chunks/0rq1oyqmv_qz9.js","/_next/static/chunks/0e9p8te5xuhyh.js","/_next/static/chunks/0wegseow0b7za.js","/_next/static/chunks/2bsofyzxw7d4d.js","/_next/static/chunks/320xc3z-oilw-.js","/_next/static/chunks/22k8s7m3ochj9.js","/_next/static/chunks/17g5-3d-ea2kj.js","/_next/static/chunks/26perb83p8km3.js","/_next/static/chunks/0a2bktagx8a4j.js"],"EditorDesign"]
+3:I[97367,["/_next/static/chunks/00mb8fx3lik1u.js","/_next/static/chunks/3yjmt7kvjgo9c.js","/_next/static/chunks/3e5582nqf26bl.js"],"OutletBoundary"]
+4:"$Sreact.suspense"
+8:I[97367,["/_next/static/chunks/00mb8fx3lik1u.js","/_next/static/chunks/3yjmt7kvjgo9c.js","/_next/static/chunks/3e5582nqf26bl.js"],"ViewportBoundary"]
+9:I[97367,["/_next/static/chunks/00mb8fx3lik1u.js","/_next/static/chunks/3yjmt7kvjgo9c.js","/_next/static/chunks/3e5582nqf26bl.js"],"MetadataBoundary"]
+7:X
+25:X
+25:C
+0:{"buildId":"MhDHTA33kiuL5lVktCaiI","data":[{"rsc":["$","$1","c",{"children":[[["$","h1",null,{"className":"sr-only","children":"Editor 3D de peças online"}],["$","$L2",null,{"pecas":{"luminaria-letra":"luminaria-letra","porta-retrato-suspenso":"porta-retrato","cumbuca":"cumbuca","quadro-tecido":"quadro-tecido","string-art":"string-art","suporte-foto-nome":"suporte-foto","porta-canetas":"porta-canetas-grade","placa-line-art":"placa-com-base","mini-microfone":"mini-microfone","arroba-social":"social-camadas","placa-com-marca":"logo-camadas","placa-qr-wifi":"placa-qr-wifi","placa-pix":"placa-pix-logo","placa-avaliacao-google":"placa-google-review","lista-qr":"lista-qr-vertical","cartao-visita-3d":"cartao-visita","chaveiro-nome":"chaveiro-nome","letreiro-nome-camadas":"palavra-camadas","letra-grande-nome":"letra-grande","topo-de-bolo":"topo-bolo","rosa-com-nome":"rosa-nome","trofeu":"trofeu","plaquinha-pet":"plaquinha-pet","cortador-biscoito":"cortador-biscoito","carimbo-doce":"carimbo-imagem","enfeite-floco-neve":"floco-neve","letras-separadas":"letras-separadas","chaveiro-retangular":"chaveiro-retangular","chaveiro-desenho":"chaveiro-desenho","chaveiro-logo-nome":"chaveiro-logo-nome","pingente-familia":"pingente-familia","letreiro-sobreposto":"letreiro-sobreposto","topo-bolo-circular":"topo-bolo-circular","marcador-pagina":"marcador-pagina","contador-raspadinha":"contador-raspadinha","texto-com-guia":"texto-com-guia","suporte-palitos":"suporte-palitos","ejetor-brigadeiro":"ejetor-brigadeiro","cortadores-grade":"cortadores-grade","carimbo-molde":"carimbo-molde","carimbo-circular":"carimbo-circular","carimbo-letras":"carimbo-letras","colorir":"colorir","chaveiro-resina":"chaveiro-resina","imagem-multipartes":"imagem-multipartes","chaveiro-nfc":"chaveiro-nfc","chaveiro-carretel":"chaveiro-carretel","abridor-latas":"abridor-latas","chaveiro-espelho":"chaveiro-espelho","rosa-texto":"rosa-texto","placa-qr-whatsapp":"placa-qr-whatsapp","placa-qr-texto":"placa-qr-texto","placa-pix-simples":"placa-pix-simples","placa-qr":"placa-qr","rolo-textura":"rolo-textura","estojo-batom":"estojo-batom","ejetor-cupula":"ejetor-cupula","suporte-bolo":"suporte-bolo","chaveiro-cenoura":"chaveiro-cenoura","chaveiro-coelho":"chaveiro-coelho","luminaria-social":"luminaria-social","porta-pente":"porta-pente","caixa-figurinhas":"caixa-figurinhas","porta-canetas-design":"porta-canetas-design","display-unhas":"display-unhas","placa-qr-social":"placa-qr-social","placa-qr-logo":"placa-qr-logo","placa-pix-texto":"placa-pix-texto","lista-qr-horizontal":"lista-qr-horizontal","lista-qr-camadas":"lista-qr-camadas","social-com-qr":"social-com-qr","cartao-tecido":"cartao-tecido"}}]],[["$","script","script-0",{"src":"/_next/static/chunks/09cejyr0sfy41.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/0_32ugwjttpvc.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/0rq1oyqmv_qz9.js","async":true}],["$","script","script-3",{"src":"/_next/static/chunks/0e9p8te5xuhyh.js","async":true}],["$","script","script-4",{"src":"/_next/static/chunks/0wegseow0b7za.js","async":true}],["$","script","script-5",{"src":"/_next/static/chunks/2bsofyzxw7d4d.js","async":true}],["$","script","script-6",{"src":"/_next/static/chunks/320xc3z-oilw-.js","async":true}],["$","script","script-7",{"src":"/_next/static/chunks/22k8s7m3ochj9.js","async":true}],["$","script","script-8",{"src":"/_next/static/chunks/17g5-3d-ea2kj.js","async":true}],["$","script","script-9",{"src":"/_next/static/chunks/26perb83p8km3.js","async":true}],["$","script","script-10",{"src":"/_next/static/chunks/0a2bktagx8a4j.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"isPartial":"$@6","staleTime":"$7","varyParams":null},{"rsc":["$","$1","h",{"children":[null,["$","$L8",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#2760A2"}]]}],["$","div",null,{"hidden":true,"children":["$","$L9",null,{"children":["$","$4",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Editor 3D de peças online | Scarprint"}],"$La","$Lb","$Lc","$Ld","$Le","$Lf","$L10","$L11","$L12","$L13","$L14","$L15","$L16","$L17","$L18","$L19","$L1a","$L1b","$L1c","$L1d","$L1e","$L1f","$L20"]}]}]}],"$L21"]}],"isPartial":"$@22","staleTime":"$7","varyParams":null},{"rsc":"$L23","isPartial":"$@24","staleTime":"$7","varyParams":"$25"}],"isUpgradeableISRFallback":false,"a":"$@26","rootVaryParams":null,"needsRuntimeRequest":"$@27"}
+28:I[27201,["/_next/static/chunks/00mb8fx3lik1u.js","/_next/static/chunks/3yjmt7kvjgo9c.js","/_next/static/chunks/3e5582nqf26bl.js"],"IconMark"]
+29:I[39756,["/_next/static/chunks/00mb8fx3lik1u.js","/_next/static/chunks/3yjmt7kvjgo9c.js","/_next/static/chunks/3e5582nqf26bl.js"],"default"]
+2a:I[37457,["/_next/static/chunks/00mb8fx3lik1u.js","/_next/static/chunks/3yjmt7kvjgo9c.js","/_next/static/chunks/3e5582nqf26bl.js"],"default"]
+5:null
+a:["$","meta","1",{"name":"description","content":"Personalize modelos prontos ou crie uma peça com texto, formas, imagens e QR Code em um só editor, com prévia 3D ao vivo."}]
+b:["$","meta","2",{"name":"application-name","content":"Scarprint"}]
+c:["$","link","3",{"rel":"manifest","href":"/manifest.webmanifest"}]
+d:["$","link","4",{"rel":"canonical","href":"https://scarprint.com.br/design"}]
+e:["$","meta","5",{"name":"format-detection","content":"telephone=no, address=no, email=no"}]
+f:["$","meta","6",{"property":"og:title","content":"Editor 3D de peças online | Scarprint"}]
+10:["$","meta","7",{"property":"og:description","content":"Personalize modelos prontos ou crie uma peça com texto, formas, imagens e QR Code em um só editor, com prévia 3D ao vivo."}]
+11:["$","meta","8",{"property":"og:url","content":"https://scarprint.com.br/design"}]
+12:["$","meta","9",{"property":"og:site_name","content":"Scarprint"}]
+13:["$","meta","10",{"property":"og:locale","content":"pt_BR"}]
+14:["$","meta","11",{"property":"og:image","content":"https://scarprint.com.br/og/scarprint.png"}]
+15:["$","meta","12",{"property":"og:image:width","content":"1200"}]
+16:["$","meta","13",{"property":"og:image:height","content":"630"}]
+17:["$","meta","14",{"property":"og:image:alt","content":"Scarprint: peças impressas em 3D sob medida"}]
+18:["$","meta","15",{"property":"og:type","content":"website"}]
+19:["$","meta","16",{"name":"twitter:card","content":"summary_large_image"}]
+1a:["$","meta","17",{"name":"twitter:title","content":"Editor 3D de peças online | Scarprint"}]
+1b:["$","meta","18",{"name":"twitter:description","content":"Personalize modelos prontos ou crie uma peça com texto, formas, imagens e QR Code em um só editor, com prévia 3D ao vivo."}]
+1c:["$","meta","19",{"name":"twitter:image","content":"https://scarprint.com.br/og/scarprint.png"}]
+1d:["$","link","20",{"rel":"icon","href":"/favicon.ico?favicon.3enc9qz6amov6.ico","sizes":"48x48","type":"image/x-icon"}]
+1e:["$","link","21",{"rel":"icon","href":"/icon.svg?icon.403643_lj3f4n.svg","sizes":"any","type":"image/svg+xml"}]
+1f:["$","link","22",{"rel":"apple-touch-icon","href":"/apple-icon.png?apple-icon.212qhe_nah43_.png","sizes":"180x180","type":"image/png"}]
+20:["$","$L28","23",{}]
+21:["$","meta",null,{"name":"next-size-adjust","content":""}]
+23:["$","$1","c",{"children":[null,["$","$L29",null,{"parallelRouterKey":"children","template":["$","$L2a",null,{}]}]]}]
+27:true
+7:300
+7:C
+26:0
+22:"$undefined"
+24:"$undefined"
+6:"$undefined"
