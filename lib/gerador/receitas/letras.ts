@@ -32,6 +32,21 @@ const ESTILOS = [
 ];
 const moldura = (v: Valores) => ['textura', 'floral', 'material', 'brilho'].includes(String(v.estilo));
 
+/**
+ * Peca pronta, para a vitrine da loja (`montado: true` nos valores): cada extra sobe `dz` e
+ * entra no item principal, no lugar em que se monta. `virar`: a peca imprime de cabeca para
+ * baixo (tampa com a face na mesa); o z dela espelha e o z=0 vai parar em `dz`.
+ */
+type Montagem = { item: Item; dz: number; virar?: boolean };
+
+function montarJunto(principal: Item, extras: Montagem[]): Item {
+  const mover = (p: Peca, m: Montagem): Peca => ({
+    ...p,
+    camadas: p.camadas.map((c) => (m.virar ? { ...c, z0: m.dz - c.z1, z1: m.dz - c.z0 } : { ...c, z0: c.z0 + m.dz, z1: c.z1 + m.dz })),
+  });
+  return { ...principal, pecas: [...principal.pecas, ...extras.flatMap((m) => m.item.pecas.map((p) => mover(p, m)))] };
+}
+
 /** A letra no tamanho (altura das maiusculas), engrossada e com a base cortada reta. */
 function letraGrandeRegiao(v: Valores, ctx: Contexto): Region {
   const c = [...txt(v, 'letra').trim()][0] ?? 'A';
@@ -115,7 +130,8 @@ export const letraGrande: Receita = {
     { tipo: 'numero', id: 'giroNome', rotulo: 'Giro do nome', grupo: 'Nome', padrao: 0, min: -180, max: 180, passo: 1, unidade: '°' },
     mm('engrossarNome', 'Engrossar o nome', 'Nome', 0.4, 0, 2, 0.1),
     { tipo: 'numero', id: 'espacamentoNome', rotulo: 'Espaço entre letras do nome', grupo: 'Nome', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%' },
-    mm('contornoNome', 'Contorno do nome', 'Nome', 3, 0.5, 10, 0.1, 'Une as letras do nome numa peça'),
+    // 1,2 mm: une o nome e ainda deixa aberto o olho das letras; 3 mm fechava o cursivo num bloco.
+    mm('contornoNome', 'Contorno do nome', 'Nome', 1.2, 0.5, 10, 0.1, 'Une as letras do nome numa peça'),
     mm('espNome', 'Espessura do nome', 'Nome', 7, 1, 20, 0.5),
     mm('rebaixo', 'Quanto o nome afunda', 'Nome', 2, 0, 10, 0.5),
     { tipo: 'liga', id: 'nomeVazado', rotulo: 'Nome só com as paredes', grupo: 'Nome', padrao: true, dica: 'Em vez de uma placa cheia, o contorno e as letras', visivel: (v) => v.estilo === 'rebaixado' },
@@ -156,6 +172,14 @@ export const letraGrande: Receita = {
     const vao = placaNome.length ? contornar(placaNome, folga) : [];
     const pecas: Peca[] = [];
     const itensExtra: Item[] = [];
+    // Montada, o nome solto assenta no rebaixo (ou em cima da letra, sem rebaixo). Moldes de
+    // corte (dz null) sao ferramenta: saem da peca pronta.
+    const zNome = p > 0 && vao.length ? E - p : E;
+    const montagem: Montagem[] = [];
+    const extra = (item: Item, dz: number | null) => {
+      itensExtra.push(item);
+      if (dz !== null) montagem.push({ item, dz });
+    };
     const parede = num(v, 'parede'), fundo = num(v, 'fundo');
     const I = contornar(L, -parede);
     if (moldura(v) && !regionArea(I)) return { itens: [], cores, hex, avisos: ['A letra é fina demais para a moldura: engrosse a letra ou diminua a parede.'] };
@@ -169,7 +193,7 @@ export const letraGrande: Receita = {
           const vazado = liga(v, 'nomeVazado');
           const reg = vazado ? unir([diffRegion(placaNome, contornar(placaNome, -1.2)), intersectRegion(N, placaNome)]) : placaNome;
           pecas.push({ nome: 'Nome', cor: 1, camadas: [{ region: reg, z0: fundoRebaixo, z1: E }] });
-        } else if (estilo !== 'resina') itensExtra.push(nomeSolto());
+        } else if (estilo !== 'resina') extra(nomeSolto(), zNome);
       }
       if (estilo === 'resina') {
         const hb = num(v, 'altBorda');
@@ -177,7 +201,7 @@ export const letraGrande: Receita = {
         pecas.push({ nome: 'Borda da letra', cor: 0, camadas: [{ region: bordaL, z0: E, z1: E + hb }] });
         if (placaNome.length) {
           const topo = num(v, 'espNome');
-          itensExtra.push(nomeSolto([{ nome: 'Borda do nome', cor: 1, camadas: [{ region: diffRegion(placaNome, contornar(placaNome, -num(v, 'bordaNome'))), z0: topo, z1: topo + hb }] }]));
+          extra(nomeSolto([{ nome: 'Borda do nome', cor: 1, camadas: [{ region: diffRegion(placaNome, contornar(placaNome, -num(v, 'bordaNome'))), z0: topo, z1: topo + hb }] }]), zNome);
         }
         notas.push('Com a peça nivelada, despeje a resina dentro das bordas da letra e do nome.');
       }
@@ -193,12 +217,14 @@ export const letraGrande: Receita = {
       const tex = diffRegion(texturaDentro(v, I, estilo === 'floral'), p > 0 ? vao : []);
       pecas.push({ nome: 'Fundo de dentro', cor: 2, camadas: [...comVazios(dentro, fundo, topoFundo, vazios), ...(elevada ? [] : comVazios(diffRegion(dentro, tex), E - h, E, vazios))] });
       if (regionArea(tex) > 0.5) pecas.push({ nome: 'Textura', cor: 3, camadas: [{ region: tex, z0: topoFundo, z1: topoFundo + h }] });
-      if (placaNome.length) itensExtra.push(nomeSolto());
+      if (placaNome.length) extra(nomeSolto(), zNome);
     } else if (estilo === 'material') {
       // Moldura aberta na frente: fundo, parede, e o EVA/feltro cortado no molde deita no fundo.
       pecas.push({ nome: 'Letra', cor: 0, camadas: [{ region: L, z0: 0, z1: fundo }, { region: diffRegion(L, I), z0: fundo, z1: E }] });
-      itensExtra.push({ nome: 'Molde do EVA', pecas: [{ nome: 'Molde', cor: 2, camadas: [{ region: contornar(I, -folga), z0: 0, z1: 0.6 }] }] });
-      if (placaNome.length) itensExtra.push(nomeSolto());
+      extra({ nome: 'Molde do EVA', pecas: [{ nome: 'Molde', cor: 2, camadas: [{ region: contornar(I, -folga), z0: 0, z1: 0.6 }] }] }, null);
+      // Montada, o proprio EVA aparece no fundo (na cor de dentro) e o nome vai por cima dele.
+      montagem.push({ item: { nome: 'EVA', pecas: [{ nome: 'EVA ou feltro', cor: 2, camadas: [{ region: contornar(I, -folga), z0: 0, z1: num(v, 'material') }] }] }, dz: fundo });
+      if (placaNome.length) extra(nomeSolto(), fundo + num(v, 'material'));
       notas.push(`Use a peça "Molde do EVA" para cortar o material (${num(v, 'material').toLocaleString('pt-BR')} mm), deite-o no fundo da letra e cole o nome por cima.`);
       if (fundo + num(v, 'material') > E - 1) avisos.push('O material não cabe na letra: aumente a espessura da letra.');
     } else {
@@ -206,14 +232,16 @@ export const letraGrande: Receita = {
       const lip = num(v, 'frente'), ef = num(v, 'espFrente');
       pecas.push({ nome: 'Letra', cor: 0, camadas: [{ region: L, z0: 0, z1: fundo }, { region: diffRegion(L, I), z0: fundo, z1: E - ef }] });
       const frente = diffRegion(L, contornar(L, -lip));
-      itensExtra.push({ nome: 'Moldura da frente', pecas: [{ nome: 'Moldura da frente', cor: 0, camadas: [{ region: frente, z0: 0, z1: ef }] }] });
-      itensExtra.push({ nome: 'Molde do acetato', pecas: [{ nome: 'Molde', cor: 2, camadas: [{ region: contornar(L, -(lip / 2)), z0: 0, z1: 0.6 }] }] });
-      if (placaNome.length) itensExtra.push(nomeSolto());
+      extra({ nome: 'Moldura da frente', pecas: [{ nome: 'Moldura da frente', cor: 0, camadas: [{ region: frente, z0: 0, z1: ef }] }] }, E - ef);
+      extra({ nome: 'Molde do acetato', pecas: [{ nome: 'Molde', cor: 2, camadas: [{ region: contornar(L, -(lip / 2)), z0: 0, z1: 0.6 }] }] }, null);
+      if (placaNome.length) extra(nomeSolto(), E);
       notas.push('Encha a letra de glitter, cubra com acetato cortado pelo molde, cole a moldura da frente e o nome.');
       if (lip <= parede) avisos.push('A moldura da frente é mais estreita que a parede: o acetato não apoia. Aumente a largura da frente.');
     }
     if (placaNome.length && p > 0 && ['nome', 'resina', 'textura', 'floral'].includes(estilo)) notas.push('Encaixe o nome no rebaixo da letra (cola se precisar).');
-    const itens: Item[] = [{ nome: `Letra ${[...txt(v, 'letra').trim()][0] ?? ''}`, pecas }, ...itensExtra];
+    const letra: Item = { nome: `Letra ${[...txt(v, 'letra').trim()][0] ?? ''}`, pecas };
+    if (v.montado === true) return soCoresUsadas({ itens: [montarJunto(letra, montagem)], cores, hex, avisos, notas });
+    const itens: Item[] = [letra, ...itensExtra];
     return soCoresUsadas({ itens: itens.length > 1 ? posLado(itens) : itens, cores, hex, avisos, notas });
   },
 };
@@ -253,7 +281,7 @@ export const luminariaLetra: Receita = {
     { tipo: 'numero', id: 'giroNome', rotulo: 'Giro do nome', grupo: 'Nome', padrao: 0, min: -180, max: 180, passo: 1, unidade: '°' },
     mm('engrossarNome', 'Engrossar o nome', 'Nome', 0.4, 0, 2, 0.1),
     { tipo: 'numero', id: 'espacamentoNome', rotulo: 'Espaço entre letras do nome', grupo: 'Nome', padrao: 100, min: 50, max: 200, passo: 1, unidade: '%' },
-    mm('contornoNome', 'Contorno do nome', 'Nome', 3, 0.5, 10, 0.1),
+    mm('contornoNome', 'Contorno do nome', 'Nome', 1.2, 0.5, 10, 0.1),
     mm('espNome', 'Espessura do nome', 'Nome', 7, 1, 20, 0.5),
     mm('espTotal', 'Espessura total', 'Luminária', 32, 15, 80, 1),
     mm('fundo', 'Fundo da base', 'Luminária', 4, 1.2, 10, 0.2),
@@ -308,9 +336,14 @@ export const luminariaLetra: Receita = {
       const placa = nomeConectado(N, num(v, 'contornoNome'));
       itens.push({ nome: 'Nome', pecas: [{ nome: 'Nome', cor: 2, camadas: [{ region: placa, z0: 0, z1: num(v, 'espNome') }] }] });
     }
+    // Montada: a tampa vira por cima da base (a face fica no topo, em H) e o nome cola nela.
+    const notas = ['Cole a fita de LED por dentro da parede da base, passe o cabo pela saída, encaixe a frente (de material translúcido) e cole o nome nela.'];
+    if (v.montado === true) {
+      return soCoresUsadas({ itens: [montarJunto(itens[0]!, [{ item: itens[1]!, dz: H, virar: true }, ...itens.slice(2).map((item) => ({ item, dz: H }))])], cores, hex, avisos, notas });
+    }
     return soCoresUsadas({
       itens: posLado(itens), cores, hex, avisos,
-      notas: ['Cole a fita de LED por dentro da parede da base, passe o cabo pela saída, encaixe a frente (de material translúcido) e cole o nome nela.'],
+      notas,
     });
   },
 };
@@ -387,9 +420,9 @@ export const luminariaSocial: Receita = {
       { nome: 'Base', pecas },
       { nome: 'Frente', pecas: [{ nome: 'Frente', cor: 1, camadas: [{ region: diffRegion(frente, letras), z0: 0, z1: fr }] }, { nome: 'Letras', cor: 2, camadas: [{ region: intersectRegion(letras, frente), z0: 0, z1: fr }] }] },
     ];
-    return soCoresUsadas({
-      itens: posLado(itens), cores, hex, avisos,
-      notas: ['Cole a fita de LED por dentro da parede de fora, passe o cabo pelo furo e encaixe a frente translúcida por dentro da borda.'],
-    });
+    const notas = ['Cole a fita de LED por dentro da parede de fora, passe o cabo pelo furo e encaixe a frente translúcida por dentro da borda.'];
+    // Montada: a frente entra por dentro da borda, no topo da parede de fora.
+    if (v.montado === true) return soCoresUsadas({ itens: [montarJunto(itens[0]!, [{ item: itens[1]!, dz: zFrente }])], cores, hex, avisos, notas });
+    return soCoresUsadas({ itens: posLado(itens), cores, hex, avisos, notas });
   },
 };

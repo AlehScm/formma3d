@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Inter, JetBrains_Mono, Manrope } from 'next/font/google';
 import './globals.css';
+import { Medicao } from '@/components/Medicao';
 import { ProvedorDicas } from '@/components/ui';
 import { DESCRICAO_SITE, IMAGEM_SOCIAL, NOME, SITE_URL } from '@/lib/seo';
 
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="pt-BR" className={`${inter.variable} ${mono.variable} ${marca.variable}`}>
       <body className="antialiased">
         <ProvedorDicas>{children}</ProvedorDicas>
+        <Medicao />
       </body>
     </html>
   );

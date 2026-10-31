@@ -10,6 +10,11 @@ import { ORDEM_SECOES, type Produto } from './tipos';
 /** Geradores e editores abertos ao publico. */
 export const FERRAMENTAS = ['/criar', '/design', '/editor'];
 
+export const LETRAS = ['/letra-caixa', '/letras'];
+
+/** Politicas da loja, linkadas no rodape. */
+export const INSTITUCIONAIS = ['/trocas', '/privacidade'];
+
 /** `ativa` troca a chave da campanha nos testes, como em `podeAparecer`. */
 export function caminhosIndexaveis(lista: Produto[] = PRODUTOS, ativa: (c: Campanha) => boolean = campanhaAtiva): string[] {
   const publicos = lista.filter((p) => podeAparecer(p, ativa));
@@ -19,6 +24,8 @@ export function caminhosIndexaveis(lista: Produto[] = PRODUTOS, ativa: (c: Campa
     ...ORDEM_SECOES.filter((s) => publicos.some((p) => p.secao === s)).map((s) => `/secao/${s}`),
     CAMPANHAS.natal.href,
     ...FERRAMENTAS,
+    ...LETRAS,
+    ...INSTITUCIONAIS,
     ...publicos.map((p) => `/produto/${p.slug}`),
   ];
 }

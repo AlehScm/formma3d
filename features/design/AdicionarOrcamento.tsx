@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { Botao, IconeOk, IconeOrcamento, classeBotao } from '@/components/ui';
 import { useMontado, useOrcamento } from '@/features/loja/estado';
 import type { Valores } from '@/lib/gerador/tipos';
+import { medir } from '@/lib/medicao';
 
 export interface LinhaPedido { slug: string; personalizacao: string; valores: Valores }
 
@@ -27,7 +28,7 @@ export function AdicionarOrcamento({ linhas, pode }: { linhas: LinhaPedido[]; po
   return (
     <>
       <Botao variante="primario" icone={feito ? IconeOk : IconeOrcamento} disabled={!pode} title={pode ? undefined : 'Espere a peça ficar pronta no 3D'}
-        onClick={() => { for (const l of linhas) adicionar(l.slug, { personalizacao: l.personalizacao, valores: l.valores }); setFeito(true); }}>
+        onClick={() => { for (const l of linhas) adicionar(l.slug, { personalizacao: l.personalizacao, valores: l.valores }); setFeito(true); medir('orcamento'); }}>
         <span role="status">{feito ? 'Adicionado ao orçamento' : 'Adicionar ao orçamento'}</span>
       </Botao>
       {montado && total > 0 && <Link href="/orcamento" className={classeBotao('fantasma')}>Ver orçamento ({total})</Link>}

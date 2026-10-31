@@ -31,7 +31,8 @@ export function carregarPeca(id: string): Promise<PecaCarregada> {
 
 async function gerar(id: string): Promise<PecaCarregada> {
   const { valores, idsFonte } = prepararExemplo(id);
-  const { resultado, malhas } = await gerarNoWorker(id, valores, idsFonte);
+  // `montado`: a peca pronta (nome encaixado, tampa fechada), nao o arranjo da mesa.
+  const { resultado, malhas } = await gerarNoWorker(id, { ...valores, montado: true }, idsFonte);
   return montarPeca(resultado, malhas);
 }
 

@@ -18,7 +18,8 @@ let renderizador: THREE.WebGLRenderer | null = null;
 export async function renderizarMiniatura(id: string, paleta?: string[]): Promise<string> {
   const { valores, idsFonte } = prepararExemplo(id);
   // Geracao e malha no worker: a pagina do catalogo nao engasga enquanto as fotos saem.
-  const { resultado: res, malhas } = await gerarNoWorker(id, valores, idsFonte);
+  // `montado`: a loja mostra a peca pronta, nao as pecas soltas na mesa.
+  const { resultado: res, malhas } = await gerarNoWorker(id, { ...valores, montado: true }, idsFonte);
 
   const cena = new THREE.Scene();
   cena.add(new THREE.AmbientLight(0xffffff, 0.6));

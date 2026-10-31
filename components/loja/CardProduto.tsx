@@ -13,6 +13,7 @@ import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
 import { geradorDe, textoDoPreco, urlDaMidia } from '@/lib/marketplace/formato';
 import { pecaDeNatal } from '@/lib/marketplace/campanhas';
 import type { Produto } from '@/lib/marketplace/tipos';
+import { medir } from '@/lib/medicao';
 import { IconeCarrinho, IconeFavorito, IconeImpressora, IconeOk } from './icones';
 
 export function ReservaProduto({ produto: p }: { produto: Produto }) {
@@ -74,7 +75,7 @@ export function BotaoAdicionar({ slug, extra, grande, className }: { slug: strin
       rotulo={feito ? 'Adicionado ao orçamento' : 'Adicionar ao orçamento'}
       variante={feito ? 'sucesso' : 'secao'}
       pequeno={!grande}
-      onClick={() => { adicionar(slug, extra); setFeito(true); }}
+      onClick={() => { adicionar(slug, extra); setFeito(true); medir('orcamento'); }}
       className={cx('w-full [&_svg]:shrink-0', className)}
     >
       {feito ? <IconeOk className="size-4" aria-hidden /> : <IconeCarrinho className="size-4" aria-hidden />}

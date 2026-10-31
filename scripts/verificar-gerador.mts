@@ -955,5 +955,33 @@ console.log('\n== planta 2D (vista de cima) ==');
   ok('planta: peça em degraus entra com todas as camadas', fatiasDaPlanta(cortador).fatias.length === camadas && camadas > 2, `${camadas} camadas`);
 }
 
+console.log('\n== peca montada (vitrine da loja) ==');
+{
+  const zs = (r: Resultado, peca: string) => r.itens[0]!.pecas.find((p) => p.nome === peca)!.camadas.map((c) => [c.z0, c.z1]);
+  const topoDe = (r: Resultado, peca: string) => Math.max(...zs(r, peca).map((z) => z[1]!));
+  const baseDe = (r: Resultado, peca: string) => Math.min(...zs(r, peca).map((z) => z[0]!));
+  const lg = receitaPorId('letra-grande')!;
+  for (const estilo of ['nome', 'resina', 'textura', 'material', 'brilho']) {
+    const mesa = gerar(lg, { estilo }), pronta = gerar(lg, { estilo, montado: true });
+    const pecas = pronta.itens[0]?.pecas.map((p) => p.nome) ?? [];
+    ok(`letra grande (${estilo}): mesa com itens soltos, montada num item só e sem molde`, mesa.itens.length > 1 && pronta.itens.length === 1 && !pecas.includes('Molde') && pecas.includes('Nome'), `${mesa.itens.length} -> ${pronta.itens.length}: ${pecas.join(', ')}`);
+  }
+  const nome = gerar(lg, { montado: true }), E = Number(valoresPadrao(lg).espLetra), p = Number(valoresPadrao(lg).rebaixo);
+  ok('letra grande montada: o nome assenta no rebaixo', perto(baseDe(nome, 'Nome'), E - p, 1e-6), `${baseDe(nome, 'Nome')} (rebaixo em ${E - p})`);
+  const brilho = gerar(lg, { estilo: 'brilho', montado: true });
+  ok('letra grande com glitter montada: a moldura da frente fecha o topo da letra', perto(topoDe(brilho, 'Moldura da frente'), E, 1e-6) && perto(baseDe(brilho, 'Nome'), E, 1e-6));
+  const lum = receitaPorId('luminaria-letra')!, vl = valoresPadrao(lum);
+  const lm = gerar(lum, { montado: true }), H = Number(vl.espTotal), topoBase = Number(vl.fundo) + Number(vl.paredeLed);
+  ok('luminária montada: um item, tampa virada com a face no topo e o nome colado nela', lm.itens.length === 1 && perto(topoDe(lm, 'Frente'), H, 1e-6) && perto(baseDe(lm, 'Nome'), H, 1e-6), `frente até ${topoDe(lm, 'Frente')}, nome de ${baseDe(lm, 'Nome')}`);
+  ok('luminária montada: a parede da tampa assenta na parede da base e o aro entra nela', zs(lm, 'Frente').some((z) => perto(z[0]!, topoBase, 1e-6)) && baseDe(lm, 'Frente') < topoBase);
+  ok('luminária sem montar continua com as peças soltas para imprimir', gerar(lum).itens.length >= 2);
+  const soc = receitaPorId('luminaria-social')!, vs = valoresPadrao(soc);
+  const sm = gerar(soc, { montado: true });
+  ok('luminária @social montada: a frente entra no topo da parede de fora', sm.itens.length === 1 && perto(topoDe(sm, 'Frente'), Number(vs.profundidade), 1e-6) && perto(topoDe(sm, 'Letras'), Number(vs.profundidade), 1e-6));
+  const guia = receitaPorId('texto-com-guia')!;
+  const comGuia = gerar(guia), naParede = gerar(guia, { montado: true });
+  ok('letras de parede montadas: só as letras, no lugar da palavra (a guia sai)', comGuia.itens.some((i) => i.nome.startsWith('Guia')) && naParede.itens.length > 0 && !naParede.itens.some((i) => i.nome.startsWith('Guia')) && naParede.itens.length === comGuia.itens.filter((i) => !i.nome.startsWith('Guia')).length);
+}
+
 console.log(`\n${total - falhas}/${total} passaram\n`);
 process.exit(falhas ? 1 : 0);

@@ -3,8 +3,9 @@
  * topo de bolo circular com janela para glitter entre duas laminas de acetato.
  */
 import { diffRegion, intersectRegion, regionBounds, scaleRegion, translateRegion, type Region } from '../../geom/region';
-import { circulo, contornar, coracao, estrela, escalaParaLargura, retanguloArredondado, semBuracos, temEmoji, textoNaCaixa, unir, comporLinhas } from '../formas';
+import { circulo, contornar, coracao, estrela, escalaParaLargura, retanguloArredondado, semBuracos, semBuracosPequenos, temEmoji, textoNaCaixa, unir, comporLinhas } from '../formas';
 import { arabesco } from '../figuras';
+import { ligarPedacos } from '../nome-conectado';
 import { ficha } from './fichas';
 import type { Parametro, Receita, Resultado } from '../tipos';
 import { desenho, num, txt } from '../tipos';
@@ -30,7 +31,8 @@ export const letreiroSobreposto: Receita = {
     { tipo: 'numero', id: 'largura', rotulo: 'Largura da palavra grande', grupo: 'Tamanho', padrao: 250, min: 60, max: 600, passo: 1, unidade: 'mm' },
     { tipo: 'numero', id: 'escalaNome', rotulo: 'Largura do nome', grupo: 'Tamanho', padrao: 85, min: 30, max: 120, passo: 1, unidade: '%', dica: 'Em relação à palavra grande' },
     { tipo: 'numero', id: 'subirNome', rotulo: 'Subir/descer o nome', grupo: 'Tamanho', padrao: 0, min: -50, max: 50, passo: 1, unidade: '%' },
-    { tipo: 'numero', id: 'contornoNome', rotulo: 'Contorno do nome', grupo: 'Tamanho', padrao: 4, min: 0.5, max: 10, passo: 0.1, unidade: 'mm', dica: 'Une as letras do nome numa peça' },
+    // 1,5 mm: une o cursivo fino e ainda deixa as letras legiveis; 4 mm virava uma silhueta macica.
+    { tipo: 'numero', id: 'contornoNome', rotulo: 'Contorno do nome', grupo: 'Tamanho', padrao: 1.5, min: 0.5, max: 10, passo: 0.1, unidade: 'mm', dica: 'Une as letras do nome numa peça' },
     { tipo: 'numero', id: 'espPalavra', rotulo: 'Espessura da palavra grande', grupo: 'Espessuras', padrao: 22, min: 8, max: 40, passo: 0.5, unidade: 'mm' },
     { tipo: 'numero', id: 'espNome', rotulo: 'Espessura do nome', grupo: 'Espessuras', padrao: 5, min: 2, max: 20, passo: 0.5, unidade: 'mm' },
     { tipo: 'numero', id: 'rebaixo', rotulo: 'Profundidade do encaixe', grupo: 'Espessuras', padrao: 2, min: 0, max: 10, passo: 0.1, unidade: 'mm' },
@@ -65,12 +67,17 @@ export const letreiroSobreposto: Receita = {
         const a = arabesco(nb0.w * 0.8, Math.max(1, nb0.h * 0.05));
         nomeR = unir([nomeR, translateRegion(a, (nb0.minX + nb0.maxX) / 2, nb0.minY - regionBounds(a).h / 2 + nb0.h * 0.08)]);
       }
-      let contorno = semBuracos(contornar(nomeR, num(v, 'contornoNome')));
-      if (contorno.length > 1) {
+      // O miolo das letras fica aberto (a palavra aparece por dentro e o nome se le); so os
+      // buracos minusculos fecham, para o rebaixo nao ganhar ilhas finas demais para imprimir.
+      const c = num(v, 'contornoNome');
+      let contorno = semBuracosPequenos(contornar(nomeR, c), 6);
+      if (contorno.length > 1 && /\s/.test(txt(v, 'nome').trim())) {
         // Palavras separadas (espaco): uma faixa atras do texto une tudo numa peca so.
         const nb = regionBounds(contorno);
-        contorno = unir([contorno, retanguloArredondado((nb.minX + nb.maxX) / 2, (nb.minY + nb.maxY) / 2, nb.w - num(v, 'contornoNome'), Math.max(nb.h * 0.3, 2 * num(v, 'contornoNome')), num(v, 'contornoNome'))]);
+        contorno = unir([contorno, retanguloArredondado((nb.minX + nb.maxX) / 2, (nb.minY + nb.maxY) / 2, nb.w - c, Math.max(nb.h * 0.3, 2 * c), c)]);
       }
+      // Pedaco solto do proprio cursivo (pingo do i, coracao na ponta): ponte fina ate o resto.
+      if (contorno.length > 1) contorno = ligarPedacos(contorno, Math.max(0.4, Math.min(1, c / 2)));
       const nome = translateRegion(contorno, 0, (gb.h * num(v, 'subirNome')) / 100);
       // O nome assenta num rebaixo da palavra grande, so onde ele passa por cima dela.
       const p = Math.min(num(v, 'rebaixo'), E - 1);

@@ -13,6 +13,27 @@ export const CONTATO = {
   prazoResposta: '',
 };
 
+/**
+ * Quem vende, no rodape e nas politicas (o Google Ads confere se a loja se identifica).
+ * Vazio = nao aparece.
+ */
+export const EMPRESA = {
+  /** Razao social ou nome empresarial do MEI. */
+  razaoSocial: '',
+  /** So digitos. */
+  cnpj: '',
+  /** De onde saem os pedidos ("Campinas - SP"). */
+  cidade: '',
+  email: '',
+};
+
+/** "12345678000190" -> "12.345.678/0001-90"; fora do formato, como veio. */
+export const formatarCnpj = (cnpj: string) => cnpj.replace(/\D/g, '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+
+/** "Razao · CNPJ 00.000.000/0000-00 · Cidade", so o que estiver preenchido. */
+export const identificacaoEmpresa = (e = EMPRESA) =>
+  [e.razaoSocial.trim(), e.cnpj.trim() && `CNPJ ${formatarCnpj(e.cnpj)}`, e.cidade.trim()].filter(Boolean).join(' · ');
+
 /** "Respondemos pelo WhatsApp[ em ate X]." */
 export const textoResposta = (prazo = CONTATO.prazoResposta) => `Respondemos pelo WhatsApp${prazo.trim() ? ` ${prazo.trim()}` : ''}.`;
 
@@ -27,6 +48,9 @@ export const MENSAGENS = {
   arquivo: () =>'Olá, Scarprint! Tenho um arquivo 3D (ou uma ideia) e quero um orçamento de impressão.',
   apoiador: () => 'Olá, Scarprint! Quero saber como ser apoiador e usar os geradores de vocês.',
   geral: () => 'Olá, Scarprint! Vim pelo site.',
+  letraCaixa: () => 'Olá, Scarprint! Quero um orçamento de letra caixa em 3D.',
+  troca: () => 'Olá, Scarprint! Quero falar sobre a troca ou devolução de um pedido.',
+  dados: () => 'Olá, Scarprint! Quero falar sobre os meus dados pessoais.',
   /** Letreiro montado no editor: a descricao vem pronta, sem valor. */
   letreiro: (descricao: string) => `Olá, Scarprint! Quero um orçamento deste letreiro:\n${descricao}`,
   /** Lista do carrinho de orcamento, uma linha por peca. */

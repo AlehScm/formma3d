@@ -8,7 +8,7 @@ import { ESCOPO_MARCA, Wordmark } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { EstrelaNatal } from '@/features/marketplace/Natal';
 import { campanhaAtiva } from '@/lib/marketplace/campanhas';
-import { CONTATO, MENSAGENS, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
+import { CONTATO, MENSAGENS, identificacaoEmpresa, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
 import { secoesComPecas } from '@/lib/marketplace/consultas';
 import { SECOES, type Secao } from '@/lib/marketplace/tipos';
 import { CabecalhoLoja } from './Cabecalho';
@@ -17,6 +17,7 @@ const LINK_RODAPE = 'text-apoio text-marca-texto-2 no-underline hover:text-marca
 
 export function RodapeLoja() {
   const whatsapp = linkWhatsapp(MENSAGENS.geral());
+  const empresa = identificacaoEmpresa();
   return (
     <footer className="mt-12 border-t border-marca-linha bg-marca-branco pt-12 pb-8 text-marca-navy">
       <div className="conteiner-loja grid grid-cols-2 gap-8 px-margem md:grid-cols-4">
@@ -48,12 +49,17 @@ export function RodapeLoja() {
               <p className="m-0 text-apoio text-marca-texto-2">{textoResposta()}</p>
             </div>
           ) : <p className="m-0 text-apoio text-marca-texto-2">WhatsApp em breve.</p>}
+          <ul className="mt-4 mb-0 flex list-none flex-col gap-2 p-0">
+            <li><Link href="/trocas" className={LINK_RODAPE}>Trocas e devoluções</Link></li>
+            <li><Link href="/privacidade" className={LINK_RODAPE}>Política de privacidade</Link></li>
+          </ul>
         </div>
       </div>
       <div className="conteiner-loja mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-marca-linha px-margem pt-6 text-apoio text-marca-texto-2">
         <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Wordmark tamanho={22} subtitulo={null} href={null} />
           <span>© {new Date().getFullYear()} Scarprint</span>
+          {empresa && <span>{empresa}</span>}
         </span>
         {campanhaAtiva('natal') ? (
           <span className="flex items-center gap-1.5 font-semibold text-natal-vermelho">

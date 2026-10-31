@@ -25,6 +25,6 @@ export function carregarPecaCom(id: string, extras: Valores): Promise<PecaCarreg
 
 async function gerar(id: string, extras: Valores): Promise<PecaCarregada> {
   const { valores, idsFonte } = prepararModelo(id, { base: 'exemplo', extras });
-  const { resultado, malhas } = await gerarNoWorker(id, valores, idsFonte);
+  const { resultado, malhas } = await gerarNoWorker(id, { ...valores, montado: true }, idsFonte);
   return montarPeca(resultado, malhas);
 }

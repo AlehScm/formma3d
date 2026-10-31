@@ -41,6 +41,16 @@ export const contornar = (r: Region, d: number) => offsetRegion(r, -d);
 /** So os contornos de fora: tapa o miolo das letras (O, A, B...). */
 export const semBuracos = (r: Region): Region => unir(r.map((p) => [{ outer: p.outer, holes: [] }]));
 
+/** Tapa so os buracos menores que `area` (mm2): o miolo grande das letras continua aberto. */
+export const semBuracosPequenos = (r: Region, area: number): Region =>
+  r.map((p) => ({ outer: p.outer, holes: p.holes.filter((h) => Math.abs(areaDoContorno(h)) >= area) }));
+
+function areaDoContorno(c: Pt[]): number {
+  let s = 0;
+  for (let i = 0, j = c.length - 1; i < c.length; j = i++) s += (c[j]!.x + c[i]!.x) * (c[j]!.y - c[i]!.y);
+  return s / 2;
+}
+
 export function unir(rs: Region[]): Region {
   return rs.reduce<Region>((acc, r) => (acc.length ? unionRegion(acc, r) : r), []);
 }

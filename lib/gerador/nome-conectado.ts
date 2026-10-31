@@ -8,8 +8,11 @@ function projetar(p: Pt, a: Pt, b: Pt): Pt {
 }
 
 export function nomeConectado(nome: Region, contorno: number): Region {
-  let placa = contornar(nome, contorno);
-  const raio = Math.max(0.4, Math.min(1, contorno / 2));
+  return ligarPedacos(contornar(nome, contorno), Math.max(0.4, Math.min(1, contorno / 2)));
+}
+
+/** Liga os pedacos soltos de `placa` numa peca so, com pontes de raio `raio` entre os pontos mais proximos. */
+export function ligarPedacos(placa: Region, raio: number): Region {
   while (placa.length > 1) {
     let distancia = Infinity;
     let par: [Pt, Pt] | undefined;

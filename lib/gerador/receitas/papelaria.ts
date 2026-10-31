@@ -213,6 +213,8 @@ export const textoComGuia: Receita = {
       if (partes.length > 1) notas.push(`A letra "${l.nome}" sai em ${partes.length} pedaços: cole pelos dentes de encaixe.`);
       return partes.map((p, k) => ({ nome: partes.length > 1 ? `${nome} (${k + 1}/${partes.length})` : nome, pecas: [{ nome: 'Letra', cor: 0, camadas: [{ region: p, z0: 0, z1: num(v, 'espTexto') }] }] }));
     });
+    // Peca pronta (vitrine da loja): so as letras, no lugar da palavra; a guia sai da parede.
+    if (v.montado === true) return { itens, cores: ['Letras'], hex: [txt(v, 'corLetra')], avisos, notas: [] };
     // Guia: retangulo em volta do texto, com o vazado das letras.
     const b = t.bounds, m = 15;
     const vazado = contornar(t.regiao, num(v, 'folgaLetra'));

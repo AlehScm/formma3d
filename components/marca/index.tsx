@@ -102,8 +102,10 @@ export function Sobretitulo({ children, escuro }: { children: ReactNode; escuro?
   );
 }
 
-export function SecaoMarca({ id, fundo = 'claro', sobretitulo, titulo, texto, acao, children }: {
+export function SecaoMarca({ id, fundo = 'claro', sobretitulo, titulo, texto, acao, className, children }: {
   id?: string;
+  /** Ajuste de espacamento quando duas secoes do mesmo fundo ficam coladas (ex.: `pt-0`). */
+  className?: string;
   fundo?: 'claro' | 'gelo' | 'escura';
   sobretitulo?: string;
   titulo?: ReactNode;
@@ -114,7 +116,7 @@ export function SecaoMarca({ id, fundo = 'claro', sobretitulo, titulo, texto, ac
   const escuro = fundo === 'escura';
   const idTitulo = id ? `${id}-titulo` : undefined;
   return (
-    <section id={id} className={cx('px-margem py-secao', fundo === 'gelo' && 'bg-marca-gelo', escuro && 'bg-marca-profundo text-white')} aria-labelledby={titulo ? idTitulo : undefined}>
+    <section id={id} className={cx('px-margem py-secao', fundo === 'gelo' && 'bg-marca-gelo', escuro && 'bg-marca-profundo text-white', className)} aria-labelledby={titulo ? idTitulo : undefined}>
       {(sobretitulo || titulo || texto || acao) && (
         <div className="mb-[clamp(24px,3vw,40px)] flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
           <div>

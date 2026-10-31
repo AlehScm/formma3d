@@ -48,6 +48,7 @@ const HEX_EXCECAO: Record<string, string> = {
   'app/sistema/page.tsx': 'valor de reserva ao ler o token na vitrine',
   'app/layout.tsx': 'theme-color do navegador (meta tag), nao aceita token CSS',
   'app/manifest.ts': 'theme_color e background_color do manifest (JSON), nao aceitam token CSS',
+  'features/letras/PalcoLetras.tsx': 'cor do brilho da luminaria na cena 3D (WebGL)',
 };
 const HEX_PENDENTE: Record<string, string> = {
 };

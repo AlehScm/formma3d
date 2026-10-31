@@ -9,8 +9,12 @@ import os from 'os';
 import path from 'path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JsonLd } from '../components/seo/JsonLd';
-import { FERRAMENTAS, caminhosIndexaveis } from '../lib/marketplace/indexacao';
-import { PRODUTOS, porSecao, produtosPublicos, type Produto } from '../lib/marketplace/index';
+import { FERRAMENTAS, INSTITUCIONAIS, LETRAS, caminhosIndexaveis } from '../lib/marketplace/indexacao';
+import { SLUGS_LETRAS, produtosLetras } from '../lib/marketplace/letras';
+import { PASTA_VITRINE, SLIDES_LETRAS, idDoProduto, type MalhaVitrine } from '../lib/marketplace/vitrineLetras';
+import { identificacaoEmpresa } from '../lib/marketplace/contato';
+import { GOOGLE, medicaoLigada, tagsDoGoogle } from '../lib/medicao';
+import { PRODUTOS, podeAparecer, porSecao, produtosPublicos, type Produto } from '../lib/marketplace/index';
 import { ORDEM_SECOES } from '../lib/marketplace/tipos';
 import { CAMPANHAS, campanhaAtiva } from '../lib/marketplace/campanhas';
 import { DESCRICAO_SITE, IMAGEM_SOCIAL, SITE_URL, descricaoDoProduto, ldLoja, ldProduto, ldTrilha, metadadosPagina, naoIndexar, resumir, urlAbsoluta } from '../lib/seo';
@@ -42,10 +46,36 @@ const semNatal = caminhosIndexaveis(PRODUTOS, () => false), comNatal = caminhosI
 const soDoNatal = PRODUTOS.filter((p) => p.campanha === 'natal');
 ok('campanha desligada: /natal fica, mas sem peca so de Natal', semNatal.includes('/natal') && soDoNatal.length > 0 && soDoNatal.every((p) => !semNatal.includes(`/produto/${p.slug}`)));
 ok('campanha ligada: /natal no sitemap', comNatal.includes('/natal'));
+const paginasLetra = ['app/letra-caixa/page.tsx', 'app/letras/page.tsx'];
+ok('letra: paginas /letra-caixa e /letras existem', paginasLetra.every((f) => fs.existsSync(f)), paginasLetra.filter((f) => !fs.existsSync(f)).join(', '));
+ok('letra: /letra-caixa e /letras estao no sitemap', LETRAS.every((c) => caminhos.includes(c)), LETRAS.filter((c) => !caminhos.includes(c)).join(', '));
+ok('letra: pasta features/letras existe', fs.existsSync('features/letras'), 'features/letras ainda nao existe');
+const arquivosLetra = ['app/letra-caixa/page.tsx', ...(fs.existsSync('features/letras') ? fs.readdirSync('features/letras').filter((f) => f.endsWith('.tsx')).map((f) => `features/letras/${f}`) : [])];
+const fonteLetra = arquivosLetra.filter((f) => fs.existsSync(f)).map((f) => fs.readFileSync(f, 'utf8')).join(' ');
+ok('letra: pagina e features/letras usam MENSAGENS.letraCaixa e linkWhatsapp', ['MENSAGENS.letraCaixa', 'linkWhatsapp'].every((t) => fonteLetra.includes(t)), ['MENSAGENS.letraCaixa', 'linkWhatsapp'].filter((t) => !fonteLetra.includes(t)).join(', ') || 'sem arquivos em features/letras');
+const pecasLetra = produtosLetras();
+ok('SLUGS_LETRAS: todo slug existe e e publico', pecasLetra.length === SLUGS_LETRAS.length && pecasLetra.every((p) => podeAparecer(p)), SLUGS_LETRAS.filter((s) => !pecasLetra.some((p) => p.slug === s)).join(', '));
+const letrasOcultas = ['letreiro-letra-caixa-acm', 'letra-moldura-acm'];
+ok('SLUGS_LETRAS: nenhum oculto aparece', letrasOcultas.every((s) => !SLUGS_LETRAS.includes(s) && !pecasLetra.some((p) => p.slug === s)), letrasOcultas.filter((s) => SLUGS_LETRAS.includes(s) || pecasLetra.some((p) => p.slug === s)).join(', '));
+// Pecas 3D da landing prontas no build (a pagina nao gera nada no navegador).
+const idsVitrine = [...SLIDES_LETRAS.map((s) => s.id), ...pecasLetra.filter((p) => p.gerador).map((p) => idDoProduto(p.slug))];
+const faltando = idsVitrine.filter((id) => !fs.existsSync(`public/${PASTA_VITRINE}/${id}.json`) || !fs.existsSync(`public/${PASTA_VITRINE}/${id}.bin`));
+ok('vitrine de letras: todo slide e produto da esteira tem .json e .bin gerados', !faltando.length, faltando.join(', '));
+const pesos = idsVitrine.filter((id) => !faltando.includes(id)).map((id) => ({ id, kb: fs.statSync(`public/${PASTA_VITRINE}/${id}.bin`).size / 1024, partes: (JSON.parse(fs.readFileSync(`public/${PASTA_VITRINE}/${id}.json`, 'utf8')) as MalhaVitrine).partes.length }));
+ok('vitrine de letras: cada peça com partes e abaixo de 300 KB, tudo abaixo de 1,5 MB', pesos.every((p) => p.partes > 0 && p.kb < 300) && pesos.reduce((t, p) => t + p.kb, 0) < 1536, pesos.filter((p) => !p.partes || p.kb >= 300).map((p) => `${p.id} ${p.kb.toFixed(0)} KB`).join(', ') || `${pesos.reduce((t, p) => t + p.kb, 0).toFixed(0)} KB`);
+ok('vitrine de letras: o script roda no prebuild e no publicar', fs.readFileSync('package.json', 'utf8').includes('gerar-vitrine-letras.mts') && fs.readFileSync('scripts/publicar.mjs', 'utf8').includes('gerar-vitrine-letras.mts'));
 ok('icones do site e manifest existem', ['app/favicon.ico', 'app/apple-icon.png', 'public/icone-192.png', 'public/icone-512.png', 'app/manifest.ts'].every((f) => fs.existsSync(f)), ['app/favicon.ico', 'app/apple-icon.png', 'public/icone-192.png', 'public/icone-512.png', 'app/manifest.ts'].filter((f) => !fs.existsSync(f)).join(', '));
 const sitemap = fs.readFileSync('app/sitemap.ts', 'utf8'), robots = fs.readFileSync('app/robots.ts', 'utf8');
 ok('sitemap e robots estaticos (export) e com URL absoluta', [sitemap, robots].every((t) => /export const dynamic = 'force-static'/.test(t) && /urlAbsoluta\(/.test(t)) && /caminhosIndexaveis\(\)/.test(sitemap));
 ok('robots nao bloqueia pagina (noindex fica na pagina)', !/disallow/i.test(robots) && /sitemap: urlAbsoluta\('sitemap\.xml'\)/.test(robots));
+
+// ---- Google Ads: medicao e politicas da loja ----
+const rodape = fs.readFileSync('components/loja/Estrutura.tsx', 'utf8');
+ok('trocas e privacidade no sitemap, com pagina e link no rodape', INSTITUCIONAIS.every((c) => caminhos.includes(c) && fs.existsSync(`app${c}/page.tsx`) && rodape.includes(`href="${c}"`)));
+ok('medicao desligada no dev e sem ID (nenhum script do Google)', !medicaoLigada('http://localhost:3111') && (tagsDoGoogle().length > 0 || !medicaoLigada('https://scarprint.com.br')));
+ok('ID do Google no formato (AW-/G-) ou vazio', /^(AW-\d+)?$/.test(GOOGLE.ads) && /^(G-[A-Z0-9]+)?$/.test(GOOGLE.analytics) && Object.values(GOOGLE.conversoes).every((r) => !r || !!GOOGLE.ads));
+ok('identificacao da empresa so com o que estiver preenchido', identificacaoEmpresa({ razaoSocial: 'Loja LTDA', cnpj: '12345678000190', cidade: 'Campinas - SP', email: '' }) === 'Loja LTDA · CNPJ 12.345.678/0001-90 · Campinas - SP' && identificacaoEmpresa({ razaoSocial: '', cnpj: '', cidade: '', email: '' }) === '');
+ok('WhatsApp de troca e de dados pessoais nao conta como conversao', INSTITUCIONAIS.every((c) => { const t = fs.readFileSync(`app${c}/page.tsx`, 'utf8'); return t.includes('linkWhatsapp(') && t.includes('data-medir="nao"'); }) && fs.readFileSync('components/Medicao.tsx', 'utf8').includes(':not([data-medir="nao"])'));
 
 // ---- URLs ----
 ok('URL absoluta a partir do endereco do site', urlAbsoluta('/pecas') === `${SITE_URL}/pecas` && urlAbsoluta('/') === `${SITE_URL}/` && urlAbsoluta('marketplace/a b/1.jpg') === `${SITE_URL}/marketplace/a%20b/1.jpg`);
