@@ -23,7 +23,7 @@ export const EMPRESA = {
   /** So digitos. */
   cnpj: '',
   /** De onde saem os pedidos ("Campinas - SP"). */
-  cidade: '',
+  cidade: 'Campinas - SP',
   email: '',
 };
 

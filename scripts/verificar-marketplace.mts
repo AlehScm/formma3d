@@ -124,7 +124,7 @@ ok('/criar: todo card tem o mesmo botao, um so', (catalogo.match(/<CardModelo /g
 ok('pecas de ACM fora da loja: o orcamento delas sai do editor', ['letreiro-letra-caixa-acm', 'letra-moldura-acm'].every((s) => PRODUTOS.some((p) => p.slug === s) && !porSlug(s)));
 const cabecalhoLoja = fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8');
 const menuCriar = fs.readFileSync('components/loja/MenuCriar.tsx', 'utf8');
-ok('menu "Criar": Personalize em 3D (/criar) e Letreiro de fachada (/editor), um item só', /href: '\/criar', titulo: 'Personalize em 3D'/.test(menuCriar) && /href: '\/editor', titulo: 'Letreiro de fachada'/.test(menuCriar) && !/Monte seu letreiro|Monte a sua peça/.test(cabecalhoLoja));
+ok('menu "Criar": Personalize em 3D (/criar) e Letreiro para parede (/editor), um item só', /href: '\/criar', titulo: 'Personalize em 3D'/.test(menuCriar) && /href: '\/editor', titulo: 'Letreiro para parede'/.test(menuCriar) && !/Monte seu letreiro|Monte a sua peça/.test(cabecalhoLoja));
 ok('menu "Criar" vem primeiro no celular e por último no computador', cabecalhoLoja.indexOf('<MenuCriar modo="folha"') < cabecalhoLoja.indexOf('campanhaAtiva(\'natal\') && (') && cabecalhoLoja.indexOf('<MenuCriar modo="menu"') > cabecalhoLoja.indexOf('secoes.map('));
 const barraTopo = fs.readFileSync('components/casca/BarraTopo.tsx', 'utf8');
 ok('flag desligada: /editor sem aba, atalho 3 e valor de orçamento', FLAGS.orcamentoNoEditor === false && /\.\.\.\(FLAGS\.orcamentoNoEditor \? \[\{ valor: 'orcamento'/.test(barraTopo) && /\{FLAGS\.orcamentoNoEditor && o && interno && \(/.test(barraTopo) && /FLAGS\.orcamentoNoEditor \? \{ '3': 'orcamento'/.test(fs.readFileSync('components/casca/Atalhos.tsx', 'utf8')));

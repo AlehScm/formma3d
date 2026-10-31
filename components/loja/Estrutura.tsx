@@ -30,7 +30,7 @@ export function RodapeLoja() {
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             <li><Link href="/criar" className={LINK_RODAPE}>Personalize em 3D</Link></li>
             <li><Link href="/design" className={LINK_RODAPE}>Crie do zero</Link></li>
-            <li><Link href="/editor" className={LINK_RODAPE}>Letreiro de fachada</Link></li>
+            <li><Link href="/editor" className={LINK_RODAPE}>Letreiro para parede</Link></li>
           </ul>
         </div>
         <div>

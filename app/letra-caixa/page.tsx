@@ -11,7 +11,7 @@ import { metadadosPagina } from '@/lib/seo';
 
 export const metadata: Metadata = metadadosPagina({
   titulo: 'Letra caixa e letras personalizadas em 3D',
-  descricao: 'Letra caixa para fachada e letras personalizadas para decoração de casa, impressas em 3D. Peça seu orçamento pelo WhatsApp.',
+  descricao: 'Letra caixa e letreiro 3D para recepção, loja e parede, e letras personalizadas para decoração, impressas em 3D. Orçamento pelo WhatsApp.',
   caminho: '/letra-caixa',
 });
 

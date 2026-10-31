@@ -27,7 +27,7 @@ export interface SlideLetras {
 export const SLIDES_LETRAS: SlideLetras[] = [
   {
     id: 'letra-caixa', titulo: 'Letra caixa', alt: 'Letra caixa CAFÉ impressa em 3D, face branca e lateral azul-marinho',
-    apoio: 'Letras em 3D para fachada, loja, quarto ou sala, na fonte e no tamanho que você quiser.',
+    apoio: 'Letras em 3D para recepção, loja, quarto ou sala, na fonte e no tamanho que você quiser.',
     fundo: '#2760A2', tinta: '#FFFFFF', botao: '#FFFFFF', botaoTexto: '#14213D',
     peca: { tipo: 'letra-caixa', texto: 'CAFÉ', fonte: 'anton', altura: 100, profundidade: 24, face: '#F6F4EE', lateral: '#14213D' },
   },

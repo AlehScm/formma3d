@@ -2,7 +2,7 @@
 
 /**
  * "Criar" na barra de categorias (docs/handoff-menu-criar.md): um item so para os dois
- * caminhos que nao sao categoria, a peca personalizada em 3D e o letreiro de fachada (orcado
+ * caminhos que nao sao categoria, a peca personalizada em 3D e o letreiro para parede (orcado
  * no editor, fora do carrinho). No computador abre um menu suspenso no fim da barra; no
  * celular e o primeiro item e abre uma folha que sobe do rodape, para nao sumir na rolagem.
  */
@@ -15,7 +15,7 @@ import { IconeAbaixo, IconeFachada, IconeFechar, IconeTridimensional } from './i
 
 export const OPCOES_CRIAR = [
   { href: '/criar', titulo: 'Personalize em 3D', texto: 'Chaveiros, placas e presentes com o seu nome, vistos em 3D antes de pedir.', Icone: IconeTridimensional },
-  { href: '/editor', titulo: 'Letreiro de fachada', texto: 'Letra caixa com chapa de ACM, do tamanho da sua fachada. Você monta e vê em 3D no editor.', Icone: IconeFachada },
+  { href: '/editor', titulo: 'Letreiro para parede', texto: 'Letra caixa em 3D para recepção, loja e vitrine, na fonte da sua marca. Você monta e vê em 3D no editor.', Icone: IconeFachada },
 ] as const;
 
 // Pilula com borda viva (opcao D3 aprovada no canvas): o destaque do menu, sem competir com as categorias.
