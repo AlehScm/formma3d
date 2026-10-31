@@ -46,7 +46,9 @@ type Parte = { nome: string; papel: MalhaVitrine['partes'][number]['papel']; cor
  */
 const TOLERANCIA = 0.0007;
 const simplificarRegiao = (r: Region, tol: number): Region => r.map((p) => ({ outer: simplificar(p.outer, tol), holes: p.holes.map((h) => simplificar(h, tol)).filter((h) => h.length >= 3) }));
-const toleranciaDe = (regioes: Region[]) => { const b = regionBounds(regioes.flat()); return Math.max(b.w, b.h) * TOLERANCIA; };
+const toleranciaDe = (regioes: Region[], fator = 1) => { const b = regionBounds(regioes.flat()); return Math.max(b.w, b.h) * TOLERANCIA * fator; };
+/** Peca acima disto (muitas partes, como o jogo de carimbos) e refeita com tolerancia dobrada. */
+const LIMITE_PECA = 200 * 1024;
 
 /** Malha so de posicoes (sem normal nem uv), para as normais serem refeitas com vinco. */
 function crua(g: THREE.BufferGeometry): THREE.BufferGeometry {
@@ -87,11 +89,11 @@ function letraCaixa(p: Extract<PecaVitrine, { tipo: 'letra-caixa' }>): Parte[] {
   ];
 }
 
-function deGerador(p: Extract<PecaVitrine, { tipo: 'gerador' }>): Parte[] {
+function deGerador(p: Extract<PecaVitrine, { tipo: 'gerador' }>, fator: number): Parte[] {
   const { receita, valores } = prepararModelo(p.gerador, { base: 'exemplo', extras: { ...p.valores, montado: true } });
   const r = receita.gerar(valores, { fonte });
   if (!r.itens.length) throw new Error(`${p.gerador} nao gerou peca: ${r.avisos.join(' ')}`);
-  const tol = toleranciaDe(r.itens.flatMap((it) => it.pecas.flatMap((pc) => pc.camadas.map((c) => c.region))));
+  const tol = toleranciaDe(r.itens.flatMap((it) => it.pecas.flatMap((pc) => pc.camadas.map((c) => c.region))), fator);
   return r.itens.flatMap((it) => it.pecas.map((pc) => {
     const geos = pc.camadas.map((c) => layerToGeometry({ ...c, region: simplificarRegiao(c.region, tol) })).filter((g): g is THREE.BufferGeometry => !!g).map(crua);
     return { nome: pc.nome, papel: p.difusor?.includes(pc.nome) ? 'difusor' as const : 'peca' as const, cor: corDe(r, pc.cor), geo: mergeGeometries(geos, false)! };
@@ -151,11 +153,11 @@ const pecas: { id: string; peca: PecaVitrine }[] = [
 fs.mkdirSync(PASTA, { recursive: true });
 let total = 0;
 for (const { id, peca } of pecas) {
-  const partes = peca.tipo === 'letra-caixa' ? letraCaixa(peca) : deGerador(peca);
-  const { json, bin } = empacotar(partes);
+  let fator = 1, { json, bin } = empacotar(peca.tipo === 'letra-caixa' ? letraCaixa(peca) : deGerador(peca, fator));
+  while (peca.tipo === 'gerador' && bin.length > LIMITE_PECA && fator < 16) ({ json, bin } = empacotar(deGerador(peca, (fator *= 2))));
   const mudou = [gravarSeMudou(path.join(PASTA, `${id}.json`), JSON.stringify(json)), gravarSeMudou(path.join(PASTA, `${id}.bin`), bin)].some(Boolean);
   total += bin.length;
   const tris = json.partes.reduce((t, p) => t + p.indices / 3, 0);
-  console.log(`  ${id.padEnd(30)} ${(bin.length / 1024).toFixed(0).padStart(5)} KB  ${String(Math.round(tris)).padStart(7)} triangulos  ${json.partes.map((p) => `${p.nome}(${p.papel})`).join(', ').slice(0, 90)}${mudou ? '  [atualizado]' : ''}`);
+  console.log(`  ${id.padEnd(30)} ${(bin.length / 1024).toFixed(0).padStart(5)} KB  ${String(Math.round(tris)).padStart(7)} triangulos  ${json.partes.map((p) => `${p.nome}(${p.papel})`).join(', ').slice(0, 90)}${fator > 1 ? `  [tolerancia x${fator}]` : ''}${mudou ? '  [atualizado]' : ''}`);
 }
 console.log(`vitrine de letras: ${pecas.length} pecas, ${(total / 1024).toFixed(0)} KB em ${PASTA}`);

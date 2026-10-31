@@ -10,7 +10,8 @@ import path from 'path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JsonLd } from '../components/seo/JsonLd';
 import { FERRAMENTAS, INSTITUCIONAIS, LETRAS, caminhosIndexaveis } from '../lib/marketplace/indexacao';
-import { SLUGS_LETRAS, produtosLetras } from '../lib/marketplace/letras';
+import { GERADORES_DE_LETRA, produtosLetras } from '../lib/marketplace/letras';
+import { receitaPorId } from '../lib/gerador/receitas';
 import { PASTA_VITRINE, SLIDES_LETRAS, idDoProduto, type MalhaVitrine } from '../lib/marketplace/vitrineLetras';
 import { identificacaoEmpresa } from '../lib/marketplace/contato';
 import { GOOGLE, medicaoLigada, tagsDoGoogle } from '../lib/medicao';
@@ -54,9 +55,10 @@ const arquivosLetra = ['app/letra-caixa/page.tsx', ...(fs.existsSync('features/l
 const fonteLetra = arquivosLetra.filter((f) => fs.existsSync(f)).map((f) => fs.readFileSync(f, 'utf8')).join(' ');
 ok('letra: pagina e features/letras usam MENSAGENS.letraCaixa e linkWhatsapp', ['MENSAGENS.letraCaixa', 'linkWhatsapp'].every((t) => fonteLetra.includes(t)), ['MENSAGENS.letraCaixa', 'linkWhatsapp'].filter((t) => !fonteLetra.includes(t)).join(', ') || 'sem arquivos em features/letras');
 const pecasLetra = produtosLetras();
-ok('SLUGS_LETRAS: todo slug existe e e publico', pecasLetra.length === SLUGS_LETRAS.length && pecasLetra.every((p) => podeAparecer(p)), SLUGS_LETRAS.filter((s) => !pecasLetra.some((p) => p.slug === s)).join(', '));
+ok('letras: todo gerador da vitrine existe como receita', GERADORES_DE_LETRA.every((id) => receitaPorId(id)), GERADORES_DE_LETRA.filter((id) => !receitaPorId(id)).join(', '));
+ok('letras: so produto publico, de um gerador de letra, pelo menos 15', pecasLetra.length >= 15 && pecasLetra.every((p) => podeAparecer(p) && GERADORES_DE_LETRA.includes(p.gerador ?? '')), `${pecasLetra.length} produtos`);
 const letrasOcultas = ['letreiro-letra-caixa-acm', 'letra-moldura-acm'];
-ok('SLUGS_LETRAS: nenhum oculto aparece', letrasOcultas.every((s) => !SLUGS_LETRAS.includes(s) && !pecasLetra.some((p) => p.slug === s)), letrasOcultas.filter((s) => SLUGS_LETRAS.includes(s) || pecasLetra.some((p) => p.slug === s)).join(', '));
+ok('letras: nenhum oculto aparece', letrasOcultas.every((s) => !pecasLetra.some((p) => p.slug === s)), letrasOcultas.filter((s) => pecasLetra.some((p) => p.slug === s)).join(', '));
 // Pecas 3D da landing prontas no build (a pagina nao gera nada no navegador).
 const idsVitrine = [...SLIDES_LETRAS.map((s) => s.id), ...pecasLetra.filter((p) => p.gerador).map((p) => idDoProduto(p.slug))];
 const faltando = idsVitrine.filter((id) => !fs.existsSync(`public/${PASTA_VITRINE}/${id}.json`) || !fs.existsSync(`public/${PASTA_VITRINE}/${id}.bin`));

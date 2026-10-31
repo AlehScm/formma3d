@@ -1,18 +1,34 @@
-import { porSlug } from './consultas';
+import { produtosPublicos } from './consultas';
 import type { Produto } from './tipos';
 
-/** Pecas de letra em 3D, na ordem da vitrine. Os ocultos ficam fora: porSlug so devolve o publico. */
-export const SLUGS_LETRAS: string[] = [
-  'letra-grande-nome',
-  'letreiro-nome-camadas',
+/**
+ * Geradores que fazem qualquer letra ou palavra (a peca e feita das letras digitadas), na ordem
+ * da vitrine. Todo produto publico de um deles entra; os ocultos ficam fora.
+ */
+export const GERADORES_DE_LETRA: string[] = [
+  'letra-grande',
+  'luminaria-letra',
+  'palavra-camadas',
   'letras-separadas',
   'letreiro-sobreposto',
-  'luminaria-letra',
-  'arroba-social',
-  'luminaria-social',
   'texto-com-guia',
+  'social-camadas',
+  'luminaria-social',
+  'social-com-qr',
+  'chaveiro-nome',
+  'chaveiro-logo-nome',
+  'topo-bolo',
+  'suporte-foto',
+  'marcador-pagina',
+  'carimbo-letras',
+  'rosa-nome',
+  'string-art',
 ];
 
+const ordem = (p: Produto) => GERADORES_DE_LETRA.indexOf(p.gerador ?? '');
+
 export function produtosLetras(): Produto[] {
-  return SLUGS_LETRAS.map((slug) => porSlug(slug)).filter((p): p is Produto => p !== undefined);
+  return produtosPublicos()
+    .filter((p) => ordem(p) >= 0)
+    .sort((a, b) => ordem(a) - ordem(b));
 }

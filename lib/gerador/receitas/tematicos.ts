@@ -273,6 +273,9 @@ export const stringArt: Receita = {
     const itens: Item[] = [{ nome: modelo === 'retangulo' ? 'String art' : txt(v, 'linha1'), pecas }];
     const notas = ['Imprima deitado; os fios são finos de propósito (aspecto de linha).'];
     const prof = num(v, 'profundidade'), fb = regionBounds(fora);
+    // Na vitrine (`montado`) so a arte: a base e a capa sao acessorios soltos, que deitados ao lado
+    // pareceriam parte da peca.
+    if (v.montado === true) return { itens, cores, hex, avisos, notas };
     if (liga(v, 'base')) {
       // Base destacavel: a ponta de baixo da moldura (no coracao, a ponta dele) entra na
       // fenda; a largura da fenda e a da moldura nessa altura.
