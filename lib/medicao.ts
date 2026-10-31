@@ -9,9 +9,9 @@ export type Acao = 'whatsapp' | 'orcamento';
 
 export const GOOGLE = {
   /** Conta do Google Ads ("AW-123456789"). */
-  ads: '',
+  ads: 'AW-18545269296',
   /** Rotulo de cada conversao criada no Ads (o que vem depois da barra em "AW-123456789/rotulo"). Vazio = a acao nao conta. */
-  conversoes: { whatsapp: '', orcamento: '' } satisfies Record<Acao, string>,
+  conversoes: { whatsapp: 'o5ALCPrsxa8dELC0iYtF', orcamento: 'TEiFCP3sxa8dELC0iYtF' } satisfies Record<Acao, string>,
   /** Google Analytics 4 ("G-XXXXXXXXXX"). Opcional. */
   analytics: '',
 };
