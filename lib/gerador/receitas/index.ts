@@ -22,6 +22,7 @@ import { chaveiroCenoura, chaveiroCoelho, rosaNome, stringArt } from './tematico
 import { letraGrande, luminariaLetra, luminariaSocial } from './letras';
 import { carimbosMassinha, portaPente } from './potes';
 import { caixaFigurinhas, portaCanetasDesign } from './caixas';
+import { cofrinhoNome } from './cofrinho';
 import { displayUnhas, miniMicrofone, portaRetrato, quadroTecido } from './quadros';
 import { cartaoTecido, cartaoVisita, listaQrCamadas, listaQrHorizontal, listaQrVertical, placaGoogleReview, placaPixLogo, placaPixTexto, placaQrLogo, placaQrSocial, socialComQr } from './qrplacas';
 import { designLivre } from './designLivre';
@@ -34,7 +35,7 @@ export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparad
   roloTextura, estojoBatom,
   ejetorCupula, cumbuca, suporteBolo,
   chaveiroCenoura, chaveiroCoelho, rosaNome, stringArt,
-  letraGrande, luminariaLetra, luminariaSocial,
+  letraGrande, luminariaLetra, luminariaSocial, cofrinhoNome,
   portaPente, carimbosMassinha,
   caixaFigurinhas, portaCanetasDesign, quadroTecido, portaRetrato, displayUnhas, miniMicrofone,
   placaGoogleReview, placaQrSocial, placaQrLogo, placaPixLogo, placaPixTexto, listaQrVertical, listaQrHorizontal, listaQrCamadas, socialComQr, cartaoVisita, cartaoTecido,

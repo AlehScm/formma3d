@@ -983,5 +983,38 @@ console.log('\n== peca montada (vitrine da loja) ==');
   ok('letras de parede montadas: só as letras, no lugar da palavra (a guia sai)', comGuia.itens.some((i) => i.nome.startsWith('Guia')) && naParede.itens.length > 0 && !naParede.itens.some((i) => i.nome.startsWith('Guia')) && naParede.itens.length === comGuia.itens.filter((i) => !i.nome.startsWith('Guia')).length);
 }
 
+console.log('\n== cofrinho com nome ==');
+{
+  const cf = receitaPorId('cofrinho-nome')!, vc = valoresPadrao(cf);
+  const parede = Number(vc.parede), folga = Number(vc.folga);
+  const mesa = gerar(cf), pronto = gerar(cf, { montado: true }), lisa = gerar(cf, { textura: 'lisa' });
+  const peca = (r: Resultado, nome: string) => r.itens.flatMap((i) => i.pecas).find((p) => p.nome === nome)!;
+  ok('cofrinho: na mesa sai corpo, costas, letras e tampinha soltos; montado num item só', mesa.itens.map((i) => i.nome).join(',') === 'Corpo,Costas,Letras,Tampinha' && pronto.itens.length === 1 && pronto.itens[0]!.pecas.length === 4);
+  const corpo = peca(mesa, 'Corpo').camadas, H = Math.max(...corpo.map((c) => c.z1));
+  const S = corpo[1]!.region, bS = regionBounds(S);
+  const furosNaParede = corpo.slice(2).map((c) => ({ meio: (c.z0 + c.z1) / 2, furos: c.region.reduce((s, q) => s + q.holes.length, 0) }));
+  const zF0 = 2.4 + (H - 2.4 - 4) / 2, zF1 = zF0 + 4;
+  const naFenda = furosNaParede.filter((f) => f.meio > zF0 && f.meio < zF1);
+  ok('cofrinho: a fenda atravessa a parede de cima no meio da profundidade (o anel abre)', naFenda.length > 0 && naFenda.every((f) => f.furos === 0) && furosNaParede.filter((f) => f.meio < zF0 || f.meio > zF1).every((f) => f.furos === 1), naFenda.map((f) => f.furos).join(','));
+  const aba = peca(mesa, 'Costas').camadas[2]!.region, bA = regionBounds(aba);
+  ok('cofrinho: a aba das costas entra na parede com a folga', perto(bS.w - bA.w, 2 * (parede + folga), 0.05), `${(bS.w - bA.w).toFixed(3)} mm de ${2 * (parede + folga)}`);
+  const larguras = new Set(corpo.slice(2).map((c) => regionBounds(c.region).w.toFixed(2)));
+  ok('cofrinho: a parede canelada alterna dois contornos; a lisa tem um só', larguras.size === 2 && new Set(peca(lisa, 'Corpo').camadas.slice(2).map((c) => regionBounds(c.region).w.toFixed(2))).size === 1, [...larguras].join(' / '));
+  const zP = (nome: string) => pronto.itens[0]!.pecas.find((p) => p.nome === nome)!.camadas;
+  ok('cofrinho montado: letras no rebaixo da frente, costas fechando atrás e a tampinha no furo delas', perto(Math.min(...zP('Letras').map((c) => c.z0)), H - 1, 1e-6) && perto(Math.min(...zP('Costas').map((c) => c.z0)), -1.6, 1e-6) && perto(Math.min(...zP('Tampinha').map((c) => c.z0)), -3.2, 1e-6) && perto(Math.max(...zP('Corpo').map((c) => c.z1)), H, 1e-6));
+  const furoCostas = zP('Costas')[1]!.region.flatMap((q) => q.holes).map((h) => regionBounds([{ outer: h, holes: [] }]));
+  const pino = regionBounds(zP('Tampinha')[1]!.region);
+  ok('cofrinho: a moeda passa no furo das costas e o pino da tampinha entra nele com a folga', furoCostas.length === 1 && furoCostas[0]!.w >= 29 && perto(furoCostas[0]!.w - pino.w, 2 * folga, 0.05), furoCostas.map((b) => b.w.toFixed(2)).join(', ') + ` / pino ${pino.w.toFixed(2)}`);
+  ok('cofrinho: o furo não corta a aba das costas', regionArea(intersectRegion(zP('Costas')[2]!.region, zP('Tampinha')[1]!.region)) < 0.01);
+  const letras = zP('Letras')[0]!.region, rebaixo = peca(pronto, 'Corpo').camadas[0]!.region;
+  ok('cofrinho: as letras cabem no rebaixo com folga', regionArea(diffRegion(letras, diffRegion(S, rebaixo))) < 0.5 && regionArea(intersectRegion(letras, rebaixo)) < 0.5);
+  const faixaX = (x0: number, x1: number): Region => [{ outer: [{ x: x0, y: bS.minY - 1 }, { x: x1, y: bS.minY - 1 }, { x: x1, y: bS.maxY + 1 }, { x: x0, y: bS.maxY + 1 }], holes: [] }];
+  const apoioDe = zP('Letras')[0]!.region.map((q) => { const b = regionBounds([q]); return regionBounds(intersectRegion(S, faixaX(b.minX, b.maxX))).minY - bS.minY; });
+  const contato = S.flatMap((q) => q.outer).filter((pt) => pt.y < bS.minY + 0.3).map((pt) => pt.x);
+  ok('cofrinho: todas as letras apoiam na mesma linha e os apoios abrem mais de 60% da largura (fica em pé)', apoioDe.every((d) => d < 0.3) && Math.max(...contato) - Math.min(...contato) > bS.w * 0.6, apoioDe.map((d) => d.toFixed(2)).join(' / '));
+  const longo = gerar(cf, { nome: 'Maria Eduarda' });
+  ok('cofrinho: nome comprido diminui para caber na largura e avisa', regionBounds(peca(longo, 'Corpo').camadas[1]!.region).w <= Number(vc.largura) + 0.5 && longo.avisos.some((a) => /não cabe/.test(a)));
+}
+
 console.log(`\n${total - falhas}/${total} passaram\n`);
 process.exit(falhas ? 1 : 0);

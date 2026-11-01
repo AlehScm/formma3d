@@ -21,6 +21,9 @@ export const FONTES_WEB: FonteWeb[] = [
   { id: 'pacifico', nome: 'Pacifico (script)', url: CDN + 'pacifico@latest/latin-400-normal.ttf' },
   // Google Fonts (licenca livre, OFL) das familias dos geradores do catalogo.
   { id: 'luckiest-guy', nome: 'Luckiest Guy', url: CDN + 'luckiest-guy@latest/latin-400-normal.ttf' },
+  { id: 'fredoka-700', nome: 'Fredoka Bold', url: CDN + 'fredoka@latest/latin-700-normal.ttf' },
+  // Chewy: Apache 2.0 (as outras desta lista sao OFL).
+  { id: 'chewy', nome: 'Chewy', url: CDN + 'chewy@latest/latin-400-normal.ttf' },
   { id: 'cal-sans', nome: 'Cal Sans', url: CDN + 'cal-sans@latest/latin-400-normal.ttf' },
   { id: 'plus-jakarta-800', nome: 'Plus Jakarta Sans ExtraBold', url: CDN + 'plus-jakarta-sans@latest/latin-800-normal.ttf' },
   { id: 'open-sans-800', nome: 'Open Sans ExtraBold', url: CDN + 'open-sans@latest/latin-800-normal.ttf' },

@@ -45,6 +45,12 @@ export const FICHAS: Ficha[] = [
     exemplo: { nomes: 'Scar♥, Scarprint', corBase: '#f5f5f4', corMeio: '#8a2346', corTopo: '#ffffff' },
   },
   {
+    id: 'cofrinho-nome', nome: 'Cofrinho com nome', familia: 'multicor', tipo: 'Presente',
+    resumo: 'O nome vira um cofrinho: corpo oco no contorno das letras, fenda de moeda e tampinha atrás.',
+    destaques: ['Parede canelada ou lisa', '3 cores: corpo, letras e tampinha', 'Tampinha atrás para tirar as moedas'],
+    exemplo: { nome: 'Luna', corCorpo: '#94a3b8', corLetras: '#f5e6c8', corTampa: '#94a3b8' },
+  },
+  {
     id: 'chaveiro-retangular', nome: 'Chaveiro retangular com nome', familia: 'chaveiros',
     resumo: 'Placa retangular com o nome ajustado à largura; nome completo ou até 9 nomes.',
     destaques: ['Nome completo em 2 linhas', 'Borda e contorno em 3 cores', 'Até 9 por vez'],

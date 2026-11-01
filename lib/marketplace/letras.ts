@@ -8,6 +8,7 @@ import type { Produto } from './tipos';
 export const GERADORES_DE_LETRA: string[] = [
   'letra-grande',
   'luminaria-letra',
+  'cofrinho-nome',
   'palavra-camadas',
   'letras-separadas',
   'letreiro-sobreposto',

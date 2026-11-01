@@ -48,7 +48,7 @@ const TOLERANCIA = 0.0007;
 const simplificarRegiao = (r: Region, tol: number): Region => r.map((p) => ({ outer: simplificar(p.outer, tol), holes: p.holes.map((h) => simplificar(h, tol)).filter((h) => h.length >= 3) }));
 const toleranciaDe = (regioes: Region[], fator = 1) => { const b = regionBounds(regioes.flat()); return Math.max(b.w, b.h) * TOLERANCIA * fator; };
 /** Peca acima disto (muitas partes, como o jogo de carimbos) e refeita com tolerancia dobrada. */
-const LIMITE_PECA = 200 * 1024;
+const LIMITE_PECA = 150 * 1024;
 
 /** Malha so de posicoes (sem normal nem uv), para as normais serem refeitas com vinco. */
 function crua(g: THREE.BufferGeometry): THREE.BufferGeometry {
@@ -145,9 +145,13 @@ function gravarSeMudou(arq: string, conteudo: Buffer | string): boolean {
 
 // Slides do topo e, para a esteira (cards girando), o exemplo de cada produto de letra montado:
 // o mesmo da foto do card, para a foto e o 3D nao trocarem de peca.
+// Ajuste so da vitrine: no cofrinho cada friso e uma camada (69 no padrao, 260 KB); no card
+// pequeno o friso de 1,2 mm nem aparece, entao a vitrine leva a parede lisa. A foto do card e a
+// pagina da peca usam o gerador inteiro, com a canelada.
+const AJUSTE_VITRINE: Record<string, Record<string, string | number>> = { 'cofrinho-nome': { textura: 'lisa' } };
 const pecas: { id: string; peca: PecaVitrine }[] = [
   ...SLIDES_LETRAS.map((s) => ({ id: s.id, peca: s.peca })),
-  ...produtosLetras().filter((p) => p.gerador).map((p) => ({ id: idDoProduto(p.slug), peca: { tipo: 'gerador' as const, gerador: p.gerador!, valores: {}, difusor: ['Frente'] } })),
+  ...produtosLetras().filter((p) => p.gerador).map((p) => ({ id: idDoProduto(p.slug), peca: { tipo: 'gerador' as const, gerador: p.gerador!, valores: AJUSTE_VITRINE[p.gerador!] ?? {}, difusor: ['Frente'] } })),
 ];
 
 fs.mkdirSync(PASTA, { recursive: true });

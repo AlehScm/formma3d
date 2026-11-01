@@ -2919,5 +2919,35 @@
     "campanha": null,
     "ref": null,
     "revisar": true
+  },
+  {
+    "slug": "cofrinho-nome",
+    "nome": "Cofrinho com nome",
+    "tags": [
+      "gerador"
+    ],
+    "gerador": "cofrinho-nome",
+    "secao": "presentes",
+    "tipo": "Presente",
+    "resumo": "O nome vira um cofrinho: corpo oco no contorno das letras, fenda de moeda e tampinha atrás.",
+    "descricao": "O nome vira um cofrinho: corpo oco no contorno das letras, fenda de moeda e tampinha atrás.",
+    "personalizavel": [
+      "Parede canelada ou lisa",
+      "3 cores: corpo, letras e tampinha",
+      "Tampinha atrás para tirar as moedas"
+    ],
+    "preco": {
+      "status": "validacao"
+    },
+    "midias": [],
+    "personalizar": null,
+    "origem": "nosso",
+    "licenca": "propria",
+    "visibilidade": "publico",
+    "destaque": false,
+    "jaImpresso": false,
+    "campanha": null,
+    "ref": null,
+    "revisar": true
   }
 ]

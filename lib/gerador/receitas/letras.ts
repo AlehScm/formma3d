@@ -37,9 +37,9 @@ const moldura = (v: Valores) => ['textura', 'floral', 'material', 'brilho'].incl
  * entra no item principal, no lugar em que se monta. `virar`: a peca imprime de cabeca para
  * baixo (tampa com a face na mesa); o z dela espelha e o z=0 vai parar em `dz`.
  */
-type Montagem = { item: Item; dz: number; virar?: boolean };
+export type Montagem = { item: Item; dz: number; virar?: boolean };
 
-function montarJunto(principal: Item, extras: Montagem[]): Item {
+export function montarJunto(principal: Item, extras: Montagem[]): Item {
   const mover = (p: Peca, m: Montagem): Peca => ({
     ...p,
     camadas: p.camadas.map((c) => (m.virar ? { ...c, z0: m.dz - c.z1, z1: m.dz - c.z0 } : { ...c, z0: c.z0 + m.dz, z1: c.z1 + m.dz })),
