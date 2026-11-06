@@ -1,7 +1,8 @@
 /**
  * Tiara com nome: o arco da tiara com dentinhos por dentro (seguram no cabelo), uma haste no
  * meio e o nome em arco sobre uma faixa curva. Imprime deitada, em 2 cores: a tiara (arco,
- * haste, faixa e o contorno das letras) e as letras por cima do contorno.
+ * haste, faixa e a placa atras do nome) e as letras por cima. A placa e a silhueta da palavra
+ * inteira (o vao entre as letras fechado), como a referencia: uma peca so atras do nome.
  */
 import { regionBounds, type Region } from '../../geom/region';
 import { circulo, contornar, retanguloArredondado, semBuracos, textoEmArco, unir } from '../formas';
@@ -12,6 +13,9 @@ import { num, txt } from '../tipos';
 const cor = (id: string, rotulo: string, padrao: string): Parametro => ({ tipo: 'cor', id, rotulo, grupo: 'Cores', padrao });
 const mm = (id: string, rotulo: string, grupo: string, padrao: number, min: number, max: number, passo = 0.5, dica?: string): Parametro =>
   ({ tipo: 'numero', id, rotulo, grupo, padrao, min, max, passo, unidade: 'mm', dica });
+
+/** Vao entre letras que a placa atras do nome fecha: ate 2x isto, mm. */
+const FECHAR_VAO = 3;
 
 /** Dentinho (largura x comprimento) e passo entre eles ao longo do arco, mm. */
 const DENTE_L = 1.2, DENTE_C = 2.4, DENTE_PASSO = 3;
@@ -33,7 +37,7 @@ export const tiaraNome: Receita = {
     { tipo: 'liga', id: 'maiusculas', rotulo: 'Tudo em maiúsculas', grupo: 'Texto', padrao: true },
     mm('altura', 'Altura das letras', 'Texto', 20, 8, 30),
     mm('espLetras', 'Espessura das letras', 'Texto', 2, 0.8, 6, 0.2, 'Por cima do contorno'),
-    mm('contorno', 'Contorno das letras', 'Texto', 1.6, 0, 4, 0.2),
+    mm('contorno', 'Contorno das letras', 'Texto', 1.6, 0, 4, 0.2, 'Quanto a placa atrás do nome passa das letras'),
     mm('raio', 'Raio da tiara', 'Tiara', 66, 50, 85, 1, 'Metade da largura por dentro: 66 mm serve em adulto'),
     mm('largura', 'Largura do arco', 'Tiara', 5, 3.5, 9),
     mm('espessura', 'Espessura da tiara', 'Tiara', 2.8, 1.8, 4, 0.1),
@@ -72,7 +76,9 @@ export const tiaraNome: Receita = {
     const sobra = (4 * 180) / (Math.PI * rNome);
     const faixa = setor(rNome - num(v, 'faixa'), rNome + 0.8, -graus / 2 - sobra, graus / 2 + sobra);
     const haste = retanguloArredondado(0, R + w / 2 + (num(v, 'haste') + w) / 2, 4, num(v, 'haste') + w, 1);
-    const tiara = unir([arco, dentes, haste, faixa, semBuracos(contornar(letras, num(v, 'contorno')))]);
+    // Placa atras do nome: cresce o contorno + o vao e encolhe o vao de volta (fecha o espaco entre as letras).
+    const placa = semBuracos(contornar(contornar(letras, num(v, 'contorno') + FECHAR_VAO), -FECHAR_VAO));
+    const tiara = unir([arco, dentes, haste, faixa, placa]);
     const avisos: string[] = [];
     const b = regionBounds(unir([tiara, letras]));
     if (b.w > 256 || b.h > 256) avisos.push(`A tiara tem ${b.w.toFixed(0)} x ${b.h.toFixed(0)} mm: passa da mesa de 256 mm.`);

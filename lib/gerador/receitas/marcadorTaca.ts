@@ -2,11 +2,13 @@
  * Marcador de taca: o nome numa linha, girado para ler de cima para baixo, com o pe das letras
  * numa haste fina que encosta no vidro e um gancho em J no topo que prende na borda. Imprime
  * deitado, em 2 ou 3 cores: a base (contorno das letras, haste e gancho) e as letras por cima.
+ * O miolo das letras (O, A, P...) fica vazado do tamanho da propria letra: a base so contorna
+ * por fora, sem a cor de baixo aparecer dentro das letras.
  */
 import { diffRegion, intersectRegion, regionBounds, rotateRegion, translateRegion, type Region } from '../../geom/region';
 import { coresDe, empilhar, hexDe, lerCamadas, parametrosCamadas } from '../camadas';
 import { ret } from '../fatias';
-import { circulo, comporLinhas, unir } from '../formas';
+import { circulo, comporLinhas, semBuracos, unir } from '../formas';
 import { LOTE_MAX, loteDeNomes } from '../lote';
 import { ficha } from './fichas';
 import type { Parametro, Receita } from '../tipos';
@@ -43,7 +45,7 @@ export const marcadorTaca: Receita = {
     mm('alturaGancho', 'Altura do gancho', 'Gancho', 6, 3, 20, 0.5, 'Da primeira letra até a curva'),
     mm('pernaGancho', 'Perna do gancho', 'Gancho', 8, 3, 20, 0.5, 'O lado que fica por dentro da taça'),
     mm('larguraGancho', 'Largura da haste e do gancho', 'Gancho', 2.4, 1.6, 4, 0.1),
-    ...parametrosCamadas({ cores: 2, contornoBase: 1.2, espBase: 2, espTopo: 1.2, preencherBase: true, corBase: '#2b2b2b', corTopo: '#d99a7c' }),
+    ...parametrosCamadas({ cores: 2, contornoBase: 0.8, espBase: 2, espTopo: 1.2, preencherBase: false, corBase: '#2b2b2b', corTopo: '#d99a7c' }),
   ],
   fontes: (v) => [txt(v, 'fonte')],
   gerar(v, ctx) {
@@ -56,7 +58,10 @@ export const marcadorTaca: Receita = {
       // Girado para ler de cima para baixo: o pe das letras fica a esquerda, do lado do vidro.
       const deitado = rotateRegion(t.regiao, -90), b = regionBounds(deitado);
       const texto = translateRegion(deitado, -b.minX, 0);
-      const e = empilhar(texto, o, (base) => {
+      // O miolo de cada letra: sem "Tapar o miolo da base", fica vazado na base tambem.
+      const miolos = o.preencherBase ? [] : diffRegion(semBuracos(texto), texto);
+      const e = empilhar(texto, o, (contorno) => {
+        const base = miolos.length ? diffRegion(contorno, miolos) : contorno;
         const bb = regionBounds(base), x0 = bb.minX;
         // A haste corre pelo pe de todas as letras e sobe ate o gancho.
         const haste = ret(x0, bb.minY + w / 2, x0 + w, bb.maxY);

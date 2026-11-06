@@ -19,7 +19,7 @@ import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha'
 import { fatiasDaPlanta, limitesDaPeca } from '../lib/gerador/planta';
 import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
 import { corDe } from '../lib/gerador/malha';
-import { circulo, contornar, retanguloArredondado, textoEmArco, unir } from '../lib/gerador/formas';
+import { circulo, contornar, retanguloArredondado, semBuracos, textoEmArco, unir } from '../lib/gerador/formas';
 import JSZip from 'jszip';
 import { payloadWifi, payloadWhatsapp } from '../lib/gerador/payloads';
 import { crc16Ccitt } from '../lib/gerador/pix';
@@ -1053,9 +1053,12 @@ console.log('\n== marcador de taca ==');
   const r = gerar(mt), base = r.itens[0]!.pecas.find((p) => p.nome === 'Base')!.camadas[0]!.region, topo = r.itens[0]!.pecas.find((p) => p.nome === 'Topo')!.camadas[0]!.region;
   const bB = regionBounds(base), bT = regionBounds(topo);
   ok('marcador de taça: um por nome, o nome de cima para baixo (mais alto que largo)', r.itens.length === 3 && bT.h > bT.w * 2, `${bT.w.toFixed(1)} x ${bT.h.toFixed(1)} mm`);
-  const xHaste = bT.minX - 1.2 + Number(vm.larguraGancho) / 2;
+  const xHaste = bT.minX - Number(vm.contornoBase) + Number(vm.larguraGancho) / 2;
   const naHaste = regionArea(intersectRegion(base, [{ outer: [{ x: xHaste - 0.5, y: bT.minY }, { x: xHaste + 0.5, y: bT.minY }, { x: xHaste + 0.5, y: bT.maxY }, { x: xHaste - 0.5, y: bT.maxY }], holes: [] }]));
   ok('marcador de taça: a haste corre pelo pé de todas as letras, do lado do vidro', perto(naHaste, bT.h, bT.h * 0.01), `${naHaste.toFixed(1)} de ${bT.h.toFixed(1)}`);
+  // Como a referencia: a cor de baixo nao entra no miolo das letras (O, P, D, R, A ficam vazados).
+  const mioloDasLetras = diffRegion(semBuracos(topo), topo);
+  ok('marcador de taça: o miolo das letras fica vazado, sem a base dentro', regionArea(mioloDasLetras) > 1 && regionArea(intersectRegion(base, mioloDasLetras)) < 0.01, `${regionArea(intersectRegion(base, mioloDasLetras)).toFixed(3)} mm² de base no miolo`);
   ok('marcador de taça: a base é uma peça só (letras unidas) e o gancho sobe acima das letras', base.length === 1 && bB.maxY > bT.maxY + Number(vm.alturaGancho) * 0.8);
   const yPerna = bB.maxY - Number(vm.larguraGancho) - Number(vm.abertura) / 2 - 2;
   const fatia = intersectRegion(base, [{ outer: [{ x: bB.minX - 1, y: yPerna - 0.1 }, { x: bB.maxX + 1, y: yPerna - 0.1 }, { x: bB.maxX + 1, y: yPerna + 0.1 }, { x: bB.minX - 1, y: yPerna + 0.1 }], holes: [] }]);
@@ -1074,6 +1077,10 @@ console.log('\n== tiara com nome ==');
   const perto0 = Math.min(...letras.region.flatMap((p) => p.outer.map((q) => Math.hypot(q.x, q.y))));
   ok('tiara: o nome fica no alto, longe do arco, e as letras são mais altas que a tiara', bL.minY > 0 && perto0 > R + Number(vt.largura) + 1 && letras.z1 > tiara.z1, `${(perto0 - R - Number(vt.largura)).toFixed(1)} mm do arco`);
   ok('tiara: as letras ficam inteiras em cima do contorno da tiara', letras.z0 === tiara.z1 && regionArea(diffRegion(letras.region, tiara.region)) < 0.5);
+  // Como a referencia: atras do nome ha uma placa so (a silhueta da palavra, com o vao entre as letras fechado).
+  const rNome = R + Number(vt.largura) + Number(vt.haste) + Number(vt.faixa);
+  const acimaDaFaixa = diffRegion(tiara.region, circulo(0, 0, rNome + 1, 256));
+  ok('tiara: a placa atrás do nome é uma peça só, sem vão entre as letras', acimaDaFaixa.length === 1 && regionArea(diffRegion(semBuracos(contornar(letras.region, 1)), tiara.region)) < 1, `${acimaDaFaixa.length} pedaço(s) acima da faixa`);
 }
 
 console.log('\n== palavra de parede ==');
