@@ -13,6 +13,7 @@ export {
   Ruler as IconeMedidas,
   Sparkles as IconeAcabamento,
   Trash as IconeExcluir,
+  Scissors as IconeDividir,
   TriangleAlert as IconeAtencao,
   Box as IconeCaixa,
   LayoutTemplate as IconeModelos,

@@ -19,11 +19,13 @@ import {
   IconeCopiar,
   IconeColar,
   IconeDuplicar,
+  IconeDividir,
+  IconeOriginal,
 } from '@/components/ui';
 import { grupoDe } from '@/lib/cena/grupo';
 import { useInterface } from '@/store/interface';
 import { useProjeto } from '@/store/projeto';
-import { useModelo } from '@/modelo/Modelo';
+import { letraDoItem, useModelo } from '@/modelo/Modelo';
 import {
   agruparSelecao,
   desagruparSelecao,
@@ -62,6 +64,12 @@ function ItensObjetos() {
   const temGrupo = selecao.some((k) => grupoDe(grupos, k));
   const todasOcultas = n > 0 && selecao.every((k) => ocultas.has(k));
   const todasTravadas = n > 0 && selecao.every((k) => travadas.has(k));
+  const dividirPecas = useProjeto((s) => s.dividirPecas);
+  const juntarPecas = useProjeto((s) => s.juntarPecas);
+  // Pedaco ou tala marcado na placa vale pela letra de onde veio.
+  const letras = [...new Set(selecao.map(letraDoItem))].flatMap((k) => m.letras.filter((l) => l.chave === k));
+  const divididas = letras.filter((l) => l.divisao).map((l) => l.chave);
+  const inteiras = letras.filter((l) => !l.divisao).map((l) => l.chave);
 
   return (
     <>
@@ -92,6 +100,16 @@ function ItensObjetos() {
       <ItemContexto icone={todasTravadas ? IconeDestravado : IconeTravado} disabled={!n} onSelect={travarSelecao}>
         {todasTravadas ? 'Destravar' : 'Travar'}
       </ItemContexto>
+      <SeparadorContexto />
+      {divididas.length && !inteiras.length ? (
+        <ItemContexto icone={IconeOriginal} onSelect={() => juntarPecas(divididas)}>
+          Juntar de novo
+        </ItemContexto>
+      ) : (
+        <ItemContexto icone={IconeDividir} disabled={!inteiras.length} onSelect={() => dividirPecas(inteiras)}>
+          Dividir para caber na mesa
+        </ItemContexto>
+      )}
       <SeparadorContexto />
       <SubmenuContexto rotulo="Exportar seleção" icone={IconeBaixar} disabled={!n}>
         {/* Os dois saem num arquivo so: o que muda e como o Bambu enxerga as pecas. */}

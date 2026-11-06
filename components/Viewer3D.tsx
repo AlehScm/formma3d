@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { partToGeometriesByRole, partToGeometry, layerToGeometry } from '@/lib/geom/extrude';
 import type { Extra, Part, Role } from '@/lib/geom/modes';
 import { regionBounds, type Region } from '@/lib/geom/region';
+import { trechosNaLinha, type Corte } from '@/lib/geom/emenda';
 import type { Colocada } from '@/lib/print/arranjo';
 import { deslocamentosNaPlaca, paraCoordenadasDaPlaca, type Deslocamento } from '@/features/viewport/referencial';
 import { centroDe, transformarConjunto, type TransformacaoConjunto } from '@/lib/cena/grupo';
@@ -15,6 +16,8 @@ import { centroDe, transformarConjunto, type TransformacaoConjunto } from '@/lib
 const COR_NAO_CABE = '#e03131';
 /** Peca selecionada. */
 const COR_SELECAO = '#ffd43b';
+/** Linha de corte da peca dividida. */
+const COR_CORTE = '#ff922b';
 /** Objeto STL pronto: cor neutra propria, para nao parecer parte da letra. */
 const COR_OBJETO = '#a0a8b8';
 
@@ -48,6 +51,25 @@ export interface LetraRender {
   part: Part;
   /** Onde a edicao gira a peca (Desenhar). O gizmo de varias pecas faz ela orbitar. */
   ancora?: { x: number; y: number };
+  /** Peca dividida para caber na mesa: os pedacos e os cortes (mm a partir do canto da inteira). */
+  divisao?: { pedacos: { part: Part }[]; cortes: Corte[]; inteira: Part };
+}
+
+/** As linhas de corte da peca dividida, por cima dela: so onde o corte atravessa o desenho. */
+function linhasDeCorte(d: NonNullable<LetraRender['divisao']>): THREE.BufferGeometry {
+  const b = regionBounds(d.inteira.contorno);
+  const z = d.inteira.alturaZ + 0.3;
+  const pts: number[] = [];
+  for (const c of d.cortes) {
+    const pos = c.pos + (c.eixo === 'x' ? b.minX : b.minY);
+    for (const [a, f] of trechosNaLinha(d.inteira.contorno, { eixo: c.eixo, pos })) {
+      if (c.eixo === 'x') pts.push(pos, a, z, pos, f, z);
+      else pts.push(a, pos, z, f, pos, z);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  return geo;
 }
 
 /** Teclas seguradas no clique: Ctrl soma/tira, Shift faz intervalo. */
@@ -202,22 +224,33 @@ function Peca({
 }) {
   // As Regions ja carregam a posicao real de cada letra no letreiro (avanco + kerning
   // da fonte), entao o grupo inteiro so precisa ser deslocado para o centro da cena.
+  // Peca dividida: um grupo por pedaco, que a Montagem afasta na direcao dele (a emenda abre).
   const grupos = useMemo(
     () =>
-      letras.map((l) => ({
-        roles: partToGeometriesByRole(l.part),
-        extras: l.part.extras.map(extraNaCena),
-      })),
+      letras.map((l) => {
+        const d = l.divisao && l.divisao.pedacos.length > 1 ? l.divisao : null;
+        const b = regionBounds(l.part.contorno);
+        const partes = (d ? d.pedacos.map((p) => p.part) : [l.part]).map((p) => {
+          const bp = regionBounds(p.contorno);
+          const vx = bp.minX + bp.w / 2 - (b.minX + b.w / 2), vy = bp.minY + bp.h / 2 - (b.minY + b.h / 2);
+          const n = Math.hypot(vx, vy);
+          return { roles: partToGeometriesByRole(p), extras: p.extras.map(extraNaCena), dir: d && n > 1e-6 ? [vx / n, vy / n] : [0, 0] };
+        });
+        return { partes, cortes: d ? linhasDeCorte(d) : null };
+      }),
     [letras]
   );
 
   useEffect(
     () => () => {
       for (const g of grupos) {
-        for (const geo of g.roles.values()) geo.dispose();
-        for (const x of g.extras) {
-          x.chapa?.dispose();
-          for (const geo of x.roles.values()) geo.dispose();
+        g.cortes?.dispose();
+        for (const p of g.partes) {
+          for (const geo of p.roles.values()) geo.dispose();
+          for (const x of p.extras) {
+            x.chapa?.dispose();
+            for (const geo of x.roles.values()) geo.dispose();
+          }
         }
       }
     },
@@ -273,24 +306,34 @@ function Peca({
             desloc={deslocamentos.get(l.chave) ?? null}
             registrar={registrar}
           >
-            {/* A peca principal fica parada: o fundo impresso sai junto com ela, so os extras se afastam. */}
-            {[...g.roles.entries()].map(([role, geo]) => malha(role, geo, 0, role))}
+            {g.partes.map((p, k) => (
+              // Pedaco de peca dividida: a Montagem abre a emenda, metade do quanto sobe a chapa.
+              <group key={k} position={[p.dir[0]! * explode * 0.5, p.dir[1]! * explode * 0.5, 0]}>
+                {/* A peca principal fica parada: o fundo impresso sai junto com ela, so os extras se afastam. */}
+                {[...p.roles.entries()].map(([role, geo]) => malha(role, geo, 0, role))}
+                {p.extras.map((x, j) => {
+                  // Cada extra ja vem na posicao montada; a montagem so o afasta pela ordem dele.
+                  const dz = explode * x.ordem;
+                  return (
+                    <group key={j}>
+                      {x.chapa && camadas.chapa ? (
+                        <mesh geometry={x.chapa} position={[0, 0, dz]}>
+                          <meshPhysicalMaterial color="#cfe4ff" transparent opacity={0.45} roughness={0.15} metalness={0} transmission={0.6} />
+                        </mesh>
+                      ) : null}
+                      {[...x.roles.entries()].map(([role, geo]) => malha(role, geo, dz, role))}
+                    </group>
+                  );
+                })}
+              </group>
+            ))}
+            {g.cortes && explode === 0 && (
+              <lineSegments geometry={g.cortes}>
+                <lineBasicMaterial color={COR_CORTE} />
+              </lineSegments>
+            )}
             {fora && <CaixaFootprint contorno={l.part.contorno} cor={COR_NAO_CABE} />}
             {sel && <CaixaFootprint contorno={l.part.contorno} cor={COR_SELECAO} />}
-            {g.extras.map((x, j) => {
-              // Cada extra ja vem na posicao montada; a montagem so o afasta pela ordem dele.
-              const dz = explode * x.ordem;
-              return (
-                <group key={j}>
-                  {x.chapa && camadas.chapa ? (
-                    <mesh geometry={x.chapa} position={[0, 0, dz]}>
-                      <meshPhysicalMaterial color="#cfe4ff" transparent opacity={0.45} roughness={0.15} metalness={0} transmission={0.6} />
-                    </mesh>
-                  ) : null}
-                  {[...x.roles.entries()].map(([role, geo]) => malha(role, geo, dz, role))}
-                </group>
-              );
-            })}
           </PecaPosicionada>
         );
       })}

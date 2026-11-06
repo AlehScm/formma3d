@@ -70,6 +70,7 @@ function PainelCustos() {
   const definir = useProjeto((x) => x.definirCusto);
   const m = useModelo();
   const comLed = useProjeto((x) => x.comLed);
+  const comParafusos = useProjeto((x) => x.emenda.parafusos);
   const categoria = useInterface((x) => x.categoria.orcamento);
   const setCategoria = useInterface((x) => x.setCategoria);
   const c = <K extends keyof CustoCfg>(k: K) => (v: CustoCfg[K]) => definir(k, v);
@@ -136,6 +137,14 @@ function PainelCustos() {
         <CampoNumero rotulo="Mão de obra" valor={cfg.valorHora} padrao={PADRAO.valorHora} set={c('valorHora')} min={0} max={200} passo={5} unidade="R$/h" layout="linha" />
         <CampoNumero rotulo="Preparo do trabalho" valor={cfg.setupMin} padrao={PADRAO.setupMin} set={c('setupMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
         <CampoNumero rotulo="Acabamento por peça" valor={cfg.posMin} padrao={PADRAO.posMin} set={c('posMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
+        {m.letras.some((l) => l.divisao && l.divisao.pedacos.length > 1) && (
+          <>
+            <CampoNumero rotulo="Montagem por emenda" dica="Peça dividida: colar, encaixar a tala e lixar cada emenda" valor={cfg.emendaMin} padrao={PADRAO.emendaMin} set={c('emendaMin')} min={0} max={120} passo={1} unidade="min" layout="linha" />
+            {comParafusos && (
+              <CampoNumero rotulo="Parafuso M3 com porca" valor={cfg.precoParafuso} padrao={PADRAO.precoParafuso} set={c('precoParafuso')} min={0} max={10} passo={0.1} unidade="R$" layout="linha" />
+            )}
+          </>
+        )}
         <MaisEnergia cfg={cfg} c={c} />
         </>
       ),
@@ -182,7 +191,7 @@ function PainelCustos() {
 /** Campos de custo que a setinha volta ao padrao. Socios e o aprendido ficam. */
 const CAMPOS_COM_PADRAO = [
   'filamento', 'precoRolo', 'rendimento', 'precoAcmM2', 'precoFitaLedM', 'custoMaquina', 'valorHora',
-  'setupMin', 'posMin', 'precoKwh', 'potencia', 'margem', 'taxaFalha',
+  'setupMin', 'posMin', 'emendaMin', 'precoParafuso', 'precoKwh', 'potencia', 'margem', 'taxaFalha',
 ] as const satisfies readonly (keyof CustoCfg)[];
 
 function VoltarTudoAoPadrao() {

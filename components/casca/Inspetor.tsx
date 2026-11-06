@@ -23,10 +23,14 @@ import {
   IconeAgrupar,
   IconeDesagrupar,
   IconeSuavizar,
+  IconeDividir,
+  IconeMais,
+  Interruptor,
   Dica,
 } from '@/components/ui';
 import { brl } from '@/lib/cost/calc';
 import { regionBounds, type Region } from '@/lib/geom/region';
+import { EMENDA_PADRAO, type Corte, type Eixo } from '@/lib/geom/emenda';
 import { edicaoVazia, escalaDeMm, mmDeEscala, SEM_EDICAO } from '@/lib/geom/pecaEditada';
 import { IMPRESSORAS, caberNaMesa, descreverVeredito } from '@/lib/print/impressoras';
 import { useCustos } from '@/features/orcamento/custos';
@@ -52,12 +56,14 @@ export function Inspetor() {
   const varias = useInterface((s) => s.selecao.length > 1);
   const l = selecionada ? m.letras.find((x) => x.chave === selecionada) : undefined;
   const o = selecionada ? m.objetos.find((x) => x.chave === selecionada) : undefined;
+  // Na placa vai o que se imprime: a letra inteira, ou o pedaco e a tala da dividida.
+  const i = selecionada ? m.impressas.find((x) => x.chave === selecionada) : undefined;
 
   // Na placa, letra e STL sao a mesma coisa: nome, footprint, altura e um arquivo.
-  const naPlaca = l
-    ? { chave: l.chave, nome: l.nome, contorno: l.part.contorno, alturaZ: l.part.alturaZ, baixar: () => baixarSTL(m, l) }
+  const naPlaca = i
+    ? { chave: i.chave, nome: i.nome, contorno: i.part.contorno, alturaZ: i.part.alturaZ, baixar: () => baixarSTL(m, i), excluivel: i.tipo === 'letra' }
     : o
-      ? { chave: o.chave, nome: o.nome, contorno: o.contorno, alturaZ: o.alturaZ, baixar: () => baixarObjeto(o) }
+      ? { chave: o.chave, nome: o.nome, contorno: o.contorno, alturaZ: o.alturaZ, baixar: () => baixarObjeto(o), excluivel: true }
       : undefined;
 
   return (
@@ -158,6 +164,7 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
         </div>
 
         <ListaValores densa itens={[{ rotulo: 'Espessura mínima', valor: `${formatarNumero(l.espessuraMin, 1)} mm` }]} />
+        <DivisaoDaPeca l={l} />
         <CustoDaPeca chave={l.chave} />
 
         {!edicaoVazia(e) && (
@@ -168,6 +175,147 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
         <Excluir l={l} />
       </div>
     </>
+  );
+}
+
+const TITULO = 'text-micro font-semibold uppercase tracking-wider text-texto-3';
+
+/**
+ * Peca maior que a mesa: dividir em pedacos que cabem, com emenda (dente na solida, tala por
+ * dentro na oca), e os cortes, automaticos ou dados a mao em mm a partir do canto da peca.
+ */
+function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
+  const m = useModelo();
+  const dividir = useProjeto((s) => s.dividirPecas);
+  const definirCortes = useProjeto((s) => s.definirCortes);
+  const juntar = useProjeto((s) => s.juntarPecas);
+  const emenda = useProjeto((s) => s.emenda);
+  const ajustar = useProjeto((s) => s.ajustarEmenda);
+  const d = l.divisao;
+  const inteira = d?.inteira ?? l.part;
+  const maquina = m.mesa.nome.replace('Bambu Lab ', '');
+
+  if (!d) {
+    const v = caberNaMesa(inteira.contorno, inteira.alturaZ, m.mesa);
+    if (v.cabe) return null;
+    return (
+      <div className="space-y-2">
+        <p className={TITULO}>Divisão</p>
+        <Alerta tom="perigo">{formatarTexto(descreverVeredito(v, m.mesa)).replace(/^./, (c) => c.toUpperCase())} na {maquina}.</Alerta>
+        <Botao icone={IconeDividir} variante="primario" largura onClick={() => dividir([l.chave])}>
+          Dividir para caber na mesa
+        </Botao>
+        <p className="text-micro text-texto-3">Corta em pedaços que cabem na {maquina}, com encaixe na emenda e o número de montagem gravado em cada um.</p>
+      </div>
+    );
+  }
+
+  const b = regionBounds(inteira.contorno);
+  const itens = m.impressas.filter((x) => x.letra === l.chave);
+  const pedacos = itens.filter((x) => x.tipo !== 'tala');
+  const talas = itens.length - pedacos.length;
+  const solida = m.params.macica;
+  const tamanho = (e: Eixo) => (e === 'x' ? b.w : b.h);
+  const mudar = (k: number, pos: number) => definirCortes(l.chave, d.cortes.map((c, j) => (j === k ? { ...c, pos } : c)));
+  const tirar = (k: number) => definirCortes(l.chave, d.cortes.filter((_, j) => j !== k));
+  // Corte novo no meio do maior trecho sem corte naquele eixo.
+  const somar = (eixo: Eixo) => {
+    const marcos = [0, ...d.cortes.filter((c) => c.eixo === eixo).map((c) => c.pos), tamanho(eixo)].sort((a, c) => a - c);
+    let k = 1;
+    for (let j = 2; j < marcos.length; j++) if (marcos[j]! - marcos[j - 1]! > marcos[k]! - marcos[k - 1]!) k = j;
+    const novo: Corte = { eixo, pos: Math.round((marcos[k]! + marcos[k - 1]!) / 2) };
+    definirCortes(l.chave, [...d.cortes, novo]);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className={TITULO}>Divisão</p>
+        <Selo tom={d.auto ? 'acento' : undefined}>{d.auto ? 'automática' : 'cortes a mão'}</Selo>
+      </div>
+      <ListaValores
+        densa
+        itens={[
+          { rotulo: 'Pedaços', valor: String(pedacos.length) },
+          ...(talas ? [{ rotulo: 'Talas de emenda', valor: String(talas) }] : []),
+          { rotulo: 'Emenda', valor: solida ? 'dente de encaixe' : 'tala colada por dentro' },
+          ...(d.parafusos ? [{ rotulo: 'Parafusos M3', valor: String(d.parafusos) }] : []),
+        ]}
+      />
+
+      <div className="space-y-1">
+        {d.cortes.map((c, k) => (
+          <div key={k} className="flex items-center gap-2 text-mini text-texto-2">
+            <span className="flex-1 leading-tight">
+              {c.eixo === 'x' ? 'Vertical' : 'Horizontal'}
+              <span className="block text-micro text-texto-3">{c.eixo === 'x' ? 'mm da esquerda' : 'mm de baixo'}</span>
+            </span>
+            <EntradaNumero
+              valor={c.pos}
+              set={(v) => mudar(k, v)}
+              min={1}
+              max={Math.floor(tamanho(c.eixo)) - 1}
+              passo={1}
+              unidade="mm"
+              rotuloAcessivel={`Corte ${c.eixo === 'x' ? 'vertical, mm da esquerda' : 'horizontal, mm de baixo'}`}
+            />
+            <BotaoIcone icone={IconeFechar} rotulo="Tirar este corte" tamanho="sm" onClick={() => tirar(k)} />
+          </div>
+        ))}
+        <div className="grid grid-cols-2 gap-1.5 pt-1">
+          <Dica conteudo="Mais um corte vertical, no meio do maior pedaço">
+            <Botao tamanho="sm" icone={IconeMais} onClick={() => somar('x')}>
+              Vertical
+            </Botao>
+          </Dica>
+          <Dica conteudo="Mais um corte horizontal, no meio do maior pedaço">
+            <Botao tamanho="sm" icone={IconeMais} onClick={() => somar('y')}>
+              Horizontal
+            </Botao>
+          </Dica>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        {pedacos.map((x) => {
+          const bx = regionBounds(x.part.contorno);
+          const cabe = !m.naoCabem.has(x.chave);
+          return (
+            <div key={x.chave} className="flex items-center justify-between text-mini">
+              <span className="text-texto-2">{x.nome}</span>
+              <span className="flex items-center gap-2 text-texto-3 tabular-nums">
+                {formatarNumero(bx.w, 0)} × {formatarNumero(bx.h, 0)} mm
+                <Selo tom={cabe ? 'sucesso' : 'perigo'}>{cabe ? 'cabe' : 'não cabe'}</Selo>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="space-y-1">
+        <p className={TITULO}>Emenda (todas as peças divididas)</p>
+        <Interruptor rotulo="Gravar o número" dica={solida ? 'Número de montagem embaixo, espelhado, para ler olhando por baixo' : 'Número de montagem por dentro, no fundo'} valor={emenda.gravarNumero} set={(v) => ajustar({ gravarNumero: v })} />
+        {solida ? (
+          <CampoNumero rotulo="Folga do encaixe" dica="Entre o dente e o vão" valor={emenda.folga} padrao={EMENDA_PADRAO.folga} set={(v) => ajustar({ folga: v })} min={0} max={1} passo={0.05} layout="linha" />
+        ) : (
+          <>
+            <Interruptor rotulo="Parafusos M3" dica="Furos na tala e no fundo, dois por emenda; a cola continua" valor={emenda.parafusos} set={(v) => ajustar({ parafusos: v })} />
+            <CampoNumero rotulo="Largura da tala" dica="Quanto a tala passa da emenda, para cada lado" valor={emenda.larguraTala} padrao={EMENDA_PADRAO.larguraTala} set={(v) => ajustar({ larguraTala: v })} min={10} max={80} passo={1} layout="linha" />
+          </>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        {!d.auto && (
+          <Botao icone={IconeDividir} largura onClick={() => dividir([l.chave])}>
+            Voltar aos cortes automáticos
+          </Botao>
+        )}
+        <Botao variante="fantasma" icone={IconeOriginal} largura onClick={() => juntar([l.chave])}>
+          Juntar de novo (peça inteira)
+        </Botao>
+      </div>
+    </div>
   );
 }
 
@@ -314,6 +462,8 @@ interface PecaDePlaca {
   contorno: Region;
   alturaZ: number;
   baixar: () => void;
+  /** Pedaco e tala de peca dividida nao se excluem sozinhos (a peca e uma so). */
+  excluivel: boolean;
 }
 
 /** Imprimir: em qual maquina a peca cabe, e o STL dela. Serve a letra e a STL. */
@@ -361,7 +511,7 @@ function InspetorImpressao({ p }: { p: PecaDePlaca }) {
         <Botao icone={IconeBaixar} largura onClick={p.baixar}>
           Baixar STL desta peça
         </Botao>
-        <Excluir l={p} />
+        {p.excluivel ? <Excluir l={p} /> : <p className="text-micro text-texto-3">É parte de uma peça dividida: os cortes se mudam em Desenhar, no Inspetor da peça.</p>}
       </div>
     </>
   );
@@ -382,7 +532,7 @@ function InspetorConjunto() {
   const interno = useInterno();
 
   const itens = selecao.flatMap((k) => {
-    const l = m.letras.find((x) => x.chave === k);
+    const l = m.letras.find((x) => x.chave === k) ?? m.impressas.find((x) => x.chave === k);
     if (l) return [{ chave: k, contorno: l.part.contorno }];
     const o = m.objetos.find((x) => x.chave === k);
     return o ? [{ chave: k, contorno: o.contorno }] : [];
@@ -470,6 +620,7 @@ function Resumo() {
               { rotulo: 'Altura', valor: `${formatarNumero(m.bounds.h)} mm` },
               { rotulo: 'Profundidade', valor: `${formatarNumero(profundidade)} mm` },
               { rotulo: 'Peças', valor: m.letras.length },
+              ...(m.impressas.length !== m.letras.length ? [{ rotulo: 'Para imprimir (pedaços e talas)', valor: m.impressas.length }] : []),
               ...(m.totais && m.totais.areaChapa > 0
                 ? [{ rotulo: 'Chapa ACM', valor: `${formatarNumero(m.totais.areaChapa / 100)} cm²` }]
                 : []),

@@ -3,6 +3,8 @@
 import { useProjeto } from '@/store/projeto';
 import { FONTES_WEB, carregarFonteWeb, carregarFonteArquivo, listarFontesSistema, carregarFonteSistema, type FonteSistema } from '@/lib/text/fontes';
 import { importarArquivo, importarPdf, ErroImport } from '@/lib/import/pdf';
+import { svgParaDesenho } from '@/lib/import/svg';
+import { desenhoParaPecas, resolverTracos } from '@/lib/import/pecas';
 import { chaveFonte } from '@/lib/import/texto-em-curvas';
 import { lerStl } from '@/lib/import/stl';
 import { lerTresMf } from '@/lib/import/tresmf';
@@ -73,13 +75,13 @@ export async function usarFonteDoPC(f: FonteSistema): Promise<void> {
 }
 
 /**
- * Abre um arquivo. .ai/.pdf viram pecas do letreiro; .stl e .3mf viram objetos prontos na
- * placa. Os quatro formatos passam por aqui, pelos dois caminhos: `substituir` (Abrir)
+ * Abre um arquivo. .ai/.pdf/.svg viram pecas do letreiro; .stl e .3mf viram objetos prontos na
+ * placa. Todos os formatos passam por aqui, pelos dois caminhos: `substituir` (Abrir)
  * comeca o projeto a partir do arquivo; sem ele (Adicionar) o novo entra ao lado.
  * O projeto so e limpo DEPOIS que o arquivo foi lido: arquivo quebrado nao apaga nada.
  */
 /** O que "Abrir" e "Adicionar" aceitam: uma lista so, para seletor, menus e botoes. */
-export const FORMATOS = ['.ai', '.pdf', '.stl', '.3mf'] as const;
+export const FORMATOS = ['.ai', '.pdf', '.svg', '.stl', '.3mf'] as const;
 export const FORMATOS_TEXTO = FORMATOS.join(' ');
 
 /** Abrir = projeto novo a partir do arquivo: letreiro, objetos, grupos, placas e selecao. */
@@ -108,7 +110,12 @@ export async function abrirArquivo(file: File, substituir: boolean): Promise<voi
       useInterface.getState().setEspaco('imprimir');
       return;
     }
-    const r = await importarArquivo(file, { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 1 }, 1);
+    const opcoes = { modo: 'forma', tracos: 'auto', fundirProximos: 0, areaMinima: 1 } as const;
+    // SVG (logo): lido aqui mesmo, ja como o desenho que o .ai/.pdf viraria.
+    const svg = /\.svg$/i.test(file.name) ? svgParaDesenho(await file.text()) : null;
+    const r = svg
+      ? { desenho: svg, pecas: desenhoParaPecas(svg, opcoes), avisos: [], paginas: 1, pagina: 1, conteudoMm: svg.paginaMm, tracos: resolverTracos(svg, 'auto') }
+      : await importarArquivo(file, opcoes, 1);
     // Arquivo so com texto vivo nao tem peca ainda, mas tem conserto: a fonte.
     if (!r.pecas.length && !r.desenho.textos?.length) {
       s.definir('erro', r.avisos[0]?.msg ?? 'Não encontrei contornos neste arquivo.');

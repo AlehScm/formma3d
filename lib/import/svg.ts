@@ -5,8 +5,9 @@
  */
 import { Color } from 'three';
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
-import { buildRegion, diffRegion, regionArea, strokeToRegion, unionRegion, type Pt, type Region } from '../geom/region';
+import { buildRegion, diffRegion, regionArea, regionBounds, strokeToRegion, unionRegion, type Pt, type Region } from '../geom/region';
 import { ErroImport } from './erro';
+import type { DesenhoBruto, ObjetoBruto } from './pdf-ops';
 
 const PONTOS_POR_CURVA = 12;
 
@@ -40,6 +41,41 @@ export function svgParaRegiao(texto: string): Region {
   }
   if (!regiao.length) throw new ErroImport('O SVG não tem nenhuma área preenchida nem traço.');
   return regiao;
+}
+
+/** mm por unidade do SVG: pela largura com unidade e o viewBox; sem unidade, px a 96 dpi. */
+function mmPorUnidade(texto: string): number {
+  const raiz = /<svg\b[^>]*>/i.exec(texto)?.[0] ?? '';
+  const attr = (n: string) => new RegExp(`\\s${n}\\s*=\\s*["']([^"']+)["']`, 'i').exec(raiz)?.[1];
+  const vb = attr('viewBox')?.trim().split(/[\s,]+/).map(Number);
+  const largura = /^([\d.]+)\s*(mm|cm|in|pt|px)?$/i.exec(attr('width')?.trim() ?? '');
+  const MM: Record<string, number> = { mm: 1, cm: 10, in: 25.4, pt: 25.4 / 72, px: 25.4 / 96 };
+  const PX = 25.4 / 96;
+  if (!largura) return PX;
+  const mm = Number(largura[1]) * (MM[(largura[2] ?? 'px').toLowerCase()] ?? PX);
+  return vb && vb.length === 4 && vb[2]! > 0 ? mm / vb[2]! : mm / Number(largura[1]);
+}
+
+/**
+ * SVG -> desenho do editor, igual ao que vem do .ai/.pdf: cada forma preenchida (com os
+ * tracos ja engrossados) vira um objeto, em mm. Assim o logo entra como letra caixa e a
+ * separacao em pecas, a altura e a divisao valem do mesmo jeito.
+ */
+export function svgParaDesenho(texto: string): DesenhoBruto {
+  const k = mmPorUnidade(texto);
+  const r = svgParaRegiao(texto).map((p) => ({
+    outer: p.outer.map((q) => ({ x: q.x * k, y: q.y * k })),
+    holes: p.holes.map((h) => h.map((q) => ({ x: q.x * k, y: q.y * k }))),
+  }));
+  const b = regionBounds(r);
+  // A pagina comeca no canto do desenho (como uma prancheta justa).
+  const mover = (q: Pt): Pt => ({ x: q.x - b.minX, y: q.y - b.minY });
+  const objetos: ObjetoBruto[] = r.map((p, id) => {
+    const contours = [p.outer, ...p.holes].map((pts) => ({ pts: pts.map(mover), closed: true }));
+    const bp = regionBounds([{ outer: contours[0]!.pts, holes: [] }]);
+    return { id, contours, paint: 'fill', fillRule: 'evenodd', larguraMm: 0, capRound: false, clip: null, camada: null, bounds: bp };
+  });
+  return { objetos, paginaMm: { w: b.w, h: b.h }, camadas: [], avisos: [], temFill: true, temStroke: false, temTextoVivo: false, temImagem: false };
 }
 
 /**

@@ -21,6 +21,7 @@ import {
   IconeBaixar,
   IconeDesfazer,
   IconeAbrir,
+  IconeDividir,
   Dica,
   formatarPeso,
   formatarTempo,
@@ -76,7 +77,7 @@ export function PainelImprimir() {
       id: 'pecas',
       nome: 'Peças',
       icone: IconeLista,
-      resumo: `${m.letras.length} · ${m.naoCabem.size ? `${m.naoCabem.size} não cabem` : 'todas cabem'}`,
+      resumo: `${m.impressas.length + m.objetos.length} · ${m.naoCabem.size ? `${m.naoCabem.size} não cabem` : 'todas cabem'}`,
       // Ponto vermelho na aba: tem peca que nao cabe nesta maquina.
       alerta: m.naoCabem.size ? 'perigo' : undefined,
       conteudo: <Pecas />,
@@ -147,6 +148,32 @@ function Maquina() {
   );
 }
 
+/**
+ * Letra maior que a mesa: um clique divide todas em pedacos que cabem, com emenda. Os cortes
+ * se ajustam depois no Inspetor da peca, em Desenhar.
+ */
+function DividirAsQueNaoCabem() {
+  const m = useModelo();
+  const dividir = useProjeto((s) => s.dividirPecas);
+  const arrumada = useInterface((x) => !!x.infoArranjo);
+  const grandes = m.letras.filter((l) => !l.divisao && m.letrasForaDaMesa.has(l.chave)).map((l) => l.chave);
+  if (!grandes.length) return null;
+  return (
+    <Alerta tom="perigo">
+      <span className="font-medium">
+        {grandes.length === 1 ? '1 peça é maior' : `${grandes.length} peças são maiores`} que a mesa da {m.mesa.nome.replace('Bambu Lab ', '')}.
+      </span>{' '}
+      Dividir corta cada uma em pedaços que cabem, com encaixe na emenda e o número de montagem gravado.
+      {arrumada && ' Depois, arrume na placa de novo.'}
+      <span className="mt-2 block">
+        <Botao icone={IconeDividir} variante="primario" largura onClick={() => dividir(grandes)}>
+          Dividir as que não cabem
+        </Botao>
+      </span>
+    </Alerta>
+  );
+}
+
 function Arranjo() {
   const m = useModelo();
   const folga = useInterface((x) => x.folgaPecas);
@@ -169,8 +196,9 @@ function Arranjo() {
         passo={0.5}
         layout="linha"
       />
+      <DividirAsQueNaoCabem />
       <div className="flex gap-1.5">
-        <Botao icone={IconeArrumar} largura disabled={!m.letras.length && !m.objetos.length} onClick={() => arrumarNaPlaca(m)}>
+        <Botao icone={IconeArrumar} largura disabled={!m.impressas.length && !m.objetos.length} onClick={() => arrumarNaPlaca(m)}>
           Arrumar na placa
         </Botao>
         {info && <BotaoIcone icone={IconeDesfazer} rotulo="Voltar à posição do letreiro" onClick={limpar} />}
@@ -231,9 +259,9 @@ function Pecas() {
   const placas = useInterface((x) => x.placas);
   const abrirDesenho = useInterface((x) => x.abrirDesenho);
 
-  // Letras do letreiro e objetos STL na mesma lista: dividem a mesma placa.
+  // Letras do letreiro (ou os pedacos e talas da dividida) e objetos STL: dividem a mesma placa.
   const itens: ItemPeca[] = [
-    ...m.letras.map((l) => ({ chave: l.chave, nome: l.nome, contorno: l.part.contorno, alturaZ: l.part.alturaZ, stl: false, baixar: () => baixarSTL(m, l) })),
+    ...m.impressas.map((l) => ({ chave: l.chave, nome: l.nome, contorno: l.part.contorno, alturaZ: l.part.alturaZ, stl: false, baixar: () => baixarSTL(m, l) })),
     ...m.objetos.map((o) => ({ chave: o.chave, nome: o.nome, contorno: o.contorno, alturaZ: o.alturaZ, stl: true, baixar: () => baixarObjeto(o) })),
   ];
 
@@ -247,6 +275,7 @@ function Pecas() {
 
   return (
     <>
+      <DividirAsQueNaoCabem />
       <p className="text-mini text-texto-3">Clique numa peça para vê-la no 3D e mexer nela.</p>
       {grupos.map((g) => (
         <GrupoPecas key={g.titulo || 'todas'} {...g} />

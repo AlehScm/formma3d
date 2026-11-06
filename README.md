@@ -11,6 +11,8 @@ npm run dev     # http://localhost:3000
 npx tsx scripts/verificar-ops.mts     # extrator de PDF, sem pdfjs (34 testes)
 npx tsx scripts/verificar-pdf.mts     # ponta a ponta com pdfjs real (30 testes)
 npx tsx scripts/verificar-apoio.mts   # apoios da chapa e colisão (33 testes)
+npx tsx scripts/verificar-emenda.mts  # peça maior que a mesa dividida com emenda
+npm run testar                        # tudo
 ```
 
 ## O que faz
@@ -39,7 +41,6 @@ Nos modos com chapa, você escolhe **como ela encosta na peça impressa**:
 |---|---|---|
 | **Para dentro** | Degrau interno, chapa embutida no bolsão | Menor que a letra |
 | **Para fora** | A peça ganha uma borda que avança além do contorno | Do tamanho da arte |
-| **Dos dois lados** | Degrau por baixo + borda por fora, com lábio travando pela frente | Do tamanho da arte |
 
 Com borda, **a peça inteira cresce desde a base**, não só na frente. Isso não é detalhe: uma
 aba que aparecesse só na frente imprimiria em voladiço e desabaria.
@@ -60,7 +61,8 @@ letras vizinhas passariam a se encostar — nesse caso dizendo **até quanto** d
 
 ### Saídas
 
-- **STL binário** por letra (e a face translúcida separada, no front-lit)
+- **STL binário** por letra (e a face translúcida separada, no front-lit); peça dividida sai um STL
+  por pedaço e por tala
 - **DXF e SVG** do contorno da chapa de ACM, em mm reais, já com a folga de encaixe
 - **Gabarito 1:1** em SVG: imprime, cola na parede e fura no lugar certo
 - **orcamento.txt** com a composição do preço
@@ -70,6 +72,31 @@ letras vizinhas passariam a se encostar — nesse caso dizendo **até quanto** d
 
 Trecho mais fino que duas linhas do bico, parede menor que o bico, letra que não cabe na mesa
 (testando também girada 90°), profundidade menor que a chapa, letra sem espaço para o batente.
+
+### Peça maior que a mesa: dividir com emenda
+
+Letra de 600 mm ou logo grande não cabe na X2D (256 × 256) nem na A2L (330 × 320). Em
+**Imprimir › Arranjo** (ou no botão direito da peça) **Dividir as que não cabem** corta cada uma em
+pedaços que cabem na máquina escolhida (`lib/geom/emenda.ts`). O corte é feito depois de montar a
+peça, com o mesmo cortador em todas as camadas: vale para todo modo, apoio, batente, LED e
+espaçadores.
+
+| Peça | Emenda |
+|---|---|
+| Sólida (com ou sem chanfro) | Dente de encaixe redondo na altura toda, a cada ~60 mm de material; folga de 0,2 mm |
+| Oca | A emenda fica aberta por dentro e uma **tala** impressa à parte (placa + pele em "L") encaixa cruzando a emenda, 30 mm para cada lado. Furos para parafuso M3 na tala e no fundo, opcionais |
+| Chapa cortada (ACM/acrílico) | Fica inteira e cobre a emenda; aviso se passar de 1220 mm |
+| Chapa impressa | Dividida em degrau na espessura, com 15 mm de sobreposição |
+
+- **Onde cortar:** linhas retas em X e em Y, o mínimo de pedaços; entre as posições que cabem,
+  as que cruzam a parede de frente, longe da ponta de perna, do furo do fio e dos espaçadores,
+  sem deixar lasca no cruzamento de dois cortes.
+- **Número de montagem** gravado em cada pedaço (por dentro do fundo na oca, embaixo e espelhado
+  na sólida): "A-1", "A-2"... O mesmo número vai no nome do arquivo.
+- **Cortes a mão:** no Inspetor da peça (Desenhar), a lista de cortes em mm a partir do canto da
+  peça; "Automático" volta ao corte calculado, "Juntar de novo" desfaz.
+- Cada pedaço e cada tala é uma peça de impressão: mesa, arranjo, placas, custo e exportação
+  tratam um por um. No `.zip`: `01_A_p1de4.stl`, `01_A_tala1.stl`.
 
 ## Como o preço é montado
 
@@ -106,8 +133,8 @@ sliders de fabricação.
 
 ```
 lib/geom/region.ts    Region, offset, booleanas 2D, medição   (Clipper)
-lib/geom/modes.ts     os 5 modos e os 3 apoios -> camadas prismáticas
-lib/geom/letreiro.ts  checagens do letreiro inteiro (colisão entre vizinhas)
+lib/geom/modes.ts     os 5 modos e os apoios -> camadas prismáticas
+lib/geom/emenda.ts    peça maior que a mesa -> pedaços com emenda
 lib/geom/extrude.ts   camadas -> BufferGeometry               (three)
 lib/text/glyphs.ts    fonte -> contornos, kerning, cap height (opentype)
 lib/import/pdf-ops.ts extrator de operadores do PDF (puro, testável sem pdfjs)
@@ -118,10 +145,12 @@ lib/export/           STL binário, DXF, SVG, gabarito
 lib/cost/calc.ts      custo e preço
 ```
 
-## Importar .ai / .pdf
+## Importar .ai / .pdf / .svg
 
-O botão **Abrir .ai / .pdf** aceita o desenho já pronto. Um `.ai` moderno é um PDF por dentro,
-então os vetores saem exatos — sem redesenhar nada.
+O botão **Abrir** aceita o desenho já pronto. Um `.ai` moderno é um PDF por dentro,
+então os vetores saem exatos — sem redesenhar nada. O `.svg` (logo) entra do mesmo jeito: cada
+forma preenchida vira peça, o traço é engrossado pela largura, e a medida vem do `width` com
+unidade (sem unidade, px a 96 dpi).
 
 - **Separação em peças:** por padrão, cada forma solta do desenho vira uma peça (cada letra sai
   sozinha, mesmo que esteja tudo num objeto só). Dá para alternar para "objetos do arquivo" ou

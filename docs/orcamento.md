@@ -39,6 +39,8 @@ Densidades da tabela de filamentos: PLA 1,24 · PLA+ 1,24 · PETG 1,27 · ABS 1,
 | Mão de obra | R$ 0,00/h | Valor da hora de quem trabalha |
 | Preparo do trabalho | 0 min | Minutos por placa impressa (limpar mesa, fatiar, tirar a peça) |
 | Acabamento por peça | 0 min | Minutos por peça (lixar, colar, montar) |
+| Montagem por emenda | 10 min | Só com peça dividida: colar, encaixar a tala e lixar cada emenda |
+| Parafuso M3 com porca | R$ 0,50 | Só com peça dividida e parafusos ligados |
 | Energia | R$ 0,95/kWh | Preço da luz |
 | Potência média | 120 W | Consumo médio da impressora imprimindo |
 
@@ -158,10 +160,23 @@ comprimento = metade do contorno da letra
 > Padrão: LED desligado = **R$ 0,00**.
 > Com LED ligado, LETRA daria 1,35 m × 18 = R$ 24,23.
 
+### Passo 9b — Emenda (só com peça dividida)
+
+```
+emenda = emendas × minutos por emenda ÷ 60 × mão de obra + parafusos × preço do parafuso
+```
+
+Peça maior que a mesa dividida em pedaços (README, "Peça maior que a mesa"): cada trecho da letra
+que um corte atravessa é uma emenda. Cada pedaço e cada tala é uma peça de impressão, com o
+volume e o acabamento por peça dela; o item **Emenda** soma o trabalho de juntar e os parafusos M3.
+Com a mão de obra em R$ 0,00/h (o padrão), só os parafusos contam.
+
+> Padrão: nenhuma peça dividida = **R$ 0,00**.
+
 ### Passo 10 — Custo direto
 
 ```
-custo direto = filamento + máquina + energia + mão de obra + chapa + LED
+custo direto = filamento + máquina + energia + mão de obra + chapa + LED + emenda
 ```
 
 > 66,89 + 139,35 + 6,35 + 0 + 2,61 + 0 = **R$ 215,20**
@@ -300,7 +315,8 @@ E o app aprenderia vazão = 600 ÷ 30 = **20 g/h** e fator = 600 ÷ 668,9 = **0,
 - **Sem arranjo**, o letreiro inteiro conta como uma placa só (aparece como "Letreiro").
 - **Com arranjo**, cada placa é uma linha. O preparo entra uma vez por placa que tem letra.
 - **Desmarcar uma placa** tira as letras dela do preço; ela continua no arranjo.
-- **Peça maior que a mesa** (fora de toda placa) continua no preço do letreiro.
+- **Peça maior que a mesa** (fora de toda placa) continua no preço do letreiro. Dividida, entram
+  os pedaços e as talas, cada um na placa em que está.
 - **Objeto STL** entra no custo da placa em que está, mas não no preço do letreiro (marcado com `*`).
 - **Placa feita fora do app** (avulsa): nome, peças, gramas e tempo direto do fatiador. Volume e
   chapa zero; conta uma impressão e o número de peças dela para o acabamento. Só entra no total

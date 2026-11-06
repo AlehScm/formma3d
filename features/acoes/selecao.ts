@@ -13,7 +13,11 @@ import { baixarSelecao3MF, baixarSelecaoSTL } from './exportar';
  */
 
 /** A ordem do painel de Objetos: pecas do letreiro, depois objetos STL. */
-export const ordemObjetos = (m: Modelo): string[] => [...m.letras.map((l) => l.chave), ...m.objetos.map((o) => o.chave)];
+/** Na placa, a peca dividida e os pedacos e as talas dela; no letreiro, a letra. */
+export const ordemObjetos = (m: Modelo): string[] => [
+  ...(useInterface.getState().espaco === 'imprimir' ? m.impressas : m.letras).map((l) => l.chave),
+  ...m.objetos.map((o) => o.chave),
+];
 
 const selecao = () => useInterface.getState().selecao;
 

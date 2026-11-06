@@ -41,7 +41,8 @@ export function PainelObjetos() {
   const naPlaca = espaco === 'imprimir';
 
   const itens: Item[] = [
-    ...m.letras.map((l) => ({ chave: l.chave, nome: l.nome, contorno: l.part.contorno, stl: false })),
+    // Na placa, a peca dividida aparece como os pedacos e as talas (o que a cena mostra).
+    ...(naPlaca ? m.impressas : m.letras).map((l) => ({ chave: l.chave, nome: l.nome, contorno: l.part.contorno, stl: false })),
     ...(naPlaca ? m.objetos.map((o) => ({ chave: o.chave, nome: o.nome, contorno: o.contorno, stl: true })) : []),
   ];
   const ordem = itens.map((i) => i.chave);

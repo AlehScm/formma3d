@@ -46,6 +46,10 @@ export interface CustoCfg {
   margem: number;
   precoAcmM2: number;
   precoFitaLedM: number;
+  /** Minutos de montagem por emenda de peca dividida (colar, encaixar a tala, lixar). */
+  emendaMin: number;
+  /** R$ por parafuso M3 com porca, quando a emenda leva parafuso. */
+  precoParafuso: number;
 }
 
 export const PADRAO: CustoCfg = {
@@ -67,6 +71,8 @@ export const PADRAO: CustoCfg = {
   margem: 120,
   precoAcmM2: 90,
   precoFitaLedM: 18,
+  emendaMin: 10,
+  precoParafuso: 0.5,
 };
 
 /** Gramas pelo volume da peca, corrigidas pelo que os trabalhos reais mostraram. */
@@ -139,6 +145,9 @@ export interface OrcarArgs {
   volumeMm3: number;
   areaChapaMm2?: number;
   perimetroLedMm?: number;
+  /** Emendas e parafusos das pecas divididas para caber na mesa. */
+  emendas?: number;
+  parafusos?: number;
   qtdLetras?: number;
   /** Quantas vezes a maquina e preparada: uma por placa. 0 = so a parte da peca. */
   impressoes?: number;
@@ -157,6 +166,8 @@ export function orcar({
   volumeMm3,
   areaChapaMm2 = 0,
   perimetroLedMm = 0,
+  emendas = 0,
+  parafusos = 0,
   qtdLetras = 1,
   impressoes = 1,
   gramasReais,
@@ -175,8 +186,9 @@ export function orcar({
   const maoDeObra = (minutos / 60) * cfg.valorHora;
   const chapa = (areaChapaMm2 / 1e6) * cfg.precoAcmM2;
   const led = (perimetroLedMm / 1000) * cfg.precoFitaLedM;
+  const emenda = ((emendas * (cfg.emendaMin ?? 0)) / 60) * cfg.valorHora + parafusos * (cfg.precoParafuso ?? 0);
 
-  const direto = material + maquina + energia + maoDeObra + chapa + led;
+  const direto = material + maquina + energia + maoDeObra + chapa + led + emenda;
   const falha = direto * (1 / (1 - Math.min(0.9, cfg.taxaFalha / 100)) - 1);
   const custo = direto + falha;
   const preco = custo * (1 + cfg.margem / 100);
@@ -192,6 +204,9 @@ export function orcar({
   }
   if (chapa > 0) itens.push({ rotulo: 'Chapa ACM', valor: chapa, detalhe: `${(areaChapaMm2 / 1e6).toFixed(3)} m2` });
   if (led > 0) itens.push({ rotulo: 'Fita LED', valor: led, detalhe: `${(perimetroLedMm / 1000).toFixed(2)} m` });
+  if (emenda > 0) {
+    itens.push({ rotulo: 'Emenda', valor: emenda, detalhe: `${emendas} ${emendas === 1 ? 'emenda' : 'emendas'}${parafusos ? `, ${parafusos} parafusos M3` : ''}` });
+  }
   itens.push({ rotulo: `Perdas (${cfg.taxaFalha}%)`, valor: falha, detalhe: 'trabalhos refeitos' });
 
   return { gramas, cm3, horas, rolos: gramas / cfg.rendimento, maquina, energia, itens, custo, lucro: preco - custo, preco };
@@ -202,6 +217,9 @@ export interface Insumos {
   volumeMm3: number;
   areaChapaMm2: number;
   perimetroLedMm: number;
+  /** So no 1o pedaco de uma peca dividida (ver `Modelo`). */
+  emendas?: number;
+  parafusos?: number;
 }
 
 export const somarInsumos = (lista: Insumos[]): Insumos =>
@@ -210,6 +228,8 @@ export const somarInsumos = (lista: Insumos[]): Insumos =>
       volumeMm3: a.volumeMm3 + x.volumeMm3,
       areaChapaMm2: a.areaChapaMm2 + x.areaChapaMm2,
       perimetroLedMm: a.perimetroLedMm + x.perimetroLedMm,
+      emendas: (a.emendas ?? 0) + (x.emendas ?? 0),
+      parafusos: (a.parafusos ?? 0) + (x.parafusos ?? 0),
     }),
-    { volumeMm3: 0, areaChapaMm2: 0, perimetroLedMm: 0 }
+    { volumeMm3: 0, areaChapaMm2: 0, perimetroLedMm: 0, emendas: 0, parafusos: 0 }
   );

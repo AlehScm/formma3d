@@ -1,7 +1,7 @@
 'use client';
 
 import JSZip from 'jszip';
-import { APOIOS, BATENTES, PRESETS } from '@/lib/geom/modes';
+import { APOIOS, BATENTES, PRESETS, type Part } from '@/lib/geom/modes';
 import type { Region } from '@/lib/geom/region';
 import { partToGeometry } from '@/lib/geom/extrude';
 import { geometryToSTL, posicoesDaGeometria, posicoesParaSTL } from '@/lib/export/stl';
@@ -13,7 +13,7 @@ import { regionToSVG, regionToDXF, regionToPDF, gabaritoSVG } from '@/lib/export
 import { brl, dividirEntreSocios, type CustoCfg, type Orcamento } from '@/lib/cost/calc';
 import { custosDoTrabalho } from '@/lib/cost/trabalho';
 import { useProjeto } from '@/store/projeto';
-import type { LetraComPeca, Modelo, ObjetoModelo } from '@/modelo/Modelo';
+import type { LetraComPeca, Modelo, ObjetoModelo, PecaImpressa } from '@/modelo/Modelo';
 
 /**
  * Tudo que sai do app como arquivo ou texto. Funcoes puras sobre o modelo: nenhum
@@ -44,7 +44,7 @@ export const seguro =(s: string): string => (s || 'letra').replace(/[^a-zA-Z0-9]
 const regioesDeCorte = (letras: LetraComPeca[]): Region =>
   letras.flatMap((l) => l.part.extras.flatMap((e) => (e.kind === 'cut' ? e.region : [])));
 
-export function baixarSTL(m: Modelo, letra: LetraComPeca): void {
+export function baixarSTL(m: Modelo, letra: { nome: string; part: Part }): void {
   const geo = partToGeometry(letra.part);
   if (!geo) return;
   baixar(`${seguro(m.nomeProjeto)}_${seguro(letra.nome)}_${m.desc}.stl`, geometryToSTL(geo, letra.nome), 'model/stl');
@@ -120,7 +120,7 @@ function linhasSocios(o: Orcamento, cfg: CustoCfg, pagarMaquina: boolean): strin
 /** Uma linha por placa: cada placa e uma impressao, com seu preparo. */
 function linhasPorPlaca(m: Modelo, cfg: CustoCfg): string[] {
   const ui = useInterface.getState();
-  const letras = new Set(m.letras.map((l) => l.chave));
+  const letras = new Set(m.impressas.map((l) => l.chave));
   const avulsas = useProjeto.getState().avulsas.filter((a) => a.gramas > 0 && a.horas > 0);
   const { porPlaca, porAvulsa } = custosDoTrabalho({
     insumos: m.insumos,
@@ -154,19 +154,27 @@ export async function baixarPacote(m: Modelo, o: Orcamento, interno: boolean): P
   const pasta = zip.folder(`${seguro(m.nomeProjeto)}_${m.desc}`);
   if (!pasta) return;
 
+  // Um arquivo por item impresso. Peca dividida: NN_nome_p1de3.stl, NN_nome_tala1.stl.
   m.letras.forEach((l, i) => {
     const n = String(i + 1).padStart(2, '0');
-    const geo = partToGeometry(l.part);
-    if (geo) {
-      pasta.file(`${n}_${seguro(l.nome)}.stl`, geometryToSTL(geo, l.nome));
-      geo.dispose();
-    }
-    for (const e of l.part.extras) {
-      if (e.kind !== 'stl') continue;
-      const g2 = partToGeometry({ layers: e.layers });
-      if (g2) {
-        pasta.file(`${n}_${seguro(l.nome)}_${e.name}.stl`, geometryToSTL(g2, e.name));
-        g2.dispose();
+    const itens = m.impressas.filter((x) => x.letra === l.chave);
+    const pedacos = itens.filter((x) => x.tipo === 'pedaco').length;
+    let p = 0;
+    let t = 0;
+    for (const x of itens) {
+      const base = `${n}_${seguro(l.nome)}${x.tipo === 'pedaco' ? `_p${++p}de${pedacos}` : x.tipo === 'tala' ? `_tala${++t}` : ''}`;
+      const geo = partToGeometry(x.part);
+      if (geo) {
+        pasta.file(`${base}.stl`, geometryToSTL(geo, x.nome));
+        geo.dispose();
+      }
+      for (const e of x.part.extras) {
+        if (e.kind !== 'stl') continue;
+        const g2 = partToGeometry({ layers: e.layers });
+        if (g2) {
+          pasta.file(`${base}_${e.name}.stl`, geometryToSTL(g2, e.name));
+          g2.dispose();
+        }
       }
     }
   });
@@ -186,10 +194,13 @@ export async function baixarPacote(m: Modelo, o: Orcamento, interno: boolean): P
 
 /* ------------------------------------------------------------- placa inteira */
 
-/** Todas as pecas que podem ir para a placa: letras do letreiro e objetos STL. */
+/**
+ * Todas as pecas que podem ir para a placa: o que se imprime do letreiro (letra inteira, ou
+ * pedaco e tala da dividida) e os objetos STL.
+ */
 function pecasDaPlaca(m: Modelo, so?: ReadonlySet<string>): PecaPlaca[] {
   return [
-    ...m.letras.flatMap((l) => {
+    ...m.impressas.flatMap((l: PecaImpressa) => {
       if (so && !so.has(l.chave)) return [];
       const geo = partToGeometry(l.part);
       if (!geo) return [];
@@ -260,15 +271,29 @@ function colocacoesDaSelecao(chaves: readonly string[]): Colocada[] {
   return chaves.map((k) => ({ nome: k, dx: 0, dy: 0, giro: 0 }));
 }
 
+/**
+ * Letra dividida marcada em Desenhar: sai como os pedacos dela (as talas ficam para a placa e
+ * o .zip, porque no lugar do letreiro elas cairiam em cima dos pedacos).
+ */
+function itensDaSelecao(m: Modelo, chaves: readonly string[]): string[] {
+  return chaves.flatMap((k) => {
+    const l = m.letras.find((x) => x.chave === k);
+    if (!l?.divisao || l.divisao.pedacos.length < 2) return [k];
+    return m.impressas.filter((x) => x.letra === k && x.tipo === 'pedaco').map((x) => x.chave);
+  });
+}
+
 /** A selecao num STL so: as pecas juntas, cada uma onde esta. */
-export function baixarSelecaoSTL(m: Modelo, chaves: readonly string[], nome: string): void {
+export function baixarSelecaoSTL(m: Modelo, selecionadas: readonly string[], nome: string): void {
+  const chaves = itensDaSelecao(m, selecionadas);
   const objs = montarPlaca(pecasDaPlaca(m, new Set(chaves)), colocacoesDaSelecao(chaves));
   if (!objs.length) return;
   baixar(`${seguro(m.nomeProjeto)}_${seguro(nome)}.stl`, posicoesParaSTL(juntar(objs), nome), 'model/stl');
 }
 
 /** A selecao em 3MF: cada peca um objeto separado, na posicao em que esta. */
-export async function baixarSelecao3MF(m: Modelo, chaves: readonly string[], nome: string): Promise<void> {
+export async function baixarSelecao3MF(m: Modelo, selecionadas: readonly string[], nome: string): Promise<void> {
+  const chaves = itensDaSelecao(m, selecionadas);
   const objs = montarPlaca(pecasDaPlaca(m, new Set(chaves)), colocacoesDaSelecao(chaves));
   if (!objs.length) return;
   baixar(`${seguro(m.nomeProjeto)}_${seguro(nome)}.3mf`, await gerar3mf(objs));

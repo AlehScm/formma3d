@@ -25,7 +25,7 @@ import {
   type Icone,
 } from '@/components/ui';
 import { CORES, LEGENDA } from '@/components/Viewer3D';
-import { useModelo } from '@/modelo/Modelo';
+import { letraDoItem, useModelo } from '@/modelo/Modelo';
 import { useProjeto } from '@/store/projeto';
 import { useInterface, type Ferramenta } from '@/store/interface';
 import { SEM_EDICAO } from '@/lib/geom/pecaEditada';
@@ -93,23 +93,25 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   const { letras, objetos, naFila } = useMemo(() => {
     const emOutra = new Set(placas.flatMap((p, i) => (i === placaVista ? [] : [...p.keys()])));
     // Oculta (olho do painel) some da tela, mas continua no produto e no custo.
-    const visivel = (chave: string) => !ocultas.has(chave) && (!naPlaca || !emOutra.has(chave));
+    const visivel = (chave: string) => !ocultas.has(letraDoItem(chave)) && (!naPlaca || !emOutra.has(chave));
     const emPlaca = (chave: string) => placas.some((p) => p.has(chave));
+    // Na placa vai o que se imprime: a peca dividida aparece como os pedacos e as talas.
+    const pecas = naPlaca ? m.impressas : m.letras;
     return {
-      letras: m.letras.filter((l) => visivel(l.chave)),
+      letras: pecas.filter((l) => visivel(l.chave)),
       objetos: m.objetos.filter((o) => visivel(o.chave)),
       // Fila ao lado da mesa: o que sobrou, STL ainda nao arrumado e -- depois de
       // arrumar -- qualquer peca nova (copia colada) que ainda nao tem placa.
       naFila: naPlaca
         ? [
             ...sobraram,
-            ...[...(placas.length ? m.letras.map((l) => l.chave) : []), ...m.objetos.map((o) => o.chave)].filter(
+            ...[...(placas.length ? pecas.map((l) => l.chave) : []), ...m.objetos.map((o) => o.chave)].filter(
               (k) => !emPlaca(k) && !sobraram.includes(k)
             ),
           ]
         : [],
     };
-  }, [m.letras, m.objetos, placas, placaVista, sobraram, naPlaca, ocultas]);
+  }, [m.letras, m.impressas, m.objetos, placas, placaVista, sobraram, naPlaca, ocultas]);
 
   // Sem letreiro ainda pode haver STL na placa: so fica vazio se nao ha nada a desenhar.
   if (!m.letras.length && !(naPlaca && m.objetos.length)) {
@@ -152,7 +154,7 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
         explode={explode}
         camadas={camadas}
         mesa={naPlaca ? { x: m.mesa.x, y: m.mesa.y } : null}
-        naoCabem={m.naoCabem}
+        naoCabem={naPlaca ? m.naoCabem : m.letrasForaDaMesa}
         arranjo={naPlaca ? arranjo : SEM_ARRANJO}
         // STL ainda nao arrumado nao tem posicao de letreiro: fica ao lado da placa,
         // junto com o que sobrou, ate o usuario arrumar ou arrastar.
@@ -285,11 +287,11 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
               ))}
             </ul>
           </Balao>
-          {m.temChapa && (
+          {(m.temChapa || m.impressas.length > m.letras.length) && (
             <Balao lado="top" largura="w-64" gatilho={<BotaoIcone icone={IconeMontagem} rotulo="Montagem" ativo={explode > 0} />}>
               <CampoNumero
                 rotulo="Afastar as peças"
-                dica="Separa do corpo a chapa ou a tampa para conferir como encaixam"
+                dica="Separa do corpo a chapa ou a tampa, e abre a emenda da peça dividida, para conferir como encaixam"
                 valor={explode}
                 set={setExplode}
                 min={0}

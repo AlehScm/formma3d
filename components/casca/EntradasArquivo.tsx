@@ -41,7 +41,7 @@ export function EntradasArquivo() {
         ref={desenho}
         type="file"
         multiple
-        accept={[...FORMATOS, 'application/pdf', 'application/postscript', 'model/stl', 'model/3mf'].join(',')}
+        accept={[...FORMATOS, 'application/pdf', 'application/postscript', 'image/svg+xml', 'model/stl', 'model/3mf'].join(',')}
         className="hidden"
         onChange={async (e) => {
           const lista = [...(e.target.files ?? [])];

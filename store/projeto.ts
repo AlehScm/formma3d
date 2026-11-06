@@ -11,6 +11,7 @@ import type { ModoSeparacao, ModoTraco, TracoResolvido } from '@/lib/import/peca
 import type { Aviso, DesenhoBruto } from '@/lib/import/pdf-ops';
 import { IMPRESSORAS, acharImpressora } from '@/lib/print/impressoras';
 import { SEM_EDICAO, type Edicao } from '@/lib/geom/pecaEditada';
+import { EMENDA_PADRAO, type Corte, type OpcoesEmenda } from '@/lib/geom/emenda';
 import { agrupar, desagrupar, type Grupo } from '@/lib/cena/grupo';
 
 /**
@@ -150,6 +151,15 @@ export interface EstadoProjeto {
   edicoes: Map<string, Edicao>;
 
   /**
+   * Pecas divididas para caber na mesa, pela chave da letra: 'auto' (os cortes acompanham a
+   * peca e a mesa) ou os cortes dados a mao, em mm a partir do canto da peca (esquerda, baixo).
+   * Sem entrada, a peca vai inteira.
+   */
+  divisoes: Map<string, Corte[] | 'auto'>;
+  /** Como fica a emenda das pecas divididas: folga, tala, parafusos, numero gravado. */
+  emenda: OpcoesEmenda;
+
+  /**
    * Fontes para desenhar o texto vivo do arquivo importado, por `chaveFonte(nome)`.
    * O arquivo diz qual fonte usa; o usuario da a fonte (do computador ou .ttf).
    */
@@ -190,6 +200,13 @@ export interface AcoesProjeto {
   /** O gizmo de varias pecas: soma o delta de cada uma numa atualizacao so. */
   somarEdicoes: (deltas: ReadonlyMap<string, Edicao>) => void;
   resetarPeca: (chave: string) => void;
+  /** Divide as pecas em pedacos que cabem na mesa, com os cortes automaticos. */
+  dividirPecas: (chaves: readonly string[]) => void;
+  /** Cortes dados a mao (mm a partir do canto da peca). */
+  definirCortes: (chave: string, cortes: Corte[]) => void;
+  /** A peca volta inteira. */
+  juntarPecas: (chaves: readonly string[]) => void;
+  ajustarEmenda: (mudanca: Partial<OpcoesEmenda>) => void;
   /** Liga/desliga uma peca de arquivo, pela chave `arquivo:nome`. */
   alternarPecaImportada: (chave: string) => void;
   /** Exclui a peca: letra do texto, peca de arquivo ou objeto STL. */
@@ -275,6 +292,8 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
   mesaZ: MAQUINA.z,
 
   edicoes: new Map(),
+  divisoes: new Map(),
+  emenda: EMENDA_PADRAO,
   fontesTexto: new Map(),
   removidas: new Set(),
   cfg: PADRAO,
@@ -345,6 +364,26 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
       return { edicoes: n };
     }),
 
+  dividirPecas: (chaves) =>
+    set((s) => {
+      const n = new Map(s.divisoes);
+      for (const k of chaves) n.set(k, 'auto');
+      return { divisoes: n };
+    }),
+  definirCortes: (chave, cortes) =>
+    set((s) => {
+      const n = new Map(s.divisoes);
+      n.set(chave, cortes);
+      return { divisoes: n };
+    }),
+  juntarPecas: (chaves) =>
+    set((s) => {
+      const n = new Map(s.divisoes);
+      for (const k of chaves) n.delete(k);
+      return { divisoes: n };
+    }),
+  ajustarEmenda: (mudanca) => set((s) => ({ emenda: { ...s.emenda, ...mudanca } })),
+
   removerPeca: (chaves) =>
     set((s) => {
       const lista = typeof chaves === 'string' ? [chaves] : [...chaves];
@@ -374,6 +413,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
     const objetos3d = [...s.objetos3d];
     const copias = [...s.copias];
     const edicoes = new Map(s.edicoes);
+    const divisoes = new Map(s.divisoes);
     // "L (2)", "L (3)"...: conta quantas pecas com aquele nome ja existem.
     const nomeNovo = (nome: string, jaTem: (n: string) => boolean) => {
       const base = nome.replace(/ \(\d+\)$/, '');
@@ -398,9 +438,11 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
       copias.push({ id, origem, nome: nomeNovo(nome, (n) => copias.some((x) => x.nome === n)) });
       const e = edicoes.get(chave) ?? SEM_EDICAO;
       edicoes.set(chaveCopia(id), { ...e, dx: e.dx + dx });
+      const d = divisoes.get(chave);
+      if (d) divisoes.set(chaveCopia(id), d);
       novas.push(chaveCopia(id));
     }
-    set({ objetos3d, copias, edicoes });
+    set({ objetos3d, copias, edicoes, divisoes });
     return novas;
   },
 
@@ -414,7 +456,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
     set((s) => ({ removidas: new Set(), arquivos: s.arquivos.map((a) => ({ ...a, desativadas: new Set<string>() })) })),
 
   definirTexto: (texto) =>
-    set((s) => (texto === s.texto ? {} : { texto, removidas: new Set(), edicoes: new Map(), grupos: [], copias: [] })),
+    set((s) => (texto === s.texto ? {} : { texto, removidas: new Set(), edicoes: new Map(), divisoes: new Map(), grupos: [], copias: [] })),
 
   alternarPecaImportada: (chave) =>
     set((s) => {
@@ -447,7 +489,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
         arquivos: substituir ? [a] : [...s.arquivos, a],
         arquivoAtivo: a.id,
         // Substituir troca as pecas: edicao antiga apontaria para o nada.
-        ...(substituir ? { edicoes: new Map(), grupos: [], copias: [] } : {}),
+        ...(substituir ? { edicoes: new Map(), divisoes: new Map(), grupos: [], copias: [] } : {}),
         erro: null,
       };
     }),
@@ -460,7 +502,8 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
       const arquivos = s.arquivos.filter((a) => a.id !== id);
       // Edicoes das pecas desse arquivo vao junto.
       const edicoes = new Map([...s.edicoes].filter(([k]) => !k.startsWith(`${id}:`)));
-      return { arquivos, edicoes, arquivoAtivo: s.arquivoAtivo === id ? (arquivos[0]?.id ?? null) : s.arquivoAtivo };
+      const divisoes = new Map([...s.divisoes].filter(([k]) => !k.startsWith(`${id}:`)));
+      return { arquivos, edicoes, divisoes, arquivoAtivo: s.arquivoAtivo === id ? (arquivos[0]?.id ?? null) : s.arquivoAtivo };
     }),
 
   adicionarObjeto3d: (o) => set((s) => ({ objetos3d: [...s.objetos3d, { ...o, id: novoId() }], erro: null })),
@@ -479,7 +522,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
 
   // Letreiro de texto novo: vazio, pronto para digitar -- nao ressuscita texto antigo.
   fecharImport: () =>
-    set({ arquivos: [], arquivoAtivo: null, texto: '', removidas: new Set(), edicoes: new Map(), grupos: [], copias: [], erro: null }),
+    set({ arquivos: [], arquivoAtivo: null, texto: '', removidas: new Set(), edicoes: new Map(), divisoes: new Map(), grupos: [], copias: [], erro: null }),
   limparProjeto: () =>
     set({
       arquivos: [],
@@ -488,6 +531,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
       nomeTrabalho: '',
       objetos3d: [],
       edicoes: new Map(),
+      divisoes: new Map(),
       grupos: [],
       copias: [],
       removidas: new Set(),
@@ -504,6 +548,7 @@ export const useProjeto = create<EstadoProjeto & AcoesProjeto>()((set, get) => (
       return {
         fontesTexto: n,
         edicoes: new Map(),
+        divisoes: new Map(),
         grupos: [],
         copias: [],
         arquivos: s.arquivos.map((a) => (a.desenho.textos?.length ? { ...a, desativadas: new Set<string>() } : a)),
