@@ -10,13 +10,13 @@ import { BotaoIconeMarca, BotaoMarca } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
-import { geradorDe, textoDoPreco, urlDaMidia } from '@/lib/marketplace/formato';
+import type { ProdutoResumido } from '@/lib/marketplace/api/contrato';
+import { textoDoPreco, urlDaMidia } from '@/lib/marketplace/formato';
 import { pecaDeNatal } from '@/lib/marketplace/campanhas';
-import type { Produto } from '@/lib/marketplace/tipos';
 import { medir } from '@/lib/medicao';
 import { IconeCarrinho, IconeFavorito, IconeImpressora, IconeOk } from './icones';
 
-export function ReservaProduto({ produto: p }: { produto: Produto }) {
+export function ReservaProduto({ produto: p }: { produto: Pick<ProdutoResumido, 'tipo'> }) {
   return (
     <div className="flex size-full flex-col items-center justify-center gap-1 bg-secao-suave p-2 text-center text-secao-forte">
       <IconeImpressora className="size-6 shrink-0 opacity-60" aria-hidden />
@@ -27,13 +27,13 @@ export function ReservaProduto({ produto: p }: { produto: Produto }) {
 }
 
 /** Foto, render 3D real do gerador ou a arte da secao. */
-export function ImagemProduto({ produto: p, className }: { produto: Produto; className?: string }) {
-  const gerador = geradorDe(p);
+export function ImagemProduto({ produto: p, className }: { produto: Pick<ProdutoResumido, 'capa' | 'gerador' | 'nome' | 'tipo'>; className?: string }) {
+  const { gerador } = p;
   return (
     <div className={cx('size-full [&_.miniatura]:block [&_.miniatura]:size-full [&_.miniatura]:object-contain [&_.miniatura]:p-[8%] [&_.miniatura-reserva]:size-full', className)}>
-      {p.midias[0] ? (
+      {p.capa ? (
         // eslint-disable-next-line @next/next/no-img-element -- export estatico sem otimizador de imagem
-        <img src={urlDaMidia(p.midias[0])} alt="" loading="lazy" className="size-full object-cover" />
+        <img src={urlDaMidia(p.capa)} alt="" loading="lazy" className="size-full object-cover" />
       ) : gerador ? (
         <Miniatura id={gerador} alt={p.nome} reserva={<ReservaProduto produto={p} />} />
       ) : (
@@ -87,7 +87,7 @@ export function BotaoAdicionar({ slug, extra, grande, className }: { slug: strin
 /** Card no padrao das grandes lojas: foto grande, nome, tipo e preco ("Sob consulta" ate
  *  ter valor). O card inteiro leva a peca; adicionar ao orcamento fica na pagina do produto. */
 /** `tema`: abre a peca ja com o tema da campanha no painel de personalizar (?tema=natal). */
-export function CardProduto({ produto: p, nivel = 'h3', tema }: { produto: Produto; nivel?: 'h2' | 'h3'; tema?: string }) {
+export function CardProduto({ produto: p, nivel = 'h3', tema }: { produto: ProdutoResumido; nivel?: 'h2' | 'h3'; tema?: string }) {
   const Titulo = nivel;
   return (
     <article data-secao={p.secao} className="group relative flex h-full min-w-0 flex-col">
@@ -104,7 +104,6 @@ export function CardProduto({ produto: p, nivel = 'h3', tema }: { produto: Produ
         <p className={cx('m-0 mt-1 text-apoio', p.preco.status === 'definido' ? 'font-semibold text-marca-navy' : 'text-marca-texto-2')}>
           {p.preco.status === 'definido' ? `a partir de ${textoDoPreco(p)}` : 'Sob consulta'}
         </p>
-        {p.jaImpresso && <p className="m-0 text-apoio font-semibold text-secao-forte">Já feito para clientes</p>}
       </div>
     </article>
   );

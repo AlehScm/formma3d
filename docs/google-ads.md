@@ -22,6 +22,8 @@ Confirmado pelo dono em 31/10/2026:
 
 Qualquer palavra, anúncio ou texto do site que prometa fachada, instalação ou atendimento fora da região contraria isso.
 
+**Só quem quer comprar** (dono, 05/11/2026): editor, prévia em 3D e "monte você mesmo" são extras do site e não entram no anúncio. Quem quer fazer, converter ou editar no digital não é o público.
+
 ## Configuração da campanha
 
 | Item | Valor | Por quê |
@@ -29,8 +31,8 @@ Qualquer palavra, anúncio ou texto do site que prometa fachada, instalação ou
 | Rede | Só Pesquisa do Google (sem parceiros e sem Display) | Gente que procura letra; Display traz clique barato e sem intenção |
 | Região | 30 km em volta de Campinas, só **Presença** | A loja só atende a região; "Presença" evita quem só pesquisa sobre Campinas de longe |
 | Idioma | Português | |
-| Orçamento | R$ 50/dia | Escolha do dono. Numa região só, dificilmente gasta tudo |
-| Lances | **CPC manual**: empresa R$ 2,50, decoração R$ 0,80 (CPC máx. padrão do grupo) | Controlar cada público. Com um teto só, o Google gastava onde o clique é barato (decoração) |
+| Orçamento | R$ 50/dia (médio) | Objetivo do dono: aproveitar o orçamento para gerar clientes. O gasto diário pode variar; não há garantia de consumir exatamente R$ 50 por dia |
+| Lances | **CPC manual**: empresa R$ 4,00, decoração R$ 1,50 (CPC máx. padrão do grupo) | Aumentados com autorização em 03/11 para superar as estimativas de primeira página; mantido o controle por público |
 | Metas de conversão | **Contatos** (clique no WhatsApp do site) e **Leads de mensagens** (botão de WhatsApp do anúncio) | Antes contava "ligações e mensagens" e ignorava o clique no site |
 | Correspondência ampla | Desligada; palavras em **frase** | Ampla com orçamento pequeno traz busca sem relação |
 | Recursos automáticos e AI Max | Desligados | Só texto escrito por nós (nada de "fachada" gerado pelo Google) |
@@ -50,7 +52,7 @@ Qualquer palavra, anúncio ou texto do site que prometa fachada, instalação ou
 
 ## Grupos de anúncio
 
-### 1. Letreiro e logo para empresa (CPC máx. R$ 2,50)
+### 1. Letreiro e logo para empresa (CPC máx. R$ 4,00)
 
 **Ativas** (frase): letreiro 3d, letra caixa 3d, letra caixa personalizada, letreiro personalizado, logo em 3d, logo 3d para parede, letreiro para recepção, letreiro para escritório, logo para parede, letreiro 3d parede.
 - "letreiro de parede para empresa" também foi adicionada, mas o Google marca "baixo volume" e ela não roda.
@@ -86,7 +88,7 @@ Qualquer palavra, anúncio ou texto do site que prometa fachada, instalação ou
 
 **Anúncio pausado** (o primeiro, de 30/10): misturava letra caixa e decoração e tinha "Letreiro Para Sua Fachada" e "Para fachada, quarto, sala…". Não usar de novo.
 
-### 2. Letras decorativas (CPC máx. R$ 0,80)
+### 2. Letras decorativas (CPC máx. R$ 1,50)
 
 **Ativas** (frase):
 - letras decorativas, letras decorativas personalizadas, letreiro de parede, letreiro com nome;
@@ -101,9 +103,9 @@ Qualquer palavra, anúncio ou texto do site que prometa fachada, instalação ou
 - "letras decorativas" tem muita busca, mas clique de R$ 0,13 a R$ 1,19: a maioria procura fonte ou imagem para copiar. Conferir os termos de pesquisa na primeira semana.
 - "letras de parede" pode puxar adesivo e vinil (já negativados).
 
-**Anúncio ativo** (aprovado em 31/10). URL /letra-caixa, caminho `letras/decoracao`.
+**Anúncio ativo** (criado em 31/10; título e duas descrições atualizados em 04/11/2026). URL /letra-caixa, caminho `letras/decoracao`.
 - Títulos:
-  - Letras Decorativas em 3D
+  - Letreiro 3D Personalizado
   - Nome em 3D Para Parede
   - Letreiro com Nome em 3D
   - Letras Para Decorar o Quarto
@@ -119,14 +121,14 @@ Qualquer palavra, anúncio ou texto do site que prometa fachada, instalação ou
   - Letras de Parede em 3D
   - Resposta com Preço e Prazo
 - Descrições:
-  - Letras e nomes em 3D para quarto, sala, festa e presente, na fonte que você quiser.
-  - Mande o nome pelo WhatsApp: mostramos a prévia em 3D e combinamos cores, preço e prazo.
+  - Inicial e nome em 3D para decorar ou presentear. Escolha cores e tamanho.
+  - Peça seu orçamento pelo WhatsApp. Atendimento em Campinas e região.
   - Letreiro com nome, letra grande, luminária de letra e letras em camadas coloridas.
   - Peça pronta e montada, impressa em 3D. Resposta com preço e prazo, sem compromisso.
 
-## Palavras negativas (66, na campanha)
+## Palavras negativas (88 na campanha e 3 no grupo de empresa)
 
-Palavra solta = negativa ampla (bloqueia a busca que tiver a palavra); entre aspas = frase. Negativa não pega variação, por isso há versões com e sem acento.
+Palavra solta = negativa ampla (bloqueia a busca que tiver a palavra); entre aspas = frase; entre colchetes = exata. Negativa não pega variação, por isso há versões com e sem acento.
 
 | Bloco | Palavras | Por quê |
 |---|---|---|
@@ -136,6 +138,11 @@ Palavra solta = negativa ampla (bloqueia a busca que tiver a palavra); entre asp
 | Escola e papel | atividade, atividades, "para imprimir", colorir, pontilhada, pontilhado, copiar, "para copiar" | Atividade escolar e letra para copiar |
 | Outro material | balão, balao, balões, baloes, metalizado, metalizada, isopor, eva, mdf, papel, adesivo, adesiva, adesivos, vinil, neon | Produto de outro material, que a loja não faz |
 | Fachada | fachada, fachadas, externa, acm, inox, aço, aco, pvc, galvanizado, luminosa, luminoso, instalação, instalacao | Comunicação visual de fachada, que a loja não faz |
+| Criação digital de logo | [converter logo em 3d], [logo 3d ia] | Buscas observadas, com intenção digital, que somaram R$ 4,81 em dois cliques; exclusões exatas aprovadas em 03/11 |
+| Fazer ou converter no digital (05/11) | editor, programa, aplicativo, app, software, gerador, ia, converter, stl, blender, canva, photoshop, mockup, render, impressora, "criar logo", "fazer logo", [fazer letras em 3d] | Quer fazer sozinho no computador ou na impressora, não comprar a peça. "fazer letras em 3d" custou R$ 2,48 |
+| Acrílico (05/11) | acrílico, acrilico | "letreiro acrílico personalizado" acionou o anúncio; outro material |
+
+**Só no grupo Letreiro e logo para empresa (05/11):** led, iluminado, iluminada. "letreiro led personalizado", "placa de led personalizada" (R$ 2,49), "letra caixa com led", "logo iluminado" e "escrita em led" vinham de "letreiro personalizado", e no leilão os concorrentes eram de neon e LED. Fica só no grupo para não bloquear luminária com LED na decoração.
 
 ## Medição
 
@@ -205,12 +212,21 @@ Sem o preço médio das peças, a referência é o custo por pedido no WhatsApp 
 1. **Termos de pesquisa:** cada busca que gerou clique. Negativar o que não é venda e anotar aqui.
 2. **Custo por pedido:** acima do teto, pausar o grupo ou a palavra. Bem abaixo, subir o lance em uns 20%.
 3. **CTR:** abaixo de 3%, o anúncio não conversa com a busca; reescrever títulos.
-4. **Parcela de impressões perdida por classificação:** alta no grupo de empresa, o lance de R$ 2,50 está baixo.
+4. **Parcela de impressões perdida por classificação:** avaliar lances, qualidade e estimativas atuais de primeira página. Em 03/11 os tetos foram elevados; comparar a entrega posterior ao ajuste antes de ampliar novamente.
 5. **Pedidos que viraram venda:** o Ads não sabe disso. Anotar à mão quantos WhatsApps vieram do anúncio e quantos fecharam, com o valor; é o que diz se compensa.
 
 **Depois de uns 30 pedidos no mês:** trocar o CPC manual por "Maximizar conversões" com CPA desejado igual ao teto do grupo.
 
 ## Pendências e ideias
+
+- Concluir a verificação do anunciante exigida pelo Google para liberar nome e logotipo da empresa. Logo oficial pronto em `public/icone-512.png`; ainda não associado à conta/campanha.
+- Recursos de imagem enviados em 04/11/2026 (CAFÉ no grupo de empresas, Luna + inicial L no de decoração): **Qualificados** em 05/11. O Google decide em cada leilão se mostra a imagem; com pouca impressão, ainda é cedo. Versões deitadas (1,91:1) dariam mais chance. São simulações de produto, não fotos de trabalhos entregues.
+- **Para a revisão de 13–14/11** (deixado para lá de propósito, para não mexer no que zera os números):
+  - Tirar "prévia" e "editor" dos anúncios. Empresa: "Veja a Prévia em 3D" → "Feito Sob Medida em 3D", "Monte no Editor Online" → "Letreiro Pronto Para Sua Loja", descrições 2 e 4 sem editor/prévia. Decoração: "Veja a Prévia em 3D" → "Peça Pronta e Montada". Editar anúncio zera os números dele e volta para análise.
+  - Sitelink "Editor de letreiro" (o mais clicado) → "Peças para comprar" (/pecas). Antes, ver se os cliques nele viraram contato.
+  - Pausar ou não "logo em 3d", vendo se as negativas de 05/11 limparam os termos.
+  - Frases de destaque (ainda não há nenhuma): Orçamento pelo WhatsApp, Feito sob medida, Na fonte e cor da marca, Campinas e região, Peça pronta e montada, Sem compromisso.
+  - "Peca na lista de orcamento" de principal para secundária.
 
 - Descobrir o preço médio real das peças de decoração e rever o teto de R$ 15.
 - Pensar em um sitelink "Logo para empresa", apontando para o editor ou para a landing.
@@ -226,3 +242,6 @@ Sem o preço médio das peças, a referência é o custo por pedido no WhatsApp 
 | 31/10/2026 | Conversões "Clique no WhatsApp" e "Peca na lista de orcamento"; 36 negativas; grupo "Letras decorativas" separado com anúncio próprio | Medir e separar os públicos |
 | 31/10/2026 | **Revisão:** raio de 30 km em Campinas; metas Contatos e Mensagens; CPC manual por grupo; grupo 1 vira "Letreiro e logo para empresa" sem fachada (anúncio novo, antigo pausado); luminária no grupo de decoração; "letras para festa" pausada; +30 negativas; campanha renomeada | A loja só faz interno e só atende Campinas; estava pagando o clique mais caro por fachada |
 | 31/10/2026 | Site publicado com a medição e sem "fachada" | A tag precisa estar no ar para contar |
+| 03/11/2026 | Após aprovação explícita: CPC máximo padrão de empresa R$ 2,50 → R$ 4,00 e decoração R$ 0,80 → R$ 1,50; adicionadas as duas negativas exatas de criação digital. Orçamento médio mantido em R$ 50/dia. Herança dos lances nas palavras e 68 negativas conferidas na conta | Objetivo: aumentar a entrega. Antes do ajuste, empresa perdia 62,78% das impressões por classificação; estimativas de primeira página de R$ 2,90 a R$ 3,87 superavam o teto de R$ 2,50. Avisos de lance insuficiente desapareceram após salvar; impacto em gasto e contatos ainda será medido |
+| 04/11/2026 | Após autorização explícita: imagem CAFÉ (opção 2) associada ao grupo Letreiro e logo para empresa; Luna + inicial L (opção 4) ao grupo Letras decorativas, ambas quadradas 1254 × 1254 e em análise. Anúncio de decoração 830209171835: primeiro título atualizado para Letreiro 3D Personalizado e primeiras duas descrições substituídas pelos textos registrados acima; restantes preservados. Google confirmou o salvamento sem problemas de política. Logo bloqueado pela exigência de verificação do anunciante. Orçamento R$ 50/dia, CPC manual e metas Contatos + Leads de mensagens conferidos e preservados após salvar | Mostrar o produto de cada público com uma mensagem mais direta. Artes e comprovantes em `C:/Users/Administrador/.codex/visualizations/2026/11/03/01a1a37d-c87e-7d82-8e82-1c5570143fc0/scarprint-ads-final/`. Imagens sujeitas a aprovação e exibição pelo Google |
+| 05/11/2026 | **Revisão** (30/10 a 04/11: 13 cliques, 165 impressões, CTR 7,9%, CPC médio R$ 3,13, R$ 40,72, 0 contatos). Após autorização explícita: +20 negativas na campanha (fazer/converter no digital e acrílico) e led, iluminado, iluminada no grupo de empresa; 91 conferidas na conta, sem conflito com as 44 palavras. Nada mais mudou: lances, orçamento, anúncios, sitelinks, imagens e conversões como estavam | Dos 4 cliques com termo visível, os 4 eram de quem não compra (LED, digital): R$ 9,78. Leilão: topo 77,7% quando aparece, mas só 21% das buscas possíveis, com 67,5% perdido por classificação no grupo de empresa. Negativa não zera nada; o resto ficou para a revisão de 13–14/11 |

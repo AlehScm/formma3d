@@ -53,7 +53,11 @@ export const TEXTOS_NATAL = {
   frase: 'Enfeites e presentes impressos em 3D, feitos sob medida. Escreva um nome e veja a peça antes de pedir.',
   faixa: 'Enfeites, presentes com nome e peças para a ceia, com cara de Natal.',
   antecedencia: 'O Natal enche a fila de impressão: quanto antes você monta o orçamento, mais tranquilo para todo mundo.',
+  vitrine: 'Presépios, quebra-nozes, renas, árvores e luzes impressos em 3D, e enfeites com o nome de quem você ama.',
 };
+
+/** Fotos do banner de Natal da home (a primeira e a grande); se uma sair do ar, entra a proxima da colecao. */
+export const FOTOS_TOPO_NATAL = ['presepio-minimalista-reis-magos', 'quebra-nozes-classico', 'arvore-natal-japandi', 'casinha-pao-de-mel', 'rena-minimalista'];
 
 /** Dias ate o proximo 25 de dezembro (0 no proprio dia). Calculado no navegador de quem visita. */
 export function diasAteONatal(hoje: Date): number {

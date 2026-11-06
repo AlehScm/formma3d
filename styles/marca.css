@@ -92,8 +92,8 @@
   --secao-botao-forte: var(--marca-azul-forte);
   --secao-botao-texto: #ffffff;
 }
-/* Casa */
-[data-secao='casa'] {
+/* Decoracao (as cores da antiga Casa) */
+[data-secao='decoracao'] {
   --secao: #c8b79e;
   --secao-2: #8e7b66;
   --secao-suave: #f3eee6;
@@ -108,7 +108,7 @@
   --secao-acao: #2760a2;
   --secao-acao-texto: #ffffff;
 }
-[data-universo='casa'] {
+[data-universo='decoracao'] {
   --secao-pagina: #f3eee6;
   --secao-superficie: #f7f8fa;
   --secao-linha: #d9cbb9;
@@ -119,18 +119,82 @@
   --secao-botao-forte: #1f4d83;
   --secao-botao-texto: #ffffff;
 }
-/* Colecionaveis */
-[data-secao='colecionaveis'] {
-  --secao: #315c56;
-  --secao-2: #547f78;
-  --secao-suave: #eef2f0;
-  --secao-fundo: #eef2f0;
-  --secao-forte: #24312f;
-  --secao-borda: #c8d7d1;
-  --secao-apoio: #547f78;
-  --secao-universo: #eef2f0;
-  --secao-universo-base: #eef2f0;
-  --secao-universo-texto: #24312f;
+/* Natal (verde, vermelho e creme da campanha) */
+[data-secao='natal'] {
+  --secao: #1f6b45;
+  --secao-2: #b3261e;
+  --secao-suave: #fbf6ec;
+  --secao-fundo: #fbf6ec;
+  --secao-forte: #10301f;
+  --secao-borda: #dccfb4;
+  --secao-apoio: #1f6b45;
+  --secao-universo: #fbf6ec;
+  --secao-universo-base: #fbf6ec;
+  --secao-universo-texto: #10301f;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
+}
+/* Cozinha e mesa */
+[data-secao='cozinha'] {
+  --secao: #c98b5e;
+  --secao-2: #a36a42;
+  --secao-suave: #f8efe7;
+  --secao-fundo: #f8efe7;
+  --secao-forte: #47301f;
+  --secao-borda: #e8d3c2;
+  --secao-apoio: #a36a42;
+  --secao-universo: #f8efe7;
+  --secao-universo-base: #f8efe7;
+  --secao-universo-texto: #47301f;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
+}
+/* Organizacao */
+[data-secao='organizacao'] {
+  --secao: #8c86b5;
+  --secao-2: #6c6697;
+  --secao-suave: #f1f0f7;
+  --secao-fundo: #f1f0f7;
+  --secao-forte: #33304a;
+  --secao-borda: #d6d3e6;
+  --secao-apoio: #6c6697;
+  --secao-universo: #f1f0f7;
+  --secao-universo-base: #f1f0f7;
+  --secao-universo-texto: #33304a;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
+}
+/* Escritorio e games */
+[data-secao='escritorio'] {
+  --secao: #b08d3c;
+  --secao-2: #8a6c26;
+  --secao-suave: #f7f1e1;
+  --secao-fundo: #f7f1e1;
+  --secao-forte: #3d3218;
+  --secao-borda: #e5d7b0;
+  --secao-apoio: #8a6c26;
+  --secao-universo: #f7f1e1;
+  --secao-universo-base: #f7f1e1;
+  --secao-universo-texto: #3d3218;
+  --secao-padrao: linear-gradient(transparent, transparent);
+  --secao-acao: #2760a2;
+  --secao-acao-texto: #ffffff;
+}
+/* Bebe e infantil */
+[data-secao='infantil'] {
+  --secao: #8fb3cf;
+  --secao-2: #5f8aa8;
+  --secao-suave: #eef4f9;
+  --secao-fundo: #eef4f9;
+  --secao-forte: #273c4d;
+  --secao-borda: #cfe0ec;
+  --secao-apoio: #5f8aa8;
+  --secao-universo: #eef4f9;
+  --secao-universo-base: #eef4f9;
+  --secao-universo-texto: #273c4d;
   --secao-padrao: linear-gradient(transparent, transparent);
   --secao-acao: #2760a2;
   --secao-acao-texto: #ffffff;
@@ -183,7 +247,11 @@
   --secao-acao: #2760a2;
   --secao-acao-texto: #ffffff;
 }
-[data-universo='colecionaveis'] { --secao-pagina: #eef2f0; --secao-superficie: #f7f8fa; --secao-linha: #c8d7d1; --secao-tinta: #24312f; --secao-tinta-2: #24312f; }
+[data-universo='natal'] { --secao-pagina: #fbf6ec; --secao-superficie: #f7f8fa; --secao-linha: #dccfb4; --secao-tinta: #10301f; --secao-tinta-2: #10301f; }
+[data-universo='cozinha'] { --secao-pagina: #f8efe7; --secao-superficie: #f7f8fa; --secao-linha: #e8d3c2; --secao-tinta: #47301f; --secao-tinta-2: #47301f; }
+[data-universo='organizacao'] { --secao-pagina: #f1f0f7; --secao-superficie: #f7f8fa; --secao-linha: #d6d3e6; --secao-tinta: #33304a; --secao-tinta-2: #33304a; }
+[data-universo='escritorio'] { --secao-pagina: #f7f1e1; --secao-superficie: #f7f8fa; --secao-linha: #e5d7b0; --secao-tinta: #3d3218; --secao-tinta-2: #3d3218; }
+[data-universo='infantil'] { --secao-pagina: #eef4f9; --secao-superficie: #f7f8fa; --secao-linha: #cfe0ec; --secao-tinta: #273c4d; --secao-tinta-2: #273c4d; }
 [data-universo='empresa'] { --secao-pagina: #eef2f5; --secao-superficie: #f7f8fa; --secao-linha: #c8d4dc; --secao-tinta: #253640; --secao-tinta-2: #253640; }
 [data-universo='presentes'] { --secao-pagina: #f7efee; --secao-superficie: #f7f8fa; --secao-linha: #e4cdca; --secao-tinta: #493737; --secao-tinta-2: #493737; }
 [data-universo='sensoriais'] { --secao-pagina: #eff3ec; --secao-superficie: #f7f8fa; --secao-linha: #d2dccd; --secao-tinta: #354234; --secao-tinta-2: #354234; }

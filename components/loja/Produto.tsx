@@ -12,15 +12,15 @@ import { cx } from '@/components/ui/cx';
 import { PecaViva } from '@/features/marketplace/PecaViva';
 import { useInterno } from '@/features/orcamento/interno';
 import { MENSAGENS, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
+import { paraResumo, type ProdutoNoCliente } from '@/lib/marketplace/api/contrato';
 import { geradorDe, hrefDoGerador, rotuloPreco, urlDaMidia } from '@/lib/marketplace/formato';
-import type { Produto } from '@/lib/marketplace/tipos';
 import type { Valores } from '@/lib/gerador/tipos';
 import { BarraFixa, useAbaixoDaTela } from './BarraFixa';
 import { BotaoAdicionar, BotaoFavorito, ImagemProduto, ReservaProduto } from './CardProduto';
 import { PainelPersonalizar, usePersonalizacao } from './Personalizar';
 import { IconeMais, IconeMenos } from './icones';
 
-export function GaleriaProduto({ produto: p, extras }: { produto: Produto; extras?: Valores }) {
+export function GaleriaProduto({ produto: p, extras }: { produto: ProdutoNoCliente; extras?: Valores }) {
   const gerador = geradorDe(p);
   const temFoto = p.midias.length > 0;
   const [aba, setAba] = useState<'foto' | '3d'>(temFoto || !gerador ? 'foto' : '3d');
@@ -41,7 +41,7 @@ export function GaleriaProduto({ produto: p, extras }: { produto: Produto; extra
           // eslint-disable-next-line @next/next/no-img-element -- export estatico sem otimizador de imagem
           <img src={urlDaMidia(p.midias[foto]!)} alt={p.nome} className="size-full object-cover" />
         ) : (
-          <ImagemProduto produto={p} />
+          <ImagemProduto produto={paraResumo(p)} />
         )}
         <BotaoFavorito slug={p.slug} nome={p.nome} className="absolute top-3 right-3 z-10" />
       </div>
@@ -63,7 +63,7 @@ export function GaleriaProduto({ produto: p, extras }: { produto: Produto; extra
   );
 }
 
-export function CompraProduto({ produto: p, pedido, semPersonalizar }: { produto: Produto; pedido?: { personalizacao: string; valores: Valores }; semPersonalizar?: boolean }) {
+export function CompraProduto({ produto: p, pedido, semPersonalizar }: { produto: ProdutoNoCliente; pedido?: { personalizacao: string; valores: Valores }; semPersonalizar?: boolean }) {
   const [quantidade, setQuantidade] = useState(1);
   const [cor, setCor] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -124,7 +124,7 @@ export function CompraProduto({ produto: p, pedido, semPersonalizar }: { produto
 }
 
 /** Galeria + cabecalho + personalizar + compra, com a personalizacao dividida entre o 3D e o pedido. */
-export function ProdutoInterativo({ produto: p, cabecalho }: { produto: Produto; cabecalho: ReactNode }) {
+export function ProdutoInterativo({ produto: p, cabecalho }: { produto: ProdutoNoCliente; cabecalho: ReactNode }) {
   const gerador = geradorDe(p);
   const pz = usePersonalizacao(gerador ?? null);
   const interno = useInterno();

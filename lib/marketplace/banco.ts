@@ -4,11 +4,12 @@
  * estatico, entao o banco e lido no build; trocar por um banco de verdade e trocar `lerBanco`.
  * Registro invalido para o build com o slug e o campo. Novos geradores entram por
  * `npm run banco:sincronizar` (scripts/banco-produtos.mts), que nunca mexe no que ja existe.
- * O repo e publico: nada de arquivo, foto, preco de custo ou cliente aqui (`ref` e opaca).
+ * O repo e publico: nada de preco de custo ou cliente aqui. Fotos em public/marketplace/<slug>/;
+ * o levantamento MakerWorld (ref -> modelo, autor, licenca) em data/makerworld/.
  */
 import dados from '../../data/produtos.json';
-import { FOTOS } from './fotos';
-import { ORDEM_SECOES, TAGS, type Produto } from './tipos';
+import { CAPAS, FOTOS } from './fotos';
+import { ORDEM_SECOES, TAGS, type Credito, type Produto } from './tipos';
 
 /** Linha do banco: o `Produto` com `null` no lugar do que esta vazio. */
 export interface RegistroProduto {
@@ -30,13 +31,18 @@ export interface RegistroProduto {
   destaque: boolean;
   jaImpresso: boolean;
   campanha: string | null;
+  adicionadoEm: string;
   ref: string | null;
+  credito: Credito | null;
   revisar: boolean;
 }
 
 const umDe = <T extends string>(valor: unknown, opcoes: readonly T[]): valor is T => typeof valor === 'string' && (opcoes as readonly string[]).includes(valor);
 const texto = (v: unknown) => typeof v === 'string' && v.trim() !== '';
 const listaDeTexto = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+const linkMakerWorld = (v: unknown) => typeof v === 'string' && /^https:\/\/makerworld\.com\/\S+$/.test(v);
+const creditoValido = (c: Credito | null) => c === null || (!!c && typeof c === 'object' && c.plataforma === 'MakerWorld'
+  && texto(c.autor) && texto(c.titulo) && texto(c.licencaOriginal) && linkMakerWorld(c.url) && linkMakerWorld(c.autorUrl));
 
 /** Confere uma linha e devolve o `Produto`; erro com o slug e o campo. */
 export function paraProduto(r: RegistroProduto, linha = 0): Produto {
@@ -54,14 +60,18 @@ export function paraProduto(r: RegistroProduto, linha = 0): Produto {
     : r.preco?.status === 'definido' && typeof r.preco.valor === 'number' && r.preco.valor > 0 ? { status: 'definido' as const, valor: r.preco.valor } : null;
   if (!preco) throw erro('preco');
   if (!umDe(r.origem, ['nosso', 'terceiros'] as const)) throw erro('origem');
-  if (!umDe(r.licenca, ['propria', 'a-verificar', 'comercial-ok'] as const)) throw erro('licenca');
+  if (!umDe(r.licenca, ['propria', 'a-verificar', 'nao-comercial', 'comercial-ok'] as const)) throw erro('licenca');
   if (!umDe(r.visibilidade, ['publico', 'oculto'] as const)) throw erro('visibilidade');
   if (r.campanha !== null && !umDe(r.campanha, ['natal'] as const)) throw erro('campanha');
   if (typeof r.destaque !== 'boolean' || typeof r.jaImpresso !== 'boolean' || typeof r.revisar !== 'boolean') throw erro('destaque/jaImpresso/revisar');
+  if (!creditoValido(r.credito)) throw erro('credito');
+  if (typeof r.adicionadoEm !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(r.adicionadoEm)) throw erro('adicionadoEm');
+  if ((r.secao === 'natal') !== (r.campanha === 'natal')) throw erro('campanha (Natal e so com campanha natal, e vice-versa)');
   return {
     slug: r.slug, nome: r.nome, resumo: r.resumo, descricao: r.descricao, secao: r.secao, tipo: r.tipo,
-    origem: r.origem, licenca: r.licenca, visibilidade: r.visibilidade, preco, personalizavel: r.personalizavel,
+    origem: r.origem, licenca: r.licenca, visibilidade: r.visibilidade, preco, personalizavel: r.personalizavel, adicionadoEm: r.adicionadoEm,
     midias: FOTOS[r.slug]?.length ? FOTOS[r.slug]! : r.midias,
+    ...(CAPAS[r.slug] ? { capa: CAPAS[r.slug] } : {}),
     tags: r.tags as Produto['tags'],
     ...(ehGerador ? { gerador: r.gerador! } : {}),
     ...(r.personalizar ? { personalizar: r.personalizar } : {}),
@@ -69,6 +79,7 @@ export function paraProduto(r: RegistroProduto, linha = 0): Produto {
     ...(r.jaImpresso ? { jaImpresso: true } : {}),
     ...(r.campanha ? { campanha: r.campanha } : {}),
     ...(r.ref ? { ref: r.ref } : {}),
+    ...(r.credito ? { credito: r.credito } : {}),
     ...(r.revisar ? { revisar: true } : {}),
   };
 }

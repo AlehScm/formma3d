@@ -2,22 +2,36 @@
 
 /**
  * Blocos de vitrine da loja (padrao Mercado Livre / Magalu): a prateleira (titulo + fileira
- * de pecas com "Ver todos") e os atalhos de categoria (imagem + nome, todos iguais).
+ * de pecas com "Ver todos") e a prateleira que busca as pecas por GET.
  */
 import Link from 'next/link';
-import { useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BotaoIconeMarca } from '@/components/marca';
-import { SECOES, type Produto, type Secao } from '@/lib/marketplace/tipos';
+import { useLista } from '@/lib/marketplace/api/cliente';
+import type { ProdutoResumido } from '@/lib/marketplace/api/contrato';
+import { comImagemPrimeiro } from '@/lib/marketplace/formato';
+import { SECOES, hrefDaSecao, type Secao } from '@/lib/marketplace/tipos';
 import { CardProduto, ImagemProduto } from './CardProduto';
 import { IconeAnterior, IconeProximo } from './icones';
 import { Modulo } from './Modulo';
-import { GorroNoel } from '@/features/marketplace/Natal';
 
 const idDe = (t: string) => `bloco-${t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
-export function Prateleira({ titulo, verTodos, produtos, secao, tema, id }: { titulo: string; verTodos?: { href: string; rotulo: string }; produtos: Produto[]; secao?: Secao; tema?: string; id?: string }) {
+/** Cards que a prateleira monta por vez; chegando ao fim do trilho, monta mais. */
+const PASSO_PRATELEIRA = 12;
+const COLUNAS_TRILHO = 'auto-cols-[minmax(150px,44%)] grid-flow-col gap-4 sm:auto-cols-[200px] lg:auto-cols-[calc((100%-4*1rem)/5)] 2xl:auto-cols-[calc((100%-5*1rem)/6)]';
+
+type PropsPrateleira = { titulo: string; verTodos?: { href: string; rotulo: string }; secao?: Secao; tema?: string; id?: string };
+
+export function Prateleira({ titulo, verTodos, produtos, secao, tema, id }: PropsPrateleira & { produtos: ProdutoResumido[] }) {
   const trilho = useRef<HTMLUListElement>(null);
+  const [montados, setMontados] = useState(PASSO_PRATELEIRA);
   const rolar = (dir: 1 | -1) => trilho.current?.scrollBy({ left: dir * trilho.current.clientWidth * 0.9, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  // Faltando uma tela para o fim do trilho, entram os proximos cards.
+  const aoRolar = () => {
+    const t = trilho.current;
+    if (t && montados < produtos.length && t.scrollLeft + 2 * t.clientWidth >= t.scrollWidth) setMontados((m) => m + PASSO_PRATELEIRA);
+  };
   if (!produtos.length) return null;
   const setas = (
     <span className="flex gap-1 max-md:hidden">
@@ -27,32 +41,47 @@ export function Prateleira({ titulo, verTodos, produtos, secao, tema, id }: { ti
   );
   return (
     <Modulo id={id ?? idDe(titulo)} titulo={titulo} verTodos={verTodos} secao={secao} acoes={produtos.length > 4 ? setas : undefined}>
-      <ul ref={trilho} className="m-0 grid list-none auto-cols-[minmax(150px,44%)] grid-flow-col gap-4 overflow-x-auto p-0 pb-1 [scrollbar-width:none]! snap-x snap-mandatory sm:auto-cols-[200px] lg:auto-cols-[calc((100%-4*1rem)/5)] 2xl:auto-cols-[calc((100%-5*1rem)/6)] [&::-webkit-scrollbar]:hidden">
-        {produtos.map((p) => <li key={p.slug} className="snap-start"><CardProduto produto={p} tema={tema} /></li>)}
+      <ul ref={trilho} onScroll={aoRolar} className={`m-0 grid list-none ${COLUNAS_TRILHO} overflow-x-auto p-0 pb-1 [scrollbar-width:none]! snap-x snap-mandatory [&::-webkit-scrollbar]:hidden`}>
+        {produtos.slice(0, montados).map((p) => <li key={p.slug} className="snap-start"><CardProduto produto={p} tema={tema} /></li>)}
       </ul>
     </Modulo>
   );
 }
 
-/** Atalhos de categoria: a peca que representa cada secao + o nome, todos do mesmo tamanho. */
-/** `natal`: com a campanha ligada, cada circulo ganha um gorro de Papai Noel. */
-export function AtalhosCategoria({ itens, natal }: { itens: { secao: Secao; total: number; produto?: Produto }[]; natal?: boolean }) {
+/**
+ * Prateleira que busca as pecas por GET (`fonte`, um caminho da API) so quando chega perto
+ * da tela: a pagina nao leva a lista no HTML. `excluir` tira pecas (a da pagina, ou as que
+ * a home ja mostrou acima), `primeiroTipo` poe as do mesmo tipo na frente e `fotoPrimeiro`
+ * as com foto. Sem pecas ou com erro, some.
+ */
+export function PrateleiraRemota({ fonte, excluir = [], primeiroTipo, fotoPrimeiro, ...props }: PropsPrateleira & { fonte: string; excluir?: string[]; primeiroTipo?: string; fotoPrimeiro?: boolean }) {
+  const ancora = useRef<HTMLDivElement>(null);
+  const [perto, setPerto] = useState(false);
+  useEffect(() => {
+    const el = ancora.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e?.isIntersecting) { setPerto(true); obs.disconnect(); } }, { rootMargin: '600px 0px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  const { itens, erro } = useLista(perto ? fonte : null);
+  const produtos = useMemo(() => {
+    if (!itens) return null;
+    const fora = new Set(excluir);
+    const outros = itens.filter((p) => !fora.has(p.slug));
+    const doTipo = primeiroTipo ? [...outros.filter((p) => p.tipo === primeiroTipo), ...outros.filter((p) => p.tipo !== primeiroTipo)] : outros;
+    return fotoPrimeiro ? comImagemPrimeiro(doTipo) : doTipo;
+  }, [itens, excluir, primeiroTipo, fotoPrimeiro]);
+  if (erro || produtos?.length === 0) return null;
   return (
-    <nav aria-label="Categorias">
-      <ul className="m-0 grid list-none auto-cols-fr grid-flow-col gap-3 p-0">
-        {itens.map(({ secao, total, produto }) => (
-          <li key={secao} data-secao={secao}>
-            <Link href={`/secao/${secao}`} className="group relative flex flex-col items-center gap-2 text-center no-underline">
-              <span className="relative block aspect-square w-full max-w-36 overflow-hidden rounded-full bg-secao-suave ring-1 ring-marca-linha transition-shadow group-hover:ring-2 group-hover:ring-secao [&_.miniatura]:p-[4%]!">
-                {produto ? <ImagemProduto produto={produto} /> : <span className="grid size-full place-items-center text-apoio text-secao-forte">Em breve</span>}
-              </span>
-              {natal && <GorroNoel className="absolute -top-2 left-[calc(50%+min(18%,2.25rem))] w-[min(34%,3rem)] rotate-12" />}
-              <span className="text-item text-marca-navy group-hover:underline">{SECOES[secao].nome}</span>
-              {total > 0 && <span className="-mt-1.5 text-apoio text-marca-texto-2">{total} {total === 1 ? 'peça' : 'peças'}</span>}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <div ref={ancora}>
+      {produtos ? <Prateleira {...props} produtos={produtos} /> : (
+        <Modulo id={props.id ?? idDe(props.titulo)} titulo={props.titulo} verTodos={props.verTodos} secao={props.secao}>
+          <ul aria-busy="true" aria-label={`Carregando ${props.titulo}`} className={`m-0 grid list-none ${COLUNAS_TRILHO} overflow-hidden p-0`}>
+            {Array.from({ length: 6 }, (_, i) => <li key={i} className="aspect-square rounded-marca-md bg-secao-suave" />)}
+          </ul>
+        </Modulo>
+      )}
+    </div>
   );
 }

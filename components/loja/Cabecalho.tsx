@@ -2,8 +2,9 @@
 
 /**
  * Cabecalho da loja (padrao marketplace): faixa fina, logo, busca grande, favoritos e o
- * carrinho de orcamento com contador, e a barra de categorias (as secoes). So a linha da
- * logo e da busca fica presa no topo: no celular o cabecalho inteiro tomava 30% da tela.
+ * carrinho de orcamento com contador, e a barra curta: o botao Categorias (MenuCategorias),
+ * Natal, Todas as pecas, Nossos geradores e o Criar. So a linha da logo e da busca fica presa
+ * no topo: no celular o cabecalho inteiro tomava 30% da tela.
  */
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -13,8 +14,9 @@ import { cx } from '@/components/ui/cx';
 import { useFavoritos, useMontado, useOrcamento } from '@/features/loja/estado';
 import { CAMPANHAS, campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { ContagemNatal, EstrelaNatal, FioDeLuzes, GorroNoel, Neve } from '@/features/marketplace/Natal';
-import { SECOES, type Secao } from '@/lib/marketplace/tipos';
+import { NOSSOS_GERADORES, type Secao } from '@/lib/marketplace/tipos';
 import { IconeBusca, IconeCarrinho, IconeFavorito } from './icones';
+import { MenuCategorias, type ItemCategoria } from './MenuCategorias';
 import { MenuCriar } from './MenuCriar';
 
 function Contador({ n }: { n: number }) {
@@ -48,9 +50,10 @@ function Busca() {
   );
 }
 
-/** `todas`: a pagina e o catalogo completo (/pecas), marcado na barra. `secoes`: so as que
- *  tem peca publica (vem do servidor; o cadastro nao vai para o navegador). */
-export function CabecalhoLoja({ secaoAtual, todas, secoes }: { secaoAtual?: Secao; todas?: boolean; secoes: Secao[] }) {
+/** `todas`: a pagina e o catalogo completo (/pecas), marcado na barra; `geradores`: a de Nossos
+ *  geradores. `categorias`: so as que tem peca publica, com a quantidade (vem do servidor; o
+ *  cadastro nao vai para o navegador). */
+export function CabecalhoLoja({ secaoAtual, todas, geradores, categorias }: { secaoAtual?: Secao; todas?: boolean; geradores?: boolean; categorias: ItemCategoria[] }) {
   const montado = useMontado();
   const qtdOrcamento = useOrcamento((s) => s.itens.reduce((t, i) => t + i.quantidade, 0));
   const qtdFavoritos = useFavoritos((s) => s.slugs.length);
@@ -101,6 +104,8 @@ export function CabecalhoLoja({ secaoAtual, todas, secoes }: { secaoAtual?: Seca
         <ul className="conteiner-loja my-0 flex list-none gap-1 overflow-x-auto px-margem py-1 [scrollbar-width:none] max-md:[mask-image:linear-gradient(to_right,black_88%,transparent)] [&::-webkit-scrollbar]:hidden">
           {/* No celular a barra rola de lado: o "Criar" vem primeiro para nao sumir no fim. */}
           <li className="shrink-0 md:hidden"><MenuCriar modo="folha" /></li>
+          <li className="shrink-0 md:hidden"><MenuCategorias modo="folha" itens={categorias} atual={secaoAtual} /></li>
+          <li className="hidden shrink-0 md:block"><MenuCategorias modo="menu" itens={categorias} atual={secaoAtual} /></li>
           {campanhaAtiva('natal') && (
             <li className="shrink-0">
               <Link href={CAMPANHAS.natal.href} className="inline-flex min-h-11 items-center gap-1.5 rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-natal-vermelho no-underline hover:bg-natal-vermelho/10">
@@ -112,17 +117,9 @@ export function CabecalhoLoja({ secaoAtual, todas, secoes }: { secaoAtual?: Seca
           <li className="shrink-0">
             <Link href="/pecas" aria-current={secaoAtual === undefined && todas ? 'page' : undefined} className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-navy no-underline hover:bg-marca-gelo aria-[current=page]:bg-marca-gelo">Todas as peças</Link>
           </li>
-          {secoes.map((s) => (
-            <li key={s} data-secao={s} className="shrink-0">
-              <Link
-                href={`/secao/${s}`}
-                aria-current={s === secaoAtual ? 'page' : undefined}
-                className="inline-flex min-h-11 items-center gap-2 rounded-marca-sm px-3 py-2 text-item whitespace-nowrap text-marca-texto no-underline before:size-2 before:rounded-full before:bg-secao before:content-[''] hover:bg-secao-suave hover:text-secao-forte aria-[current=page]:bg-secao-suave aria-[current=page]:font-semibold aria-[current=page]:text-secao-forte aria-[current=page]:shadow-[inset_0_-2px_0_var(--secao)]"
-              >
-                {SECOES[s].nome}
-              </Link>
-            </li>
-          ))}
+          <li className="shrink-0">
+            <Link href={NOSSOS_GERADORES.href} aria-current={geradores ? 'page' : undefined} className="inline-flex min-h-11 items-center rounded-marca-sm px-3 py-2 text-item font-semibold whitespace-nowrap text-marca-azul no-underline hover:bg-marca-gelo aria-[current=page]:bg-marca-gelo">{NOSSOS_GERADORES.nome}</Link>
+          </li>
           {/* No computador o "Criar" fecha a barra; no celular ele abre a barra (acima). */}
           <li className="ml-auto hidden shrink-0 md:block"><MenuCriar modo="menu" /></li>
         </ul>

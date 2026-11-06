@@ -9,8 +9,8 @@ import { cx } from '@/components/ui/cx';
 import { EstrelaNatal } from '@/features/marketplace/Natal';
 import { campanhaAtiva } from '@/lib/marketplace/campanhas';
 import { CONTATO, MENSAGENS, identificacaoEmpresa, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
-import { secoesComPecas } from '@/lib/marketplace/consultas';
-import { SECOES, type Secao } from '@/lib/marketplace/tipos';
+import { secoesComContagem, secoesComPecas } from '@/lib/marketplace/consultas';
+import { NOSSOS_GERADORES, SECOES, hrefDaSecao, type Secao } from '@/lib/marketplace/tipos';
 import { CabecalhoLoja } from './Cabecalho';
 
 const LINK_RODAPE = 'text-apoio text-marca-texto-2 no-underline hover:text-marca-azul hover:underline';
@@ -23,7 +23,10 @@ export function RodapeLoja() {
       <div className="conteiner-loja grid grid-cols-2 gap-8 px-margem md:grid-cols-4">
         <div>
           <h2 className="mt-0 mb-3 text-item font-semibold">Seções</h2>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">{secoesComPecas().map((s) => <li key={s}><Link href={`/secao/${s}`} className={LINK_RODAPE}>{SECOES[s].nome}</Link></li>)}</ul>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            <li><Link href={NOSSOS_GERADORES.href} className={LINK_RODAPE}>{NOSSOS_GERADORES.nome}</Link></li>
+            {secoesComPecas().map((s) => <li key={s}><Link href={hrefDaSecao(s)} className={LINK_RODAPE}>{SECOES[s].nome}</Link></li>)}
+          </ul>
         </div>
         <div>
           <h2 className="mt-0 mb-3 text-item font-semibold">Criar</h2>
@@ -75,12 +78,12 @@ export function RodapeLoja() {
 }
 
 /** `cru`: o conteudo cuida do proprio espacamento (paginas que nao sao da loja, como o catalogo). */
-export function PaginaLoja({ secaoAtual, todas, children, className, cru }: { secaoAtual?: Secao; todas?: boolean; children: ReactNode; className?: string; cru?: boolean }) {
+export function PaginaLoja({ secaoAtual, todas, geradores, children, className, cru }: { secaoAtual?: Secao; todas?: boolean; geradores?: boolean; children: ReactNode; className?: string; cru?: boolean }) {
   return (
     // scheme-light: o :root do app e escuro (editor); sem isto checkbox e select da loja saem pretos.
     <div data-secao={secaoAtual} className={cx(ESCOPO_MARCA, 'flex min-h-screen flex-col scheme-light')}>
       <a className="absolute -left-[9999px] top-2 z-50 rounded-md bg-marca-navy px-3.5 py-2.5 font-bold text-white focus:left-2" href="#conteudo">Pular para o conteúdo</a>
-      <CabecalhoLoja secaoAtual={secaoAtual} todas={todas} secoes={secoesComPecas()} />
+      <CabecalhoLoja secaoAtual={secaoAtual} todas={todas} geradores={geradores} categorias={secoesComContagem().filter((c) => c.total > 0)} />
       <main id="conteudo" className={cru ? className : cx('conteiner-loja flex min-w-0 flex-1 flex-col gap-8 px-margem pt-6', className)}>{children}</main>
       <RodapeLoja />
     </div>

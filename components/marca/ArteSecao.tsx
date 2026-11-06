@@ -14,7 +14,7 @@ const sombra = 'fill-secao-forte opacity-[0.12]';
 
 function Desenho({ secao }: { secao: Secao }) {
   switch (secao) {
-    case 'casa':
+    case 'decoracao':
       return (
         <g>
           <ellipse cx="120" cy="164" rx="70" ry="8" className={sombra} />
@@ -30,20 +30,80 @@ function Desenho({ secao }: { secao: Secao }) {
           <circle cx="172" cy="118" r="7" className={c1} opacity=".6" />
         </g>
       );
-    case 'colecionaveis':
+    case 'natal':
       return (
         <g>
-          <ellipse cx="120" cy="168" rx="72" ry="7" className={sombra} />
-          <path d="M120 22 L170 160 H70 Z" className={c2} opacity=".18" />
-          {/* pedestal em degraus */}
-          <rect x="70" y="146" width="100" height="16" rx="3" className={tinta} />
-          <rect x="82" y="132" width="76" height="16" rx="3" className={c1} />
-          {/* peca de colecao: gema facetada */}
-          <path d="M120 60 L148 84 L120 128 L92 84 Z" className={c1} />
-          <path d="M120 60 L148 84 H92 Z" className={c2} />
-          <path d="M120 60 L106 84 L120 128 Z" className={branco} opacity=".25" />
-          <circle cx="160" cy="58" r="4" className={c2} />
-          <circle cx="78" cy="70" r="3" className={c2} />
+          <ellipse cx="120" cy="166" rx="66" ry="7" className={sombra} />
+          {/* arvore em camadas com estrela */}
+          <path d="M120 40 L160 96 H80 Z" className={c1} />
+          <path d="M120 70 L170 128 H70 Z" className={c1} />
+          <path d="M120 100 L178 158 H62 Z" className={c2} />
+          <rect x="112" y="156" width="16" height="10" className={tinta} />
+          <path d="M120 22 l5 11 l12 1 l-9 8 l3 12 l-11 -7 l-11 7 l3 -12 l-9 -8 l12 -1 z" className={branco} />
+          {[[100, 112], [140, 120], [118, 140], [92, 146], [150, 148]].map(([x, y]) => <circle key={`${x}${y}`} cx={x} cy={y} r="5" className={branco} opacity=".9" />)}
+        </g>
+      );
+    case 'cozinha':
+      return (
+        <g>
+          <ellipse cx="120" cy="166" rx="72" ry="7" className={sombra} />
+          {/* caneca com vapor */}
+          <rect x="62" y="96" width="62" height="64" rx="10" className={c1} />
+          <path d="M124 110 h12 a14 14 0 0 1 0 28 h-12" fill="none" className="stroke-secao" strokeWidth="9" />
+          <path d="M80 86 c-8 -12 8 -18 0 -30 M100 86 c-8 -12 8 -18 0 -30" fill="none" className="stroke-secao-forte" strokeOpacity=".35" strokeWidth="4" strokeLinecap="round" />
+          {/* colher e espatula num suporte */}
+          <rect x="150" y="112" width="40" height="48" rx="6" className={c2} />
+          <path d="M162 112 V58" className="stroke-secao-forte" strokeWidth="5" strokeLinecap="round" />
+          <ellipse cx="162" cy="52" rx="8" ry="11" className={tinta} />
+          <path d="M178 112 V64" className="stroke-secao-forte" strokeWidth="5" strokeLinecap="round" />
+          <rect x="170" y="44" width="16" height="22" rx="3" className={tinta} />
+        </g>
+      );
+    case 'organizacao':
+      return (
+        <g>
+          <ellipse cx="120" cy="166" rx="74" ry="7" className={sombra} />
+          {/* gaveteiro com divisorias */}
+          <rect x="58" y="70" width="124" height="90" rx="8" className={c1} />
+          <rect x="66" y="80" width="108" height="34" rx="4" className={branco} opacity=".9" />
+          <rect x="66" y="118" width="108" height="34" rx="4" className={branco} opacity=".9" />
+          <path d="M102 80 V114 M138 80 V114 M120 118 V152" className="stroke-secao" strokeWidth="4" />
+          <rect x="112" y="96" width="16" height="5" rx="2" className={tinta} />
+          <rect x="112" y="134" width="16" height="5" rx="2" className={tinta} />
+          {/* potes em cima */}
+          <rect x="72" y="46" width="26" height="24" rx="4" className={c2} />
+          <rect x="106" y="40" width="22" height="30" rx="4" className={c2} opacity=".8" />
+          <rect x="136" y="50" width="30" height="20" rx="4" className={c2} />
+        </g>
+      );
+    case 'escritorio':
+      return (
+        <g>
+          <ellipse cx="120" cy="166" rx="74" ry="7" className={sombra} />
+          {/* suporte de celular */}
+          <path d="M60 160 L84 92 H100 L86 160 Z" className={c2} />
+          <rect x="74" y="54" width="40" height="72" rx="7" transform="rotate(-14 94 90)" className={tinta} />
+          <rect x="79" y="60" width="30" height="58" rx="3" transform="rotate(-14 94 90)" className={c1} opacity=".55" />
+          {/* controle de video game */}
+          <path d="M130 112 c0 -16 10 -22 24 -22 h22 c14 0 24 6 24 22 c0 22 -6 40 -18 40 c-10 0 -12 -14 -22 -14 c-10 0 -12 14 -22 14 c-12 0 -18 -18 -18 -40 Z" className={c1} />
+          <path d="M150 108 v16 M142 116 h16" className="stroke-secao-forte" strokeWidth="5" strokeLinecap="round" />
+          <circle cx="182" cy="110" r="5" className={branco} />
+          <circle cx="192" cy="120" r="5" className={branco} />
+        </g>
+      );
+    case 'infantil':
+      return (
+        <g>
+          <ellipse cx="120" cy="166" rx="66" ry="7" className={sombra} />
+          {/* mobile de bebe: lua, nuvem e estrelas */}
+          <path d="M60 34 H180" className="stroke-secao-forte" strokeOpacity=".4" strokeWidth="4" strokeLinecap="round" />
+          <path d="M80 34 V70 M120 34 V96 M160 34 V62" className="stroke-secao-forte" strokeOpacity=".3" strokeWidth="2" />
+          <path d="M70 70 a22 22 0 1 0 22 26 a16 16 0 1 1 -22 -26 Z" className={c1} />
+          <path d="M96 118 a16 16 0 0 1 24 -14 a18 18 0 0 1 32 8 a14 14 0 0 1 -2 28 h-50 a12 12 0 0 1 -4 -22 Z" className={branco} />
+          <path d="M160 62 l5 10 l11 1 l-8 7 l3 11 l-11 -6 l-10 6 l3 -11 l-8 -7 l11 -1 z" className={c2} />
+          {/* bloquinho */}
+          <rect x="72" y="134" width="30" height="30" rx="5" className={c2} />
+          <rect x="146" y="140" width="24" height="24" rx="5" className={c1} />
         </g>
       );
     case 'empresa':

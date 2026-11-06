@@ -1,14 +1,18 @@
 /**
- * Regras da loja: o que e oculto nunca aparece, terceiro sem licenca e oculto, nada de
+ * Regras da loja: o que e oculto nunca aparece (a licenca e informativa), terceiro tem credito, nada de
  * preco antes da validacao, links de personalizar existem e o WhatsApp so com numero.
  *   npx tsx scripts/verificar-marketplace.mts
  */
 import fs from 'fs';
 import { destinoDoMoldeAntigo, editoresLivres, moldes } from '../features/catalogo/catalogo';
-import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, destaquesPorSecao, geradorDe, pecaDaSecao, podeAparecer, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
-import { FOTOS } from '../lib/marketplace/fotos';
+import { MENSAGENS, ORDEM_SECOES, PRODUTOS, SECOES, buscar, geradorDe, podeAparecer, linkWhatsapp, porSecao, porSlug, produtosPublicos, secoesComContagem, textoDoPreco, urlDaMidia, type Produto } from '../lib/marketplace/index';
+import { CAPAS, FOTOS } from '../lib/marketplace/fotos';
 import { textoResposta } from '../lib/marketplace/contato';
-import { comImagemPrimeiro, secoesComPecas, semRepetir, temImagem } from '../lib/marketplace/consultas';
+import { comImagemPrimeiro, geradores, secoesComPecas, semRepetir, temImagem } from '../lib/marketplace/consultas';
+import { maisRecentes, ordenarLoja } from '../lib/marketplace/ordem';
+import { paraCliente } from '../lib/marketplace/api/contrato';
+import { NOSSOS_GERADORES, SECOES_ANTIGAS, hrefDaSecao } from '../lib/marketplace/tipos';
+import { ENDPOINTS, POR_PAGINA, paginaInicial, paraResumo, respostaDaLista } from '../lib/marketplace/api/contrato';
 import { ehInterno } from '../lib/ambiente';
 import { BANNERS, COMO_FUNCIONA, PERGUNTAS, VANTAGENS } from '../lib/marketplace/loja';
 import { CASA, VITRINE_CASA } from '../lib/marketplace/universos';
@@ -18,7 +22,7 @@ import { sincronizarBanco } from '../lib/marketplace/banco-sincronizar';
 import { hrefDoGerador } from '../lib/marketplace/formato';
 import { FLAGS } from '../lib/flags';
 import { FERRAMENTAS } from '../lib/marketplace/indexacao';
-import { PRESETS_NATAL, SLUGS_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva, diasAteONatal, pecaDeNatal } from '../lib/marketplace/campanhas';
+import { FOTOS_TOPO_NATAL, PRESETS_NATAL, SLUGS_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva, diasAteONatal, pecaDeNatal } from '../lib/marketplace/campanhas';
 import { receitaPorId } from '../lib/gerador/receitas';
 import { FICHAS } from '../lib/gerador/receitas/fichas';
 
@@ -38,30 +42,47 @@ ok('todo produto tem nome, resumo e descricao', PRODUTOS.every((p) => p.nome.tri
 
 const publicos = produtosPublicos();
 ok('oculto nunca e publico', publicos.every((p) => p.visibilidade === 'publico'));
-const terceirosSemLicenca = PRODUTOS.filter((p) => p.origem === 'terceiros' && p.licenca !== 'comercial-ok');
-ok('terceiro sem licenca confirmada esta oculto e fora da vitrine', terceirosSemLicenca.every((p) => p.visibilidade === 'oculto' && !publicos.includes(p)), terceirosSemLicenca.filter((p) => publicos.includes(p)).map((p) => p.slug).join(', '));
-ok('terceiro publico so com licenca comercial confirmada (mesmo se marcado publico)', produtosPublicos([{ ...terceirosSemLicenca[0]!, visibilidade: 'publico' }]).length === 0);
-ok('porSlug nao acha produto oculto', terceirosSemLicenca.every((p) => !porSlug(p.slug)));
+const ocultos = PRODUTOS.filter((p) => p.visibilidade === 'oculto');
+const terceiroOculto = ocultos.find((p) => p.origem === 'terceiros' && !p.campanha)!;
+ok('oculto fica fora da vitrine e do porSlug, de qualquer origem', !!terceiroOculto && ocultos.every((p) => !publicos.includes(p) && !porSlug(p.slug)), ocultos.filter((p) => publicos.includes(p)).map((p) => p.slug).join(', '));
+ok('o que aparece e o publico, qualquer origem ou licenca (licenca so informa)', produtosPublicos([terceiroOculto]).length === 0 && produtosPublicos([{ ...terceiroOculto, visibilidade: 'publico', licenca: 'nao-comercial' }]).length === 1);
+const comCredito = PRODUTOS.filter((p) => p.credito);
+const creditoRuim = comCredito.filter((p) => p.origem !== 'terceiros' || !p.credito!.autor.trim() || !/^https:\/\/makerworld\.com\//.test(p.credito!.url) || !/^https:\/\/makerworld\.com\//.test(p.credito!.autorUrl) || (publicos.includes(p) && !p.midias.length));
+ok('credito MakerWorld: so em terceiro, com autor, links e foto quando publico', comCredito.length > 0 && !creditoRuim.length, creditoRuim.map((p) => p.slug).join(', '));
+ok('credito MakerWorld: um produto por modelo', new Set(comCredito.map((p) => p.credito!.url)).size === comCredito.length);
 ok('busca nao devolve oculto', buscar('polvo').length === 0 && buscar('fidget').length === 0);
-ok('as 5 secoes existem, na ordem da loja', ORDEM_SECOES.join() === 'casa,colecionaveis,empresa,presentes,sensoriais');
-ok('Casa, Colecionaveis, Empresa e Presentes tem pecas publicas', secoesComContagem().filter((c) => c.secao !== 'sensoriais').every((c) => c.total > 0), secoesComContagem().map((c) => `${c.secao}=${c.total}`).join(' '));
-ok('Sensoriais: todos de terceiros, ocultos ate a licenca (0 publicos)', porSecao('sensoriais').length === 0 && PRODUTOS.filter((p) => p.secao === 'sensoriais').every((p) => p.origem === 'terceiros' && p.visibilidade === 'oculto'));
-ok('porSecao e destaques so devolvem publicos', ORDEM_SECOES.every((s) => porSecao(s).every((p) => publicos.includes(p))) && destaquesPorSecao(4).every((d) => d.produtos.length <= 4 && d.produtos.every((p) => publicos.includes(p))));
-ok('destaques vem primeiro na vitrine da secao', destaquesPorSecao(4).every((d) => { const i = d.produtos.findIndex((p) => !p.destaque); return i < 0 || d.produtos.slice(i).every((p) => !p.destaque); }));
+ok('as categorias do menu existem, na ordem da loja (sem Casa e Colecionaveis)', ORDEM_SECOES.join() === 'natal,decoracao,cozinha,organizacao,escritorio,infantil,presentes,empresa,sensoriais');
+ok('toda categoria, menos Sensoriais, tem pecas publicas', secoesComContagem().filter((c) => c.secao !== 'sensoriais').every((c) => c.total > 0), secoesComContagem().map((c) => `${c.secao}=${c.total}`).join(' '));
+ok('categoria definida em docs/categorias.md (nome de cada uma)', ORDEM_SECOES.every((s) => fs.readFileSync('docs/categorias.md', 'utf8').includes(`(\`${s}\`)`) || s === 'sensoriais'));
+ok('Natal e so com campanha natal, e vice-versa', PRODUTOS.every((p) => (p.secao === 'natal') === (p.campanha === 'natal')));
+ok('enderecos de categoria: Natal em /natal, o resto em /secao; antigos encaminham', hrefDaSecao('natal') === '/natal' && hrefDaSecao('decoracao') === '/secao/decoracao' && SECOES_ANTIGAS.casa === '/secao/decoracao' && SECOES_ANTIGAS.colecionaveis === '/pecas');
+ok('Nossos geradores: todas as publicas com gerador, e cada uma tambem na sua categoria', geradores().length === publicos.filter((p) => geradorDe(p)).length && geradores().every((p) => ORDEM_SECOES.includes(p.secao)) && NOSSOS_GERADORES.href === '/geradores');
+const banco = (p: Produto) => PRODUTOS.indexOf(p);
+const ordemOk = publicos.every((p, i) => i === 0 || (() => { const a = publicos[i - 1]!; return Number(!!a.destaque) > Number(!!p.destaque) || (!!a.destaque === !!p.destaque && (a.adicionadoEm > p.adicionadoEm || (a.adicionadoEm === p.adicionadoEm && banco(a) > banco(p)))); })());
+ok('ordem da loja: destaques, depois as mais novas, no mesmo dia a ultima cadastrada', ordemOk);
+ok('"Mais recentes": so pela data, mantendo a ordem da loja no empate', (() => { const r = maisRecentes(publicos); return r.every((p, i) => i === 0 || r[i - 1]!.adicionadoEm >= p.adicionadoEm); })() && JSON.stringify(ordenarLoja([{ slug: 'a', destaque: false, adicionadoEm: '2026-01-01' }, { slug: 'b', destaque: true, adicionadoEm: '2025-01-01' }, { slug: 'c', destaque: false, adicionadoEm: '2026-01-01' }]).map((p) => p.slug)) === '["b","c","a"]');
+ok('todo produto tem a data de entrada na loja', PRODUTOS.every((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.adicionadoEm)));
+ok('pagina do produto nao leva credito, ref nem licenca ao navegador', PRODUTOS.filter((p) => p.credito).every((p) => { const c = paraCliente(p) as Record<string, unknown>; return !('credito' in c) && !('ref' in c) && !('licenca' in c) && !('jaImpresso' in c); }) && !/credito/.test(fs.readFileSync('app/produto/[slug]/page.tsx', 'utf8')) && /produto=\{paraCliente\(p\)\}/.test(fs.readFileSync('app/produto/[slug]/page.tsx', 'utf8')));
+ok('Sensoriais: todos de terceiros, ocultos (0 publicos)', porSecao('sensoriais').length === 0 && PRODUTOS.filter((p) => p.secao === 'sensoriais').every((p) => p.origem === 'terceiros' && p.visibilidade === 'oculto'));
+ok('porSecao so devolve publicos, destaques primeiro', ORDEM_SECOES.every((s) => { const ps = porSecao(s); const i = ps.findIndex((p) => !p.destaque); return ps.every((p) => publicos.includes(p)) && (i < 0 || ps.slice(i).every((p) => !p.destaque)); }));
 
 ok('nenhum preco publicado antes da validacao', PRODUTOS.every((p) => p.preco.status === 'validacao'));
 ok('texto do preco em validacao', publicos.every((p) => textoDoPreco(p) === 'Preço em validação'));
-ok('sem fotos de terceiros e sem midia faltando', PRODUTOS.every((p) => p.midias.every((m) => fs.existsSync(`public/${m.replace(/^\//, '')}`))) && terceirosSemLicenca.every((p) => !p.midias.length));
+const midiaFaltando = PRODUTOS.flatMap((p) => [...p.midias, ...(p.capa ? [p.capa] : [])].filter((m) => !fs.existsSync(`public/${m.replace(/^\//, '')}`)).map((m) => `${p.slug}: ${m}`));
+ok('toda foto e capa do card existe no projeto (public/)', !midiaFaltando.length, midiaFaltando.slice(0, 5).join(', '));
+ok('oculto sem foto', ocultos.every((p) => !p.midias.length), ocultos.filter((p) => p.midias.length).map((p) => p.slug).join(', '));
 ok('fotos so de produto publico (pasta public/marketplace/<slug>)', Object.keys(FOTOS).every((slug) => publicos.some((p) => p.slug === slug)), Object.keys(FOTOS).filter((slug) => !publicos.some((p) => p.slug === slug)).join(', '));
 ok('url da foto com o prefixo do site', urlDaMidia('marketplace/x/a.jpg') === `${process.env.NEXT_PUBLIC_BASE ?? ''}/marketplace/x/a.jpg`);
 ok('url da foto codifica nome com espacos', urlDaMidia('marketplace/x/foto 1.jpg') === `${process.env.NEXT_PUBLIC_BASE ?? ''}/marketplace/x/foto%201.jpg`);
 const pastaFotos = 'public/marketplace';
 const entradasFotos = fs.existsSync(pastaFotos) ? fs.readdirSync(pastaFotos, { withFileTypes: true }) : [];
-ok('pasta publica de fotos nao inclui itens ocultos ou desconhecidos', entradasFotos.every((entrada) =>
+const soImagens = (dir: string) => fs.readdirSync(dir, { withFileTypes: true }).every((foto) => foto.isFile() && /\.(jpe?g|png|webp|avif)$/i.test(foto.name));
+ok('pasta publica de fotos nao inclui itens ocultos ou desconhecidos (so imagens e a pasta card/ da capa)', entradasFotos.every((entrada) =>
   (entrada.name === '.gitkeep' && entrada.isFile()) ||
   (entrada.isDirectory() && publicos.some((p) => p.slug === entrada.name) &&
-    fs.readdirSync(`${pastaFotos}/${entrada.name}`, { withFileTypes: true }).every((foto) => foto.isFile() && /\.(jpe?g|png|webp|avif)$/i.test(foto.name)))
+    fs.readdirSync(`${pastaFotos}/${entrada.name}`, { withFileTypes: true }).every((foto) => (foto.isFile() && /\.(jpe?g|png|webp|avif)$/i.test(foto.name)) || (foto.isDirectory() && foto.name === 'card' && soImagens(`${pastaFotos}/${entrada.name}/card`))))
 ));
+ok('capa de card so de produto com foto, dentro da pasta dele', Object.entries(CAPAS).every(([slug, c]) => FOTOS[slug]?.length && c.startsWith(`marketplace/${slug}/card/`)) && PRODUTOS.every((p) => !p.capa || p.capa === CAPAS[p.slug]));
 
 const rotas = new Set(['/editor', '/criar']);
 const linkValido = (p: Produto) => {
@@ -92,6 +113,11 @@ ok('moldes especializados e alias de chaveiro mantêm o destino correto', destin
 ok('nenhum link do site ainda aponta para rotas antigas de modelo', !PRODUTOS.some((p) => /^(?:\/moldes\/|\/design\/)/.test(p.personalizar?.href ?? '')) && !/(?:\/moldes\/|\/design\/)/.test(fs.readFileSync('components/catalogo/CatalogoScarprint.tsx', 'utf8') + fs.readFileSync('features/catalogo/catalogo.ts', 'utf8')));
 const varrer = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? varrer(`${dir}/${e.name}`) : /\.(tsx?|mts|json|css)$/.test(e.name) ? [`${dir}/${e.name}`] : []);
 const citaPlacas = ['app', 'components', 'features', 'lib'].flatMap(varrer).filter((arq) => /\/placas\b/.test(fs.readFileSync(arq, 'utf8')));
+// Componente de navegador nao importa o cadastro (nem a moldura da loja, que consulta o banco): senao o banco inteiro vai no JS.
+const clientes = ['app', 'components', 'features'].flatMap(varrer).filter((arq) => /\.tsx?$/.test(arq) && /^['"]use client['"]/.test(fs.readFileSync(arq, 'utf8').trimStart()));
+const levaCadastro = clientes.filter((arq) => /from '(?:@\/lib\/marketplace(?:\/(?:index|produtos|consultas|banco|indexacao|letras))?|@\/components\/loja\/Estrutura|@\/components\/marketplace\/Loja)'/.test(fs.readFileSync(arq, 'utf8')));
+ok('nenhum componente de navegador importa o cadastro', clientes.length > 0 && !levaCadastro.length, levaCadastro.join(', '));
+ok('o site nao fala do MakerWorld (paginas e componentes)', !['app', 'components', 'features'].flatMap(varrer).some((arq) => /makerworld/i.test(fs.readFileSync(arq, 'utf8'))), ['app', 'components', 'features'].flatMap(varrer).filter((arq) => /makerworld/i.test(fs.readFileSync(arq, 'utf8'))).join(', '));
 const registroPlacas = PRODUTOS.find((p) => p.slug === 'placa-personalizada');
 ok('rota /placas nao existe e nada do site aponta para ela', !fs.existsSync('app/placas') && !fs.existsSync('features/placas') && citaPlacas.length === 0 && !PRODUTOS.some((p) => p.slug !== 'placa-personalizada' && (p.personalizar?.href ?? '').startsWith('/placas')) && registroPlacas?.visibilidade === 'oculto' && !FERRAMENTAS.includes('/placas'), citaPlacas.join(', '));
 const produtoTeste = PRODUTOS[0]!;
@@ -104,7 +130,7 @@ const colunas = Object.keys(linhasBanco[0]!).sort().join();
 ok('banco: todo registro tem as mesmas colunas', linhasBanco.every((r) => Object.keys(r).sort().join() === colunas));
 ok('banco: PRODUTOS sai do banco, um por registro', PRODUTOS.length === linhasBanco.length && PRODUTOS.every((p, i) => p.slug === linhasBanco[i]!.slug));
 const recusa = (mudanca: Partial<RegistroProduto>, campo: string) => { try { lerBanco([{ ...linhasBanco[0]!, ...mudanca }]); return false; } catch (e) { return (e as Error).message.includes(campo); } };
-ok('banco: registro invalido para o build com o campo', recusa({ secao: 'brinquedos' }, 'secao') && recusa({ tags: ['gerador'], gerador: null }, 'gerador') && recusa({ preco: { status: 'definido', valor: -1 } }, 'preco') && recusa({ tags: ['editor'], gerador: null, personalizar: null }, 'personalizar'));
+ok('banco: registro invalido para o build com o campo', recusa({ secao: 'brinquedos' }, 'secao') && recusa({ tags: ['gerador'], gerador: null }, 'gerador') && recusa({ preco: { status: 'definido', valor: -1 } }, 'preco') && recusa({ tags: ['editor'], gerador: null, personalizar: null }, 'personalizar') && recusa({ credito: { autor: 'x', autorUrl: 'https://makerworld.com/@x', titulo: 'x', url: 'https://exemplo.com/x', plataforma: 'MakerWorld', licencaOriginal: 'x' } }, 'credito'));
 ok('banco: slug repetido para o build', (() => { try { lerBanco([linhasBanco[0]!, linhasBanco[0]!]); return false; } catch (e) { return /repetido/.test((e as Error).message); } })());
 ok('banco: sincronizar de novo nao muda nada', JSON.stringify(sincronizarBanco(linhasBanco, FICHAS)) === JSON.stringify(linhasBanco));
 const semFicha = sincronizarBanco(linhasBanco.filter((r) => r.gerador !== 'chaveiro-retangular'), FICHAS);
@@ -125,7 +151,16 @@ ok('pecas de ACM fora da loja: o orcamento delas sai do editor', ['letreiro-letr
 const cabecalhoLoja = fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8');
 const menuCriar = fs.readFileSync('components/loja/MenuCriar.tsx', 'utf8');
 ok('menu "Criar": Personalize em 3D (/criar) e Letreiro para parede (/editor), um item só', /href: '\/criar', titulo: 'Personalize em 3D'/.test(menuCriar) && /href: '\/editor', titulo: 'Letreiro para parede'/.test(menuCriar) && !/Monte seu letreiro|Monte a sua peça/.test(cabecalhoLoja));
-ok('menu "Criar" vem primeiro no celular e por último no computador', cabecalhoLoja.indexOf('<MenuCriar modo="folha"') < cabecalhoLoja.indexOf('campanhaAtiva(\'natal\') && (') && cabecalhoLoja.indexOf('<MenuCriar modo="menu"') > cabecalhoLoja.indexOf('secoes.map('));
+ok('menu "Criar" vem primeiro no celular e por último no computador', cabecalhoLoja.indexOf('<MenuCriar modo="folha"') < cabecalhoLoja.indexOf('campanhaAtiva(\'natal\') && (') && cabecalhoLoja.indexOf('<MenuCriar modo="menu"') > cabecalhoLoja.indexOf('NOSSOS_GERADORES.href'));
+// Barra do topo enxuta: Categorias (menu), Natal, Nossos geradores, Todas as pecas e Criar; as categorias ficam dentro do menu.
+const menuCategorias = fs.readFileSync('components/loja/MenuCategorias.tsx', 'utf8');
+ok('barra do topo: so Categorias, Natal, Todas as peças, Nossos geradores e Criar (nessa ordem)', /<MenuCategorias modo="menu"/.test(cabecalhoLoja) && /<MenuCategorias modo="folha"/.test(cabecalhoLoja) && !/SECOES\[/.test(cabecalhoLoja) && cabecalhoLoja.indexOf('<MenuCategorias modo="menu"') < cabecalhoLoja.indexOf('href="/pecas"') && cabecalhoLoja.indexOf('href="/pecas"') < cabecalhoLoja.indexOf('NOSSOS_GERADORES.href') && cabecalhoLoja.indexOf('NOSSOS_GERADORES.href') < cabecalhoLoja.indexOf('<MenuCriar modo="menu"'));
+ok('menu Categorias: toda categoria com peça pública, com a quantidade, e "Ver todas as peças"', /secoesComContagem\(\)\.filter\(\(c\) => c\.total > 0\)/.test(fs.readFileSync('components/loja/Estrutura.tsx', 'utf8')) && /hrefDaSecao\(secao\)/.test(menuCategorias) && /Ver todas as peças/.test(menuCategorias));
+// Filtros curtos: no maximo 6 chips a vista, o resto em "Mais filtros"; Todas as pecas filtra por categoria.
+const listagemFonte = fs.readFileSync('components/loja/Listagem.tsx', 'utf8');
+ok('filtros: no máximo 6 chips à vista e "Mais filtros" com o resto', /const CHIPS_A_VISTA = 6;/.test(listagemFonte) && /aVista\.map\(/.test(listagemFonte) && /Mais filtros/.test(listagemFonte));
+ok('Todas as peças filtra por categoria', /paginaInicial\(produtosPublicos\(\), 'secao'\)/.test(fs.readFileSync('app/pecas/page.tsx', 'utf8')));
+ok('sem "Já feito para clientes" no site', !['app', 'components', 'features'].flatMap(varrer).some((arq) => /Já feitos? para clientes/.test(fs.readFileSync(arq, 'utf8'))));
 const barraTopo = fs.readFileSync('components/casca/BarraTopo.tsx', 'utf8');
 ok('flag desligada: /editor sem aba, atalho 3 e valor de orçamento', FLAGS.orcamentoNoEditor === false && /\.\.\.\(FLAGS\.orcamentoNoEditor \? \[\{ valor: 'orcamento'/.test(barraTopo) && /\{FLAGS\.orcamentoNoEditor && o && interno && \(/.test(barraTopo) && /FLAGS\.orcamentoNoEditor \? \{ '3': 'orcamento'/.test(fs.readFileSync('components/casca/Atalhos.tsx', 'utf8')));
 ok('com o orçamento do editor desligado, o menu Criar não promete orçamento lá', FLAGS.orcamentoNoEditor || !/orçamento sai do editor/i.test(menuCriar));
@@ -141,7 +176,7 @@ ok('resumo do gerador: imagem vira aviso e nao vai nos valores do orcamento', /i
 ok('resumo do gerador sem mudanca diz que e o padrao', resumoDoModelo('floco-neve', {}) === 'Configuração padrão do modelo');
 
 ok('busca ignora acento e maiuscula', buscar('PLACA DE AVALIACAO').some((p) => p.slug === 'placa-avaliacao-google'));
-ok('busca por secao', buscar('', 'casa').every((p) => p.secao === 'casa') && buscar('', 'casa').length > 0);
+ok('busca por secao', buscar('', 'decoracao').every((p) => p.secao === 'decoracao') && buscar('', 'decoracao').length > 0);
 
 // Cor filha: cada secao tem os tokens completos e --secao-forte legivel (AA) sobre branco.
 const css = fs.readFileSync('styles/marca.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -159,13 +194,14 @@ for (const s of ORDEM_SECOES) {
   const acao = tok('secao-acao'), acaoTexto = tok('secao-acao-texto');
   if (acao && acaoTexto) ok(`universo ${SECOES[s].universo}: botao do palco legivel`, contraste(acao, acaoTexto) >= 4.5, `${contraste(acao, acaoTexto).toFixed(1)}:1`);
 }
-const principaisAprovadas = { casa: '#c8b79e', colecionaveis: '#315c56', empresa: '#375a6d', presentes: '#c68f89', sensoriais: '#91a58a' };
+// Decoracao herda a da antiga Casa; natal, cozinha, organizacao, escritorio e infantil: propostas de 2026-11-06, aguardando aprovacao.
+const principaisAprovadas: Record<string, string> = { decoracao: '#c8b79e', empresa: '#375a6d', presentes: '#c68f89', sensoriais: '#91a58a', natal: '#1f6b45', cozinha: '#c98b5e', organizacao: '#8c86b5', escritorio: '#b08d3c', infantil: '#8fb3cf' };
 const principais = ORDEM_SECOES.map((s) => ({ s, hex: css.match(new RegExp(String.raw`\[data-secao='${s}'\]\s*\{[^}]*--secao:\s*(#[0-9a-fA-F]{6})`))?.[1]?.toLowerCase() }));
 ok('cores principais respeitam a paleta aprovada', principais.every(({ s, hex }) => hex === principaisAprovadas[s]));
 ok('secoes identificadas por nomes distintos, nao somente cor', new Set(ORDEM_SECOES.map((s) => SECOES[s].nome.trim())).size === ORDEM_SECOES.length && ORDEM_SECOES.every((s) => SECOES[s].nome.trim().length > 0));
-const tokenCasa = (bloco: string, n: string) => css.match(new RegExp(String.raw`\[data-${bloco}='casa'\]\s*\{[^}]*--${n}:\s*(#[0-9a-fA-F]{6})`))?.[1]?.toLowerCase();
-ok('cores das pecas da Casa = tokens da secao', CASA.cobre === tokenCasa('secao', 'secao') && CASA.cafe === tokenCasa('secao', 'secao-2') && CASA.linho === tokenCasa('secao', 'secao-suave') && CASA.creme === tokenCasa('universo', 'secao-superficie'));
-ok('mosaico da Casa so com pecas publicas da secao', VITRINE_CASA.every((slug) => porSecao('casa').some((p) => p.slug === slug)));
+const tokenCasa = (bloco: string, n: string) => css.match(new RegExp(String.raw`\[data-${bloco}='decoracao'\]\s*\{[^}]*--${n}:\s*(#[0-9a-fA-F]{6})`))?.[1]?.toLowerCase();
+ok('cores das pecas de Decoracao (a antiga Casa) = tokens da secao', CASA.cobre === tokenCasa('secao', 'secao') && CASA.cafe === tokenCasa('secao', 'secao-2') && CASA.linho === tokenCasa('secao', 'secao-suave') && CASA.creme === tokenCasa('universo', 'secao-superficie'));
+ok('mosaico de Decoracao so com pecas publicas da secao', VITRINE_CASA.every((slug) => porSecao('decoracao').some((p) => p.slug === slug)));
 ok('a cor da marca nao muda dentro das secoes',!/\[data-secao[^\]]*\][^{]*\{[^}]*--marca-/.test(css));
 
 ok('WhatsApp sem numero: sem link (botao em breve)', linkWhatsapp('oi', '') === null);
@@ -184,8 +220,8 @@ ok('painel e folha trocam pela regra de interno', /useInterno\(\) \? <PainelCust
 
 const fonte = fs.readFileSync('lib/marketplace/produtos.ts', 'utf8');
 ok('sem valores em reais no cadastro (custos ficam fora do repo)', !/R\$\s*\d/.test(fonte));
-ok('sem nomes de arquivo da Downloads no cadastro (repo publico)', !/\.(3mf|stl|zip|ai|pdf|obj|step)\b/i.test(fonte) && PRODUTOS.every((p) => !p.ref || /^[TN]\d{2}$/.test(p.ref)));
-ok('sem personagem com marca registrada', !/aranha|spider|marvel|disney|pokemon|mario/i.test(fonte));
+ok('sem nomes de arquivo da Downloads no cadastro (repo publico)', !/\.(3mf|stl|zip|ai|pdf|obj|step)\b/i.test(fonte) && PRODUTOS.every((p) => !p.ref || /^(?:[TN]\d{2}|M\d{3})$/.test(p.ref)));
+ok('sem personagem com marca registrada', !/aranha|spider|marvel|disney|pok[eé]mon|\bmario\b|harry potter|hogwarts|batman|deadpool|jujutsu|esponja bob|bob esponja/i.test(fonte + fs.readFileSync('data/produtos.json', 'utf8')));
 
 // Carrinho de orcamento e textos comerciais
 const msg = MENSAGENS.orcamento([{ nome: 'Chaveiro com nome', quantidade: 3, cor: 'azul', observacao: 'nome Ana' }, { nome: 'Topo de bolo', quantidade: 1 }]);
@@ -195,7 +231,6 @@ const lojaTxt = JSON.stringify(VANTAGENS);
 ok('vantagens sem frete, pagamento, prazo ou avaliação inventados', !/frete|gr[aá]tis|\bpix\b|cart[aã]o de cr[eé]dito|entrega em|avalia[cç][aã]o|estrelas|★|mais vendid|garantia/i.test(lojaTxt));
 ok('como funciona: 3 passos, cada um com título e texto', COMO_FUNCIONA.length === 3 && COMO_FUNCIONA.every((p) => p.titulo.trim() && p.texto.trim()));
 ok('perguntas frequentes sem frete, pagamento, prazo ou avaliação inventados', PERGUNTAS.length > 0 && !/frete|gr[aá]tis|\bpix\b|cart[aã]o de cr[eé]dito|entrega em|\d+\s*dias|avalia[cç][aã]o|estrelas|★|mais vendid|garantia/i.test(JSON.stringify(PERGUNTAS)));
-ok('peça de cada categoria da home é pública', ORDEM_SECOES.every((s) => { const p = pecaDaSecao(s); return !p || !!porSlug(p.slug); }));
 // Personalizar no produto: toda peca com gerador mostra campos; resumo legivel; vai na mensagem.
 const comGerador = publicos.filter((p) => !!geradorDe(p));
 const semCampos = comGerador.filter((p) => { const g = geradorDe(p)!; return camposPrincipais(g, valoresIniciais(g)).length === 0; });
@@ -220,7 +255,8 @@ ok('Natal: textos sem prazo, frete ou promessa de entrega', !/frete|gr[aá]tis|\
 ok('Natal: contagem certa (5/out → 81, 25/dez → 0, 26/dez → 364)', diasAteONatal(new Date(2026, 9, 5)) === 81 && diasAteONatal(new Date(2026, 11, 25)) === 0 && diasAteONatal(new Date(2026, 11, 26)) === 364);
 ok('Natal no site: peças de Natal cadastradas e sem fitinha com a chave desligada', SLUGS_NATAL.length > 0 && SLUGS_NATAL.every((s) => PRODUTOS.some((p) => p.slug === s)) && !pecaDeNatal('chaveiro-nome', () => false) && pecaDeNatal('chaveiro-nome', () => true) && !pecaDeNatal('placa-pix', () => true));
 const homeNatal = fs.readFileSync('features/marketplace/MarketplaceHome.tsx', 'utf8');
-ok('Natal no site: a home só troca o topo e abre com presentes de Natal com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(homeNatal) && /natal \? .*<TopoNatal \/>.* : <TopoPersonalize \/>/.test(homeNatal) && /const comNatal = natal && /.test(homeNatal) && /\{comNatal \? \(/.test(homeNatal));
+const topoLoja = fs.readFileSync('features/marketplace/TopoLoja.tsx', 'utf8');
+ok('Natal no site: com a chave ligada a home abre no banner de Natal com fotos e na Coleção de Natal; o enfeite ao vivo vira bloco', /const natal = campanhaAtiva\('natal'\)/.test(homeNatal) && /<TopoLoja natal=\{natal\} \/>/.test(homeNatal) && /natal && doNatal\.length > 0/.test(homeNatal) && /<TopoNatal nivel="h2" \/>/.test(homeNatal) && /FOTOS_TOPO_NATAL/.test(topoLoja) && FOTOS_TOPO_NATAL.every((s) => porSecao('natal').some((p) => p.slug === s && p.midias.length > 0)));
 const cabecalho = fs.readFileSync('components/loja/Cabecalho.tsx', 'utf8');
 ok('Natal no site: luzes, gorro e faixa do cabeçalho só com a chave ligada', /const natal = campanhaAtiva\('natal'\)/.test(cabecalho) && /const varal = natal && /.test(cabecalho) && /\{varal && <FioDeLuzes \/>\}/.test(cabecalho) && /\{natal && <GorroNoel/.test(cabecalho));
 const paginaNatal = fs.readFileSync('app/natal/page.tsx', 'utf8');
@@ -233,10 +269,22 @@ const unicas = semRepetir([a1, a2, a3]);
 const todasUnicas = unicas.flat().map((p) => p.slug);
 ok('vitrines da home sem peça repetida', new Set(todasUnicas).size === todasUnicas.length && unicas[0]!.length === 4 && unicas[1]!.every((p) => !a1.includes(p)));
 ok('vitrine que ficaria com menos de 3 peças some', unicas[2]!.length === 0);
-const ordenadas = comImagemPrimeiro(publicos);
+const ordenadas = comImagemPrimeiro(publicos.map(paraResumo));
 const primeiraSem = ordenadas.findIndex((p) => !temImagem(p));
 ok('peças com imagem antes de "Imagem em preparação"', ordenadas.length === publicos.length && (primeiraSem < 0 || ordenadas.slice(primeiraSem).every((p) => !temImagem(p))));
 ok('menu, rodapé e atalhos só com seções que têm peça', secoesComPecas().every((s) => porSecao(s).length > 0) && secoesComContagem().filter((c) => c.total > 0).length === secoesComPecas().length);
+// ---- API da loja (GET): a pagina leva so o que mostra ----
+const listaApi = respostaDaLista(produtosPublicos());
+const camposResumo = 'adicionadoEm,capa,destaque,gerador,nome,personalizavel,preco,secao,slug,termos,tipo';
+ok('API /produtos: so publicos, destaques primeiro, total certo', listaApi.total === publicos.length && listaApi.itens.length === publicos.length && listaApi.itens.every((r) => publicos.some((p) => p.slug === r.slug)) && (() => { const i = listaApi.itens.findIndex((r) => !r.destaque); return i < 0 || listaApi.itens.slice(i).every((r) => !r.destaque); })());
+ok('API: resumo so com os campos do card (sem descricao, credito, licenca)', listaApi.itens.every((r) => Object.keys(r).sort().join() === camposResumo));
+ok('API por secao: so as publicas da secao', ORDEM_SECOES.every((s) => JSON.stringify(respostaDaLista(porSecao(s)).itens.map((r) => r.slug)) === JSON.stringify(porSecao(s).map((p) => p.slug))) && ENDPOINTS.secao('decoracao') === 'secoes/decoracao/produtos.json' && ENDPOINTS.produtos === 'produtos.json');
+const primeira = paginaInicial(porSecao('decoracao'));
+ok('listagem: no HTML so a primeira pagina, com total e filtros da lista inteira', primeira.inicial.length === Math.min(POR_PAGINA, porSecao('decoracao').length) && primeira.total === porSecao('decoracao').length && primeira.filtros.reduce((t, x) => t + x.total, 0) === primeira.total);
+ok('rotas GET estaticas da API existem', fs.existsSync('app/api/produtos.json/route.ts') && fs.existsSync('app/api/secoes/[secao]/produtos.json/route.ts') && ['app/api/produtos.json/route.ts', 'app/api/secoes/[secao]/produtos.json/route.ts'].every((f) => /export const dynamic = 'force-static'/.test(fs.readFileSync(f, 'utf8'))));
+ok('busca e orcamento sem a lista no HTML (GET na API)', !/produtosPublicos\(\)/.test(fs.readFileSync('app/busca/page.tsx', 'utf8')) && /useLista\(ENDPOINTS\.produtos/.test(fs.readFileSync('components/loja/Busca.tsx', 'utf8')) && /useLista\(/.test(fs.readFileSync('components/loja/Orcamento.tsx', 'utf8')));
+ok('produto: relacionados por GET, sem a secao no HTML', /<PrateleiraRemota[^>]*fonte=\{ENDPOINTS\.secao\(p\.secao\)\}/.test(fs.readFileSync('app/produto/[slug]/page.tsx', 'utf8')) && !/porSecao\(/.test(fs.readFileSync('app/produto/[slug]/page.tsx', 'utf8')));
+
 const card = fs.readFileSync('components/loja/CardProduto.tsx', 'utf8');
 ok('card mostra "Sob consulta" ou "a partir de"', /'Sob consulta'/.test(card) && /a partir de \$\{textoDoPreco\(p\)\}/.test(card));
 

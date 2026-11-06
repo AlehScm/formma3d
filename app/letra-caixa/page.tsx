@@ -5,6 +5,7 @@ import { PaginaLoja } from '@/components/loja/Estrutura';
 import { TopoLetras } from '@/features/letras/TopoLetras';
 import { EsteiraLetras } from '@/features/letras/EsteiraLetras';
 import { ChamadaWhatsApp } from '@/features/letras/ChamadaWhatsApp';
+import { paraResumo } from '@/lib/marketplace/api/contrato';
 import { produtosLetras } from '@/lib/marketplace/letras';
 import { MENSAGENS, linkWhatsapp } from '@/lib/marketplace/contato';
 import { metadadosPagina } from '@/lib/seo';
@@ -32,7 +33,7 @@ export default function LetraCaixaPage() {
     <PaginaLoja cru>
       <div className="flex min-w-0 flex-1 flex-col">
         <TopoLetras />
-        <EsteiraLetras produtos={produtosLetras()} />
+        <EsteiraLetras produtos={produtosLetras().map(paraResumo)} />
         <SecaoMarca id="letra-caixa-saidas" titulo="Escolha por onde começar" className="pt-0">
           <div className="grid gap-vao md:grid-cols-2">
             <Link href="/editor" className={`${LINK_SAIDA} bg-marca-navy text-white focus-visible:outline-none focus-visible:shadow-marca-foco`}>

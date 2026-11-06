@@ -14,15 +14,23 @@ function conferir(nome: string, teste: () => void) {
 conferir('paleta institucional aprovada presente nos tokens', () => {
   for (const cor of ['2760a2', '18212e', '5e6061', 'c2c3c4', 'f7f8fa']) assert.ok(css.includes(`#${cor}`), cor);
 });
+// Decoracao herda a paleta aprovada da antiga Casa.
 const secoes = {
-  casa: ['f3eee6', 'c8b79e', '8e7b66', '3f3933'],
-  colecionaveis: ['eef2f0', '315c56', '547f78', '24312f'],
+  decoracao: ['f3eee6', 'c8b79e', '8e7b66', '3f3933'],
   empresa: ['eef2f5', '375a6d', '66859a', '253640'],
   presentes: ['f7efee', 'c68f89', 'a86e68', '493737'],
   sensoriais: ['eff3ec', '91a58a', '6f866a', '354234'],
 };
-for (const [secao, cores] of Object.entries(secoes)) {
-  conferir(`paleta aprovada de ${secao}`, () => {
+// Categorias de 2026-11-06: cores propostas, aguardando a aprovacao do usuario (ver /sistema).
+const propostas = {
+  natal: ['fbf6ec', '1f6b45', 'b3261e', '10301f'],
+  cozinha: ['f8efe7', 'c98b5e', 'a36a42', '47301f'],
+  organizacao: ['f1f0f7', '8c86b5', '6c6697', '33304a'],
+  escritorio: ['f7f1e1', 'b08d3c', '8a6c26', '3d3218'],
+  infantil: ['eef4f9', '8fb3cf', '5f8aa8', '273c4d'],
+};
+for (const [secao, cores] of [...Object.entries(secoes), ...Object.entries(propostas)]) {
+  conferir(`paleta ${secao in propostas ? 'proposta' : 'aprovada'} de ${secao}`, () => {
     const blocos = [...css.matchAll(new RegExp(`\\[data-(?:secao|universo)='${secao}'\\]\\s*\\{([^}]+)\\}`, 'g'))].map((m) => m[1]).join('\n');
     for (const cor of cores) assert.ok(blocos.includes(`#${cor}`), `${secao}: ${cor}`);
   });

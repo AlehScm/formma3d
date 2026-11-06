@@ -23,6 +23,17 @@ import { letraGrande, luminariaLetra, luminariaSocial } from './letras';
 import { carimbosMassinha, portaPente } from './potes';
 import { caixaFigurinhas, portaCanetasDesign } from './caixas';
 import { cofrinhoNome } from './cofrinho';
+import { imaNome } from './ima';
+import { etiquetaPlanta } from './etiquetaPlanta';
+import { marcadorTaca } from './marcadorTaca';
+import { tiaraNome } from './tiara';
+import { arteParede } from './arteParede';
+import { placaNome } from './placaNome';
+import { etiquetaCabo } from './etiquetaCabo';
+import { portaCanetasNome } from './portaCanetasNome';
+import { portaRetratoPalavra } from './portaRetratoPalavra';
+import { vasoCanelado } from './vasoCanelado';
+import { nomeArticulado } from './nomeArticulado';
 import { displayUnhas, miniMicrofone, portaRetrato, quadroTecido } from './quadros';
 import { cartaoTecido, cartaoVisita, listaQrCamadas, listaQrHorizontal, listaQrVertical, placaGoogleReview, placaPixLogo, placaPixTexto, placaQrLogo, placaQrSocial, socialComQr } from './qrplacas';
 import { designLivre } from './designLivre';
@@ -35,7 +46,7 @@ export const RECEITAS: Receita[] = [palavraCamadas, socialCamadas, letrasSeparad
   roloTextura, estojoBatom,
   ejetorCupula, cumbuca, suporteBolo,
   chaveiroCenoura, chaveiroCoelho, rosaNome, stringArt,
-  letraGrande, luminariaLetra, luminariaSocial, cofrinhoNome,
+  letraGrande, luminariaLetra, luminariaSocial, cofrinhoNome, imaNome, etiquetaPlanta, marcadorTaca, tiaraNome, arteParede, placaNome, etiquetaCabo, portaCanetasNome, portaRetratoPalavra, vasoCanelado, nomeArticulado,
   portaPente, carimbosMassinha,
   caixaFigurinhas, portaCanetasDesign, quadroTecido, portaRetrato, displayUnhas, miniMicrofone,
   placaGoogleReview, placaQrSocial, placaQrLogo, placaPixLogo, placaPixTexto, listaQrVertical, listaQrHorizontal, listaQrCamadas, socialComQr, cartaoVisita, cartaoTecido,

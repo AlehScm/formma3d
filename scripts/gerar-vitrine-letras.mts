@@ -19,6 +19,7 @@ import { regionBounds, type Region } from '../lib/geom/region';
 import { simplificar } from '../lib/import/imagem';
 import { prepararModelo } from '../lib/gerador/exemplo';
 import { corDe } from '../lib/gerador/malha';
+import type { Camada } from '../lib/gerador/tipos';
 import { PASTA_VITRINE, SLIDES_LETRAS, idDoProduto, type MalhaVitrine, type PecaVitrine } from '../lib/marketplace/vitrineLetras';
 import { produtosLetras } from '../lib/marketplace/letras';
 
@@ -89,13 +90,34 @@ function letraCaixa(p: Extract<PecaVitrine, { tipo: 'letra-caixa' }>): Parte[] {
   ];
 }
 
+/**
+ * Fatias finas seguidas (pecas de pe, furos deitados) juntadas em fatias de pelo menos `altura`
+ * mm, com a regiao da fatia do meio: so para a esteira ficar leve; camada grossa passa igual.
+ */
+function juntarFatias(camadas: Camada[], altura: number): Camada[] {
+  const out: Camada[] = [];
+  let grupo: Camada[] = [];
+  const fechar = () => {
+    if (grupo.length) out.push({ region: grupo[Math.floor(grupo.length / 2)]!.region, z0: grupo[0]!.z0, z1: grupo.at(-1)!.z1 });
+    grupo = [];
+  };
+  for (const c of camadas) {
+    if (c.z1 - c.z0 >= altura || (grupo.length && Math.abs(c.z0 - grupo.at(-1)!.z1) > 1e-6)) fechar();
+    if (c.z1 - c.z0 >= altura) { out.push(c); continue; }
+    grupo.push(c);
+    if (grupo.at(-1)!.z1 - grupo[0]!.z0 >= altura) fechar();
+  }
+  fechar();
+  return out;
+}
+
 function deGerador(p: Extract<PecaVitrine, { tipo: 'gerador' }>, fator: number): Parte[] {
   const { receita, valores } = prepararModelo(p.gerador, { base: 'exemplo', extras: { ...p.valores, montado: true } });
   const r = receita.gerar(valores, { fonte });
   if (!r.itens.length) throw new Error(`${p.gerador} nao gerou peca: ${r.avisos.join(' ')}`);
   const tol = toleranciaDe(r.itens.flatMap((it) => it.pecas.flatMap((pc) => pc.camadas.map((c) => c.region))), fator);
   return r.itens.flatMap((it) => it.pecas.map((pc) => {
-    const geos = pc.camadas.map((c) => layerToGeometry({ ...c, region: simplificarRegiao(c.region, tol) })).filter((g): g is THREE.BufferGeometry => !!g).map(crua);
+    const geos = (fator > 1 ? juntarFatias(pc.camadas, 0.2 * fator) : pc.camadas).map((c) => layerToGeometry({ ...c, region: simplificarRegiao(c.region, tol) })).filter((g): g is THREE.BufferGeometry => !!g).map(crua);
     return { nome: pc.nome, papel: p.difusor?.includes(pc.nome) ? 'difusor' as const : 'peca' as const, cor: corDe(r, pc.cor), geo: mergeGeometries(geos, false)! };
   })).filter((x) => x.geo);
 }

@@ -6,9 +6,12 @@ import { SECOES, type Produto } from './tipos';
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('pt-BR');
 
-/** Sem acento nem maiuscula, em nome, resumo, tipo, secao e no que da para personalizar. */
-export function filtrarPorTexto(lista: Produto[], termo: string): Produto[] {
+/** Texto de busca da peca, sem acento nem maiuscula: nome, resumo, tipo, secao e o que da para personalizar. */
+export const termosDe = (p: Pick<Produto, 'nome' | 'resumo' | 'tipo' | 'secao' | 'personalizavel'>) =>
+  normalizar([p.nome, p.resumo, p.tipo, SECOES[p.secao].nome, ...p.personalizavel].join(' '));
+
+/** So as pecas com o termo nos `termos` (sem acento nem maiuscula); termo vazio devolve tudo. */
+export function filtrarPorTexto<T extends { termos: string }>(lista: T[], termo: string): T[] {
   const t = normalizar(termo.trim());
-  if (!t) return lista;
-  return lista.filter((p) => normalizar([p.nome, p.resumo, p.tipo, SECOES[p.secao].nome, ...p.personalizavel].join(' ')).includes(t));
+  return t ? lista.filter((p) => p.termos.includes(t)) : lista;
 }

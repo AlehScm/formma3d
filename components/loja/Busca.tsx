@@ -1,22 +1,46 @@
 'use client';
 
-/** Resultado da busca (?q=) ou os favoritos (?favoritos=1), sobre os produtos publicos. */
+/** Resultado da busca (?q=) ou os favoritos (?favoritos=1), sobre os produtos publicos (GET na API). */
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { BotaoMarca } from '@/components/marca';
 import { useFavoritos, useMontado } from '@/features/loja/estado';
+import { useLista } from '@/lib/marketplace/api/cliente';
+import { ENDPOINTS } from '@/lib/marketplace/api/contrato';
 import { filtrarPorTexto } from '@/lib/marketplace/busca';
-import type { Produto } from '@/lib/marketplace/tipos';
 import { Listagem } from './Listagem';
 import { TituloPagina } from './Modulo';
 
-export function ResultadoBusca({ produtos }: { produtos: Produto[] }) {
+export function ResultadoBusca() {
   const params = useSearchParams();
   const montado = useMontado();
   const favoritos = useFavoritos((s) => s.slugs);
+  const [tentativa, setTentativa] = useState(0);
+  const { itens: produtos, erro } = useLista(ENDPOINTS.produtos, tentativa);
   const q = params?.get('q')?.trim() ?? '';
   const soFavoritos = params?.get('favoritos') === '1';
-  const lista = soFavoritos ? (montado ? produtos.filter((p) => favoritos.includes(p.slug)) : []) : filtrarPorTexto(produtos, q);
   const titulo = soFavoritos ? 'Seus favoritos' : q ? `Resultados para “${q}”` : 'Todos os produtos';
+  if (erro) {
+    return (
+      <>
+        <TituloPagina titulo={titulo} />
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-marca-lg bg-marca-branco p-10 text-center">
+          <p className="m-0 font-display text-modulo text-marca-navy">Não deu para carregar as peças.</p>
+          <BotaoMarca onClick={() => setTentativa(tentativa + 1)} formato="controle" variante="contorno">Tentar de novo</BotaoMarca>
+        </div>
+      </>
+    );
+  }
+  if (!produtos || (soFavoritos && !montado)) {
+    return (
+      <>
+        <TituloPagina titulo={titulo} />
+        <div className="h-40 rounded-2xl bg-marca-branco shadow-marca-1" aria-busy="true" aria-label="Carregando as peças" />
+      </>
+    );
+  }
+  const lista = soFavoritos ? produtos.filter((p) => favoritos.includes(p.slug)) : filtrarPorTexto(produtos, q);
   return (
     <>
       <TituloPagina titulo={titulo} />

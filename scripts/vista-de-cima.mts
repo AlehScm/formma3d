@@ -27,8 +27,8 @@ const arquivo = (id: string) =>
 const fontes = new Map<string, Font>();
 const ctx = {
   fonte: (id: string) => {
-    const f = arquivo(id);
-    if (!fontes.has(f)) fontes.set(f, parseFont(fs.readFileSync(`C:/Windows/Fonts/${f}`).buffer as ArrayBuffer));
+    const f = fs.existsSync(`public/fontes/${id}.ttf`) ? `public/fontes/${id}.ttf` : `C:/Windows/Fonts/${arquivo(id)}`;
+    if (!fontes.has(f)) fontes.set(f, parseFont(fs.readFileSync(f).buffer as ArrayBuffer));
     return fontes.get(f)!;
   },
 };

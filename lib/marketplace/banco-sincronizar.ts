@@ -10,30 +10,33 @@ import type { Secao } from './tipos';
 
 type Familia = Ficha['familia'];
 
-/** Secao da loja pela familia do gerador. */
+/** Categoria da loja pela familia do gerador (docs/categorias.md). Revisar no banco quando a peca nova entrar. */
 const SECAO_DA_FAMILIA: Record<Familia, Secao> = {
   multicor: 'presentes', chaveiros: 'presentes', cortadores: 'presentes', carimbos: 'presentes',
-  qr: 'empresa', placas: 'empresa', texto: 'casa', parametricos: 'casa',
+  qr: 'empresa', placas: 'empresa', texto: 'decoracao', parametricos: 'decoracao',
 };
 
-/** Onde a familia nao acerta a secao. */
+/** Onde a familia nao acerta a categoria. */
 const SECAO_DO_GERADOR: Record<string, Secao> = {
   'luminaria-social': 'empresa', 'social-com-qr': 'empresa', 'porta-pente': 'empresa',
-  'imagem-multipartes': 'casa',
+  'imagem-multipartes': 'decoracao',
   'marcador-pagina': 'presentes', 'contador-raspadinha': 'presentes', 'rolo-textura': 'presentes', 'suporte-bolo': 'presentes',
 };
+
+/** Dia de hoje (AAAA-MM-DD): a data de entrada de uma peca nova. */
+const hoje = () => new Date().toISOString().slice(0, 10);
 
 /** Nada e anunciado como brinquedo (restricao legal): entra no banco oculto e sem esse tipo. */
 const ehBrinquedo = (f: Ficha) => /brinquedo/i.test(f.tipo ?? '');
 
-export function registroDaFicha(f: Ficha, slug: string): RegistroProduto {
+export function registroDaFicha(f: Ficha, slug: string, adicionadoEm = hoje()): RegistroProduto {
   return {
     slug, nome: f.nome, tags: ['gerador'], gerador: f.id,
     secao: SECAO_DO_GERADOR[f.id] ?? SECAO_DA_FAMILIA[f.familia], tipo: (!ehBrinquedo(f) && f.tipo) || tipoDaFamilia[f.familia],
     resumo: f.resumo, descricao: f.resumo, personalizavel: [...f.destaques],
     preco: { status: 'validacao' }, midias: [], personalizar: null,
     origem: 'nosso', licenca: 'propria', visibilidade: ehBrinquedo(f) ? 'oculto' : 'publico',
-    destaque: false, jaImpresso: false, campanha: null, ref: null, revisar: true,
+    destaque: false, jaImpresso: false, campanha: null, adicionadoEm, ref: null, credito: null, revisar: true,
   };
 }
 

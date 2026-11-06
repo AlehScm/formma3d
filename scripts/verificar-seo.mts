@@ -1,6 +1,6 @@
 /**
- * SEO da loja: o sitemap so leva pagina publica (nada oculto, de terceiro sem licenca ou de
- * campanha desligada), URLs absolutas, descricoes no tamanho e sem promessa inventada,
+ * SEO da loja: o sitemap so leva pagina publica (nada oculto ou de campanha
+ * desligada), URLs absolutas, descricoes no tamanho e sem promessa inventada,
  * JSON-LD sem dado inventado e as paginas internas com noindex.
  *   npx tsx scripts/verificar-seo.mts
  */
@@ -36,10 +36,11 @@ const ocultos = PRODUTOS.filter((p) => !publicos.includes(p));
 ok('sitemap sem repeticao', new Set(caminhos).size === caminhos.length);
 ok('sitemap tem home, todas as pecas e as ferramentas', ['/', '/pecas', ...FERRAMENTAS].every((c) => caminhos.includes(c)));
 ok('sitemap tem todo produto publico', publicos.every((p) => caminhos.includes(`/produto/${p.slug}`)), publicos.filter((p) => !caminhos.includes(`/produto/${p.slug}`)).map((p) => p.slug).join(', '));
-ok('sitemap sem produto oculto ou de terceiro sem licenca', ocultos.length > 0 && ocultos.every((p) => !caminhos.includes(`/produto/${p.slug}`)), ocultos.filter((p) => caminhos.includes(`/produto/${p.slug}`)).map((p) => p.slug).join(', '));
-const terceiro = PRODUTOS.find((p) => p.origem === 'terceiros' && p.licenca !== 'comercial-ok')!;
-ok('terceiro sem licenca fora do sitemap mesmo marcado publico', !caminhosIndexaveis([{ ...terceiro, visibilidade: 'publico' }]).includes(`/produto/${terceiro.slug}`));
-ok('sitemap so com secoes que tem peca publica', ORDEM_SECOES.every((s) => caminhos.includes(`/secao/${s}`) === porSecao(s).length > 0));
+ok('sitemap sem produto oculto', ocultos.length > 0 && ocultos.every((p) => !caminhos.includes(`/produto/${p.slug}`)), ocultos.filter((p) => caminhos.includes(`/produto/${p.slug}`)).map((p) => p.slug).join(', '));
+const terceiro = ocultos.find((p) => p.origem === 'terceiros' && !p.campanha)!;
+ok('terceiro oculto fora do sitemap; marcado publico entra', !caminhosIndexaveis([terceiro]).includes(`/produto/${terceiro.slug}`) && caminhosIndexaveis([{ ...terceiro, visibilidade: 'publico' }]).includes(`/produto/${terceiro.slug}`));
+ok('sitemap so com secoes que tem peca publica (Natal mora em /natal)', ORDEM_SECOES.filter((s) => s !== 'natal').every((s) => caminhos.includes(`/secao/${s}`) === porSecao(s).length > 0) && !caminhos.includes('/secao/natal'));
+ok('sitemap com Nossos geradores e sem enderecos antigos de secao', caminhos.includes('/geradores') && !caminhos.some((c) => /^\/secao\/(casa|colecionaveis)$/.test(c)));
 ok('Sensoriais (sem peca publica) fora do sitemap', !caminhos.includes('/secao/sensoriais'));
 ok('sitemap sem busca, orcamento, guia interno e enderecos antigos', !caminhos.some((c) => /^\/(busca|orcamento|sistema|moldes)\b/.test(c)));
 ok('Natal sempre no sitemap, com a campanha ligada ou nao', caminhos.includes(CAMPANHAS.natal.href));
@@ -64,7 +65,8 @@ const idsVitrine = [...SLIDES_LETRAS.map((s) => s.id), ...pecasLetra.filter((p) 
 const faltando = idsVitrine.filter((id) => !fs.existsSync(`public/${PASTA_VITRINE}/${id}.json`) || !fs.existsSync(`public/${PASTA_VITRINE}/${id}.bin`));
 ok('vitrine de letras: todo slide e produto da esteira tem .json e .bin gerados', !faltando.length, faltando.join(', '));
 const pesos = idsVitrine.filter((id) => !faltando.includes(id)).map((id) => ({ id, kb: fs.statSync(`public/${PASTA_VITRINE}/${id}.bin`).size / 1024, partes: (JSON.parse(fs.readFileSync(`public/${PASTA_VITRINE}/${id}.json`, 'utf8')) as MalhaVitrine).partes.length }));
-ok('vitrine de letras: cada peça com partes e abaixo de 300 KB, tudo abaixo de 1,5 MB', pesos.every((p) => p.partes > 0 && p.kb < 300) && pesos.reduce((t, p) => t + p.kb, 0) < 1536, pesos.filter((p) => !p.partes || p.kb >= 300).map((p) => `${p.id} ${p.kb.toFixed(0)} KB`).join(', ') || `${pesos.reduce((t, p) => t + p.kb, 0).toFixed(0)} KB`);
+// A esteira so baixa a peca quando o card dela aparece: o total pesa aos poucos; o limite e por peca.
+ok('vitrine de letras: cada peça com partes e abaixo de 300 KB, tudo abaixo de 2,5 MB', pesos.every((p) => p.partes > 0 && p.kb < 300) && pesos.reduce((t, p) => t + p.kb, 0) < 2560, pesos.filter((p) => !p.partes || p.kb >= 300).map((p) => `${p.id} ${p.kb.toFixed(0)} KB`).join(', ') || `${pesos.reduce((t, p) => t + p.kb, 0).toFixed(0)} KB`);
 ok('vitrine de letras: o script roda no prebuild e no publicar', fs.readFileSync('package.json', 'utf8').includes('gerar-vitrine-letras.mts') && fs.readFileSync('scripts/publicar.mjs', 'utf8').includes('gerar-vitrine-letras.mts'));
 ok('icones do site e manifest existem', ['app/favicon.ico', 'app/apple-icon.png', 'public/icone-192.png', 'public/icone-512.png', 'app/manifest.ts'].every((f) => fs.existsSync(f)), ['app/favicon.ico', 'app/apple-icon.png', 'public/icone-192.png', 'public/icone-512.png', 'app/manifest.ts'].filter((f) => !fs.existsSync(f)).join(', '));
 const sitemap = fs.readFileSync('app/sitemap.ts', 'utf8'), robots = fs.readFileSync('app/robots.ts', 'utf8');

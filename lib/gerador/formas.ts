@@ -1,7 +1,7 @@
 /** Formas e operacoes 2D que as receitas repetem (sobre lib/geom/region). */
 import type { Font } from 'opentype.js';
 import { textToLetters, type Letra } from '../text/glyphs';
-import { buildRegion, offsetRegion, regionBounds, rotateRegion, scaleRegion, translateRegion, unionRegion, type Bounds, type Pt, type Region } from '../geom/region';
+import { buildRegion, offsetRegion, pointInContour, regionBounds, rotateRegion, scaleRegion, translateRegion, unionRegion, type Bounds, type Pt, type Region } from '../geom/region';
 
 export function circulo(cx: number, cy: number, r: number, lados = 64): Region {
   const pts: Pt[] = [];
@@ -53,6 +53,22 @@ function areaDoContorno(c: Pt[]): number {
 
 export function unir(rs: Region[]): Region {
   return rs.reduce<Region>((acc, r) => (acc.length ? unionRegion(acc, r) : r), []);
+}
+
+/** O ponto de `r` mais perto de `alvo`, numa grade de `passo` mm; null se `r` e vazio. */
+export function pontoDentro(r: Region, alvo: Pt, passo = 1): Pt | null {
+  if (!r.length) return null;
+  const b = regionBounds(r);
+  let melhor: Pt | null = null, d = Infinity;
+  for (let x = Math.ceil(b.minX / passo) * passo; x <= b.maxX; x += passo) {
+    for (let y = Math.ceil(b.minY / passo) * passo; y <= b.maxY; y += passo) {
+      const pt = { x, y };
+      if (!r.some((p) => pointInContour(p.outer, pt) && !p.holes.some((h) => pointInContour(h, pt)))) continue;
+      const dd = (x - alvo.x) ** 2 + (y - alvo.y) ** 2;
+      if (dd < d) { d = dd; melhor = pt; }
+    }
+  }
+  return melhor;
 }
 
 export function limites(r: Region): Bounds {

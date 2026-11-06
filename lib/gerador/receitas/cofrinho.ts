@@ -8,8 +8,9 @@
  * As costas entram justas no corpo; a tampinha encaixa no furo delas. A parede pode ser
  * canelada: faixas de meio passo alternam o contorno e o contorno dilatado.
  */
-import { diffRegion, intersectRegion, pointInContour, regionArea, regionBounds, translateRegion, type Pt, type Region } from '../../geom/region';
-import { circulo, comporLinhas, contornar, escalaParaLargura, retanguloArredondado, semBuracos, unir } from '../formas';
+import { diffRegion, intersectRegion, regionArea, regionBounds, translateRegion, type Pt, type Region } from '../../geom/region';
+import { circulo, comporLinhas, contornar, escalaParaLargura, pontoDentro, retanguloArredondado, semBuracos, unir, type TextoComposto } from '../formas';
+import { espelharX } from '../figuras';
 import { ficha } from './fichas';
 import { montarJunto } from './letras';
 import type { Camada, Item, Parametro, Receita, Resultado, Valores } from '../tipos';
@@ -32,22 +33,6 @@ const FENDA_L = 30, FENDA_A = 4;
 const FOLGA_LETRAS = 0.15;
 const MESA = 256;
 
-/** O ponto de `r` mais perto de `alvo`, numa grade de 1 mm; null se `r` e vazio. */
-function pontoDentro(r: Region, alvo: Pt): Pt | null {
-  if (!r.length) return null;
-  const b = regionBounds(r);
-  let melhor: Pt | null = null, d = Infinity;
-  for (let x = Math.ceil(b.minX); x <= b.maxX; x += 1) {
-    for (let y = Math.ceil(b.minY); y <= b.maxY; y += 1) {
-      const pt = { x, y };
-      if (!r.some((p) => pointInContour(p.outer, pt) && !p.holes.some((h) => pointInContour(h, pt)))) continue;
-      const dd = (x - alvo.x) ** 2 + (y - alvo.y) ** 2;
-      if (dd < d) { d = dd; melhor = pt; }
-    }
-  }
-  return melhor;
-}
-
 /** A janela de `largura` mm onde o topo da silhueta e mais alto no ponto mais baixo (fenda reta). */
 function janelaDaFenda(S: Region, largura: number): { cx: number; topo: number } {
   const b = regionBounds(S);
@@ -65,6 +50,25 @@ function janelaDaFenda(S: Region, largura: number): { cx: number; topo: number }
     if (minimo > melhor.topo || (minimo === melhor.topo && Math.abs((topos[i]!.x + topos[fim]!.x) / 2) < Math.abs(melhor.cx))) melhor = { cx: (topos[i]!.x + topos[fim]!.x) / 2, topo: minimo };
   }
   return Number.isFinite(melhor.topo) ? melhor : { cx: melhor.cx, topo: b.maxY - 4 };
+}
+
+/** Silhueta do nome para ficar em pe (cofrinho, porta-canetas): `t` deslocado de (dx, dy). */
+export function silhuetaEmPe(t: TextoComposto, dx: number, dy: number, altura: number, borda: number): Region {
+  // O contorno das letras alargado por igual pela borda (canto redondo), sem buracos.
+  // Antes, o pe das letras vai para a mesma linha: a sobra das letras redondas (O, U, S...)
+  // abaixo da linha de base e cortada, para cada bolha de baixo encostar na mesa na mesma altura
+  // e o cofrinho ficar em pe sobre todas. Rabo de letra (Q, J) fica. O corte e so no contorno:
+  // as letras da frente continuam inteiras, e a sobra delas cabe na borda.
+  const pes = t.letras.map((l) => l.bounds.minY + dy).sort((a, b) => a - b);
+  const linha = pes[Math.floor(pes.length / 2)]!;
+  const sobra = Math.min(altura * 0.06, borda - 1.5);
+  const alinhadas = unir(t.letras.map((l) => {
+    const r = translateRegion(l.region, dx, dy), pe = l.bounds.minY + dy;
+    return pe < linha && pe >= linha - sobra ? intersectRegion(r, ret(l.bounds.minX + dx - 1, linha, l.bounds.maxX + dx + 1, l.bounds.maxY + dy + 1)) : r;
+  }));
+  // O fechamento so tapa a fresta estreita entre letras; a onda de cada letra fica.
+  const fechar = borda * 0.5;
+  return semBuracos(contornar(contornar(contornar(alinhadas, borda), fechar), -fechar));
 }
 
 export const cofrinhoNome: Receita = {
@@ -109,21 +113,7 @@ export const cofrinhoNome: Receita = {
     const b0 = t.bounds;
     const dx = -(b0.minX + b0.maxX) / 2, dy = -(b0.minY + b0.maxY) / 2;
     const L = translateRegion(t.regiao, dx, dy);
-    // Silhueta: o contorno das letras alargado por igual pela borda (canto redondo), sem buracos.
-    // Antes, o pe das letras vai para a mesma linha: a sobra das letras redondas (O, U, S...)
-    // abaixo da linha de base e cortada, para cada bolha de baixo encostar na mesa na mesma altura
-    // e o cofrinho ficar em pe sobre todas. Rabo de letra (Q, J) fica. O corte e so no contorno:
-    // as letras da frente continuam inteiras, e a sobra delas cabe na borda.
-    const pes = t.letras.map((l) => l.bounds.minY + dy).sort((a, b) => a - b);
-    const linha = pes[Math.floor(pes.length / 2)]!;
-    const sobra = Math.min(altura * 0.06, borda - 1.5);
-    const alinhadas = unir(t.letras.map((l) => {
-      const r = translateRegion(l.region, dx, dy), pe = l.bounds.minY + dy;
-      return pe < linha && pe >= linha - sobra ? intersectRegion(r, ret(l.bounds.minX + dx - 1, linha, l.bounds.maxX + dx + 1, l.bounds.maxY + dy + 1)) : r;
-    }));
-    // O fechamento so tapa a fresta estreita entre letras; a onda de cada letra fica.
-    const fechar = borda * 0.5;
-    const S = semBuracos(contornar(contornar(contornar(alinhadas, borda), fechar), -fechar));
+    const S = silhuetaEmPe(t, dx, dy, altura, borda);
     if (S.length > 1) avisos.push('O nome ficou em pedaços separados: diminua o espaço entre letras ou aumente a borda.');
     const bS = regionBounds(S);
     if (bS.w > MESA || bS.h > MESA) avisos.push(`O cofrinho tem ${bS.w.toFixed(0)} mm: passa da mesa de ${MESA} mm.`);
@@ -215,7 +205,10 @@ export const cofrinhoNome: Receita = {
       topo = b.minY + dy - vao;
       return { ...it, pecas: it.pecas.map((p) => ({ ...p, camadas: p.camadas.map((cm) => ({ ...cm, region: translateRegion(cm.region, 0, dy) })) })) };
     };
-    const itens = [itemCorpo, abaixo(itemCostas), abaixo(itemLetras), abaixo(itemTampinha)];
+    // O corpo imprime de frente na mesa e depois e virado: sai espelhado, para a frente ficar
+    // igual as letras e o fundo igual as costas (que imprimem ja do lado em que encaixam).
+    const corpoNaMesa: Item = { ...itemCorpo, pecas: itemCorpo.pecas.map((p) => ({ ...p, camadas: p.camadas.map((cm) => ({ ...cm, region: espelharX(cm.region) })) })) };
+    const itens = [corpoNaMesa, abaixo(itemCostas), abaixo(itemLetras), abaixo(itemTampinha)];
     return soCoresUsadas({ itens, cores, hex, avisos, notas });
   },
 };

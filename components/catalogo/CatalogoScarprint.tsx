@@ -6,7 +6,6 @@ import { editoresLivres, emBreve, familias, tipoDaFamilia } from '@/features/cat
 import { FICHAS } from '@/lib/gerador/receitas/fichas';
 import { COBERTURA } from '@/lib/gerador/cobertura';
 import { Miniatura } from '@/features/catalogo/Miniaturas';
-import { PaginaLoja } from '@/components/marketplace/Loja';
 import { BotaoMarca, CartaoMarca, classeBotaoMarca } from '@/components/marca';
 import { cx } from '@/components/ui/cx';
 import './catalogo.css';
@@ -35,8 +34,8 @@ export function CatalogoScarprint({ naLoja = {} }: { naLoja?: Record<string, str
   const filtros: (Familia | 'todos')[] = ['todos', ...(Object.keys(familias) as Familia[]).filter((f) => comAlgo.has(f))];
   const nada = !prontos.length && !editores.length && !breve.length;
 
+  // A moldura da loja (menu, rodape) vem da pagina no servidor: aqui so o conteudo, sem o cadastro no navegador.
   return (
-    <PaginaLoja>
       <div className="bg-marca-palido font-marca text-marca-texto">
         <section className="bg-marca-suave" aria-labelledby="catalog-title">
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-center gap-[clamp(28px,4vw,72px)] px-margem pt-10 pb-11 max-[980px]:grid-cols-1">
@@ -129,7 +128,6 @@ export function CatalogoScarprint({ naLoja = {} }: { naLoja?: Record<string, str
           )}
         </section>
       </div>
-    </PaginaLoja>
   );
 }
 

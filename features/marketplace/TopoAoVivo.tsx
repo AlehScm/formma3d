@@ -43,7 +43,10 @@ export interface ConfigTopo {
   extra?: ReactNode;
 }
 
-export function TopoAoVivo({ c }: { c: ConfigTopo }) {
+/** `nivel`: h1 quando e o topo da pagina; h2 quando e um bloco no meio da home. */
+export function TopoAoVivo({ c, nivel = 'h1' }: { c: ConfigTopo; nivel?: 'h1' | 'h2' }) {
+  const Titulo = nivel;
+  const idTitulo = nivel === 'h1' ? 'loja-titulo' : 'ao-vivo-titulo';
   const [nome, setNome] = useState(c.nomeInicial);
   const [pedido, setPedido] = useState(c.nomeInicial);
   const [peca, setPeca] = useState<PecaCarregada | null>(null);
@@ -79,9 +82,9 @@ export function TopoAoVivo({ c }: { c: ConfigTopo }) {
 
   const nomeFinal = nome.trim();
   return (
-    <section aria-labelledby="loja-titulo" className="grid items-center gap-6 border-b border-marca-linha pb-8 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-10">
+    <section aria-labelledby={idTitulo} className="grid items-center gap-6 border-b border-marca-linha pb-8 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-10">
       <div className="flex max-w-[600px] flex-col gap-5">
-        <h1 id="loja-titulo" className="m-0 font-display text-display text-marca-navy">{c.titulo}</h1>
+        <Titulo id={idTitulo} className="m-0 font-display text-display text-marca-navy">{c.titulo}</Titulo>
         <p className="m-0 max-w-[48ch] text-corpo text-marca-texto-2">{c.texto}</p>
         {c.extra}
         <div className="flex flex-col gap-1.5">
@@ -127,6 +130,6 @@ const TOPO_HOME: ConfigTopo = {
   link: { href: '/pecas', rotulo: 'Ver todas as peças' },
 };
 
-export function TopoPersonalize() {
-  return <TopoAoVivo c={TOPO_HOME} />;
+export function TopoPersonalize({ nivel }: { nivel?: 'h1' | 'h2' }) {
+  return <TopoAoVivo c={TOPO_HOME} nivel={nivel} />;
 }

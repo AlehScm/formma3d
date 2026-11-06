@@ -63,9 +63,9 @@ export function VitrineMarca() {
 
       <SecaoMarca titulo="Controles da loja" texto="Conteúdo distribuído pela largura disponível, com margens fluidas e grades que ganham colunas conforme o espaço. Controles com pelo menos 44 px de toque e ações principais com 48 px. Foco, bordas e estados são compartilhados.">
         <div className="grid gap-6 md:grid-cols-2">
-          {(['marca', 'casa'] as const).map((tema) => (
-            <div key={tema} data-secao={tema === 'casa' ? tema : undefined} data-universo={tema === 'casa' ? tema : undefined} className="rounded-marca-md border border-secao-linha bg-secao-superficie p-5 text-secao-tinta">
-              <h3 className="mt-0 mb-4 text-lg font-semibold">{tema === 'casa' ? 'Universo Casa' : 'Marca principal'}</h3>
+          {(['marca', 'decoracao'] as const).map((tema) => (
+            <div key={tema} data-secao={tema === 'decoracao' ? tema : undefined} data-universo={tema === 'decoracao' ? tema : undefined} className="rounded-marca-md border border-secao-linha bg-secao-superficie p-5 text-secao-tinta">
+              <h3 className="mt-0 mb-4 text-lg font-semibold">{tema === 'decoracao' ? 'Universo Decoração' : 'Marca principal'}</h3>
               <div className="flex flex-wrap items-center gap-3">
                 <BotaoMarca formato="controle" variante="secao">Adicionar ao orçamento</BotaoMarca>
                 <BotaoMarca formato="controle" variante="contorno" pequeno>Personalizar</BotaoMarca>

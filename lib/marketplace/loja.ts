@@ -15,7 +15,7 @@ export const VANTAGENS: { icone: 'medida' | 'personalizar' | 'impressora' | 'con
 export const BANNERS: { secao: Secao; titulo: string; texto: string; produto: string; acao: string; href: string }[] = [
   { secao: 'empresa', titulo: 'A sua marca em 3D', texto: 'Letreiros, placas com QR code, Pix e avaliação no Google para o seu negócio.', produto: 'arroba-social', acao: 'Ver peças para empresas', href: '/secao/empresa' },
   { secao: 'presentes', titulo: 'Presentes com nome', texto: 'Chaveiros, topos de bolo e lembrancinhas personalizadas para festas.', produto: 'chaveiro-nome', acao: 'Ver presentes', href: '/secao/presentes' },
-  { secao: 'casa', titulo: 'Decoração para a sua casa', texto: 'Luminárias de letra, porta-retratos e organizadores sob medida.', produto: 'luminaria-letra', acao: 'Ver peças para casa', href: '/secao/casa' },
+  { secao: 'decoracao', titulo: 'Decoração para a sua casa', texto: 'Luminárias de letra, porta-retratos e organizadores sob medida.', produto: 'luminaria-letra', acao: 'Ver peças para casa', href: '/secao/casa' },
 ];
 
 /** Como pedir, na ordem real do pedido (por isso numerado na home). */

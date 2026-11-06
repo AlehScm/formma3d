@@ -990,7 +990,9 @@ console.log('\n== cofrinho com nome ==');
   const mesa = gerar(cf), pronto = gerar(cf, { montado: true }), lisa = gerar(cf, { textura: 'lisa' });
   const peca = (r: Resultado, nome: string) => r.itens.flatMap((i) => i.pecas).find((p) => p.nome === nome)!;
   ok('cofrinho: na mesa sai corpo, costas, letras e tampinha soltos; montado num item só', mesa.itens.map((i) => i.nome).join(',') === 'Corpo,Costas,Letras,Tampinha' && pronto.itens.length === 1 && pronto.itens[0]!.pecas.length === 4);
-  const corpo = peca(mesa, 'Corpo').camadas, H = Math.max(...corpo.map((c) => c.z1));
+  // Na mesa o corpo sai espelhado (imprime de frente e depois é virado): os encaixes se conferem com ele desvirado.
+  const corpo = peca(mesa, 'Corpo').camadas.map((c) => ({ ...c, region: scaleRegion(c.region, -1, 1) })), H = Math.max(...corpo.map((c) => c.z1));
+  ok('cofrinho: na mesa o corpo sai espelhado, para a frente ficar certa quando ele for virado', regionArea(diffRegion(peca(mesa, 'Corpo').camadas[0]!.region, corpo[0]!.region)) > 10 && perto(regionArea(peca(mesa, 'Corpo').camadas[0]!.region), regionArea(corpo[0]!.region), 0.01));
   const S = corpo[1]!.region, bS = regionBounds(S);
   const furosNaParede = corpo.slice(2).map((c) => ({ meio: (c.z0 + c.z1) / 2, furos: c.region.reduce((s, q) => s + q.holes.length, 0) }));
   const zF0 = 2.4 + (H - 2.4 - 4) / 2, zF1 = zF0 + 4;
@@ -1014,6 +1016,176 @@ console.log('\n== cofrinho com nome ==');
   ok('cofrinho: todas as letras apoiam na mesma linha e os apoios abrem mais de 60% da largura (fica em pé)', apoioDe.every((d) => d < 0.3) && Math.max(...contato) - Math.min(...contato) > bS.w * 0.6, apoioDe.map((d) => d.toFixed(2)).join(' / '));
   const longo = gerar(cf, { nome: 'Maria Eduarda' });
   ok('cofrinho: nome comprido diminui para caber na largura e avisa', regionBounds(peca(longo, 'Corpo').camadas[1]!.region).w <= Number(vc.largura) + 0.5 && longo.avisos.some((a) => /não cabe/.test(a)));
+}
+
+console.log('\n== ima com nome ==');
+{
+  const im = receitaPorId('ima-nome')!, vi = valoresPadrao(im);
+  const furosDe = (r: Resultado, i: number) => {
+    const base = r.itens[i]!.pecas.find((p) => p.nome === 'Base')!.camadas;
+    return { abaixo: base[0]!.region.flatMap((q) => q.holes), acima: base[1]?.region.flatMap((q) => q.holes) ?? [], prof: base[0]!.z1, topo: Math.max(...base.map((c) => c.z1)) };
+  };
+  const padrao = gerar(im);
+  const f = furosDe(padrao, 0), diam = regionBounds([{ outer: f.abaixo[0] ?? [], holes: [] }]).w;
+  ok('ímã: cada nome sai com a cavidade aberta por baixo, no diâmetro do ímã com folga', padrao.itens.length === 2 && f.abaixo.length >= 1 && f.acima.length === 0 && perto(diam, Number(vi.imaDiametro) + 0.4, 0.05), `${f.abaixo.length} cavidade(s), ${diam.toFixed(2)} mm`);
+  ok('ímã: a cavidade tem a espessura do ímã e sobra chão por cima', perto(f.prof, Number(vi.imaEspessura) + 0.2, 1e-6) && f.topo - f.prof >= 0.6, `${f.prof} de ${f.topo} mm`);
+  const curto = furosDe(gerar(im, { nomes: 'Ana' }), 0).abaixo.length, longo = furosDe(gerar(im, { nomes: 'Maria Eduarda' }), 0).abaixo.length;
+  ok('ímã: nome curto leva 1 ímã e nome comprido leva mais', curto === 1 && longo >= 2, `${curto} / ${longo}`);
+  ok('ímã: base fina demais avisa', gerar(im, { espBase: 2 }).avisos.some((a) => /fina para o ímã/.test(a)));
+}
+
+console.log('\n== etiqueta de planta ==');
+{
+  const ep = receitaPorId('etiqueta-planta')!, ve = valoresPadrao(ep);
+  const r = gerar(ep), it = r.itens[0]!;
+  const espeto = it.pecas.find((p) => p.nome === 'Espeto')!.camadas[0]!, letras = it.pecas.find((p) => p.nome === 'Letras')!.camadas[0]!;
+  const bE = regionBounds(espeto.region), bL = regionBounds(letras.region);
+  ok('etiqueta de planta: um por nome, espeto e letras em 2 cores', r.itens.length === 2 && it.pecas.length === 2 && r.cores.length === 2);
+  ok('etiqueta de planta: o espeto desce o comprimento pedido abaixo das letras', bL.minY - bE.minY >= Number(ve.comprimento) && bE.minY < bL.minY, `${(bL.minY - bE.minY).toFixed(1)} mm`);
+  const ponta = espeto.region.flatMap((q) => q.outer).filter((pt) => pt.y < bE.minY + 0.5);
+  ok('etiqueta de planta: o espeto termina em ponta', ponta.length >= 1 && Math.max(...ponta.map((pt) => pt.x)) - Math.min(...ponta.map((pt) => pt.x)) < 1);
+  ok('etiqueta de planta: as letras apoiam na travessa (encostam) e são mais altas que ela', regionArea(intersectRegion(contornar(letras.region, 0.05), espeto.region)) > 1 && letras.z1 > espeto.z1);
+}
+
+console.log('\n== marcador de taca ==');
+{
+  const mt = receitaPorId('marcador-taca')!, vm = valoresPadrao(mt);
+  const r = gerar(mt), base = r.itens[0]!.pecas.find((p) => p.nome === 'Base')!.camadas[0]!.region, topo = r.itens[0]!.pecas.find((p) => p.nome === 'Topo')!.camadas[0]!.region;
+  const bB = regionBounds(base), bT = regionBounds(topo);
+  ok('marcador de taça: um por nome, o nome de cima para baixo (mais alto que largo)', r.itens.length === 3 && bT.h > bT.w * 2, `${bT.w.toFixed(1)} x ${bT.h.toFixed(1)} mm`);
+  const xHaste = bT.minX - 1.2 + Number(vm.larguraGancho) / 2;
+  const naHaste = regionArea(intersectRegion(base, [{ outer: [{ x: xHaste - 0.5, y: bT.minY }, { x: xHaste + 0.5, y: bT.minY }, { x: xHaste + 0.5, y: bT.maxY }, { x: xHaste - 0.5, y: bT.maxY }], holes: [] }]));
+  ok('marcador de taça: a haste corre pelo pé de todas as letras, do lado do vidro', perto(naHaste, bT.h, bT.h * 0.01), `${naHaste.toFixed(1)} de ${bT.h.toFixed(1)}`);
+  ok('marcador de taça: a base é uma peça só (letras unidas) e o gancho sobe acima das letras', base.length === 1 && bB.maxY > bT.maxY + Number(vm.alturaGancho) * 0.8);
+  const yPerna = bB.maxY - Number(vm.larguraGancho) - Number(vm.abertura) / 2 - 2;
+  const fatia = intersectRegion(base, [{ outer: [{ x: bB.minX - 1, y: yPerna - 0.1 }, { x: bB.maxX + 1, y: yPerna - 0.1 }, { x: bB.maxX + 1, y: yPerna + 0.1 }, { x: bB.minX - 1, y: yPerna + 0.1 }], holes: [] }]);
+  const partes = fatia.map((q) => regionBounds([q])).sort((a, b) => a.minX - b.minX);
+  const vao = partes.length === 2 ? partes[1]!.minX - partes[0]!.maxX : -1;
+  ok('marcador de taça: o gancho abre na espessura do vidro', perto(vao, Number(vm.abertura), 0.1), `${vao.toFixed(2)} mm`);
+}
+
+console.log('\n== tiara com nome ==');
+{
+  const ti = receitaPorId('tiara-nome')!, vt = valoresPadrao(ti);
+  const r = gerar(ti), tiara = r.itens[0]!.pecas.find((p) => p.nome === 'Tiara')!.camadas[0]!, letras = r.itens[0]!.pecas.find((p) => p.nome === 'Letras')!.camadas[0]!;
+  const bT = regionBounds(tiara.region), bL = regionBounds(letras.region), R = Number(vt.raio);
+  ok('tiara: uma peça de 2 cores, tiara inteira (arco, haste e faixa unidos) e cabe na mesa', r.itens.length === 1 && tiara.region.length === 1 && bT.w <= 256 && bT.h <= 256 && !r.avisos.length, `${bT.w.toFixed(0)} x ${bT.h.toFixed(0)} mm`);
+  ok('tiara: o vão por dentro tem o raio pedido (dentinhos encostando nele)', perto(-bT.minY, R + Number(vt.largura) / 2, R * 0.6) && bT.w > 2 * R, `${bT.w.toFixed(0)} mm de largura`);
+  const perto0 = Math.min(...letras.region.flatMap((p) => p.outer.map((q) => Math.hypot(q.x, q.y))));
+  ok('tiara: o nome fica no alto, longe do arco, e as letras são mais altas que a tiara', bL.minY > 0 && perto0 > R + Number(vt.largura) + 1 && letras.z1 > tiara.z1, `${(perto0 - R - Number(vt.largura)).toFixed(1)} mm do arco`);
+  ok('tiara: as letras ficam inteiras em cima do contorno da tiara', letras.z0 === tiara.z1 && regionArea(diffRegion(letras.region, tiara.region)) < 0.5);
+}
+
+console.log('\n== palavra de parede ==');
+{
+  // A Pacifico de verdade (a fonte da peça): na Segoe Script, mais fina, os furos não ficam nivelados.
+  const ap = receitaPorId('arte-parede')!, pacifico = parseFont(fs.readFileSync('public/fontes/pacifico.ttf').buffer as ArrayBuffer);
+  const gerarAp = (mudar: Valores = {}) => ap.gerar({ ...valoresPadrao(ap), ...mudar }, { ...ctx, fonte: (id: string) => (id === 'pacifico' ? pacifico : ctx.fonte(id)) });
+  const r = gerarAp(), cam = r.itens[0]!.pecas[0]!.camadas, topo = cam.at(-1)!.region, b = regionBounds(topo);
+  ok('parede: peça única de uma cor na largura pedida, com furos de prego atrás', r.itens[0]!.pecas.length === 1 && topo.length === 1 && perto(b.w, 240, 0.5) && cam.length === 3 && !r.avisos.length, `${b.w.toFixed(0)} x ${b.h.toFixed(0)} mm`);
+  const boca = diffRegion(topo, cam[0]!.region), canal = diffRegion(topo, cam[1]!.region);
+  const bocas = boca.map((p) => regionBounds([p]));
+  ok('parede: 2 furos na mesma altura, longe um do outro', bocas.length === 2 && perto(bocas[0]!.minY, bocas[1]!.minY, 0.01) && Math.abs(bocas[0]!.minX - bocas[1]!.minX) > 60, bocas.map((x) => `(${x.minX.toFixed(0)}, ${x.minY.toFixed(0)})`).join(' '));
+  ok('parede: o canal da cabeça do prego é maior que a boca e fica escondido dentro da letra', regionArea(canal) > regionArea(boca) + 1 && regionArea(diffRegion(boca, canal)) < 0.01 && cam[1]!.region.length === 1 && cam[0]!.z1 === cam[1]!.z0 && cam[1]!.z1 < cam[2]!.z0 + 0.01);
+  const ligada = gerarAp({ texto: 'Família' });
+  ok('parede: acento e letras soltas viram uma peça só (com ligação)', ligada.itens[0]!.pecas[0]!.camadas.at(-1)!.region.length === 1 && ligada.notas!.some((n) => n.includes('ligação')));
+  const fita = gerarAp({ fixacao: 'fita', largura: 100 });
+  ok('parede: sem furo é uma camada inteira; palavra estreita cabe', fita.itens[0]!.pecas[0]!.camadas.length === 1 && perto(regionBounds(fita.itens[0]!.pecas[0]!.camadas[0]!.region).w, 100, 0.5));
+  const fina = gerarAp({ espessura: 3 });
+  ok('parede: peça fina demais para o furo avisa e sai sem furo', fina.avisos.some((a) => a.includes('fina')) && fina.itens[0]!.pecas[0]!.camadas.length === 1);
+}
+
+console.log('\n== placa de nome em pe ==');
+{
+  const pn = receitaPorId('placa-nome')!, vp = valoresPadrao(pn);
+  const r = gerar(pn), [base, letras] = r.itens[0]!.pecas;
+  const bBase = regionBounds(base!.camadas[0]!.region), zL = letras!.camadas.map((c) => [c.z0, c.z1]).flat();
+  const bL = regionBounds(letras!.camadas.flatMap((c) => c.region));
+  ok('placa: base fina e as letras de pé em cima dela, na altura pedida', base!.camadas.length === 1 && Math.min(...zL) === Number(vp.espBase) && perto(Math.max(...zL) - Number(vp.espBase), Number(vp.altura), 2), `${(Math.max(...zL) - Number(vp.espBase)).toFixed(1)} mm`);
+  ok('placa: as letras têm a profundidade pedida e não passam da base', perto(bL.h, Number(vp.profundidade), 0.01) && bL.minX >= bBase.minX && bL.maxX <= bBase.maxX && bL.minY >= bBase.minY && bL.maxY <= bBase.maxY);
+  const reto = gerar(pn, { nomes: 'HI' }).itens[0]!.pecas[1]!.camadas;
+  ok('placa: as fatias emendam, e fatias seguidas iguais viram uma camada só', letras!.camadas.every((c, i, cs) => !i || cs[i - 1]!.z1 === c.z0) && reto.length <= 3, `HI: ${reto.length} camada(s)`);
+  ok('placa: um por nome no lote', gerar(pn, { nomes: 'Ana, Bia' }).itens.length === 2);
+}
+
+console.log('\n== etiqueta de cabo ==');
+{
+  const ec = receitaPorId('etiqueta-cabo')!, ve = valoresPadrao(ec);
+  const r = gerar(ec), pecas = r.itens[0]!.pecas, todas = pecas.flatMap((p) => p.camadas);
+  const fatia = (z: number) => todas.find((c) => c.z0 <= z && c.z1 > z)!.region;
+  const faixa = (reg: Region, y0: number, y1: number) => { const b = regionBounds(reg); return intersectRegion(reg, [{ outer: [{ x: b.minX - 1, y: y0 }, { x: b.maxX + 1, y: y0 }, { x: b.maxX + 1, y: y1 }, { x: b.minX - 1, y: y1 }], holes: [] }]); };
+  const rc = Number(ve.cabo) / 2 + Number(ve.folga), zc = 1.6 + rc, meiaFenda = (Number(ve.cabo) * Number(ve.fenda)) / 200;
+  const bTudo = regionBounds(todas.flatMap((c) => c.region));
+  const noCanal = fatia(zc), frenteCanal = faixa(noCanal, rc + 0.05, 99);
+  ok('cabo: o canal atravessa o nome inteiro, fechado na frente e atrás', regionArea(faixa(noCanal, -rc + 0.05, rc - 0.05)) < 1e-6 && frenteCanal.length === 1 && perto(regionBounds(frenteCanal).w, bTudo.w, 1), `${regionBounds(frenteCanal).w.toFixed(1)} de ${bTudo.w.toFixed(1)} mm`);
+  ok('cabo: fenda por baixo mais estreita que o cabo', regionArea(faixa(fatia(0.1), -meiaFenda + 0.05, meiaFenda - 0.05)) < 1e-6 && regionArea(faixa(fatia(0.1), meiaFenda + 0.05, rc - 0.05)) > 1 && meiaFenda < Number(ve.cabo) / 2);
+  ok('cabo: teto do canal em gota (imprime em pé sem suporte)', regionArea(faixa(fatia(zc + rc * 1.2), -0.05, 0.05)) < 1e-6 && regionArea(faixa(fatia(zc + rc * 1.5), -0.05, 0.05)) > 0);
+  const H = Math.max(...pecas[1]!.camadas.map((c) => c.z1)), zTroca = Math.max(...pecas[0]!.camadas.map((c) => c.z1));
+  ok('cabo: a cor troca na altura pedida', pecas.length === 2 && perto(zTroca, (H * Number(ve.troca)) / 100, 0.01) && Math.min(...pecas[1]!.camadas.map((c) => c.z0)) === zTroca, `${zTroca.toFixed(2)} de ${H.toFixed(1)} mm`);
+}
+
+console.log('\n== porta-canetas com nome ==');
+{
+  const pc = receitaPorId('porta-canetas-nome')!, vc = valoresPadrao(pc);
+  const r = gerar(pc), [corpo, letras] = r.itens[0]!.pecas, prof = Number(vc.profundidade), raio = Number(vc.furo) / 2;
+  const fatia = (z: number) => corpo!.camadas.find((c) => c.z0 <= z && c.z1 > z)!.region;
+  const cheio = regionArea(fatia(0.1)), nFuros = Number(/(\d+) furo/.exec(r.notas!.join(' '))?.[1] ?? 0);
+  ok('porta-canetas: furos de caneta no topo, e o corpo continua uma peça só', nFuros >= 3 && fatia(prof / 2).length === 1 && regionArea(fatia(prof / 2)) < cheio - nFuros * 2 * raio * 10, `${nFuros} furos`);
+  ok('porta-canetas: costas e frente fechadas (o furo fica no meio da profundidade)', perto(regionArea(fatia(prof - 0.1)), cheio, 0.01) && perto(regionArea(fatia(prof / 2 - raio - 0.1)), cheio, 0.01));
+  ok('porta-canetas: teto dos furos em gota (imprime deitado sem suporte)', regionArea(fatia(prof / 2 + raio * 1.2)) < cheio - 1 && regionArea(fatia(prof / 2 + raio * 1.2)) > regionArea(fatia(prof / 2)));
+  ok('porta-canetas: as letras ficam por cima do corpo, dentro do contorno', letras!.camadas[0]!.z0 === prof && regionArea(diffRegion(letras!.camadas[0]!.region, fatia(prof - 0.1))) < 0.5);
+}
+
+console.log('\n== porta-retrato com palavra ==');
+{
+  const pr = receitaPorId('porta-retrato-palavra')!;
+  const mesa = gerar(pr), pronto = gerar(pr, { montado: true });
+  const moldura = mesa.itens[0]!.pecas[0]!.camadas, costas = mesa.itens[1]!.pecas[0]!.camadas[0]!, pe = mesa.itens[2]!.pecas[0]!.camadas[0]!;
+  const molduraPronta = pronto.itens[0]!.pecas.find((p) => p.nome === 'Moldura')!.camadas, T = Math.max(...molduraPronta.map((c) => c.z1));
+  const frentePronta = molduraPronta.find((c) => c.z1 === T)!.region, frenteMesa = moldura[0]!.region;
+  ok('porta-retrato: moldura, costas e pé; na mesa a moldura sai espelhada (imprime de frente)', mesa.itens.length === 3 && regionArea(diffRegion(scaleRegion(frenteMesa, -1, 1), frentePronta)) < 0.5 && regionArea(diffRegion(frenteMesa, frentePronta)) > 10);
+  ok('porta-retrato: palavra e data presas na moldura (a frente é uma peça só)', frenteMesa.length === 1);
+  const bF = regionBounds(frenteMesa), topo = (reg: Region) => regionArea(intersectRegion(reg, [{ outer: [{ x: -40, y: bF.maxY - 4 }, { x: 40, y: bF.maxY - 4 }, { x: 40, y: bF.maxY + 1 }, { x: -40, y: bF.maxY + 1 }], holes: [] }]));
+  ok('porta-retrato: foto e costas entram por cima (bolsão e trilho abertos em cima, frente fechada)', topo(frenteMesa) > 100 && topo(moldura[1]!.region) < 0.01 && topo(moldura[2]!.region) < 0.01);
+  const paredes = intersectRegion(moldura[2]!.region, [{ outer: [{ x: bF.minX - 1, y: -0.1 }, { x: bF.maxX + 1, y: -0.1 }, { x: bF.maxX + 1, y: 0.1 }, { x: bF.minX - 1, y: 0.1 }], holes: [] }]).map((q) => regionBounds([q])).sort((a, b) => a.minX - b.minX);
+  const vaoTrilho = paredes.length === 2 ? paredes[1]!.minX - paredes[0]!.maxX : -1;
+  ok('porta-retrato: as costas deslizam no trilho com folga', perto(vaoTrilho - regionBounds(costas.region).w, 0.5, 0.01) && costas.z1 < moldura[2]!.z1 - moldura[2]!.z0, `${(vaoTrilho - regionBounds(costas.region).w).toFixed(2)} mm`);
+  const furosPe = costas.region.flatMap((p) => p.holes).map((h) => regionBounds([{ outer: h, holes: [] }]));
+  ok('porta-retrato: o pé encaixa nos dois furos das costas com folga', furosPe.length === 2 && furosPe.every((f) => perto(f.w, 3.3, 0.01) && perto(f.h, 8.3, 0.01)) && perto(pe.z1 - pe.z0, 3, 0.001), furosPe.map((f) => `${f.w.toFixed(1)}x${f.h.toFixed(1)}`).join(' '));
+}
+
+console.log('\n== vaso canelado ==');
+{
+  const vc = receitaPorId('vaso-canelado')!, vv = valoresPadrao(vc);
+  const medidas = (r: Resultado) => { const cs = r.itens[0]!.pecas[0]!.camadas; return { cs, d: Math.max(...cs.map((c) => regionBounds(c.region).w)), h: Math.max(...cs.map((c) => c.z1)) }; };
+  const tig = medidas(gerar(vc, { formato: 'tigela' })), cil = medidas(gerar(vc)), peq = medidas(gerar(vc, { formato: 'pequeno', tamanho: 120 }));
+  ok('vaso: os 3 formatos nas medidas (tigela larga e baixa, cilindros)', perto(tig.d, 170, 0.5) && perto(tig.h, 62, 0.01) && perto(cil.d, 120, 0.5) && perto(cil.h, 90, 0.01) && perto(peq.d, 102, 0.5) && perto(peq.h, 102, 0.01), `${tig.d.toFixed(0)}x${tig.h} ${cil.d.toFixed(0)}x${cil.h} ${peq.d.toFixed(0)}x${peq.h.toFixed(0)}`);
+  const meio = cil.cs.find((c) => c.z0 <= 45 && c.z1 > 45)!.region, buraco = meio[0]!.holes[0]!;
+  const rFundo = 60 - Number(vv.fundoFriso), rMiolo = regionBounds([{ outer: buraco, holes: [] }]).w / 2;
+  ok('vaso: miolo liso com a parede pedida por dentro do fundo dos frisos', meio.length === 1 && meio[0]!.holes.length === 1 && perto(rFundo - rMiolo, Number(vv.parede), 0.05), `${(rFundo - rMiolo).toFixed(2)} mm`);
+  const nFrisos = Math.round((2 * Math.PI * 60) / Number(vv.larguraFriso));
+  ok('vaso: frisos na largura pedida e fundo fechado', meio[0]!.outer.length === nFrisos * 8 && cil.cs.filter((c) => c.z1 <= Number(vv.fundo)).every((c) => c.region.every((p) => !p.holes.length)), `${nFrisos} frisos`);
+  const dreno = gerar(vc, { dreno: true }).itens[0]!.pecas[0]!.camadas[0]!.region;
+  ok('vaso: o cilindro vira poucas camadas; furo de dreno opcional atravessa o fundo', cil.cs.length <= 15 && dreno[0]!.holes.length === 1);
+}
+
+console.log('\n== nome articulado ==');
+{
+  const na = receitaPorId('nome-articulado')!, vn = valoresPadrao(na);
+  const r = gerar(na), [baixo, cima] = r.itens[0]!.pecas, todas = [...baixo!.camadas, ...cima!.camadas];
+  const N = String(vn.nome).length, c = Number(vn.folga), D = Number(vn.profundidade);
+  const hb = Math.max(...baixo!.camadas.map((k) => k.z1));
+  const fatia = (z: number) => todas.find((k) => k.z0 <= z && k.z1 > z)!.region;
+  const andar = (hb - 2 * c) / 10, zB = andar * 1.5, zM = 3 * andar + c + 2 * andar, zT = (hb + 7 * andar + 2 * c) / 2;
+  const pinos = fatia(zM).filter((p) => regionArea([p]) < Math.PI * 1.5 * 1.5 * 1.05);
+  const centro = (p: Region[number]) => { const b = regionBounds([p]); return { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 }; };
+  ok('articulado: uma junta entre cada par de letras, com o pino solto no furo do andar do meio', pinos.length === N - 1 && pinos.every((p) => fatia(zM).some((q) => q.holes.some((h) => pointInContour(h, centro(p))))), `${pinos.length} pinos`);
+  ok('articulado: a folga da junta vale em todos os andares', [zB, zM, zT].every((z) => contornar(fatia(z), c / 2 - 0.05).length === fatia(z).length));
+  const eixos = pinos.map((p) => { const b = regionBounds([p]); return (b.minX + b.maxX) / 2; });
+  const acima = fatia(hb + c / 2);
+  ok('articulado: o pé da letra não encosta na junta da vizinha', eixos.every((e) => regionArea(intersectRegion(acima, intersectRegion(circulo(e, 0, D / 2 + c - 0.05, 64), [{ outer: [{ x: e, y: -D }, { x: e + D, y: -D }, { x: e + D, y: D }, { x: e, y: D }], holes: [] }]))) < 1e-6));
+  const argola = fatia(zB).find((p) => p.holes.length)!;
+  ok('articulado: argola de chaveiro e a cor troca acima das juntas', !!argola && perto(regionBounds([{ outer: argola.holes[0]!, holes: [] }]).w, 5, 0.05) && Math.min(...cima!.camadas.map((k) => k.z0)) === hb && !r.avisos.length);
 }
 
 console.log(`\n${total - falhas}/${total} passaram\n`);

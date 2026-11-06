@@ -24,6 +24,12 @@ export const FONTES_WEB: FonteWeb[] = [
   { id: 'fredoka-700', nome: 'Fredoka Bold', url: CDN + 'fredoka@latest/latin-700-normal.ttf' },
   // Chewy: Apache 2.0 (as outras desta lista sao OFL).
   { id: 'chewy', nome: 'Chewy', url: CDN + 'chewy@latest/latin-400-normal.ttf' },
+  { id: 'bangers', nome: 'Bangers', url: CDN + 'bangers@latest/latin-400-normal.ttf' },
+  { id: 'bagel-fat-one', nome: 'Bagel Fat One', url: CDN + 'bagel-fat-one@latest/latin-400-normal.ttf' },
+  { id: 'arimo-700', nome: 'Arimo Bold', url: CDN + 'arimo@latest/latin-700-normal.ttf' },
+  { id: 'tinos', nome: 'Tinos', url: CDN + 'tinos@latest/latin-400-normal.ttf' },
+  { id: 'silkscreen-700', nome: 'Silkscreen Bold', url: CDN + 'silkscreen@latest/latin-700-normal.ttf' },
+  { id: 'russo-one', nome: 'Russo One', url: CDN + 'russo-one@latest/latin-400-normal.ttf' },
   { id: 'cal-sans', nome: 'Cal Sans', url: CDN + 'cal-sans@latest/latin-400-normal.ttf' },
   { id: 'plus-jakarta-800', nome: 'Plus Jakarta Sans ExtraBold', url: CDN + 'plus-jakarta-sans@latest/latin-800-normal.ttf' },
   { id: 'open-sans-800', nome: 'Open Sans ExtraBold', url: CDN + 'open-sans@latest/latin-800-normal.ttf' },

@@ -4,8 +4,9 @@
  */
 import { CAMPANHAS, campanhaAtiva, type Campanha } from './campanhas';
 import { podeAparecer } from './consultas';
+import { geradorDe } from './formato';
 import { PRODUTOS } from './produtos';
-import { ORDEM_SECOES, type Produto } from './tipos';
+import { NOSSOS_GERADORES, ORDEM_SECOES, type Produto } from './tipos';
 
 /** Geradores e editores abertos ao publico. */
 export const FERRAMENTAS = ['/criar', '/design', '/editor'];
@@ -21,7 +22,9 @@ export function caminhosIndexaveis(lista: Produto[] = PRODUTOS, ativa: (c: Campa
   return [
     '/',
     '/pecas',
-    ...ORDEM_SECOES.filter((s) => publicos.some((p) => p.secao === s)).map((s) => `/secao/${s}`),
+    // Natal tem a pagina da campanha (sempre no sitemap, logo abaixo); as outras, /secao/<slug>.
+    ...ORDEM_SECOES.filter((s) => s !== 'natal' && publicos.some((p) => p.secao === s)).map((s) => `/secao/${s}`),
+    ...(publicos.some((p) => geradorDe(p)) ? [NOSSOS_GERADORES.href] : []),
     CAMPANHAS.natal.href,
     ...FERRAMENTAS,
     ...LETRAS,

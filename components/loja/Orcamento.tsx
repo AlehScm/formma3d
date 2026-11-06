@@ -8,19 +8,23 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BotaoIconeMarca, BotaoMarca, CAMPO_MARCA } from '@/components/marca';
 import { useMontado, useOrcamento } from '@/features/loja/estado';
+import { useLista } from '@/lib/marketplace/api/cliente';
+import { ENDPOINTS, type ProdutoResumido } from '@/lib/marketplace/api/contrato';
 import { MENSAGENS, linkWhatsapp, textoResposta } from '@/lib/marketplace/contato';
-import { comImagemPrimeiro, rotuloPreco } from '@/lib/marketplace/formato';
-import type { Produto } from '@/lib/marketplace/tipos';
+import { rotuloPreco } from '@/lib/marketplace/formato';
 import { BarraFixa, useAbaixoDaTela } from './BarraFixa';
 import { ImagemProduto } from './CardProduto';
 import { Prateleira } from './Vitrine';
 import { IconeCarrinho, IconeCopiar, IconeMais, IconeMenos, IconeOk, IconeRemover } from './icones';
 
-export function Orcamento({ produtos }: { produtos: Produto[] }) {
+/** `maisPedidas`: a vitrine do orcamento vazio (vem no HTML). As pecas do orcamento vem por GET. */
+export function Orcamento({ maisPedidas }: { maisPedidas: ProdutoResumido[] }) {
   const montado = useMontado();
   const { itens, alterar, remover, limpar } = useOrcamento();
   const [copiado, setCopiado] = useState(false);
-  const porSlug = useMemo(() => new Map(produtos.map((p) => [p.slug, p])), [produtos]);
+  const [tentativa, setTentativa] = useState(0);
+  const { itens: produtos, erro } = useLista(montado && itens.length ? ENDPOINTS.produtos : null, tentativa);
+  const porSlug = useMemo(() => new Map((produtos ?? []).map((p) => [p.slug, p])), [produtos]);
   // Peca que saiu da loja (ficou oculta) nao entra na lista.
   const linhas = montado ? itens.flatMap((i) => { const p = porSlug.get(i.slug); return p ? [{ item: i, produto: p }] : []; }) : [];
   const mensagem = MENSAGENS.orcamento(linhas.map(({ item, produto }) => ({ nome: produto.nome, quantidade: item.quantidade, cor: item.cor, observacao: item.observacao, personalizacao: item.personalizacao })));
@@ -38,7 +42,15 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
     }
   };
 
-  if (!montado) return <div className="h-64 rounded-2xl bg-marca-branco shadow-marca-1" aria-busy="true" />;
+  if (erro) {
+    return (
+      <div role="alert" className="flex flex-col items-center gap-3 rounded-2xl bg-marca-branco p-12 text-center shadow-marca-1">
+        <p className="m-0 font-display text-modulo text-marca-navy">Não deu para carregar as peças do orçamento.</p>
+        <BotaoMarca onClick={() => setTentativa((n) => n + 1)} formato="controle" variante="contorno">Tentar de novo</BotaoMarca>
+      </div>
+    );
+  }
+  if (!montado || (itens.length && !produtos)) return <div className="h-64 rounded-2xl bg-marca-branco shadow-marca-1" aria-busy="true" />;
   if (!linhas.length) {
     return (
       <>
@@ -49,7 +61,7 @@ export function Orcamento({ produtos }: { produtos: Produto[] }) {
           <BotaoMarca href="/pecas" formato="controle" variante="secao" className="mt-2">Ver as peças</BotaoMarca>
         </div>
         {/* Carrinho vazio com saida: as mais pedidas logo aqui. */}
-        <Prateleira titulo="Mais pedidas" produtos={comImagemPrimeiro(produtos.filter((p) => p.destaque)).slice(0, 12)} verTodos={{ href: '/pecas', rotulo: 'Ver todas as peças' }} />
+        <Prateleira titulo="Mais pedidas" produtos={maisPedidas} verTodos={{ href: '/pecas', rotulo: 'Ver todas as peças' }} />
       </>
     );
   }

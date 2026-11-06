@@ -3,11 +3,13 @@ import { IconeBusca, IconeConversa, IconeTridimensional } from '@/components/loj
 import { PaginaLoja } from '@/components/loja/Estrutura';
 import { BotaoMarca } from '@/components/marca';
 import { Modulo } from '@/components/loja/Modulo';
+import { Listagem } from '@/components/loja/Listagem';
 import { Prateleira } from '@/components/loja/Vitrine';
 import { ComPaleta } from '@/features/catalogo/Miniaturas';
 import { TopoNatal } from '@/features/marketplace/Natal';
 import { CAMPANHAS, PALETA_NATAL, TEXTOS_NATAL, VITRINES_NATAL, campanhaAtiva } from '@/lib/marketplace/campanhas';
-import { porSlug } from '@/lib/marketplace/consultas';
+import { ENDPOINTS, paginaInicial, paraResumo } from '@/lib/marketplace/api/contrato';
+import { porSecao, porSlug } from '@/lib/marketplace/consultas';
 import { COMO_FUNCIONA } from '@/lib/marketplace/loja';
 import { metadadosPagina } from '@/lib/seo';
 import type { Produto } from '@/lib/marketplace/tipos';
@@ -29,11 +31,18 @@ export default function NatalPage() {
       </PaginaLoja>
     );
   }
-  const vitrines = VITRINES_NATAL.map((v) => ({ ...v, produtos: v.slugs.map((s) => porSlug(s)).filter((p): p is Produto => !!p) })).filter((v) => v.produtos.length);
+  const colecao = porSecao('natal');
+  const vitrines = VITRINES_NATAL.map((v) => ({ ...v, produtos: v.slugs.map((s) => porSlug(s)).filter((p): p is Produto => !!p).map(paraResumo) })).filter((v) => v.produtos.length);
   return (
     <PaginaLoja>
       <div data-campanha="natal" className="flex flex-col gap-8">
         <TopoNatal />
+        {/* A categoria Natal inteira (as fotos), com filtro por tipo; o resto por GET. */}
+        {colecao.length > 0 && (
+          <Modulo id="colecao-natal" titulo="Coleção de Natal" subtitulo="Presépios, quebra-nozes, renas, árvores, luzes e a mesa da ceia.">
+            <Listagem pagina={paginaInicial(colecao)} fonte={ENDPOINTS.secao('natal')} />
+          </Modulo>
+        )}
         <div id="presentes" className="flex scroll-mt-28 flex-col gap-8">
           <ComPaleta cores={PALETA_NATAL}>
             {vitrines.map((v) => <Prateleira key={v.titulo} titulo={v.titulo} produtos={v.produtos} tema="natal" />)}

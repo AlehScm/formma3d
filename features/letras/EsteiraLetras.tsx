@@ -14,7 +14,7 @@ import { BotaoMarca, FOCO_MARCA, SecaoMarca } from '@/components/marca';
 import { ImagemProduto } from '@/components/loja/CardProduto';
 import { cx } from '@/components/ui/cx';
 import { BALANCO_CARDS, idDoProduto } from '@/lib/marketplace/vitrineLetras';
-import type { Produto } from '@/lib/marketplace/tipos';
+import type { ProdutoResumido } from '@/lib/marketplace/api/contrato';
 import type { GiroCards } from './giroCards';
 
 /** Largura do card (w-[260px]) e vao entre cards: o passo do anel sai daqui. */
@@ -41,12 +41,12 @@ const QUADROS_POR_SEGUNDO = 30;
 const ESTUDIO = 'bg-[radial-gradient(ellipse_75%_65%_at_50%_38%,rgb(255_255_255/0.45),transparent_70%),linear-gradient(to_bottom,var(--marca-linha),var(--marca-linha-forte))]';
 
 interface Carta {
-  produto: Produto;
+  produto: ProdutoResumido;
   /** Falso nas repeticoes e na copia do loop: fora da leitura de tela e da tabulacao. */
   principal: boolean;
 }
 
-function montarAnel(produtos: Produto[]): Carta[] {
+function montarAnel(produtos: ProdutoResumido[]): Carta[] {
   const uma: Carta[] = [];
   for (let volta = 0; uma.length < MINIMO_CARDS; volta++) {
     produtos.forEach((produto) => uma.push({ produto, principal: volta === 0 }));
@@ -88,7 +88,7 @@ function variaveis(p: Posicao): CSSProperties {
   } as CSSProperties;
 }
 
-export function EsteiraLetras({ produtos }: { produtos: Produto[] }) {
+export function EsteiraLetras({ produtos }: { produtos: ProdutoResumido[] }) {
   const anel = useMemo(() => montarAnel(produtos), [produtos]);
   const total = anel.length;
   const raio = raioDo(total);

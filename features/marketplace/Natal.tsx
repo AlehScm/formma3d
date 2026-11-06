@@ -83,9 +83,10 @@ export function ContagemNatal({ claro }: { claro?: boolean }) {
 }
 
 /** Topo da pagina de Natal: o enfeite de floco de neve com o nome, num palco de noite com neve. */
-export function TopoNatal() {
+export function TopoNatal({ nivel }: { nivel?: 'h1' | 'h2' }) {
   return (
     <TopoAoVivo
+      nivel={nivel}
       c={{
         gerador: 'floco-neve', produto: 'enfeite-floco-neve', nomePeca: 'Enfeite floco de neve', campo: 'nomes', rotuloCampo: 'Nome no enfeite', nomeInicial: 'Noel', max: 14,
         titulo: TEXTOS_NATAL.titulo,
