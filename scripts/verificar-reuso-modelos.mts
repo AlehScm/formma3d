@@ -11,6 +11,8 @@ import { atualizarPosicaoManipulador } from '../lib/gerador/manipuladores';
 import { empacotar3mf } from '../lib/export/tresmf';
 import { lerTresMf } from '../lib/import/tresmf';
 import { xml3mfMontado } from '../lib/gerador/exportar';
+import { iniciarMalha } from '../lib/malha/nucleo';
+await iniciarMalha();
 
 const bytes = fs.readFileSync('public/fontes/archivo-black.ttf');
 const font = parseFont(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);

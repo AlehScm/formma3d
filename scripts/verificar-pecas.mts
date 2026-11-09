@@ -11,7 +11,14 @@ import { parseFont, textToLetters } from '../lib/text/glyphs';
 import { buildPart, PRESETS, type Params, type PresetId } from '../lib/geom/modes';
 import { partToGeometry } from '../lib/geom/extrude';
 import { geometryToSTL } from '../lib/export/stl';
-import { minThickness, regionArea, regionBounds } from '../lib/geom/region';
+import { minThickness, regionArea } from '../lib/geom/region';
+import { comEscopo, iniciarMalha } from '../lib/malha/nucleo';
+import { doMalha } from '../lib/malha/converter';
+import { fatia } from '../lib/malha/solidos';
+import { malhaVazia, type Malha } from '../lib/malha/tipos';
+import type { Papeis } from '../lib/geom/modes';
+
+await iniciarMalha();
 
 let falhas = 0;
 let total = 0;
@@ -46,8 +53,20 @@ const font = parseFont(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
 const O = textToLetters(font, 'O', { altura: 150 })[0]!;
 const espO = minThickness(O.region);
 
+/** Cada trecho da malha (um prisma da receita) com o papel e a faixa de altura dele. */
+function trechos(malha: Malha, papeis: Papeis): { role: string; z0: number; z1: number }[] {
+  return Array.from(malha.runOriginalID, (id, i) => {
+    let z0 = Infinity, z1 = -Infinity;
+    for (let k = malha.runIndex[i]!; k < (malha.runIndex[i + 1] ?? malha.tri.length); k++) {
+      const z = malha.pos[malha.tri[k]! * 3 + 2]!;
+      z0 = Math.min(z0, z);
+      z1 = Math.max(z1, z);
+    }
+    return { role: papeis[id]?.role ?? '?', z0, z1 };
+  });
+}
 const camadasDe = (p: ReturnType<typeof buildPart>) =>
-  p.layers.map((l) => `${l.role}[${l.z0.toFixed(1)}-${l.z1.toFixed(1)}]`).join(' ');
+  trechos(p.malha, p.papeis).map((l) => `${l.role}[${l.z0.toFixed(1)}-${l.z1.toFixed(1)}]`).join(' ');
 
 /**
  * Medido com os modos antigos, letra "O" de 150mm, profundidade 40, parede 2.4,
@@ -94,13 +113,15 @@ console.log('\n== toda combinacao gera solido fechado ==');
         const p: Partial<Params> = { macica: false, frente, traseira, apoio, profundidade: 40, parede: 2.4 };
         const part = buildPart(O.region, p, espO);
         const nome = `${frente}/${traseira}/${apoio}`;
-        if (!part.layers.length) { vazias.push(nome); continue; }
-        // A tampa do batente de fora e outra peca impressa: tem de fechar tambem.
-        const pecas = [part.layers, ...part.extras.flatMap((e) => (e.kind === 'stl' ? [e.layers] : []))];
-        for (const layers of pecas) {
-          const geo = partToGeometry({ layers });
-          if (!geo) { vazias.push(nome); continue; }
-          const vol = layers.reduce((t, l) => t + regionArea(l.region) * (l.z1 - l.z0), 0);
+        if (malhaVazia(part.malha)) { vazias.push(nome); continue; }
+        // A tampa do batente de fora e outra peca impressa: tem de fechar tambem. O STL que sai
+        // da malha tem o volume da peca, e a manifold aceita a malha como solido.
+        const pecas = [part.malha, ...part.extras.flatMap((e) => (e.kind === 'stl' ? [e.malha] : []))];
+        for (const malha of pecas) {
+          const geo = partToGeometry({ malha });
+          const fechado = comEscopo((m) => doMalha(m, malha).status() === 'NoError');
+          if (!geo || !fechado) { vazias.push(nome); continue; }
+          const vol = comEscopo((m) => doMalha(m, malha).volume());
           const erro = (Math.abs(volumeDaMalha(geometryToSTL(geo, 'O')) - vol) / vol) * 100;
           if (erro > piorErro) { piorErro = erro; pior = nome; }
         }
@@ -124,8 +145,8 @@ console.log('\n== nada fica em voladico: z=0 e sempre face fechada ou solido =='
   ];
   for (const [nome, p] of casos) {
     const part = buildPart(O.region, { ...p, macica: false, profundidade: 40 }, espO);
-    const naMesa = part.layers.filter((l) => l.z0 < 0.001);
-    const areaBase = naMesa.reduce((a, l) => a + regionBounds(l.region).w, 0);
+    const naMesa = trechos(part.malha, part.papeis).filter((l) => l.z0 < 0.001);
+    const areaBase = regionArea(comEscopo((m) => fatia(doMalha(m, part.malha), 0.01)));
     ok(`${nome.padEnd(30)} tem base`, naMesa.length > 0 && areaBase > 0,
        naMesa.map((l) => l.role).join('+') || '*** NADA EM Z=0 ***');
   }

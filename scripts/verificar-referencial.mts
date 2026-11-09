@@ -15,6 +15,10 @@ import { minThickness, regionBounds, type Pt, type Region } from '../lib/geom/re
 import { arrumar } from '../lib/print/arranjo';
 import { acharImpressora, caberNaMesa } from '../lib/print/impressoras';
 import { deslocamentosNaPlaca, paraCoordenadasDaPlaca, type Deslocamento } from '../features/viewport/referencial';
+import { iniciarMalha } from '../lib/malha/nucleo';
+
+// A peca e montada pelo motor de malha (WASM): carrega antes do primeiro buildPart.
+await iniciarMalha();
 
 let falhas = 0;
 let total = 0;

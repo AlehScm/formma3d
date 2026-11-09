@@ -1,16 +1,18 @@
 'use client';
 
-import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { partToGeometriesByRole, partToGeometry, layerToGeometry } from '@/lib/geom/extrude';
 import type { Extra, Part, Role } from '@/lib/geom/modes';
-import { regionBounds, type Region } from '@/lib/geom/region';
-import { trechosNaLinha, type Corte } from '@/lib/geom/emenda';
+import { offsetRegion, regionBounds, type Pt, type Region } from '@/lib/geom/region';
+import { tracosDoCorte, type MarcaDeEncaixe, type PlanoDoCorte } from '@/lib/geom/emenda';
+import { caixaDaMalha } from '@/lib/malha/tipos';
 import type { Colocada } from '@/lib/print/arranjo';
 import { deslocamentosNaPlaca, paraCoordenadasDaPlaca, type Deslocamento } from '@/features/viewport/referencial';
 import { centroDe, transformarConjunto, type TransformacaoConjunto } from '@/lib/cena/grupo';
+import { CortarAMao, type CortarAMaoProps } from '@/features/viewport/CortarAMao';
 
 /** Peca que nao cabe na mesa: cor unica, para nao se confundir com nenhum papel. */
 const COR_NAO_CABE = '#e03131';
@@ -51,20 +53,39 @@ export interface LetraRender {
   part: Part;
   /** Onde a edicao gira a peca (Desenhar). O gizmo de varias pecas faz ela orbitar. */
   ancora?: { x: number; y: number };
-  /** Peca dividida para caber na mesa: os pedacos e os cortes (mm a partir do canto da inteira). */
-  divisao?: { pedacos: { part: Part }[]; cortes: Corte[]; inteira: Part };
+  /** Peca dividida para caber na mesa: os pedacos, a linha de cada corte, os encaixes e os cortes na altura (no letreiro). */
+  divisao?: { pedacos: { part: Part }[]; linhas: (Pt[] | null)[]; marcas: MarcaDeEncaixe[]; planos: PlanoDoCorte[]; inteira: Part };
 }
 
-/** As linhas de corte da peca dividida, por cima dela: so onde o corte atravessa o desenho. */
+/**
+ * As linhas de corte da peca dividida, por cima dela (so onde o corte atravessa o desenho), o
+ * contorno dos encaixes e, no corte na altura, a volta da peca naquele plano.
+ */
 function linhasDeCorte(d: NonNullable<LetraRender['divisao']>): THREE.BufferGeometry {
-  const b = regionBounds(d.inteira.contorno);
   const z = d.inteira.alturaZ + 0.3;
   const pts: number[] = [];
-  for (const c of d.cortes) {
-    const pos = c.pos + (c.eixo === 'x' ? b.minX : b.minY);
-    for (const [a, f] of trechosNaLinha(d.inteira.contorno, { eixo: c.eixo, pos })) {
-      if (c.eixo === 'x') pts.push(pos, a, z, pos, f, z);
-      else pts.push(a, pos, z, f, pos, z);
+  const volta = (o: Pt[], zz: number) => {
+    for (let i = 0; i < o.length; i++) {
+      const a = o[i]!, f = o[(i + 1) % o.length]!;
+      pts.push(a.x, a.y, zz, f.x, f.y, zz);
+    }
+  };
+  for (const l of d.linhas) {
+    if (!l) continue;
+    for (const [a, f] of tracosDoCorte(d.inteira.contorno, l)) pts.push(a.x, a.y, z, f.x, f.y, z);
+  }
+  const naAltura = new Set(d.planos.map((p) => p.corte));
+  for (const m of d.marcas) if (!naAltura.has(m.corte)) for (const p of m.regiao) volta(p.outer, z);
+  for (const p of d.planos) {
+    const de = pts.length;
+    for (const poly of offsetRegion(p.regiao, -0.3)) for (const anel of [poly.outer, ...poly.holes]) volta(anel, p.z);
+    // Corte inclinado: o contorno foi tirado com o plano deitado; a matriz o leva para a peca.
+    if (p.matriz) {
+      const m = new THREE.Matrix4().fromArray(p.matriz), v = new THREE.Vector3();
+      for (let i = de; i < pts.length; i += 3) {
+        v.set(pts[i]!, pts[i + 1]!, pts[i + 2]!).applyMatrix4(m);
+        pts[i] = v.x; pts[i + 1] = v.y; pts[i + 2] = v.z;
+      }
     }
   }
   const geo = new THREE.BufferGeometry();
@@ -189,9 +210,12 @@ function extraNaCena(e: Extra): ExtraCena {
   if (e.kind === 'cut') {
     return { ordem: e.montagem.ordem, chapa: layerToGeometry({ region: e.region, z0: z, z1: z + e.espessura }), roles: new Map() };
   }
-  const layers = e.layers.map((x) => ({ ...x, z0: x.z0 + z, z1: x.z1 + z }));
-  if (e.material === 'translucido') return { ordem: e.montagem.ordem, chapa: partToGeometry({ layers }), roles: new Map() };
-  return { ordem: e.montagem.ordem, chapa: null, roles: partToGeometriesByRole({ layers }) };
+  // Montagem com matriz (o pino de um corte inclinado, de lado): ela vale no lugar do z.
+  const posicionar = (g: THREE.BufferGeometry) => (e.montagem.matriz ? g.applyMatrix4(new THREE.Matrix4().fromArray(e.montagem.matriz)) : g.translate(0, 0, z));
+  if (e.material === 'translucido') { const g = partToGeometry(e); return { ordem: e.montagem.ordem, chapa: g ? posicionar(g) : null, roles: new Map() }; }
+  const roles = partToGeometriesByRole(e);
+  for (const g of roles.values()) posicionar(g);
+  return { ordem: e.montagem.ordem, chapa: null, roles };
 }
 
 function Peca({
@@ -207,6 +231,7 @@ function Peca({
   onClicar,
   relevo,
   registrar,
+  sobreposicao,
 }: {
   letras: LetraRender[];
   centro: [number, number];
@@ -221,20 +246,27 @@ function Peca({
   onClicar: (chave: string, mods: ModsClique, menu?: boolean) => void;
   relevo: RelevoCena | null;
   registrar: (chave: string, o: THREE.Object3D | null) => void;
+  /** Ferramenta desenhada por cima de uma peca, no referencial dela (Cortar a mao). */
+  sobreposicao: { chave: string; no: ReactNode } | null;
 }) {
   // As Regions ja carregam a posicao real de cada letra no letreiro (avanco + kerning
   // da fonte), entao o grupo inteiro so precisa ser deslocado para o centro da cena.
-  // Peca dividida: um grupo por pedaco, que a Montagem afasta na direcao dele (a emenda abre).
+  // Peca dividida: um grupo por pedaco, que a Montagem afasta na direcao dele (a emenda abre);
+  // a parte de cima de um corte na altura sobe.
   const grupos = useMemo(
     () =>
       letras.map((l) => {
         const d = l.divisao && l.divisao.pedacos.length > 1 ? l.divisao : null;
         const b = regionBounds(l.part.contorno);
-        const partes = (d ? d.pedacos.map((p) => p.part) : [l.part]).map((p) => {
+        const pecas = d ? d.pedacos.map((p) => p.part) : [l.part];
+        const base = (p: Part) => caixaDaMalha(p.malha).min[2];
+        const niveis = [...new Set(pecas.map((p) => Math.round(base(p) * 10)))].sort((x, y) => x - y);
+        const partes = pecas.map((p) => {
           const bp = regionBounds(p.contorno);
           const vx = bp.minX + bp.w / 2 - (b.minX + b.w / 2), vy = bp.minY + bp.h / 2 - (b.minY + b.h / 2);
           const n = Math.hypot(vx, vy);
-          return { roles: partToGeometriesByRole(p), extras: p.extras.map(extraNaCena), dir: d && n > 1e-6 ? [vx / n, vy / n] : [0, 0] };
+          const nivel = niveis.indexOf(Math.round(base(p) * 10));
+          return { roles: partToGeometriesByRole(p), extras: p.extras.map(extraNaCena), dir: d && n > 1e-6 ? [vx / n, vy / n] : [0, 0], nivel };
         });
         return { partes, cortes: d ? linhasDeCorte(d) : null };
       }),
@@ -308,7 +340,7 @@ function Peca({
           >
             {g.partes.map((p, k) => (
               // Pedaco de peca dividida: a Montagem abre a emenda, metade do quanto sobe a chapa.
-              <group key={k} position={[p.dir[0]! * explode * 0.5, p.dir[1]! * explode * 0.5, 0]}>
+              <group key={k} position={[p.dir[0]! * explode * 0.5, p.dir[1]! * explode * 0.5, p.nivel * explode]}>
                 {/* A peca principal fica parada: o fundo impresso sai junto com ela, so os extras se afastam. */}
                 {[...p.roles.entries()].map(([role, geo]) => malha(role, geo, 0, role))}
                 {p.extras.map((x, j) => {
@@ -334,6 +366,7 @@ function Peca({
             )}
             {fora && <CaixaFootprint contorno={l.part.contorno} cor={COR_NAO_CABE} />}
             {sel && <CaixaFootprint contorno={l.part.contorno} cor={COR_SELECAO} />}
+            {sobreposicao?.chave === l.chave && sobreposicao.no}
           </PecaPosicionada>
         );
       })}
@@ -705,6 +738,30 @@ function Enquadrar({
   return null;
 }
 
+/** Camera de cima, sobre um ponto do letreiro: para cortar a mao vendo a peca como no desenho. */
+function OlharDeCima({ foco, centro }: { foco: { pedido: number; x: number; y: number; z: number; raio: number } | null; centro: [number, number] }) {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as { target: THREE.Vector3; update: () => void } | null;
+  const pedido = foco?.pedido ?? 0;
+  useEffect(() => {
+    if (!foco) return;
+    const x = foco.x - centro[0], y = foco.y - centro[1];
+    const dist = Math.max(foco.raio, 50) * 3.4;
+    // Um fio inclinado: olhando exatamente de cima o "para cima" da camera fica indefinido.
+    camera.position.set(x, y - dist * 0.02, foco.z + dist);
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.near = Math.max(1, dist / 500);
+      camera.far = dist * 12;
+    }
+    camera.updateProjectionMatrix();
+    if (controls) {
+      controls.target.set(x, y, foco.z);
+      controls.update();
+    }
+  }, [pedido, camera, controls]);
+  return null;
+}
+
 export interface Viewer3DProps {
   letras: LetraRender[];
   largura?: number;
@@ -749,6 +806,10 @@ export interface Viewer3DProps {
   onTransformar?: (chave: string, t: Transformacao) => void;
   /** Incrementar reenquadra a camera. */
   pedidoEnquadrar?: number;
+  /** Cortar a mao: a peca em que a ferramenta esta ligada e o que ela mostra. */
+  cortarAMao?: (CortarAMaoProps & { chave: string }) | null;
+  /** Cada `pedido` novo poe a camera de cima, sobre o ponto (x, y) do letreiro. */
+  focoDeCima?: { pedido: number; x: number; y: number; z: number; raio: number } | null;
 }
 
 export default function Viewer3D({
@@ -776,6 +837,8 @@ export default function Viewer3D({
   onTransformar = () => {},
   onArranjar = () => {},
   pedidoEnquadrar = 0,
+  cortarAMao = null,
+  focoDeCima = null,
 }: Viewer3DProps) {
   const [perdido, setPerdido] = useState(false);
 
@@ -879,6 +942,7 @@ export default function Viewer3D({
         onClicar={onClicar}
         relevo={relevo}
         registrar={registrar}
+        sobreposicao={cortarAMao ? { chave: cortarAMao.chave, no: <CortarAMao {...cortarAMao} /> } : null}
       />
 
       {membros.length > 1 && ferramenta !== 'nenhuma' && (
@@ -932,6 +996,7 @@ export default function Viewer3D({
         altura={Math.max(altura, mesa?.y ?? 0)}
         profundidade={profundidade}
       />
+      <OlharDeCima foco={focoDeCima} centro={centro} />
       <GuardaContexto onPerda={setPerdido} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} />
     </Canvas>

@@ -6,11 +6,13 @@ import { textToLetters, normalizeLetters, type Letra } from '@/lib/text/glyphs';
 import { buildPart, orientar, descreverPeca, type Params, type Part, type Role } from '@/lib/geom/modes';
 import type { Font } from 'opentype.js';
 import { regionArea, regionPerimeter, minThickness, regionBounds, unionRegion, type Region } from '@/lib/geom/region';
-import { dividirPeca, ehTala, juntarPedacos, pecaDaTala, planejarCortes, type Corte, type PedacoDePeca } from '@/lib/geom/emenda';
+import { assentar, dividirPeca, ehPecaSolta, juntarPedacos, moverCorte, pecaSolta, planejarCortes, type Corte, type MarcaDeEncaixe, type PedacoDePeca, type PlanoDoCorte } from '@/lib/geom/emenda';
 import { carregarFonteWeb } from '@/lib/text/fontes';
 import type { Insumos, Orcamento } from '@/lib/cost/calc';
 import { custosDoTrabalho, type Custos } from '@/lib/cost/trabalho';
 import { volumeMalha } from '@/lib/import/stl';
+import { useMalhaPronta, type EstadoDoMotor } from '@/lib/malha/useMalhaPronta';
+import { idsComFaces, volumeDaMalha } from '@/lib/malha/tipos';
 import { useInterface } from '@/store/interface';
 import { desenhoParaPecas, resolverTracos } from '@/lib/import/pecas';
 import { chaveFonte, textoEmObjetos } from '@/lib/import/texto-em-curvas';
@@ -50,12 +52,20 @@ export type LetraComPeca = Letra & {
   divisao?: DivisaoDaLetra;
 };
 
-/** A divisao de uma letra maior que a mesa (lib/geom/emenda.ts). */
+/** A divisao de uma letra maior que a mesa (lib/geom/emenda/). */
 export interface DivisaoDaLetra {
   /** Cortes automaticos (acompanham a peca e a mesa) ou dados a mao. */
   auto: boolean;
   /** Em mm a partir do canto da peca inteira (esquerda, baixo). */
   cortes: Corte[];
+  /** O canto da peca inteira (esquerda, baixo), no letreiro: de onde os cortes sao medidos. */
+  origem: { x: number; y: number };
+  /** A linha de cada corte no letreiro, de borda a borda (null se nao atravessa a peca). */
+  linhas: ({ x: number; y: number }[] | null)[];
+  /** Dentes, cavilhas, borboletas e pinos, no letreiro. */
+  marcas: MarcaDeEncaixe[];
+  /** Os cortes na altura: o contorno do material em cada plano. */
+  planos: PlanoDoCorte[];
   inteira: Part;
   pedacos: PedacoDePeca[];
   emendas: number;
@@ -71,14 +81,15 @@ export interface PecaImpressa {
   nome: string;
   /** Chave da letra de onde veio. */
   letra: string;
-  tipo: 'letra' | 'pedaco' | 'tala';
+  /** `solta`: tala, cavilha, borboleta ou pino, impressa a parte. */
+  tipo: 'letra' | 'pedaco' | 'solta';
   part: Part;
 }
 
-/** Pedaco e tala tem chave propria, sem ':' (que `lerChave` le como peca de arquivo). */
+/** Pedaco e peca solta tem chave propria, sem ':' (que `lerChave` le como peca de arquivo). */
 export const chavePedaco = (letra: string, i: number) => `${letra}~${i}`;
-export const chaveTala = (letra: string, i: number) => `${letra}~t${i}`;
-/** A letra de onde veio um item da placa (o proprio, se nao for pedaco nem tala). */
+export const chaveSolta = (letra: string, i: number) => `${letra}~t${i}`;
+/** A letra de onde veio um item da placa (o proprio, se nao for pedaco nem peca solta). */
 export const letraDoItem = (chave: string) => chave.replace(/~t?\d+$/, '');
 
 export interface ObjetoModelo {
@@ -149,6 +160,9 @@ export interface Modelo {
   temChapa: boolean;
   temCorte: boolean;
   rolesUsados: Set<Role>;
+  /** O motor de malha (WASM): sem ele nao ha peca. `tentarMotor` carrega de novo depois de uma falha. */
+  motor: EstadoDoMotor;
+  tentarMotor: () => void;
 }
 
 /** Fonte do numero de montagem gravado nos pedacos: so carrega quando alguma peca e dividida. */
@@ -165,20 +179,73 @@ function useFonteNumero(precisa: boolean): Font | null {
   return fonte;
 }
 
+/**
+ * A peca de cada letra, guardada pelo desenho e pelos parametros: digitar, mover ou editar uma
+ * letra so monta a que mudou (montar a malha de uma letra leva de 5 a 40 ms). A chave e um
+ * resumo dos pontos; no acerto a regiao e conferida ponto a ponto, entao colisao nao engana.
+ * Poucas pecas, porque a malha de uma letra grande ocupa centenas de KB.
+ */
+const PECAS = new Map<string, { region: Region; part: Part }>();
+const MAX_PECAS = 80;
+
+function resumoDaRegion(r: Region): string {
+  let a = 0x811c9dc5, b = 0x01000193, n = 0;
+  for (const p of r) {
+    for (const anel of [p.outer, ...p.holes]) {
+      for (const q of anel) {
+        const x = Math.round(q.x * 1e6), y = Math.round(q.y * 1e6);
+        a = Math.imul(a ^ x, 0x01000193) ^ y;
+        b = Math.imul(b ^ y, 0x5bd1e995) ^ x;
+        n++;
+      }
+      a = Math.imul(a, 31) ^ anel.length;
+    }
+  }
+  return `${(a >>> 0).toString(36)}.${(b >>> 0).toString(36)}.${n}`;
+}
+
+const mesmaRegion = (a: Region, b: Region) =>
+  a.length === b.length &&
+  a.every((p, i) => {
+    const q = b[i]!;
+    const aneisA = [p.outer, ...p.holes], aneisB = [q.outer, ...q.holes];
+    return aneisA.length === aneisB.length && aneisA.every((c, k) => c.length === aneisB[k]!.length && c.every((v, j) => v.x === aneisB[k]![j]!.x && v.y === aneisB[k]![j]!.y));
+  });
+
+function pecaDaLetra(region: Region, params: Params, espessuraMin: number): Part {
+  const chave = `${resumoDaRegion(region)}|${espessuraMin}|${JSON.stringify(params)}`;
+  const achada = PECAS.get(chave);
+  if (achada && mesmaRegion(achada.region, region)) {
+    PECAS.delete(chave);
+    PECAS.set(chave, achada);
+    return achada.part;
+  }
+  const part = buildPart(region, params, espessuraMin);
+  PECAS.set(chave, { region, part });
+  if (PECAS.size > MAX_PECAS) PECAS.delete(PECAS.keys().next().value!);
+  return part;
+}
+
 const textoDoNumero = (fonte: Font) => (t: string, altura: number): Region =>
   textToLetters(fonte, t, { altura }).reduce<Region>((acc, l) => (acc.length ? unionRegion(acc, l.region) : l.region), []);
 
-/** Pedacos e talas da letra dividida; a letra inteira se nao for dividida. */
+/**
+ * Pedacos e pecas soltas (talas, cavilhas, borboletas, pinos) da letra dividida; a letra inteira
+ * se nao for dividida. A parte de cima de um corte na altura desce para a mesa.
+ */
 function impressasDa(l: LetraComPeca): PecaImpressa[] {
   const d = l.divisao;
   if (!d || d.pedacos.length < 2) return [{ chave: l.chave, nome: l.nome, letra: l.chave, tipo: 'letra', part: d ? d.inteira : l.part }];
   const total = d.pedacos.length;
   let t = 0;
+  const porTipo = new Map<string, number>();
   return d.pedacos.flatMap(({ indice, part }): PecaImpressa[] => [
-    { chave: chavePedaco(l.chave, indice), nome: `${l.nome}-${indice} de ${total}`, letra: l.chave, tipo: 'pedaco', part: { ...part, extras: part.extras.filter((e) => !ehTala(e)) } },
-    ...part.extras.filter(ehTala).map((e): PecaImpressa => {
-      t++;
-      return { chave: chaveTala(l.chave, t), nome: `${l.nome}-tala${t}`, letra: l.chave, tipo: 'tala', part: pecaDaTala(e, part) };
+    { chave: chavePedaco(l.chave, indice), nome: `${l.nome}-${indice} de ${total}`, letra: l.chave, tipo: 'pedaco', part: assentar({ ...part, extras: part.extras.filter((e) => !ehPecaSolta(e)) }) },
+    ...part.extras.filter(ehPecaSolta).map((e): PecaImpressa => {
+      const tipo = e.name.replace(/-.*$/, '');
+      const n = (porTipo.get(tipo) ?? 0) + 1;
+      porTipo.set(tipo, n);
+      return { chave: chaveSolta(l.chave, ++t), nome: `${l.nome}-${tipo}${n}`, letra: l.chave, tipo: 'solta', part: pecaSolta(e, part) };
     }),
   ]);
 }
@@ -252,6 +319,8 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
   const divisoes = useProjeto((s) => s.divisoes);
   const emenda = useProjeto((s) => s.emenda);
   const fonteNumero = useFonteNumero(divisoes.size > 0);
+  const { estado: motor, tentar: tentarMotor } = useMalhaPronta();
+  const malhaOk = motor === 'pronto';
 
   const params = useMemo<Params>(
     () => ({
@@ -380,8 +449,8 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
   }, [impressoraD, mesaXD, mesaYD, mesaZD]);
 
   const inteiras = useMemo<LetraComPeca[]>(
-    () => letrasBase.map((l) => ({ ...l, part: buildPart(l.region, paramsDiferidos, l.espessuraMin) })),
-    [letrasBase, paramsDiferidos]
+    () => (malhaOk ? letrasBase.map((l) => ({ ...l, part: pecaDaLetra(l.region, paramsDiferidos, l.espessuraMin) })) : []),
+    [letrasBase, paramsDiferidos, malhaOk]
   );
 
   // Divisao depois do buildPart: a edicao e a copia continuam na letra inteira.
@@ -392,15 +461,18 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       const d = divisoes.get(l.chave);
       if (!d) return l;
       const bb = regionBounds(l.part.contorno);
-      const origem = (c: Corte) => (c.eixo === 'x' ? bb.minX : bb.minY);
-      const cortes = d === 'auto' ? planejarCortes(l.part, paramsDiferidos, mesa, emenda) : d.map((c) => ({ ...c, pos: c.pos + origem(c) }));
+      const cortes: Corte[] = d === 'auto' ? planejarCortes(l.part, paramsDiferidos, mesa, emenda) : d.map((c) => moverCorte(c, bb.minX, bb.minY));
       const div = dividirPeca(l.part, paramsDiferidos, cortes, emenda, l.nome.replace(/[^A-Za-z0-9]/g, '').slice(0, 4), texto);
       return {
         ...l,
         part: juntarPedacos(l.part, div),
         divisao: {
           auto: d === 'auto',
-          cortes: cortes.map((c) => ({ ...c, pos: Math.round((c.pos - origem(c)) * 10) / 10 })),
+          cortes: cortes.map((c) => moverCorte(c, -bb.minX, -bb.minY, true)),
+          origem: { x: bb.minX, y: bb.minY },
+          linhas: div.linhas,
+          marcas: div.marcas,
+          planos: div.planos,
           inteira: l.part,
           pedacos: div.pedacos,
           emendas: div.emendas,
@@ -448,7 +520,7 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       const ins: Insumos = { volumeMm3: i.part.volume, areaChapaMm2: 0, perimetroLedMm: 0 };
       for (const e of i.part.extras) {
         if (e.kind === 'cut') ins.areaChapaMm2 += regionArea(e.region);
-        else ins.volumeMm3 += e.layers.reduce((a, x) => a + regionArea(x.region) * (x.z1 - x.z0), 0);
+        else ins.volumeMm3 += volumeDaMalha(e.malha);
       }
       const l = porChave.get(i.letra)!;
       if (!primeiro.has(i.letra)) {
@@ -473,9 +545,9 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       }
     }
 
-    const alturaZ = letras[0]?.part.alturaZ ?? paramsDiferidos.profundidade;
+    const alturaZ = impressas.length ? Math.max(...impressas.map((i) => i.part.alturaZ)) : paramsDiferidos.profundidade;
     if (alturaZ > mesa.z) {
-      avisos.add(`A peça tem ${alturaZ.toFixed(0)} mm de altura em Z e a ${mesa.nome} vai até ${mesa.z} mm. Deite a peça ou reduza a profundidade.`);
+      avisos.add(`A peça tem ${alturaZ.toFixed(0)} mm de altura em Z e a ${mesa.nome} vai até ${mesa.z} mm. Deite a peça, reduza a profundidade ou corte na altura.`);
     }
 
     return {
@@ -521,9 +593,11 @@ export function ProvedorModelo({ children }: { children: ReactNode }) {
       orientacao: orientar(params),
       temChapa: params.frente === 'chapa' || params.traseira === 'chapa',
       temCorte: geo.letras.some((l) => l.part.extras.some((x) => x.kind === 'cut')),
-      rolesUsados: new Set<Role>(geo.letras.flatMap((l) => l.part.layers.map((x) => x.role))),
+      rolesUsados: new Set<Role>(geo.letras.flatMap((l) => idsComFaces(l.part.malha).map((id) => l.part.papeis[id]?.role ?? 'corpo'))),
+      motor,
+      tentarMotor,
     };
-  }, [geo, params, pecasNativas, objetos, arquivos, origem.nomeTrabalho, origem.presetAtivo, texto]);
+  }, [geo, params, pecasNativas, objetos, arquivos, origem.nomeTrabalho, origem.presetAtivo, texto, motor, tentarMotor]);
 
   // Custo por peca, por placa e do letreiro, com os gramas e o tempo reais que o
   // usuario deu por placa. Sem arranjo, o trabalho inteiro conta como uma placa.

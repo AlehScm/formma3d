@@ -79,9 +79,9 @@ chapa, comprimento de LED) e devolve custo e preço.
 
 ### Passo 1 — Volume impresso
 
-Cada peça é uma pilha de camadas retas. O volume é **área da camada × altura da camada**, somado
-para todas as camadas (corpo e partes impressas extras, como tampa ou moldura). Não é estimado
-por malha: é exato, e bate com o volume do STL exportado.
+Cada peça é uma malha sólida fechada, feita de uma pilha de camadas retas. O volume é o da
+malha (o mesmo que **área da camada × altura da camada**, somado para todas as camadas), mais
+as partes impressas extras, como tampa ou moldura. É exato, e é o volume do STL exportado.
 
 > LETRA: L 82,30 + E 106,47 + T 84,28 + R 134,89 + A 131,46 = **539,41 cm³**
 
@@ -167,8 +167,9 @@ emenda = emendas × minutos por emenda ÷ 60 × mão de obra + parafusos × pre�
 ```
 
 Peça maior que a mesa dividida em pedaços (README, "Peça maior que a mesa"): cada trecho da letra
-que um corte atravessa é uma emenda. Cada pedaço e cada tala é uma peça de impressão, com o
-volume e o acabamento por peça dela; o item **Emenda** soma o trabalho de juntar e os parafusos M3.
+que um corte atravessa é uma emenda; no corte na altura, cada parte partida conta uma. Cada pedaço
+e cada peça solta da emenda (tala, cavilha, borboleta, pino) é uma peça de impressão, com o volume
+e o acabamento por peça dela; o item **Emenda** soma o trabalho de juntar e os parafusos M3.
 Com a mão de obra em R$ 0,00/h (o padrão), só os parafusos contam.
 
 > Padrão: nenhuma peça dividida = **R$ 0,00**.
@@ -316,7 +317,7 @@ E o app aprenderia vazão = 600 ÷ 30 = **20 g/h** e fator = 600 ÷ 668,9 = **0,
 - **Com arranjo**, cada placa é uma linha. O preparo entra uma vez por placa que tem letra.
 - **Desmarcar uma placa** tira as letras dela do preço; ela continua no arranjo.
 - **Peça maior que a mesa** (fora de toda placa) continua no preço do letreiro. Dividida, entram
-  os pedaços e as talas, cada um na placa em que está.
+  os pedaços e as peças soltas da emenda (talas, cavilhas, borboletas), cada um na placa em que está.
 - **Objeto STL** entra no custo da placa em que está, mas não no preço do letreiro (marcado com `*`).
 - **Placa feita fora do app** (avulsa): nome, peças, gramas e tempo direto do fatiador. Volume e
   chapa zero; conta uma impressão e o número de peças dela para o acabamento. Só entra no total

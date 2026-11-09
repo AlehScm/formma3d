@@ -4,10 +4,16 @@
  */
 import fs from 'fs';
 import { parseFont, textToLetters } from '../lib/text/glyphs';
-import { buildPart, descreverPeca, PARAMS_PADRAO, type Apoio, type ExtraCut, type Layer, type Part } from '../lib/geom/modes';
+import { buildPart, descreverPeca, PARAMS_PADRAO, type Apoio, type ExtraCut, type Part } from '../lib/geom/modes';
 import { partToGeometry } from '../lib/geom/extrude';
 import { geometryToSTL } from '../lib/export/stl';
-import { diffRegion, intersectRegion, minThickness, offsetRegion, regionArea, regionBounds, shrinkRegion, unionRegion, type Region } from '../lib/geom/region';
+import { diffRegion, intersectRegion, minThickness, offsetRegion, regionArea, regionBounds, regionPerimeter, shrinkRegion, type Region } from '../lib/geom/region';
+import { comEscopo, iniciarMalha } from '../lib/malha/nucleo';
+import { doMalha } from '../lib/malha/converter';
+import { fatia } from '../lib/malha/solidos';
+import { caixaDaMalha } from '../lib/malha/tipos';
+
+await iniciarMalha();
 
 let falhas = 0;
 let total = 0;
@@ -38,27 +44,51 @@ function volumeDaMalha(buf: ArrayBuffer): number {
   return Math.abs(vol);
 }
 
-const volumeDe = (layers: Layer[]) => layers.reduce((t, l) => t + regionArea(l.region) * (l.z1 - l.z0), 0);
-function erroMalha(layers: Layer[]): number {
-  const vm = volumeDaMalha(geometryToSTL(partToGeometry({ layers })!, 'x'));
-  const va = volumeDe(layers);
-  return (Math.abs(vm - va) / va) * 100;
+/** Erro (%) do volume do STL exportado contra o do solido; infinito se a manifold nao aceita a malha. */
+function erroMalha(p: Part): number {
+  const vs = comEscopo((m) => {
+    const s = doMalha(m, p.malha);
+    return s.status() === 'NoError' ? s.volume() : NaN;
+  });
+  if (!(vs > 0)) return Infinity;
+  const vm = volumeDaMalha(geometryToSTL(partToGeometry(p)!, 'x'));
+  return (Math.abs(vm - vs) / vs) * 100;
+}
+
+const secaoEm = (p: Part, z: number): Region => comEscopo((m) => fatia(doMalha(m, p.malha), z));
+
+/** Cada trecho da malha (um prisma da receita): o papel, a faixa de altura e a secao no meio dela. */
+function trechos(p: Part): { role: string; z0: number; z1: number; region: () => Region }[] {
+  const { malha, papeis } = p;
+  return Array.from(malha.runOriginalID, (id, i) => {
+    let z0 = Infinity, z1 = -Infinity;
+    for (let k = malha.runIndex[i]!; k < (malha.runIndex[i + 1] ?? malha.tri.length); k++) {
+      const z = malha.pos[malha.tri[k]! * 3 + 2]!;
+      z0 = Math.min(z0, z);
+      z1 = Math.max(z1, z);
+    }
+    return { role: papeis[id]?.role ?? '?', z0, z1, region: () => secaoEm(p, (z0 + z1) / 2) };
+  });
 }
 
 /**
- * Pior area impressa no ar: cada camada que nao comeca na mesa tem de caber no que
- * termina logo abaixo dela, dilatado pela propria altura (45 graus).
+ * Pior area impressa no ar: cada faixa do solido (entre duas alturas em que ele muda) tem de
+ * caber na faixa logo abaixo, dilatada pela propria altura (45 graus).
  */
-function piorBalanco(layers: Layer[]): number {
+function piorBalanco(p: Part): number {
+  const zs = [...new Set(Array.from({ length: p.malha.pos.length / 3 }, (_, i) => p.malha.pos[i * 3 + 2]!))].sort((a, b) => a - b);
   let pior = 0;
-  for (const l of layers) {
-    if (l.z0 <= 1e-6) continue;
-    const apoio = layers.filter((x) => perto(x.z1, l.z0, 1e-6)).reduce<Region>((u, x) => unionRegion(u, x.region), []);
-    const noAr = regionArea(diffRegion(l.region, offsetRegion(apoio, -(l.z1 - l.z0) * 1.02)));
-    pior = Math.max(pior, noAr);
+  for (let k = 1; k + 1 < zs.length; k++) {
+    const baixo = secaoEm(p, (zs[k - 1]! + zs[k]!) / 2), cima = secaoEm(p, (zs[k]! + zs[k + 1]!) / 2);
+    pior = Math.max(pior, regionArea(diffRegion(cima, offsetRegion(baixo, -(zs[k + 1]! - zs[k]!) * 1.02))));
   }
   return pior;
 }
+
+const larguraDa = (p: Part) => {
+  const c = caixaDaMalha(p.malha);
+  return { w: c.max[0] - c.min[0], h: c.max[1] - c.min[1] };
+};
 
 const chapaDe = (p: Part) => p.extras.find((e): e is ExtraCut => e.kind === 'cut');
 const mesmaRegiao = (a: Region, b: Region) => regionArea(diffRegion(a, b)) + regionArea(diffRegion(b, a));
@@ -84,14 +114,14 @@ console.log('\n== malha fechada nos dois batentes ==');
 for (const apoio of ['dentro', 'fora'] as Apoio[]) {
   for (const batenteModo of ['parede', 'aba'] as const) {
     const part = buildPart(O.region, { ...base, apoio, batenteModo }, espO);
-    ok(`${apoio.padEnd(6)} ${batenteModo.padEnd(6)} peca fechada`, erroMalha(part.layers) < 0.001, `roles: ${[...new Set(part.layers.map((l) => l.role))].join('+')}`);
+    ok(`${apoio.padEnd(6)} ${batenteModo.padEnd(6)} peca fechada`, erroMalha(part) < 0.001, `roles: ${[...new Set(trechos(part).map((l) => l.role))].join('+')}`);
   }
 }
 
 console.log('\n== batente de dentro continua como era ==');
 {
   const a = buildPart(O.region, { ...base, apoio: 'dentro' }, espO);
-  ok('nao passa do contorno da letra', perto(regionBounds(a.layers.flatMap((l) => l.region)).w, letraB.w, 0.1));
+  ok('nao passa do contorno da letra', perto(larguraDa(a).w, letraB.w, 0.1));
   ok('contorno = arte', perto(regionArea(a.contorno), regionArea(O.region), 0.01));
   const chapa = chapaDe(a);
   ok('a chapa sai menor que a letra: parede + folga por lado', !!chapa && perto(regionBounds(chapa.region).w, letraB.w - 2 * (base.parede + PARAMS_PADRAO.folga), 0.1));
@@ -107,26 +137,28 @@ console.log('\n== batente de fora: o de dentro ao contrario, o batente sobe e pa
   const p = buildPart(O.region, { ...base, apoio: 'fora' }, espO);
   ok('sem chapa', p.extras.length === 0, `extras: ${p.extras.map((x) => x.name).join(', ')}`);
 
-  const pecaB = regionBounds(p.layers.flatMap((l) => l.region));
+  const pecaB = larguraDa(p);
   ok('a letra nao muda de formato nem de tamanho', perto(pecaB.w, letraB.w, 0.1) && perto(pecaB.h, letraB.h, 0.1) && perto(regionArea(p.contorno), regionArea(O.region), 0.01), `${pecaB.w.toFixed(1)} x ${pecaB.h.toFixed(1)} vs ${letraB.w.toFixed(1)} x ${letraB.h.toFixed(1)}`);
   ok('a altura total continua a profundidade', perto(p.alturaZ, T, 1e-6), `alturaZ ${p.alturaZ}`);
 
-  const acima = p.layers.filter((l) => l.z0 >= zTopo - 1e-6);
+  const acima = trechos(p).filter((l) => l.z0 >= zTopo - 1e-5);
   const anel = diffRegion(shrinkRegion(O.region, base.parede), shrinkRegion(O.region, base.parede + base.batente));
-  ok('acima da parede de fora so fica o batente', acima.length === 1 && acima[0]!.role === 'batente' && mesmaRegiao(acima[0]!.region, anel) < 0.5 && perto(acima[0]!.z1, T, 1e-6), acima.map((l) => l.role).join('+'));
+  const secaoAcima = secaoEm(p, (zTopo + T) / 2);
+  ok('acima da parede de fora so fica o batente', acima.length === 1 && acima[0]!.role === 'batente' && mesmaRegiao(secaoAcima, anel) < 0.5 && perto(acima[0]!.z1, T, 1e-5), acima.map((l) => l.role).join('+'));
   const paredeFora = diffRegion(O.region, shrinkRegion(O.region, base.parede));
-  ok('a parede de fora para antes do topo', regionArea(intersectRegion(acima[0]!.region, paredeFora)) < 0.01);
-  const logoAbaixo = p.layers.filter((l) => l.z0 < zTopo - 0.1 && l.z1 >= zTopo - 1e-6).reduce<Region>((u, l) => unionRegion(u, l.region), []);
+  // A secao sai da malha (grade de 0,001 mm): sobra so lasca mais fina que a grade ao longo do contorno.
+  ok('a parede de fora para antes do topo', regionArea(intersectRegion(secaoAcima, paredeFora)) < regionPerimeter(paredeFora) * 0.001);
+  const logoAbaixo = secaoEm(p, zTopo - 0.05);
   ok('o degrau fica virado para fora: embaixo dele a parede e inteira', regionArea(diffRegion(paredeFora, logoAbaixo)) < 0.5);
   ok('o batente sobe a mesma altura do degrau do de dentro', perto(T - zTopo, base.frenteEsp, 1e-6));
 
   const dentro = buildPart(O.region, { ...base, apoio: 'dentro' }, espO);
-  const cerca = dentro.layers.find((l) => l.role === 'bolsao')!;
-  ok('e o de dentro ao contrario: la quem sobe e a parede de fora', perto(cerca.z0, zTopo, 1e-6) && mesmaRegiao(cerca.region, paredeFora) < 0.5);
+  const cerca = trechos(dentro).find((l) => l.role === 'bolsao')!;
+  ok('e o de dentro ao contrario: la quem sobe e a parede de fora', perto(cerca.z0, zTopo, 1e-5) && mesmaRegiao(cerca.region(), paredeFora) < 0.5);
 
-  ok('nada no ar', piorBalanco(p.layers) < 0.5, `${piorBalanco(p.layers).toFixed(2)} mm2`);
+  ok('nada no ar', piorBalanco(p) < 0.5, `${piorBalanco(p).toFixed(2)} mm2`);
   const aba = buildPart(O.region, { ...base, apoio: 'fora', batenteModo: 'aba' }, espO);
-  ok('so a aba: peca fechada e sem nada no ar', erroMalha(aba.layers) < 0.001 && piorBalanco(aba.layers) < 0.5, `${piorBalanco(aba.layers).toFixed(2)} mm2`);
+  ok('so a aba: peca fechada e sem nada no ar', erroMalha(aba) < 0.001 && piorBalanco(aba) < 0.5, `${piorBalanco(aba).toFixed(2)} mm2`);
   ok('so a aba gasta menos', aba.volume < p.volume, `${(p.volume / 1000).toFixed(0)} -> ${(aba.volume / 1000).toFixed(0)} cm3`);
   ok('com a chapa marcada como impressa, tambem sem chapa', buildPart(O.region, { ...base, apoio: 'fora', chapaModo: 'imprimir' }, espO).extras.length === 0);
 
@@ -136,13 +168,13 @@ console.log('\n== batente de fora: o de dentro ao contrario, o batente sobe e pa
 console.log('\n== batente de fora: casos-limite ==');
 {
   const atras = buildPart(O.region, { ...base, apoio: 'fora', frente: 'impressa', traseira: 'chapa' }, espO);
-  ok('batente atras: sobe no lado de cima da impressao', atras.extras.length === 0 && atras.layers.some((l) => l.role === 'batente' && perto(l.z1, base.profundidade, 1e-6)) && piorBalanco(atras.layers) < 0.5);
+  ok('batente atras: sobe no lado de cima da impressao', atras.extras.length === 0 && trechos(atras).some((l) => l.role === 'batente' && perto(l.z1, base.profundidade, 1e-5)) && piorBalanco(atras) < 0.5);
 
   const duas = buildPart(O.region, { ...base, apoio: 'fora', traseira: 'chapa' }, espO);
-  ok('nos dois lados: o de baixo avisa que a parede de fora fica no ar', duas.avisos.some((a) => a.includes('parede de fora fica em balanço')) && erroMalha(duas.layers) < 0.001, duas.avisos.join(' | '));
+  ok('nos dois lados: o de baixo avisa que a parede de fora fica no ar', duas.avisos.some((a) => a.includes('parede de fora fica em balanço')) && erroMalha(duas) < 0.001, duas.avisos.join(' | '));
 
   const sem = buildPart(O.region, { ...base, apoio: 'fora', frente: 'aberta' }, espO);
-  ok('sem chapa nao ha batente nenhum', !sem.layers.some((l) => l.role === 'batente'));
+  ok('sem chapa nao ha batente nenhum', !trechos(sem).some((l) => l.role === 'batente'));
 }
 
 console.log('\n== batente: parede inteira x so a aba (de dentro) ==');
@@ -155,21 +187,21 @@ console.log('\n== batente: parede inteira x so a aba (de dentro) ==');
   const ca = chapaDe(aba), cp = chapaDe(parede);
   ok('a chapa e o contorno nao mudam', !!ca && !!cp && ca.kind === 'cut' && cp.kind === 'cut' && perto(regionArea(ca.region), regionArea(cp.region), 0.01) && perto(regionArea(aba.contorno), regionArea(parede.contorno), 0.01));
 
-  // Secao em uma altura: a camada que cobre z.
-  const secao = (pt: typeof aba, z: number) => pt.layers.filter((l) => l.z0 <= z && z < l.z1 && l.role !== 'face').reduce((t, l) => t + regionArea(l.region), 0);
-  const corpoP = parede.layers.filter((l) => l.role === 'corpo');
+  // Secao em uma altura: o material do solido em z.
+  const secao = (pt: typeof aba, z: number) => regionArea(secaoEm(pt, z));
+  const corpoP = trechos(parede).filter((l) => l.role === 'corpo');
   const zChapa = Math.max(...corpoP.map((l) => l.z1)); // onde a chapa assenta
   ok('logo abaixo da chapa a aba tem a mesma largura da parede inteira', perto(secao(aba, zChapa - 0.5), secao(parede, zChapa - 0.5), 1), `${secao(aba, zChapa - 0.5).toFixed(0)} vs ${secao(parede, zChapa - 0.5).toFixed(0)} mm2`);
   const zMeio = (Math.min(...corpoP.map((l) => l.z0)) + zChapa - 3 - base.batente) / 2;
   ok('no meio do corpo a aba fica so com a parede fina', secao(aba, zMeio) < secao(parede, zMeio) * 0.7, `${secao(aba, zMeio).toFixed(0)} vs ${secao(parede, zMeio).toFixed(0)} mm2`);
-  ok('rampa de 45 graus: nada em balanco', piorBalanco(aba.layers.filter((l) => l.role !== 'face')) < 0.5, `area no ar ${piorBalanco(aba.layers).toFixed(2)} mm2`);
+  ok('rampa de 45 graus: nada em balanco', piorBalanco(aba) < 0.5, `area no ar ${piorBalanco(aba).toFixed(2)} mm2`);
 
   const curta = buildPart(O.region, { ...base, apoio: 'dentro', batenteModo: 'aba', batenteAltura: 3, profundidade: 9 }, espO);
   const curtaP = buildPart(O.region, { ...base, apoio: 'dentro', profundidade: 9 }, espO);
   ok('profundidade curta demais volta para a parede inteira e avisa', curta.avisos.some((x) => /parede inteira/.test(x)) && perto(curta.volume, curtaP.volume, 1e-6));
 
   const dois = buildPart(O.region, { ...base, apoio: 'dentro', traseira: 'chapa', batenteModo: 'aba' }, espO);
-  const retas = dois.layers.filter((l) => l.role === 'batente' && perto(l.z1 - l.z0, 3, 0.01));
+  const retas = trechos(dois).filter((l) => l.role === 'batente' && perto(l.z1 - l.z0, 3, 0.01));
   ok('chapa nos dois lados: duas abas', retas.length === 2, `${retas.length} abas retas`);
   const dP = buildPart(O.region, { ...base, apoio: 'dentro', traseira: 'chapa' }, espO);
   ok('e continua mais barato', dois.volume < dP.volume, `${(dP.volume / 1000).toFixed(0)} -> ${(dois.volume / 1000).toFixed(0)} cm3`);

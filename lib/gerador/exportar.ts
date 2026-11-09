@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { empacotar3mf, modelo3mf, modelo3mfMontado } from '../export/tresmf';
 import { posicoesParaSTL } from '../export/stl';
 import { corDe, nomeComCor, pecasSoltas, posicoesDaPeca } from './malha';
+import { iniciarMalha } from '../malha/nucleo';
 import type { Resultado } from './tipos';
 
 /** Nome de arquivo sem acento nem simbolo. */
@@ -22,10 +23,11 @@ export function xml3mfSoltas(r: Resultado): string {
   return modelo3mf(pecasSoltas(r).map((p) => ({ nome: nomeComCor(p.nome, r.cores[p.cor]), posicoes: p.posicoes })));
 }
 
-export const blob3mfMontado = (r: Resultado) => empacotar3mf(xml3mfMontado(r));
-export const blob3mfSoltas = (r: Resultado) => empacotar3mf(xml3mfSoltas(r));
+export const blob3mfMontado = async (r: Resultado) => (await iniciarMalha(), empacotar3mf(xml3mfMontado(r)));
+export const blob3mfSoltas = async (r: Resultado) => (await iniciarMalha(), empacotar3mf(xml3mfSoltas(r)));
 
 export async function zipStl(r: Resultado): Promise<Blob> {
+  await iniciarMalha();
   const zip = new JSZip();
   pecasSoltas(r).forEach((p, i) => {
     zip.file(`${String(i + 1).padStart(2, '0')}-${nomeSeguro(p.nome)}-${nomeSeguro(r.cores[p.cor] ?? 'cor')}.stl`, posicoesParaSTL(p.posicoes, p.nome));

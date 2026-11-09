@@ -9,6 +9,8 @@ import { RECEITAS } from '../lib/gerador/receitas';
 import { FICHAS } from '../lib/gerador/receitas/fichas';
 import { valoresPadrao, valoresValidos } from '../lib/gerador/tipos';
 import { posicoesDaPeca } from '../lib/gerador/malha';
+import { iniciarMalha } from '../lib/malha/nucleo';
+await iniciarMalha();
 const fontes = new Map<string, Font>();
 const arq = (id: string) => (id === 'noto-emoji' ? 'seguiemj.ttf' : ['lobster', 'pacifico'].includes(id) ? 'segoescb.ttf' : 'arialbd.ttf');
 const ctx = { fonte: (id: string) => { const f = arq(id); if (!fontes.has(f)) fontes.set(f, parseFont(fs.readFileSync(`C:/Windows/Fonts/${f}`).buffer as ArrayBuffer)); return fontes.get(f)!; } };

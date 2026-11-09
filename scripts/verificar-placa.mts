@@ -25,6 +25,10 @@ import { custosDoTrabalho } from '../lib/cost/trabalho';
 import { lerSalvo, paraSalvar } from '../lib/cost/salvar';
 import { formatarTempoHM, lerTempo } from '../components/ui/formato';
 import { useProjeto, lerChave } from '../store/projeto';
+import { iniciarMalha } from '../lib/malha/nucleo';
+
+// A peca e montada pelo motor de malha (WASM): carrega antes do primeiro buildPart.
+await iniciarMalha();
 
 let falhas = 0;
 let total = 0;

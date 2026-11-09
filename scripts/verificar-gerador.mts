@@ -15,7 +15,10 @@ import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
 import { FICHAS } from '../lib/gerador/receitas/fichas';
 import { COBERTURA, markdownCobertura } from '../lib/gerador/cobertura';
 import { valoresPadrao, type Peca, type Receita, type Resultado, type Valores } from '../lib/gerador/tipos';
-import { caixaDoItem, posicoesDaPeca, volumeDaPeca } from '../lib/gerador/malha';
+import { caixaDoItem, malhaDaPeca, posicoesDaPeca, posicoesDaPrevia, volumeDaPeca } from '../lib/gerador/malha';
+import { comEscopo, iniciarMalha } from '../lib/malha/nucleo';
+import { doMalha } from '../lib/malha/converter';
+import { pilhasEmPrismas } from '../lib/malha/pilha';
 import { fatiasDaPlanta, limitesDaPeca } from '../lib/gerador/planta';
 import { blob3mfMontado, blob3mfSoltas, xml3mfMontado, zipStl } from '../lib/gerador/exportar';
 import { corDe } from '../lib/gerador/malha';
@@ -33,6 +36,11 @@ import { cilindroComRelevo } from '../lib/gerador/cilindro';
 import { pixelsParaCores, pixelsParaRegiao } from '../lib/import/imagem';
 import { pecasDeQuebraCabeca } from '../lib/gerador/receitas/imagens';
 import { espelharX, textura } from '../lib/gerador/figuras';
+
+await iniciarMalha();
+/** A manifold aceita a malha (cada casca fechada e orientada). */
+const semUnico: string[] = [];
+const fechaNaManifold = (p: Peca) => comEscopo((m) => { try { return doMalha(m, malhaDaPeca(m, p)).status() === 'NoError'; } catch { return false; } });
 
 let falhas = 0;
 let total = 0;
@@ -80,12 +88,19 @@ for (const r of RECEITAS) {
   const pecas = res.itens.flatMap((it) => it.pecas);
   ok(`${r.id}: gera com os padroes`, res.itens.length > 0 && pecas.length > 0 && pecas.every((p) => p.cor >= 0 && p.cor < res.cores.length), `${res.itens.length} itens, ${pecas.length} pecas ${res.avisos.join(' | ')}`);
   let fechadas = true, volumeOk = true;
+  const emCamadas: string[] = [];
   for (const p of pecas) {
-    for (const c of p.camadas) if (!malhaFechada(posicoesDaPeca({ ...p, camadas: [c] }))) fechadas = false;
-    if (!perto(volumeSopa(posicoesDaPeca(p)), volumeDaPeca(p), volumeDaPeca(p) * 0.005)) volumeOk = false;
+    const antes = pilhasEmPrismas();
+    const pos = posicoesDaPeca(p);
+    const unico = pilhasEmPrismas() === antes;
+    if (!unico) emCamadas.push(p.nome);
+    // Solido so: fechado pela posicao. A textura que nao monta direto sai em camadas: cada casca fechada.
+    if (unico ? !malhaFechada(pos) : !fechaNaManifold(p)) fechadas = false;
+    if (!perto(volumeSopa(pos), volumeDaPeca(p), volumeDaPeca(p) * 0.005) || !perto(volumeSopa(posicoesDaPrevia(p)), volumeDaPeca(p), volumeDaPeca(p) * 0.005)) volumeOk = false;
   }
-  ok(`${r.id}: cada camada e uma malha fechada`, fechadas);
-  ok(`${r.id}: volume analitico = volume da malha`, volumeOk);
+  semUnico.push(...emCamadas.map((n) => `${r.id}/${n}`));
+  ok(`${r.id}: cada peca e uma malha fechada`, fechadas, emCamadas.length ? `em camadas fechadas: ${emCamadas.join(', ')}` : '');
+  ok(`${r.id}: volume analitico = volume da malha (arquivo e previa)`, volumeOk);
 
   const montado = await lerTresMf(await (await blob3mfMontado(res)).arrayBuffer(), r.id);
   const volMontado = montado.reduce((s, o) => s + volumeSopa(o.malha.posicoes), 0);
@@ -96,6 +111,8 @@ for (const r of RECEITAS) {
   const zip = await JSZip.loadAsync(await (await zipStl(res)).arrayBuffer());
   ok(`${r.id}: ZIP com um STL por peca`, Object.keys(zip.files).filter((f) => f.endsWith('.stl')).length === pecas.length);
 }
+// Hoje so as texturas de relevo e o texto com camadas quase iguais (diferenca de micra); peca nova nao deve entrar aqui sem querer.
+ok(`pecas num solido so: todas menos as conhecidas em camadas`, semUnico.length <= 10, `${semUnico.length}: ${semUnico.join(' | ')}`);
 
 console.log('\n== cobertura dos 117 modelos ==');
 {

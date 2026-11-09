@@ -11,6 +11,10 @@ import { aplicarEdicao, edicaoVazia, escalaDeMm, escalaUniforme, mmDeEscala, SEM
 import { buildPart, PARAMS_PADRAO } from '../lib/geom/modes';
 import { buildRegion, minThickness, regionArea, regionBounds, type Region } from '../lib/geom/region';
 import { parseFont, textToLetters } from '../lib/text/glyphs';
+import { iniciarMalha } from '../lib/malha/nucleo';
+
+// A peca e montada pelo motor de malha (WASM): carrega antes do primeiro buildPart.
+await iniciarMalha();
 
 let falhas = 0;
 let total = 0;

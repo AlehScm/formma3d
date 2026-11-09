@@ -50,6 +50,8 @@ interface EstadoInterface {
   opcoesRelevo: { alturaMax: number; raio: number };
   /** Ultimo clique e o que ele achou: a previa em vermelho. */
   relevo: { objeto: string; tri: number; ponto: [number, number, number]; resultado: Relevo } | null;
+  /** Cortar a mao (Desenhar): a letra em que se mexe nos cortes; `desenhando` = um corte novo em esboco. */
+  ferramentaCorte: { chave: string; desenhando: boolean } | null;
   ferramenta: Ferramenta;
   explode: number;
   camadas: CamadasVisiveis;
@@ -97,6 +99,7 @@ interface EstadoInterface {
   definirFerramentaRelevo: (chave: string | null) => void;
   definirOpcoesRelevo: (o: Partial<{ alturaMax: number; raio: number }>) => void;
   definirRelevo: (r: EstadoInterface['relevo']) => void;
+  definirFerramentaCorte: (f: EstadoInterface['ferramentaCorte']) => void;
   alternarTravadas: (chaves: readonly string[]) => void;
   setFerramenta: (f: Ferramenta) => void;
   setExplode: (v: number) => void;
@@ -126,11 +129,14 @@ function comSelecao(s: EstadoInterface, selecao: string[]): Partial<EstadoInterf
   const i = selecionada ? placaDe(s.placas, selecionada) : -1;
   // O Suavizar vale para UMA peca: marcou outra coisa (ou nada), ele desliga sozinho.
   const semRelevo = s.ferramentaRelevo && !(selecao.length === 1 && selecao[0] === s.ferramentaRelevo);
+  // O Cortar a mao tambem: vale para a letra em que foi ligado.
+  const semCorte = s.ferramentaCorte && !(selecao.length === 1 && selecao[0] === s.ferramentaCorte.chave);
   return {
     selecao,
     selecionada,
     ...(i >= 0 ? { placaVista: i } : {}),
     ...(semRelevo ? { ferramentaRelevo: null, relevo: null } : {}),
+    ...(semCorte ? { ferramentaCorte: null } : {}),
   };
 }
 
@@ -159,6 +165,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   ferramentaRelevo: null,
   opcoesRelevo: { alturaMax: 2, raio: 15 },
   relevo: null,
+  ferramentaCorte: null,
   ferramenta: 'selecionar',
   explode: 0,
   camadas: { corpo: true, chapa: true, traseira: true },
@@ -185,6 +192,8 @@ export const useInterface = create<EstadoInterface>()((set) => ({
       ferramenta: espaco !== 'desenhar' && s.ferramenta === 'tamanho' ? 'mover' : s.ferramenta,
       // O Suavizar so existe em Imprimir: sair de la desliga.
       ...(espaco !== 'imprimir' ? { ferramentaRelevo: null, relevo: null } : {}),
+      // O Cortar a mao so existe em Desenhar.
+      ...(espaco !== 'desenhar' ? { ferramentaCorte: null } : {}),
     })),
   selecionar: (chave) => set((s) => comSelecao(s, chave ? [chave] : [])),
   definirSelecao: (chaves) => set((s) => comSelecao(s, chaves)),
@@ -195,6 +204,7 @@ export const useInterface = create<EstadoInterface>()((set) => ({
   definirFerramentaRelevo: (ferramentaRelevo) => set({ ferramentaRelevo, relevo: null }),
   definirOpcoesRelevo: (o) => set((s) => ({ opcoesRelevo: { ...s.opcoesRelevo, ...o } })),
   definirRelevo: (relevo) => set({ relevo }),
+  definirFerramentaCorte: (ferramentaCorte) => set({ ferramentaCorte }),
   alternarTravadas: (chaves) => set((s) => ({ travadas: alternar(s.travadas, chaves) })),
   setFerramenta: (ferramenta) => set({ ferramenta }),
   setExplode: (explode) => set({ explode }),

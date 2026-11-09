@@ -1,10 +1,12 @@
 /** Manda as pecas de um resultado para o editor de letra caixa (espaco Imprimir). */
 import { centrada, nomeComCor, pecasSoltas } from '@/lib/gerador/malha';
+import { iniciarMalha } from '@/lib/malha/nucleo';
 import type { Resultado } from '@/lib/gerador/tipos';
 import { useProjeto } from '@/store/projeto';
 import { useInterface } from '@/store/interface';
 
-export function enviarAoEditor(resultado: Resultado, ir: (rota: string) => void) {
+export async function enviarAoEditor(resultado: Resultado, ir: (rota: string) => void) {
+  await iniciarMalha();
   const projeto = useProjeto.getState();
   for (const p of pecasSoltas(resultado)) {
     const posicoes = centrada(p.posicoes);

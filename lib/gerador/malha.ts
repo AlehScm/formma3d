@@ -1,10 +1,15 @@
 /**
- * Pecas de receita -> malhas: sopa de triangulos por peca, volume analitico, e o
- * arranjo das pecas soltas para imprimir cada uma deitada.
+ * Pecas de receita -> malhas: no arquivo, um solido fechado por peca (as camadas montadas como a
+ * pilha das pecas do editor, lib/malha/pilha; a textura que nao monta direto sai em camadas
+ * fechadas); na previa, cada camada um prisma. Volume analitico, e o arranjo das pecas soltas
+ * para imprimir cada uma deitada. Precisa do motor de malha carregado (`iniciarMalha`).
  */
-import { layerToGeometry } from '../geom/extrude';
-import { regionArea, regionBounds, type Region } from '../geom/region';
-import { posicoesDaGeometria } from '../export/stl';
+import { regionArea, regionBounds } from '../geom/region';
+import { comEscopo, type Motor } from '../malha/nucleo';
+import { paraMalha } from '../malha/converter';
+import { malhaDaPilhaOuPrismas } from '../malha/pilha';
+import { prisma } from '../malha/solidos';
+import { juntarMalhas, posicoesDaMalha, type Malha } from '../malha/tipos';
 import type { Camada, Item, Peca, Resultado } from './tipos';
 
 /** Cor de previa por indice (Base, Meio, Topo, ...). */
@@ -13,38 +18,19 @@ export const CORES_PREVIA = ['#3b3f46', '#e9e6df', '#e0533d', '#2f7dd1', '#f2c23
 /** A cor do indice `i`: a escolhida na receita ou a da paleta. */
 export const corDe = (r: Pick<Resultado, 'hex'>, i: number) => (/^#[0-9a-f]{6}$/i.test(r.hex?.[i] ?? '') ? r.hex![i]! : CORES_PREVIA[i % CORES_PREVIA.length]!);
 
-/**
- * Desvio minimo e deterministico (ate 0,00001 mm) de cada ponto. O triangulador do three
- * (earcut) erra com pontos exatamente alinhados -- a base de um "A" espelhado tem quatro
- * na mesma reta e a tampa saia aberta. O mesmo ponto sempre desvia igual, entao as
- * camadas empilhadas continuam encaixando.
- */
-const desvio = (a: number, b: number) => {
-  const h = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
-  return (h - Math.floor(h) - 0.5) * 2e-5;
-};
-const semAlinhamento = (r: Region): Region =>
-  r.map((p) => ({
-    outer: p.outer.map((q) => ({ x: q.x + desvio(q.x, q.y), y: q.y + desvio(q.y, q.x) })),
-    holes: p.holes.map((h) => h.map((q) => ({ x: q.x + desvio(q.x, q.y), y: q.y + desvio(q.y, q.x) }))),
-  }));
+/** A malha da peca: as camadas unidas, sem face escondida entre elas. */
+export const malhaDaPeca = (m: Motor, p: Peca): Malha => malhaDaPilhaOuPrismas(m, p.camadas.map((c) => ({ region: c.region, z0: c.z0, z1: c.z1, id: 1 })));
 
-export function posicoesDaPeca(p: Peca): Float32Array {
-  const partes: Float32Array[] = [];
-  for (const c of p.camadas) {
-    const geo = layerToGeometry({ ...c, region: semAlinhamento(c.region) });
-    if (!geo) continue;
-    partes.push(posicoesDaGeometria(geo));
-    geo.dispose();
-  }
-  const out = new Float32Array(partes.reduce((s, x) => s + x.length, 0));
-  let i = 0;
-  for (const x of partes) {
-    out.set(x, i);
-    i += x.length;
-  }
-  return out;
-}
+/** Sopa de triangulos da peca, para o arquivo (STL, 3MF). */
+export const posicoesDaPeca = (p: Peca): Float32Array => comEscopo((m) => posicoesDaMalha(malhaDaPeca(m, p)));
+
+/**
+ * Sopa de triangulos da previa: cada camada um prisma fechado. A superficie que se ve e a do
+ * arquivo (as faces entre camadas ficam por dentro), e sai em cerca de 1/3 do tempo de montar
+ * o solido: a previa refaz a cada mudanca, o arquivo so quando baixa.
+ */
+export const posicoesDaPrevia = (p: Peca): Float32Array =>
+  comEscopo((m) => posicoesDaMalha(juntarMalhas(p.camadas.filter((c) => c.z1 > c.z0 && c.region.length).map((c) => paraMalha(prisma(m, c.region, c.z0, c.z1))))));
 
 export const volumeDaPeca = (p: Peca) => p.camadas.reduce((s, c) => s + regionArea(c.region) * (c.z1 - c.z0), 0);
 

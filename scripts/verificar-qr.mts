@@ -16,6 +16,8 @@ import { posicoesDaPeca } from '../lib/gerador/malha';
 import { blob3mfMontado, blob3mfSoltas, zipStl } from '../lib/gerador/exportar';
 import { lerTresMf } from '../lib/import/tresmf';
 import JSZip from 'jszip';
+import { iniciarMalha } from '../lib/malha/nucleo';
+await iniciarMalha();
 
 assert.equal(payloadUrl('https://example.com/a?x=1'), 'https://example.com/a?x=1');
 assert.throws(() => payloadUrl('javascript:alert(1)'), /http/);
@@ -64,13 +66,13 @@ assert.ok(codigo!.camadas[0]!.z1 > codigo!.camadas[0]!.z0);
 assert.ok(regionArea(codigo!.camadas[0]!.region) > 0);
 assert.deepEqual(resultado.hex, ['#ffffff', '#111111', '#111111']);
 for (const peca of resultado.itens[0]!.pecas) {
-  for (const camada of peca.camadas) assert.ok(malhaFechada(posicoesDaPeca({ ...peca, camadas: [camada] })), `${peca.nome}: camada fechada`);
+  assert.ok(malhaFechada(posicoesDaPeca(peca)), `${peca.nome}: solido fechado`);
 }
 const testaFechamento = (v: typeof valores, etiqueta: string) => {
   const gerado = placaQr.gerar(v, contexto);
   assert.equal(gerado.itens.length, 1, `${etiqueta}: placa gerada`);
   for (const peca of gerado.itens[0]!.pecas) {
-    for (const camada of peca.camadas) assert.ok(malhaFechada(posicoesDaPeca({ ...peca, camadas: [camada] })), `${etiqueta}: ${peca.nome} fechada`);
+    assert.ok(malhaFechada(posicoesDaPeca(peca)), `${etiqueta}: ${peca.nome} fechada`);
   }
 };
 testaFechamento({ ...valores, texto: '' }, 'URL sem texto');

@@ -2,6 +2,7 @@ node_modules/
 .next/
 out/
 .publicar/
+public/manifold.wasm
 build/
 *.tsbuildinfo
 next-env.d.ts

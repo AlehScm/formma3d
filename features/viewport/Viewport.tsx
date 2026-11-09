@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
   cx,
@@ -13,7 +13,9 @@ import {
   Separador,
   Vazio,
   IconeAbrir,
+  IconeAtencao,
   IconeCamadas,
+  IconeDesenhar,
   IconeEnquadrar,
   IconeGirar,
   IconeMontagem,
@@ -29,6 +31,8 @@ import { letraDoItem, useModelo } from '@/modelo/Modelo';
 import { useProjeto } from '@/store/projeto';
 import { useInterface, type Ferramenta } from '@/store/interface';
 import { SEM_EDICAO } from '@/lib/geom/pecaEditada';
+import { regionBounds } from '@/lib/geom/region';
+import { ehAltura } from '@/lib/geom/emenda';
 import { MenuObjetos } from '@/components/casca/MenuObjetos';
 import { ordemObjetos } from '@/features/acoes/selecao';
 import { procurarRelevo } from '@/features/acoes/relevo';
@@ -42,6 +46,7 @@ const Viewer3D = dynamic(() => import('@/components/Viewer3D'), {
 });
 
 const SEM_ARRANJO: ReadonlyMap<string, Colocada> = new Map();
+const SEM_SELECAO: string[] = [];
 
 const GIZMO: Record<Ferramenta, 'nenhuma' | 'mover' | 'girar' | 'escalar'> = {
   selecionar: 'nenhuma',
@@ -84,6 +89,9 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
   const profundidade = useProjeto((s) => s.profundidade);
   const editarPeca = useProjeto((s) => s.editarPeca);
   const somarEdicoes = useProjeto((s) => s.somarEdicoes);
+  const definirCortes = useProjeto((s) => s.definirCortes);
+  const ferramentaCorte = useInterface((s) => s.ferramentaCorte);
+  const definirFerramentaCorte = useInterface((s) => s.definirFerramentaCorte);
 
   const naPlaca = espaco === 'imprimir';
   const arranjo = placas[placaVista] ?? SEM_ARRANJO;
@@ -113,6 +121,52 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
     };
   }, [m.letras, m.impressas, m.objetos, placas, placaVista, sobraram, naPlaca, ocultas]);
 
+  // Cortar a mao: a letra (inteira e o que a divisao achou) e a camera de cima sobre ela ao ligar.
+  const letraCortada = !naPlaca && ferramentaCorte ? m.letras.find((l) => l.chave === ferramentaCorte.chave) : undefined;
+  const [foco, setFoco] = useState<{ pedido: number; x: number; y: number; z: number; raio: number } | null>(null);
+  const chaveCortada = letraCortada?.chave;
+  useEffect(() => {
+    if (!chaveCortada || !letraCortada) return;
+    const inteira = letraCortada.divisao?.inteira ?? letraCortada.part;
+    const b = regionBounds(inteira.contorno);
+    setFoco((f) => ({ pedido: (f?.pedido ?? 0) + 1, x: b.minX + b.w / 2, y: b.minY + b.h / 2, z: inteira.alturaZ, raio: Math.max(b.w, b.h) / 2 }));
+  }, [chaveCortada]);
+  const cortarAMao = useMemo(() => {
+    if (!letraCortada || !ferramentaCorte) return null;
+    const d = letraCortada.divisao;
+    const inteira = d?.inteira ?? letraCortada.part;
+    const b = regionBounds(inteira.contorno);
+    const chave = letraCortada.chave;
+    return {
+      chave,
+      inteira,
+      cortes: d?.cortes ?? [],
+      origem: d?.origem ?? { x: b.minX, y: b.minY },
+      linhas: d?.linhas ?? [],
+      marcas: d?.marcas ?? [],
+      desenhando: ferramentaCorte.desenhando,
+      onCortes: (cs: Parameters<typeof definirCortes>[1]) => definirCortes(chave, cs),
+      onFimDoEsboco: () => definirFerramentaCorte({ chave, desenhando: false }),
+    };
+  }, [letraCortada, ferramentaCorte, definirCortes, definirFerramentaCorte]);
+
+  // Sem o motor de malha nao ha peca: carregando, ou a carga falhou (rede) e da para tentar de novo.
+  if (m.motor === 'falhou') {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Vazio icone={IconeAtencao} titulo="Não deu para carregar o motor 3D" acao={<Botao onClick={m.tentarMotor}>Tentar de novo</Botao>}>
+          Confira a conexão e tente de novo. O desenho e os ajustes continuam salvos.
+        </Vazio>
+      </div>
+    );
+  }
+  if (m.motor === 'carregando') {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Vazio titulo="Carregando o motor 3D…" />
+      </div>
+    );
+  }
   // Sem letreiro ainda pode haver STL na placa: so fica vazio se nao ha nada a desenhar.
   if (!m.letras.length && !(naPlaca && m.objetos.length)) {
     return (
@@ -151,7 +205,7 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
         altura={naPlaca && placas.length ? m.mesa.y : (m.bounds?.h ?? 0)}
         profundidade={profundidade}
         centro={[(m.bounds?.w ?? 0) / 2, (m.bounds?.h ?? 0) / 2]}
-        explode={explode}
+        explode={cortarAMao ? 0 : explode}
         camadas={camadas}
         mesa={naPlaca ? { x: m.mesa.x, y: m.mesa.y } : null}
         naoCabem={naPlaca ? m.naoCabem : m.letrasForaDaMesa}
@@ -160,8 +214,9 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
         // junto com o que sobrou, ate o usuario arrumar ou arrastar.
         sobraram={naFila}
         objetos={objetos}
-        selecionada={selecionada}
-        selecao={selecao}
+        // Cortando, a peca fica sem o realce de selecao: a linha e os dentes aparecem por cima dela.
+        selecionada={cortarAMao ? null : selecionada}
+        selecao={cortarAMao ? SEM_SELECAO : selecao}
         travadas={travadas}
         onSelecionar={selecionar}
         onClicar={(chave, mods, menu) => {
@@ -169,8 +224,10 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
           if (menu && selecao.includes(chave)) return;
           clicarObjeto(chave, menu ? {} : mods, ordemObjetos(m));
         }}
-        // Com o Suavizar ligado, o clique e da ferramenta: o gizmo sai do caminho.
-        ferramenta={selecao.length && !ferramentaRelevo ? GIZMO[ferramenta] : 'nenhuma'}
+        // Com o Suavizar (ou o Cortar a mao) ligado, o clique e da ferramenta: o gizmo sai do caminho.
+        ferramenta={selecao.length && !ferramentaRelevo && !cortarAMao ? GIZMO[ferramenta] : 'nenhuma'}
+        cortarAMao={cortarAMao}
+        focoDeCima={cortarAMao ? foco : null}
         relevo={
           naPlaca && ferramentaRelevo
             ? { ativo: ferramentaRelevo, objeto: relevo?.objeto ?? null, triangulos: relevo?.resultado.triangulos ?? [], onClique: procurarRelevo }
@@ -246,6 +303,36 @@ export function Viewport({ pedidoEnquadrar, onEnquadrar }: { pedidoEnquadrar: nu
           </span>
           <Botao tamanho="sm" variante="fantasma" onClick={() => definirFerramentaRelevo(null)}>
             Sair
+          </Botao>
+        </div>
+      )}
+
+      {cortarAMao && (
+        <div
+          role="status"
+          className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-3 rounded-md border border-acento/60 bg-flutuante/95 py-1 pl-3 pr-1 text-mini text-texto shadow-flutuante backdrop-blur"
+        >
+          {cortarAMao.desenhando ? (
+            <span>
+              <span className="font-semibold">Desenhando um corte</span>
+              <span className="text-texto-3"> · clique põe um ponto · duplo clique ou Enter termina · Backspace desfaz · Shift prende em 45° · Esc desiste</span>
+            </span>
+          ) : (
+            <span>
+              <span className="font-semibold">Cortar à mão</span>
+              <span className="text-texto-3">
+                {' '}· arraste a bolinha para mover (a da ponta inclina) · clique na linha põe dente, no dente tira · botão direito troca o lado
+                {cortarAMao.cortes.some(ehAltura) && ' · clique na peça põe pino'} · Esc sai
+              </span>
+            </span>
+          )}
+          {!cortarAMao.desenhando && (
+            <Botao tamanho="sm" icone={IconeDesenhar} onClick={() => definirFerramentaCorte({ chave: cortarAMao.chave, desenhando: true })}>
+              Desenhar corte
+            </Botao>
+          )}
+          <Botao tamanho="sm" variante="fantasma" onClick={() => definirFerramentaCorte(cortarAMao.desenhando ? { chave: cortarAMao.chave, desenhando: false } : null)}>
+            {cortarAMao.desenhando ? 'Desistir' : 'Sair'}
           </Botao>
         </div>
       )}

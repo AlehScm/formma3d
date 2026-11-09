@@ -154,15 +154,15 @@ export async function baixarPacote(m: Modelo, o: Orcamento, interno: boolean): P
   const pasta = zip.folder(`${seguro(m.nomeProjeto)}_${m.desc}`);
   if (!pasta) return;
 
-  // Um arquivo por item impresso. Peca dividida: NN_nome_p1de3.stl, NN_nome_tala1.stl.
+  // Um arquivo por item impresso. Peca dividida: NN_nome_p1de3.stl, NN_nome_tala1.stl, NN_nome_cavilha1.stl.
   m.letras.forEach((l, i) => {
     const n = String(i + 1).padStart(2, '0');
     const itens = m.impressas.filter((x) => x.letra === l.chave);
     const pedacos = itens.filter((x) => x.tipo === 'pedaco').length;
     let p = 0;
-    let t = 0;
     for (const x of itens) {
-      const base = `${n}_${seguro(l.nome)}${x.tipo === 'pedaco' ? `_p${++p}de${pedacos}` : x.tipo === 'tala' ? `_tala${++t}` : ''}`;
+      // A peca solta ja tem o tipo e o numero no nome (S-tala1, S-cavilha2).
+      const base = `${n}_${seguro(l.nome)}${x.tipo === 'pedaco' ? `_p${++p}de${pedacos}` : x.tipo === 'solta' ? `_${x.nome.replace(/^.*-/, '')}` : ''}`;
       const geo = partToGeometry(x.part);
       if (geo) {
         pasta.file(`${base}.stl`, geometryToSTL(geo, x.nome));
@@ -170,7 +170,7 @@ export async function baixarPacote(m: Modelo, o: Orcamento, interno: boolean): P
       }
       for (const e of x.part.extras) {
         if (e.kind !== 'stl') continue;
-        const g2 = partToGeometry({ layers: e.layers });
+        const g2 = partToGeometry(e);
         if (g2) {
           pasta.file(`${base}_${e.name}.stl`, geometryToSTL(g2, e.name));
           g2.dispose();

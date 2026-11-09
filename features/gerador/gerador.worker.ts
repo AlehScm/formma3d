@@ -7,7 +7,8 @@ import * as THREE from 'three';
 import type { Font } from 'opentype.js';
 import { receitaPorId } from '@/lib/gerador/receitas';
 import { valoresValidos, type Resultado, type Valores } from '@/lib/gerador/tipos';
-import { posicoesDaPeca } from '@/lib/gerador/malha';
+import { posicoesDaPrevia } from '@/lib/gerador/malha';
+import { iniciarMalha } from '@/lib/malha/nucleo';
 import { carregarFonteWeb } from '@/lib/text/fontes';
 import { resolverModeloPronto, type ModeloPronto } from '@/lib/design/modelosProntos';
 import { validarCamposDesenho } from '@/lib/gerador/validacaoDesenho';
@@ -89,11 +90,12 @@ self.onmessage = async (e: MessageEvent<PedidoGeracao>) => {
     const resolver = e.data.modelosProntos !== undefined ? resolverModeloPronto(modelosProntos) : undefined;
     const resultado = receita.gerar(valoresValidos(receita, valores), { fonte: (f) => mapa.get(f) ?? lista[0]!, ...(resolver ? { resultadoModelo: resolver, tentativaModelo: (id) => modelosProntos.find((m) => m.elementoId === id)?.tentativa ?? 0 } : {}) });
     if (modo === 'resultado') { responder({ pedido, resultado, malhas: [] }); return; }
+    await iniciarMalha();
     const transferir: Transferable[] = [];
     const malhas = resultado.itens.map((it) =>
       it.pecas.map((p) => {
         const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.BufferAttribute(posicoesDaPeca(p), 3));
+        g.setAttribute('position', new THREE.BufferAttribute(posicoesDaPrevia(p), 3));
         g.computeVertexNormals();
         const posicoes = g.getAttribute('position').array as Float32Array, normais = g.getAttribute('normal').array as Float32Array;
         g.dispose();

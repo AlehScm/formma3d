@@ -8,9 +8,11 @@ import { receitaPorId } from '../lib/gerador/receitas';
 import { valoresPadrao } from '../lib/gerador/tipos';
 import { posicoesDaPeca } from '../lib/gerador/malha';
 import { malhaFechada } from '../lib/mesh/relevo';
+import { iniciarMalha } from '../lib/malha/nucleo';
 import { areaDoDesign } from '../lib/design/enquadramento';
 import { designNovo, type Elemento } from '../lib/design/documento';
 import { mundoDoElemento } from '../lib/design/manipuladores';
+await iniciarMalha();
 
 const anel = (x: number, y: number) => diffRegion(circulo(x, y, 10), circulo(x, y, 6));
 const separados = unir([anel(-16, 0), anel(16, 0), anel(2, 28)]);

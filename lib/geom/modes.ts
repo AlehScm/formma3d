@@ -7,10 +7,13 @@ import {
   type Region,
   type Pt,
 } from './region';
+import { comEscopo, type Motor } from '../malha/nucleo';
+import { malhaDaPilha } from '../malha/pilha';
+import { caixaDaMalha, volumeDaMalha, type Malha } from '../malha/tipos';
 
 // Convencao de eixos: Z = 0 e SEMPRE a superficie que encosta na mesa de impressao.
-// Nada aqui usa CSG: a peca e uma pilha de prismas retos, porque booleana 3D quebra
-// com frequencia em contorno de fonte.
+// A receita da peca e uma lista de prismas retos (Layer); `fundir` junta todos num solido
+// so (manifold, lib/malha), e cada prisma vira um trecho da malha com o papel dele.
 
 /** Papel de cada camada. Governa a cor no preview e o que o usuario entende. */
 export type Role = 'corpo' | 'face' | 'parede' | 'traseira' | 'bolsao' | 'bisel' | 'espacador' | 'batente';
@@ -73,7 +76,7 @@ export const FECHAMENTOS: Record<Fechamento, { nome: string; desc: string }> = {
 /** Qual extremidade da peca encosta na mesa de impressao. */
 export type LadoNaMesa = 'frente' | 'traseira';
 
-/** Prisma reto: uma Region entre dois planos Z. A peca inteira e uma lista destes. */
+/** Prisma reto da receita: uma Region entre dois planos Z. A peca e a uniao destes. */
 export interface Layer {
   region: Region;
   z0: number;
@@ -137,14 +140,29 @@ export interface Params {
 export interface Montagem {
   z: number;
   ordem: number;
+  /**
+   * Do referencial do extra (como ele imprime) para o da peca montada, Mat4 em coluna-maior. Quando
+   * existe, vale no lugar de `z`: o pino de um corte inclinado fica de lado na peca montada.
+   */
+  matriz?: number[];
 }
+
+/** De qual prisma da receita veio um trecho da malha: e a cor dele na tela. */
+export interface Papel {
+  role: Role;
+  lado?: LadoNaMesa;
+}
+
+/** Papel de cada trecho da malha, pelo originalID dele. */
+export type Papeis = Record<number, Papel>;
 
 /** Peca que se imprime separada. */
 export interface ExtraStl {
   kind: 'stl';
   name: string;
   label: string;
-  layers: Layer[];
+  malha: Malha;
+  papeis: Papeis;
   material: string;
   lado: LadoNaMesa;
   montagem: Montagem;
@@ -163,8 +181,25 @@ export interface ExtraCut {
 
 export type Extra = ExtraStl | ExtraCut;
 
+/** O que a divisao precisa saber da peca e a malha nao diz: sai da receita. */
+export interface MetaDaPeca {
+  /** Sem cavidade: maciça, ou fina demais para ficar oca. */
+  solida: boolean;
+  /** Tampa fechada que encosta na mesa (onde a tala apoia e o numero e gravado). */
+  tampaBaixo: { z0: number; z1: number; papel: Papel } | null;
+  /** Onde a cavidade comeca em Z e quanto ela sobe (ate a tampa de cima ou o topo). */
+  zCavidade: number;
+  alturaCavidade: number;
+  /** A parede engrossa com o batente (tem chapa, bolsao ou batente). */
+  comBatente: boolean;
+  /** Onde o corte nao pode passar: espacadores e furo do fio. */
+  proibidos: { p: Pt; r: number }[];
+}
+
 export interface Part {
-  layers: Layer[];
+  /** O solido, fechado (variedade): o que vai para a tela, o STL e o 3MF. */
+  malha: Malha;
+  papeis: Papeis;
   extras: Extra[];
   avisos: string[];
   volume: number;
@@ -172,6 +207,12 @@ export interface Part {
   orientacao: string;
   /** Footprint real da peca: vale para a mesa e para colisao. */
   contorno: Region;
+  meta: MetaDaPeca;
+  /**
+   * Do referencial montado para o de imprimir (Mat4 em coluna-maior): a parte de cima de um corte
+   * inclinado deita com a face do corte na mesa. `assentar` aplica.
+   */
+  paraImprimir?: number[];
 }
 
 export const PARAMS_PADRAO: Params = {
@@ -339,14 +380,28 @@ interface Extremidade {
   qual: LadoNaMesa;
 }
 
+/** A receita da peca: os prismas, os extras e os avisos, ainda sem fundir num solido. */
+export interface Receita {
+  layers: Layer[];
+  extras: Extra[];
+  avisos: string[];
+  contorno: Region;
+  o: Orientacao;
+  cfg: Params;
+  espessuraMin?: number;
+}
+
+/** Gera a peca a partir da Region 2D e das escolhas de fabricacao: a receita, fundida. */
+export const buildPart = (region: Region, p: Partial<Params> = {}, espessuraMin?: number): Part => fechar(receitaDaPeca(region, p, espessuraMin));
+
 /**
- * Gera a peca a partir da Region 2D e das escolhas de fabricacao.
+ * A receita da peca a partir da Region 2D e das escolhas de fabricacao.
  *
  * A montagem e simetrica: as duas extremidades passam pela mesma regra, e o que muda
  * entre elas e so o tipo de fechamento. Foi assim que os cinco modos fechados viraram
  * combinacoes de escolhas soltas.
  */
-export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?: number): Part {
+export function receitaDaPeca(region: Region, p: Partial<Params> = {}, espessuraMin?: number): Receita {
   const cfg: Params = { ...PARAMS_PADRAO, ...p, chanfro: { ...PARAMS_PADRAO.chanfro, ...p.chanfro } };
   const { profundidade: T, parede, batente, folga, bico, chanfro } = cfg;
 
@@ -376,7 +431,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
     } else {
       layers.push({ region, z0: 0, z1: T, role: 'corpo' });
     }
-    return fechar(layers, extras, avisos, region, o, cfg, espessuraMin);
+    return { layers, extras, avisos, contorno: region, o, cfg, espessuraMin };
   }
 
   const vao = (d: number): Region => diffRegion(region, shrinkRegion(region, d));
@@ -387,7 +442,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
   if (!temMiolo(espCorpo)) {
     avisos.push('A letra é fina demais para ficar oca com esta parede e este batente: saiu maciça. Reduza a parede ou o batente.');
     layers.push({ region, z0: 0, z1: T, role: 'corpo' });
-    return fechar(layers, extras, avisos, region, o, cfg, espessuraMin);
+    return { layers, extras, avisos, contorno: region, o, cfg, espessuraMin };
   }
 
   // Ordena as extremidades conforme a orientacao: `baixo` encosta na mesa.
@@ -506,7 +561,7 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
         kind: 'stl',
         name: nome,
         label: `Chapa da ${x.qual} ${x.esp}mm (imprimir separado)`,
-        layers: [{ region: chapa, z0: 0, z1: x.esp, role: 'face' }],
+        ...malhaDasCamadas([{ region: chapa, z0: 0, z1: x.esp, role: 'face' }]),
         material: 'translucido',
         lado: x.qual,
         montagem,
@@ -546,30 +601,73 @@ export function buildPart(region: Region, p: Partial<Params> = {}, espessuraMin?
     avisos.push(`Parede de ${parede}mm é menor que 2 linhas do bico ${bico}mm: use ${(bico * 2).toFixed(1)}mm ou mais.`);
   }
 
-  return fechar(layers, extras, avisos, region, o, cfg, espessuraMin);
+  return { layers, extras, avisos, contorno: region, o, cfg, espessuraMin };
 }
 
-/** Volume analitico, avisos de espessura e empacotamento final. */
-function fechar(
-  layers: Layer[],
-  extras: Extra[],
-  avisos: string[],
-  contorno: Region,
-  o: Orientacao,
-  cfg: Params,
-  espessuraMin?: number
-): Part {
-  // Cada camada e um prisma reto, entao area x altura e exato, nao aproximado.
-  let volume = 0;
-  for (const l of layers) volume += regionArea(l.region) * (l.z1 - l.z0);
+/**
+ * Funde os prismas da receita numa malha so (lib/malha/pilha.ts). Cada prisma ganha um
+ * originalID proprio, que as booleanas preservam nas faces dele: `papeis` guarda o papel.
+ */
+export function fundir(m: Motor, layers: Layer[], papeis: Papeis): Malha {
+  const validos = layers.filter((l) => l.z1 > l.z0 && l.region.length);
+  const id0 = m.Manifold.reserveIDs(Math.max(1, validos.length));
+  validos.forEach((l, i) => {
+    papeis[id0 + i] = l.lado ? { role: l.role, lado: l.lado } : { role: l.role };
+  });
+  return malhaDaPilha(m, validos.map((l, i) => ({ region: l.region, z0: l.z0, z1: l.z1, id: id0 + i })));
+}
+
+/** A receita vira malha e papeis (abre o proprio escopo; pode rodar dentro de outro). */
+export function malhaDasCamadas(layers: Layer[]): { malha: Malha; papeis: Papeis } {
+  const papeis: Papeis = {};
+  const malha = comEscopo((m) => fundir(m, layers, papeis));
+  return { malha, papeis };
+}
+
+const ehTampa = (l: Layer) => l.role === 'face' || l.role === 'traseira';
+
+/** O que a divisao le da receita: tampa de baixo, cavidade, se e solida e onde nao cortar. */
+function metaDa(layers: Layer[], extras: Extra[], region: Region, cfg: Params): MetaDaPeca {
+  const zBase = layers.reduce((m, l) => Math.min(m, l.z0), Infinity);
+  const topo = layers.reduce((m, l) => Math.max(m, l.z1), 0);
+  const tampa = layers.find((l) => ehTampa(l) && l.z0 === zBase);
+  const bolsao = layers.find((l) => l.role === 'bolsao' && l.z0 === 0);
+  const zCavidade = tampa ? tampa.z1 : bolsao ? bolsao.z1 : 0;
+  const tampaCima = layers.find((l) => ehTampa(l) && l.z1 === topo && l.z0 > 0);
+  const proibidos: { p: Pt; r: number }[] = [];
+  for (const l of layers) {
+    if (l.role !== 'espacador') continue;
+    const b = regionBounds(l.region);
+    proibidos.push({ p: { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 }, r: b.w / 2 + 3 });
+  }
+  if (cfg.comLed && cfg.furoFio > 0) {
+    // O mesmo ponto que a tampa usa para o furo (amostragem deterministica).
+    const pt = samplePointsInside(region, cfg.furoFio / 2 + cfg.parede, 1)[0];
+    if (pt) proibidos.push({ p: pt, r: cfg.furoFio / 2 + 3 });
+  }
+  return {
+    solida: cfg.macica || layers.every((l) => l.role === 'corpo' || l.role === 'bisel' || l.role === 'espacador'),
+    tampaBaixo: tampa ? { z0: tampa.z0, z1: tampa.z1, papel: tampa.lado ? { role: tampa.role, lado: tampa.lado } : { role: tampa.role } } : null,
+    zCavidade,
+    alturaCavidade: (tampaCima ? tampaCima.z0 : topo) - zCavidade,
+    comBatente: extras.length > 0 || layers.some((l) => l.role === 'bolsao' || l.role === 'batente'),
+    proibidos,
+  };
+}
+
+/** Funde a receita, mede o solido, avisa da espessura e empacota. */
+function fechar({ layers, extras, avisos, contorno, o, cfg, espessuraMin }: Receita): Part {
+  const papeis: Papeis = {};
+  const malha = comEscopo((m) => fundir(m, layers, papeis));
+  const volume = volumeDaMalha(malha);
 
   const esp = espessuraMin ?? minThickness(contorno);
   if (esp < cfg.bico * 2) {
     avisos.push(`Trecho de ${esp.toFixed(1)}mm é mais fino que 2 linhas do bico ${cfg.bico}mm: vai sair falhado.`);
   }
 
-  const alturaZ = layers.reduce((m, l) => Math.max(m, l.z1), 0);
-  return { layers, extras, avisos, volume, alturaZ, orientacao: o.texto, contorno };
+  const alturaZ = Math.max(0, caixaDaMalha(malha).max[2]);
+  return { malha, papeis, extras, avisos, volume, alturaZ, orientacao: o.texto, contorno, meta: metaDa(layers, extras, contorno, cfg) };
 }
 
 // ---------------------------------------------------------------------------

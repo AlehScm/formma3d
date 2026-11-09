@@ -17,6 +17,8 @@ import { xml3mfMontado } from '../lib/gerador/exportar';
 import { RECEITAS, receitaPorId } from '../lib/gerador/receitas';
 import { valoresPadrao } from '../lib/gerador/tipos';
 import { atualizarPosicaoManipulador } from '../lib/gerador/manipuladores';
+import { iniciarMalha } from '../lib/malha/nucleo';
+await iniciarMalha();
 
 let falhas = 0, total = 0;
 const ok = (nome: string, cond: boolean, detalhe = '') => {

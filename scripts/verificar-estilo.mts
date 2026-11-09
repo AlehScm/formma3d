@@ -44,6 +44,7 @@ const CSS_PENDENTE: Record<string, string> = {
 /** Hex permitido em codigo: nao e estilo de interface (motivo). */
 const HEX_EXCECAO: Record<string, string> = {
   'components/Viewer3D.tsx': 'cores da cena 3D (WebGL), não CSS',
+  'features/viewport/CortarAMao.tsx': 'cores da ferramenta de corte na cena 3D (WebGL), não CSS',
   'features/gerador/PreviaGerador.tsx': 'fundo da cena 3D (WebGL)',
   'app/sistema/page.tsx': 'valor de reserva ao ler o token na vitrine',
   'app/layout.tsx': 'theme-color do navegador (meta tag), nao aceita token CSS',

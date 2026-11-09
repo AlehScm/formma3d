@@ -32,12 +32,14 @@ const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit'
 const node = (bin, args = [], opts = {}) => run(process.execPath, [bin, ...args], opts);
 
 console.log('\n1/4  conferindo tipos');
+// O mesmo que o prebuild faz (aqui o next build roda direto): o motor de malha e os arquivos gerados.
+node('scripts/copiar-wasm.mjs');
 node(BIN.tsx, ['scripts/fotos-marketplace.mts']);
 node(BIN.tsx, ['scripts/gerar-vitrine-letras.mts']);
 node(BIN.tsc, ['--noEmit']);
 
 console.log('\n2/4  rodando os testes');
-for (const s of ['verificar-ops', 'verificar-pdf', 'verificar-apoio', 'verificar-pecas', 'verificar-ai', 'verificar-mesa', 'verificar-arranjo', 'verificar-edicao', 'verificar-referencial', 'verificar-placa', 'verificar-selecao', 'verificar-relevo', 'verificar-placa-3d', 'verificar-gerador', 'verificar-seo']) {
+for (const s of ['verificar-malha', 'verificar-ops', 'verificar-pdf', 'verificar-apoio', 'verificar-pecas', 'verificar-ai', 'verificar-mesa', 'verificar-arranjo', 'verificar-edicao', 'verificar-referencial', 'verificar-placa', 'verificar-selecao', 'verificar-relevo', 'verificar-placa-3d', 'verificar-gerador', 'verificar-seo']) {
   const saida = execFileSync(process.execPath, [BIN.tsx, `scripts/${s}.mts`], { encoding: 'utf8' });
   const placar = saida.trim().split('\n').filter((l) => l.includes('passaram')).pop() ?? 'ok';
   console.log(`     ${s.padEnd(16)} ${placar.trim()}`);
@@ -51,6 +53,8 @@ node(BIN.next, ['build'], { env: { ...process.env, GITHUB_PAGES: 'true', FORMMA_
 if (!existsSync(`${SAIDA}/index.html`)) throw new Error(`o build nao gerou ${SAIDA}/index.html`);
 // Sem o CNAME na gh-pages o Pages perde o dominio proprio a cada push -f.
 if (!existsSync(`${SAIDA}/CNAME`)) throw new Error(`o build nao levou public/CNAME para ${SAIDA}`);
+// Sem o motor de malha o editor nao monta peca nenhuma.
+if (!existsSync(`${SAIDA}/manifold.wasm`)) throw new Error(`o build nao levou public/manifold.wasm para ${SAIDA}`);
 // Next 16 grava o pre-carregamento em pastas e o navegador pede o nome achatado (ver o script).
 console.log(`     prefetch: ${achatarPrefetch(SAIDA)} copias com o nome que o navegador pede`);
 // Trava de SEO: com erro (pagina do sitemap sem titulo, canonical errado, noindex, link

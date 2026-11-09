@@ -5,7 +5,8 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { caixaDoItem, corDe, posicoesDaPeca } from '@/lib/gerador/malha';
+import { caixaDoItem, corDe, posicoesDaPrevia } from '@/lib/gerador/malha';
+import { useMalhaPronta } from '@/lib/malha/useMalhaPronta';
 import type { Resultado } from '@/lib/gerador/tipos';
 
 /**
@@ -13,18 +14,21 @@ import type { Resultado } from '@/lib/gerador/tipos';
  * elas, a malha e montada aqui.
  */
 export function PreviaGerador({ resultado, malhas: prontas }: { resultado: Resultado; malhas?: { posicoes: Float32Array; normais: Float32Array }[][] | null }) {
+  const motor = useMalhaPronta().estado === 'pronto';
   const malhas = useMemo(() => {
     return resultado.itens.flatMap((it, i) =>
-      it.pecas.map((p, j) => {
-        const g = new THREE.BufferGeometry();
+      it.pecas.flatMap((p, j) => {
         const pronta = prontas?.[i]?.[j];
-        g.setAttribute('position', new THREE.BufferAttribute(pronta ? pronta.posicoes : posicoesDaPeca(p), 3));
+        // Sem a malha do worker, monta aqui quando o motor carregar.
+        if (!pronta && !motor) return [];
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(pronta ? pronta.posicoes : posicoesDaPrevia(p), 3));
         if (pronta) g.setAttribute('normal', new THREE.BufferAttribute(pronta.normais, 3));
         else g.computeVertexNormals();
         return { chave: `${i}/${j}/${it.nome}/${p.nome}`, g, cor: corDe(resultado, p.cor) };
       })
     );
-  }, [resultado, prontas]);
+  }, [resultado, prontas, motor]);
   useEffect(() => () => malhas.forEach((m) => m.g.dispose()), [malhas]);
 
   const caixa = useMemo(() => {

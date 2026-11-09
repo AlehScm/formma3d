@@ -65,8 +65,14 @@ export function Atalhos({ onEnquadrar }: { onEnquadrar: () => void }) {
       }
       if (e.altKey) return;
 
-      // Esc sai da ferramenta primeiro; so no segundo Esc desmarca.
-      if (k === 'escape') return ui.ferramentaRelevo ? ui.definirFerramentaRelevo(null) : ui.selecionar(null);
+      // Esc sai da ferramenta primeiro; so no segundo Esc desmarca. Desenhando um corte, o
+      // primeiro Esc so desiste do desenho.
+      if (k === 'escape') {
+        if (ui.ferramentaCorte) return ui.definirFerramentaCorte(ui.ferramentaCorte.desenhando ? { ...ui.ferramentaCorte, desenhando: false } : null);
+        return ui.ferramentaRelevo ? ui.definirFerramentaRelevo(null) : ui.selecionar(null);
+      }
+      // No Cortar a mao, Backspace desfaz o ultimo ponto do desenho: nao exclui a peca.
+      if ((k === 'delete' || k === 'backspace') && ui.ferramentaCorte) return;
       // Delete/Backspace exclui o que esta selecionado (nunca com o foco num campo:
       // la apaga texto, e isso ja foi barrado acima).
       if ((k === 'delete' || k === 'backspace') && ui.selecao.length && objetos) {

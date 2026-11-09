@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, type ReactNode } from 'react';
 import {
   Alerta,
   Botao,
@@ -25,12 +26,36 @@ import {
   IconeSuavizar,
   IconeDividir,
   IconeMais,
+  IconeAbaixo,
+  IconeDireita,
+  IconeDesenhar,
+  IconeMover,
   Interruptor,
   Dica,
+  Segmentado,
+  Selecao,
+  cx,
+  type OpcaoEscolha,
 } from '@/components/ui';
 import { brl } from '@/lib/cost/calc';
 import { regionBounds, type Region } from '@/lib/geom/region';
-import { EMENDA_PADRAO, type Corte, type Eixo } from '@/lib/geom/emenda';
+import {
+  ANEL_ALTURA,
+  EMENDA_PADRAO,
+  PINO_DIAMETRO,
+  PINO_FUNDO,
+  ehAltura,
+  ehSolida,
+  inclinado,
+  ehReta,
+  formaDoCorte,
+  type Corte,
+  type DesenhoDente,
+  type Eixo,
+  type EmendaDoCorte,
+  type FormaEmenda,
+  type MarcaDeEncaixe,
+} from '@/lib/geom/emenda';
 import { edicaoVazia, escalaDeMm, mmDeEscala, SEM_EDICAO } from '@/lib/geom/pecaEditada';
 import { IMPRESSORAS, caberNaMesa, descreverVeredito } from '@/lib/print/impressoras';
 import { useCustos } from '@/features/orcamento/custos';
@@ -181,8 +206,9 @@ function InspetorPeca({ l }: { l: LetraComPeca }) {
 const TITULO = 'text-micro font-semibold uppercase tracking-wider text-texto-3';
 
 /**
- * Peca maior que a mesa: dividir em pedacos que cabem, com emenda (dente na solida, tala por
- * dentro na oca), e os cortes, automaticos ou dados a mao em mm a partir do canto da peca.
+ * Peca maior que a mesa: dividir em pedacos que cabem, com emenda, e os cortes: automaticos ou
+ * dados a mao (retos, inclinados, desenhados no 3D ou na altura), cada um com o seu encaixe. A
+ * peca que cabe tambem pode ser cortada (outra cor na frente, por exemplo).
  */
 function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
   const m = useModelo();
@@ -191,13 +217,48 @@ function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
   const juntar = useProjeto((s) => s.juntarPecas);
   const emenda = useProjeto((s) => s.emenda);
   const ajustar = useProjeto((s) => s.ajustarEmenda);
+  const ferramentaCorte = useInterface((s) => s.ferramentaCorte);
+  const definirFerramentaCorte = useInterface((s) => s.definirFerramentaCorte);
+  const [aberto, setAberto] = useState<number | null>(null);
   const d = l.divisao;
   const inteira = d?.inteira ?? l.part;
   const maquina = m.mesa.nome.replace('Bambu Lab ', '');
+  // A mesma regra da divisao: maciça, ou a letra fina demais para ter cavidade.
+  const solida = ehSolida(inteira, m.params);
+  const cortandoAqui = ferramentaCorte?.chave === l.chave;
+  const cortarNo3D = (desenhando: boolean) => definirFerramentaCorte({ chave: l.chave, desenhando });
+  const variante = cortandoAqui && ferramentaCorte?.desenhando ? 'primario' : 'secundario';
+  const desenhar = (
+    <Botao icone={IconeDesenhar} largura variante={variante} onClick={() => cortarNo3D(true)}>
+      Desenhar corte no 3D
+    </Botao>
+  );
+  const desenharPequeno = (
+    <Dica conteudo="Cada clique põe um ponto do corte, vendo a peça de cima">
+      <Botao tamanho="sm" icone={IconeDesenhar} largura variante={variante} onClick={() => cortarNo3D(true)}>
+        Desenhar
+      </Botao>
+    </Dica>
+  );
 
   if (!d) {
     const v = caberNaMesa(inteira.contorno, inteira.alturaZ, m.mesa);
-    if (v.cabe) return null;
+    if (v.cabe) {
+      return (
+        <div className="space-y-2">
+          <p className={TITULO}>Divisão</p>
+          <p className="text-micro text-texto-3">Cabe inteira na {maquina}. Para imprimir em partes (a frente de outra cor, por exemplo), corte assim mesmo.</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Dica conteudo="Corta na altura (Z), no meio: cada parte imprime com o corte na mesa">
+              <Botao tamanho="sm" icone={IconeMais} largura onClick={() => definirCortes(l.chave, [{ tipo: 'altura', z: Math.round(inteira.alturaZ / 2) }])}>
+                Na altura
+              </Botao>
+            </Dica>
+            {desenharPequeno}
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="space-y-2">
         <p className={TITULO}>Divisão</p>
@@ -205,27 +266,41 @@ function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
         <Botao icone={IconeDividir} variante="primario" largura onClick={() => dividir([l.chave])}>
           Dividir para caber na mesa
         </Botao>
-        <p className="text-micro text-texto-3">Corta em pedaços que cabem na {maquina}, com encaixe na emenda e o número de montagem gravado em cada um.</p>
+        {desenhar}
+        <p className="text-micro text-texto-3">Corta em pedaços que cabem na {maquina}, com encaixe na emenda e o número de montagem gravado em cada um. Ou desenhe o corte você mesmo, vendo a peça de cima.</p>
       </div>
     );
   }
 
   const b = regionBounds(inteira.contorno);
   const itens = m.impressas.filter((x) => x.letra === l.chave);
-  const pedacos = itens.filter((x) => x.tipo !== 'tala');
-  const talas = itens.length - pedacos.length;
-  const solida = m.params.macica;
+  const pedacos = itens.filter((x) => x.tipo !== 'solta');
+  const soltas = itens.length - pedacos.length;
   const tamanho = (e: Eixo) => (e === 'x' ? b.w : b.h);
-  const mudar = (k: number, pos: number) => definirCortes(l.chave, d.cortes.map((c, j) => (j === k ? { ...c, pos } : c)));
-  const tirar = (k: number) => definirCortes(l.chave, d.cortes.filter((_, j) => j !== k));
+  const altura = inteira.alturaZ;
+  const temAltura = d.cortes.some(ehAltura);
+  const trocar = (k: number, f: (c: Corte) => Corte) => definirCortes(l.chave, d.cortes.map((c, j) => (j === k ? f(c) : c)));
+  const tirar = (k: number) => {
+    setAberto(null);
+    definirCortes(l.chave, d.cortes.filter((_, j) => j !== k));
+  };
   // Corte novo no meio do maior trecho sem corte naquele eixo.
-  const somar = (eixo: Eixo) => {
-    const marcos = [0, ...d.cortes.filter((c) => c.eixo === eixo).map((c) => c.pos), tamanho(eixo)].sort((a, c) => a - c);
+  const somar = (eixo: Eixo, angulo?: number) => {
+    const marcos = [0, ...d.cortes.flatMap((c) => (ehReta(c) && c.eixo === eixo ? [c.pos] : [])), tamanho(eixo)].sort((a, c) => a - c);
     let k = 1;
     for (let j = 2; j < marcos.length; j++) if (marcos[j]! - marcos[j - 1]! > marcos[k]! - marcos[k - 1]!) k = j;
-    const novo: Corte = { eixo, pos: Math.round((marcos[k]! + marcos[k - 1]!) / 2) };
+    const novo: Corte = { eixo, pos: Math.round((marcos[k]! + marcos[k - 1]!) / 2), ...(angulo ? { angulo } : {}) };
     definirCortes(l.chave, [...d.cortes, novo]);
+    if (angulo) setAberto(d.cortes.length);
   };
+  // Corte na altura no meio da maior parte sem corte.
+  const somarAltura = () => {
+    const marcos = [0, ...d.cortes.flatMap((c) => (ehAltura(c) ? [c.z] : [])), altura].sort((a, c) => a - c);
+    let k = 1;
+    for (let j = 2; j < marcos.length; j++) if (marcos[j]! - marcos[j - 1]! > marcos[k]! - marcos[k - 1]!) k = j;
+    definirCortes(l.chave, [...d.cortes, { tipo: 'altura', z: Math.round((marcos[k]! + marcos[k - 1]!) / 2) }]);
+  };
+  const formas = [...new Set(d.cortes.map((c) => formaDoCorte(c, emenda.forma, solida)))].map((f) => NOME_FORMA[f]).join(', ');
 
   return (
     <div className="space-y-3">
@@ -237,30 +312,28 @@ function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
         densa
         itens={[
           { rotulo: 'Pedaços', valor: String(pedacos.length) },
-          ...(talas ? [{ rotulo: 'Talas de emenda', valor: String(talas) }] : []),
-          { rotulo: 'Emenda', valor: solida ? 'dente de encaixe' : 'tala colada por dentro' },
+          ...(soltas ? [{ rotulo: 'Peças soltas (talas, cavilhas, pinos)', valor: String(soltas) }] : []),
+          { rotulo: 'Encaixe', valor: formas || '—' },
           ...(d.parafusos ? [{ rotulo: 'Parafusos M3', valor: String(d.parafusos) }] : []),
         ]}
       />
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {d.cortes.map((c, k) => (
-          <div key={k} className="flex items-center gap-2 text-mini text-texto-2">
-            <span className="flex-1 leading-tight">
-              {c.eixo === 'x' ? 'Vertical' : 'Horizontal'}
-              <span className="block text-micro text-texto-3">{c.eixo === 'x' ? 'mm da esquerda' : 'mm de baixo'}</span>
-            </span>
-            <EntradaNumero
-              valor={c.pos}
-              set={(v) => mudar(k, v)}
-              min={1}
-              max={Math.floor(tamanho(c.eixo)) - 1}
-              passo={1}
-              unidade="mm"
-              rotuloAcessivel={`Corte ${c.eixo === 'x' ? 'vertical, mm da esquerda' : 'horizontal, mm de baixo'}`}
-            />
-            <BotaoIcone icone={IconeFechar} rotulo="Tirar este corte" tamanho="sm" onClick={() => tirar(k)} />
-          </div>
+          <LinhaDoCorte
+            key={k}
+            k={k}
+            c={c}
+            aberto={aberto === k}
+            alternar={() => setAberto(aberto === k ? null : k)}
+            maximo={ehReta(c) ? Math.floor(tamanho(c.eixo)) - 1 : ehAltura(c) ? Math.floor(altura) - 1 : 0}
+            solida={solida}
+            marcas={d.marcas.filter((x) => x.corte === k)}
+            origem={d.origem}
+            trocar={(f) => trocar(k, f)}
+            tirar={() => tirar(k)}
+            noTres={() => cortarNo3D(false)}
+          />
         ))}
         <div className="grid grid-cols-2 gap-1.5 pt-1">
           <Dica conteudo="Mais um corte vertical, no meio do maior pedaço">
@@ -273,6 +346,22 @@ function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
               Horizontal
             </Botao>
           </Dica>
+          <Dica conteudo="Mais um corte inclinado (30°), no meio do maior pedaço">
+            <Botao tamanho="sm" icone={IconeMais} onClick={() => somar('x', 30)}>
+              Inclinado
+            </Botao>
+          </Dica>
+          <Dica conteudo="Mais um corte na altura (Z), no meio da maior parte: cada parte imprime com o corte na mesa">
+            <Botao tamanho="sm" icone={IconeMais} onClick={somarAltura}>
+              Na altura
+            </Botao>
+          </Dica>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          {desenharPequeno}
+          <Botao tamanho="sm" icone={IconeMover} largura variante={cortandoAqui && !ferramentaCorte?.desenhando ? 'primario' : 'secundario'} onClick={() => (cortandoAqui && !ferramentaCorte?.desenhando ? definirFerramentaCorte(null) : cortarNo3D(false))}>
+            {cortandoAqui && !ferramentaCorte?.desenhando ? 'Sair do 3D' : 'Mexer no 3D'}
+          </Botao>
         </div>
       </div>
 
@@ -284,7 +373,8 @@ function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
             <div key={x.chave} className="flex items-center justify-between text-mini">
               <span className="text-texto-2">{x.nome}</span>
               <span className="flex items-center gap-2 text-texto-3 tabular-nums">
-                {formatarNumero(bx.w, 0)} × {formatarNumero(bx.h, 0)} mm
+                {formatarNumero(bx.w, 0)} × {formatarNumero(bx.h, 0)}
+                {temAltura ? ` × ${formatarNumero(x.part.alturaZ, 0)}` : ''} mm
                 <Selo tom={cabe ? 'sucesso' : 'perigo'}>{cabe ? 'cabe' : 'não cabe'}</Selo>
               </span>
             </div>
@@ -294,10 +384,17 @@ function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
 
       <div className="space-y-1">
         <p className={TITULO}>Emenda (todas as peças divididas)</p>
+        <Selecao
+          rotulo="Encaixe padrão"
+          dica="Vale para os cortes que não escolheram o seu"
+          valor={formaDoCorte({ eixo: 'x', pos: 0 }, emenda.forma, solida)}
+          set={(v) => ajustar({ forma: v })}
+          opcoes={(solida ? FORMAS_SOLIDA : FORMAS_OCA).filter((o) => o.valor !== 'auto')}
+        />
+        <EscolhaDeDente rotulo="Desenho do dente" dica={solida ? undefined : 'Na peça oca, só no traço fino (sem vão por dentro)'} valor={emenda.desenho} set={(v) => ajustar({ desenho: v })} />
         <Interruptor rotulo="Gravar o número" dica={solida ? 'Número de montagem embaixo, espelhado, para ler olhando por baixo' : 'Número de montagem por dentro, no fundo'} valor={emenda.gravarNumero} set={(v) => ajustar({ gravarNumero: v })} />
-        {solida ? (
-          <CampoNumero rotulo="Folga do encaixe" dica="Entre o dente e o vão" valor={emenda.folga} padrao={EMENDA_PADRAO.folga} set={(v) => ajustar({ folga: v })} min={0} max={1} passo={0.05} layout="linha" />
-        ) : (
+        <CampoNumero rotulo="Folga do encaixe" dica="Entre o dente (ou a cavilha) e o vão" valor={emenda.folga} padrao={EMENDA_PADRAO.folga} set={(v) => ajustar({ folga: v })} min={0} max={1} passo={0.05} layout="linha" />
+        {!solida && (
           <>
             <Interruptor rotulo="Parafusos M3" dica="Furos na tala e no fundo, dois por emenda; a cola continua" valor={emenda.parafusos} set={(v) => ajustar({ parafusos: v })} />
             <CampoNumero rotulo="Largura da tala" dica="Quanto a tala passa da emenda, para cada lado" valor={emenda.larguraTala} padrao={EMENDA_PADRAO.larguraTala} set={(v) => ajustar({ larguraTala: v })} min={10} max={80} passo={1} layout="linha" />
@@ -315,6 +412,337 @@ function DivisaoDaPeca({ l }: { l: LetraComPeca }) {
           Juntar de novo (peça inteira)
         </Botao>
       </div>
+    </div>
+  );
+}
+
+const NOME_FORMA: Record<Exclude<FormaEmenda, 'auto'>, string> = {
+  dente: 'dente',
+  escondido: 'dente escondido',
+  cavilha: 'cavilha solta',
+  borboleta: 'borboleta',
+  degrau: 'degrau',
+  tala: 'tala por dentro',
+  cola: 'só cola',
+  pino: 'pino solto',
+  pinoFixo: 'pino fixo',
+  anel: 'anel por dentro',
+  pinoDeitado: 'pino deitado',
+};
+
+const FORMAS_SOLIDA: { valor: FormaEmenda; nome: string }[] = [
+  { valor: 'auto', nome: 'Padrão (o de todas)' },
+  { valor: 'dente', nome: 'Dente na altura toda' },
+  { valor: 'escondido', nome: 'Dente escondido (só embaixo)' },
+  { valor: 'cavilha', nome: 'Cavilha solta (no meio)' },
+  { valor: 'pinoDeitado', nome: 'Pino deitado (redondo, no meio)' },
+  { valor: 'borboleta', nome: 'Borboleta por baixo' },
+  { valor: 'degrau', nome: 'Degrau (meia-madeira)' },
+  { valor: 'cola', nome: 'Só cola' },
+];
+
+const FORMAS_OCA: { valor: FormaEmenda; nome: string }[] = [
+  { valor: 'auto', nome: 'Padrão (o de todas)' },
+  { valor: 'tala', nome: 'Tala por dentro' },
+  { valor: 'cola', nome: 'Só cola' },
+];
+
+const FORMAS_ALTURA_SOLIDA: { valor: FormaEmenda; nome: string }[] = [
+  { valor: 'auto', nome: 'Padrão (pino solto)' },
+  { valor: 'pino', nome: 'Pino solto (furo nas duas partes)' },
+  { valor: 'pinoFixo', nome: 'Pino fixo (sai da parte de baixo)' },
+  { valor: 'cola', nome: 'Só cola' },
+];
+
+const FORMAS_ALTURA_OCA: { valor: FormaEmenda; nome: string }[] = [
+  { valor: 'auto', nome: 'Padrão (anel por dentro)' },
+  { valor: 'anel', nome: 'Anel por dentro da parede' },
+  { valor: 'pino', nome: 'Pino solto (onde couber)' },
+  { valor: 'pinoFixo', nome: 'Pino fixo (onde couber)' },
+  { valor: 'cola', nome: 'Só cola' },
+];
+/** No plano inclinado o anel nao acompanha a parede: so cola ou pino. */
+const FORMAS_INCLINADO_OCA: { valor: FormaEmenda; nome: string }[] = [
+  { valor: 'auto', nome: 'Padrão (só cola)' },
+  { valor: 'pino', nome: 'Pino solto (onde couber)' },
+  { valor: 'pinoFixo', nome: 'Pino fixo (onde couber)' },
+  { valor: 'cola', nome: 'Só cola' },
+];
+
+const DESENHOS: { valor: DesenhoDente; nome: string; dica: string }[] = [
+  { valor: 'redondo', nome: 'Redondo', dica: 'Quebra-cabeça: cabeça redonda com pescoço, trava' },
+  { valor: 'andorinha', nome: 'Andorinha', dica: 'Rabo de andorinha: abre para a frente, trava' },
+  { valor: 'reto', nome: 'Reto', dica: 'Chaveta reta: só alinha (a cola segura)' },
+  { valor: 'triangulo', nome: 'Seta', dica: 'Triângulo: só alinha, centra sozinho' },
+];
+
+/** O dente visto de cima, na emenda entre dois pedacos. */
+const FORMA_DO_DENTE: Record<DesenhoDente, ReactNode> = {
+  redondo: (
+    <>
+      <rect x="17" y="10" width="5" height="4" />
+      <circle cx="24" cy="12" r="3.6" />
+    </>
+  ),
+  andorinha: <polygon points="17,10.5 20,10.5 27,7.5 27,16.5 20,13.5 17,13.5" />,
+  reto: <rect x="17" y="8.5" width="9" height="7" />,
+  triangulo: <polygon points="17,8 20,8 28,12 20,16 17,16" />,
+};
+
+/** Os desenhos do dente como botoes com o desenho de cada um (como os metodos de conector). */
+function EscolhaDeDente({ rotulo, dica, valor, set }: { rotulo: string; dica?: string; valor: DesenhoDente; set: (v: DesenhoDente) => void }) {
+  return (
+    <Campo rotulo={rotulo} dica={dica}>
+      <div role="radiogroup" aria-label={rotulo} className="grid grid-cols-4 gap-1">
+        {DESENHOS.map((o) => (
+          <Dica key={o.valor} conteudo={o.dica}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={valor === o.valor}
+              onClick={() => set(o.valor)}
+              className={cx(
+                'flex flex-col items-center gap-0.5 rounded-md border px-1 py-1 text-micro transition-colors',
+                valor === o.valor ? 'border-acento bg-acento/15 text-texto' : 'border-borda text-texto-2 hover:bg-superficie-3'
+              )}
+            >
+              <svg viewBox="0 0 40 24" className="h-6 w-10" aria-hidden>
+                <rect x="20" y="3" width="16" height="18" className="fill-texto-3/30" />
+                <g className="fill-acento/70">
+                  <rect x="4" y="3" width="16" height="18" />
+                  {FORMA_DO_DENTE[o.valor]}
+                </g>
+              </svg>
+              {o.nome}
+            </button>
+          </Dica>
+        ))}
+      </div>
+    </Campo>
+  );
+}
+
+/** Um corte da lista: posicao (ou o esboco) e, aberto, o encaixe dele. */
+function LinhaDoCorte({
+  k,
+  c,
+  aberto,
+  alternar,
+  maximo,
+  solida,
+  marcas,
+  origem,
+  trocar,
+  tirar,
+  noTres,
+}: {
+  k: number;
+  c: Corte;
+  aberto: boolean;
+  alternar: () => void;
+  maximo: number;
+  solida: boolean;
+  marcas: MarcaDeEncaixe[];
+  origem: { x: number; y: number };
+  trocar: (f: (c: Corte) => Corte) => void;
+  tirar: () => void;
+  noTres: () => void;
+}) {
+  const emenda = useProjeto((s) => s.emenda);
+  const e = c.emenda ?? {};
+  const forma = formaDoCorte(c, emenda.forma, solida);
+  const naAltura = ehAltura(c);
+  const comDente = !naAltura && (forma === 'dente' || forma === 'escondido' || forma === 'tala');
+  const comPino = forma === 'pino' || forma === 'pinoFixo';
+  const deitado = forma === 'pinoDeitado';
+  const comLugar = comDente || forma === 'cavilha' || forma === 'borboleta' || comPino || deitado;
+  const mudar = (mudanca: Partial<EmendaDoCorte>) =>
+    trocar((x) => {
+      const n: EmendaDoCorte = { ...x.emenda, ...mudanca };
+      (Object.keys(n) as (keyof EmendaDoCorte)[]).forEach((chave) => n[chave] === undefined && delete n[chave]);
+      return { ...x, emenda: n };
+    });
+  const tombado = naAltura && inclinado(c);
+  const titulo = naAltura ? (tombado ? `Na altura, inclinado ${formatarNumero(c.inclinacao ?? 0, 0)}°` : 'Na altura (Z)') : ehReta(c) ? (c.angulo ? `Inclinado ${formatarNumero(c.angulo, 0)}°` : c.eixo === 'x' ? 'Vertical' : 'Horizontal') : 'Desenhado';
+  const lados: OpcaoEscolha<'antes' | 'depois'>[] = ehReta(c) && !c.angulo
+    ? [
+        { valor: 'antes', nome: c.eixo === 'x' ? 'Esquerda' : 'Baixo', dica: `O pedaço ${c.eixo === 'x' ? 'da esquerda' : 'de baixo'} leva o dente` },
+        { valor: 'depois', nome: c.eixo === 'x' ? 'Direita' : 'Cima', dica: `O pedaço ${c.eixo === 'x' ? 'da direita' : 'de cima'} leva o dente` },
+      ]
+    : [
+        { valor: 'antes', nome: 'Um lado', dica: 'O pedaço à esquerda de quem anda pela linha leva o dente' },
+        { valor: 'depois', nome: 'O outro', dica: 'O pedaço do outro lado leva o dente' },
+      ];
+  // Onde eu clicar: comeca dos lugares que o automatico ja tinha achado.
+  const escolher = () =>
+    mudar({
+      lugares: e.lugares ?? marcas.map((x) => ({ x: Math.round((x.lugar.x - origem.x) * 10) / 10, y: Math.round((x.lugar.y - origem.y) * 10) / 10, ...(x.inverter !== !!e.inverter ? { inverter: true } : {}) })),
+    });
+
+  return (
+    <div className={cx('rounded-md border', aberto ? 'border-borda-forte bg-superficie-2' : 'border-transparent')}>
+      <div className="flex items-center gap-1.5 text-mini text-texto-2">
+        <BotaoIcone icone={aberto ? IconeAbaixo : IconeDireita} rotulo={aberto ? 'Fechar o encaixe deste corte' : 'Encaixe deste corte'} tamanho="sm" onClick={alternar} />
+        <span className="min-w-0 flex-1 truncate leading-tight">
+          <span className="text-texto">{titulo}</span>
+          <span className="block truncate text-micro text-texto-3">
+            {NOME_FORMA[forma]}{ehReta(c) ? ` · mm ${c.eixo === 'x' ? 'da esquerda' : 'de baixo'}` : naAltura ? ' · mm da mesa' : ''}
+          </span>
+        </span>
+        {ehReta(c) ? (
+          <EntradaNumero
+            valor={c.pos}
+            set={(v) => trocar((x) => (ehReta(x) ? { ...x, pos: v } : x))}
+            min={1}
+            max={maximo}
+            passo={1}
+            unidade="mm"
+            rotuloAcessivel={`Corte ${k + 1}, ${c.eixo === 'x' ? 'mm da esquerda' : 'mm de baixo'}`}
+          />
+        ) : naAltura ? (
+          <EntradaNumero
+            valor={c.z}
+            set={(v) => trocar((x) => (ehAltura(x) ? { ...x, z: v } : x))}
+            min={1}
+            max={maximo}
+            passo={1}
+            unidade="mm"
+            rotuloAcessivel={`Corte ${k + 1}, mm da mesa`}
+          />
+        ) : (
+          <Botao tamanho="sm" variante="fantasma" onClick={noTres}>
+            Editar no 3D
+          </Botao>
+        )}
+        <BotaoIcone icone={IconeFechar} rotulo="Tirar este corte" tamanho="sm" onClick={tirar} />
+      </div>
+      {aberto && (
+        <div className="space-y-1.5 px-2 pb-2 pt-1">
+          {naAltura && (
+            <CampoNumero
+              rotulo="Inclinação"
+              dica="Inclina o plano do corte em torno do meio da peça, na altura escolhida. A parte de cima imprime deitada no corte."
+              valor={c.inclinacao ?? 0}
+              padrao={0}
+              set={(v) => trocar((x) => (ehAltura(x) ? { ...x, inclinacao: v || undefined } : x))}
+              min={-60}
+              max={60}
+              passo={1}
+              unidade="°"
+              layout="linha"
+            />
+          )}
+          {tombado && (
+            <CampoNumero
+              rotulo="Direção"
+              dica="Para que lado o plano desce: 0° para a direita, 90° para trás"
+              valor={c.direcao ?? 0}
+              padrao={0}
+              set={(v) => trocar((x) => (ehAltura(x) ? { ...x, direcao: v || undefined } : x))}
+              min={0}
+              max={359}
+              passo={5}
+              unidade="°"
+              layout="linha"
+            />
+          )}
+          {ehReta(c) && (
+            <CampoNumero
+              rotulo="Inclinação"
+              dica="Gira o corte em torno do meio da peça"
+              valor={c.angulo ?? 0}
+              padrao={0}
+              set={(v) => trocar((x) => (ehReta(x) ? { ...x, angulo: v || undefined } : x))}
+              min={-75}
+              max={75}
+              passo={1}
+              unidade="°"
+              layout="linha"
+            />
+          )}
+          <Selecao
+            rotulo="Encaixe"
+            valor={e.forma ?? 'auto'}
+            set={(v) => mudar({ forma: v === 'auto' ? undefined : v })}
+            opcoes={naAltura ? (solida ? FORMAS_ALTURA_SOLIDA : tombado ? FORMAS_INCLINADO_OCA : FORMAS_ALTURA_OCA) : solida ? FORMAS_SOLIDA : FORMAS_OCA}
+          />
+          {comDente && (
+            <>
+              <EscolhaDeDente
+                rotulo="Desenho"
+                dica={forma === 'tala' ? 'Só no traço fino, onde não há vão por dentro' : undefined}
+                valor={e.desenho ?? emenda.desenho}
+                set={(v) => mudar({ desenho: v })}
+              />
+              <Segmentado rotulo="Quem leva o dente" valor={e.inverter ? 'depois' : 'antes'} set={(v) => mudar({ inverter: v === 'depois' || undefined })} opcoes={lados} tamanho="sm" />
+            </>
+          )}
+          {forma === 'escondido' && (
+            <CampoNumero rotulo="Altura do dente" dica="Da mesa para cima; acima dele a emenda é reta e a frente só mostra a linha" valor={e.alturaDente ?? 60} padrao={60} set={(v) => mudar({ alturaDente: v === 60 ? undefined : v })} min={20} max={90} passo={5} unidade="%" layout="linha" />
+          )}
+          {(comPino || deitado) && (
+            <>
+              <CampoNumero rotulo="Diâmetro" dica="Do pino; o furo leva a folga" valor={e.tamanho ?? PINO_DIAMETRO} padrao={PINO_DIAMETRO} set={(v) => mudar({ tamanho: v === PINO_DIAMETRO ? undefined : v })} min={2} max={20} passo={0.5} unidade="mm" layout="linha" />
+              <CampoNumero
+                rotulo="Profundidade"
+                dica={forma === 'pino' || deitado ? 'Quanto o pino entra em cada parte' : 'Quanto o pino sobe dentro da parte de cima'}
+                valor={e.fundo ?? PINO_FUNDO}
+                padrao={PINO_FUNDO}
+                set={(v) => mudar({ fundo: v === PINO_FUNDO ? undefined : v })}
+                min={2}
+                max={30}
+                passo={1}
+                unidade="mm"
+                layout="linha"
+              />
+            </>
+          )}
+          {forma === 'anel' && (
+            <>
+              <CampoNumero rotulo="Altura do anel" dica="Quanto o anel sobe dentro da parte de cima" valor={e.fundo ?? ANEL_ALTURA} padrao={ANEL_ALTURA} set={(v) => mudar({ fundo: v === ANEL_ALTURA ? undefined : v })} min={2} max={30} passo={1} unidade="mm" layout="linha" />
+              <CampoNumero rotulo="Espessura" dica="0 = pela parede (automático)" valor={e.tamanho ?? 0} padrao={0} set={(v) => mudar({ tamanho: v || undefined })} min={0} max={5} passo={0.2} unidade="mm" layout="linha" />
+            </>
+          )}
+          {comLugar && (
+            <>
+              {!comPino && !deitado && (
+                <CampoNumero
+                  rotulo="Largura"
+                  dica="0 = pelo trecho de material (automático)"
+                  valor={e.tamanho ?? 0}
+                  padrao={0}
+                  set={(v) => mudar({ tamanho: v || undefined })}
+                  min={0}
+                  max={60}
+                  passo={1}
+                  layout="linha"
+                />
+              )}
+              {/* No plano inclinado o pino vai so no automatico: o clique na peca e visto de cima. */}
+              {!tombado && <Segmentado
+                rotulo="Onde vão"
+                valor={e.lugares ? 'lugares' : 'passo'}
+                set={(v) => (v === 'passo' ? mudar({ lugares: undefined }) : escolher())}
+                opcoes={[
+                  { valor: 'passo', nome: 'Automático', dica: comPino ? 'Espalhados onde o material cerca o furo, um a cada tantos mm' : 'No meio de cada trecho de material da linha, um a cada tantos mm' },
+                  { valor: 'lugares', nome: 'Onde eu clicar', dica: comPino ? 'Clique na peça, no 3D, para pôr ou tirar' : 'Clique na linha, no 3D, para pôr ou tirar' },
+                ]}
+                tamanho="sm"
+              />}
+              {e.lugares && !tombado ? (
+                <div className="flex items-center justify-between gap-2 text-micro text-texto-3">
+                  <span>{marcas.length === 1 ? '1 no lugar' : `${marcas.length} nos lugares`} · clique {comPino ? 'na peça' : 'na linha'} no 3D</span>
+                  <Botao tamanho="sm" onClick={noTres}>
+                    Escolher no 3D
+                  </Botao>
+                </div>
+              ) : (
+                <CampoNumero rotulo="Um a cada" valor={e.passo ?? 60} padrao={60} set={(v) => mudar({ passo: v === 60 ? undefined : v })} min={10} max={300} passo={5} layout="linha" />
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -620,7 +1048,7 @@ function Resumo() {
               { rotulo: 'Altura', valor: `${formatarNumero(m.bounds.h)} mm` },
               { rotulo: 'Profundidade', valor: `${formatarNumero(profundidade)} mm` },
               { rotulo: 'Peças', valor: m.letras.length },
-              ...(m.impressas.length !== m.letras.length ? [{ rotulo: 'Para imprimir (pedaços e talas)', valor: m.impressas.length }] : []),
+              ...(m.impressas.length !== m.letras.length ? [{ rotulo: 'Para imprimir (pedaços e peças soltas)', valor: m.impressas.length }] : []),
               ...(m.totais && m.totais.areaChapa > 0
                 ? [{ rotulo: 'Chapa ACM', valor: `${formatarNumero(m.totais.areaChapa / 100)} cm²` }]
                 : []),
